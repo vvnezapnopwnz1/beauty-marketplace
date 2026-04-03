@@ -1,0 +1,102 @@
+{
+  "nav": {
+    "services": "Услуги",
+    "forBusiness": "Для бизнеса",
+    "forBusinesses": "Для бизнеса",
+    "giftCards": "Подарочные карты",
+    "login": "Войти",
+    "signup": "Зарегистрироваться",
+    "signUp": "Зарегистрироваться"
+  },
+  "hero": {
+    "tag": "Более 1000 мастеров в Москве",
+    "h1": "Красота на твоих",
+    "h1accent": "условиях",
+    "subtitle": "Найди и запишись к лучшим мастерам и салонам",
+    "location": "Москва, Центр",
+    "searchBtn": "Найти"
+  },
+  "search": {
+    "placeholder": "Маникюр, стрижка, брови...",
+    "location": "Москва, Центр",
+    "searchBtn": "Найти",
+    "availableToday": "Свободно сегодня",
+    "openNow": "Открыто сейчас",
+    "budget": "До 2000 ₽",
+    "topRated": "Высокий рейтинг",
+    "newOnly": "Новинки",
+    "sortLabel": "Сортировка:",
+    "sortRecommended": "Рекомендованные",
+    "sortRating": "По рейтингу",
+    "sortPrice": "По цене",
+    "sortByDistance": "По расстоянию",
+    "sortByRating": "По рейтингу",
+    "results": "<strong>{{count}} мастеров</strong> найдено в Москве",
+    "results_few": "{{count}} мастеров найдено",
+    "noResults": "Ничего не найдено",
+    "noResultsHint": "Попробуйте другой запрос или снимите фильтры",
+    "resetFilters": "Сбросить фильтры",
+    "title": "Запишись к лучшим\nмастерам рядом"
+  },
+  "categories": {
+    "all": "Все",
+    "hair": "Волосы",
+    "nails": "Маникюр",
+    "spa": "Спа",
+    "barber": "Барбер",
+    "brows": "Брови и ресницы",
+    "makeup": "Макияж",
+    "massage": "Массаж",
+    "skin": "Уход за кожей",
+    "hairRemoval": "Эпиляция"
+  },
+  "salon": {
+    "typeVenue": "Салон",
+    "typeIndividual": "Самозанятый мастер",
+    "availableToday": "Есть слоты сегодня",
+    "verifiedReviews": "верифицированных отзывов",
+    "priceFrom": "от <strong>{{price}} ₽</strong>",
+    "bookOnline": "Записаться",
+    "bookByPhone": "Запись по телефону",
+    "call": "Позвонить",
+    "services": "Услуги и цены",
+    "schedule": "Режим работы",
+    "reviews": "Отзывы",
+    "reviewsEmpty": "Отзывы появятся после первых визитов через платформу",
+    "reviewsNote": "Только верифицированные — после подтверждённой записи",
+    "bookingHint": "Выберите услугу выше, чтобы записаться онлайн",
+    "bookingFree": "Бесплатно, без предоплаты",
+    "notFound": "Мастер не найден",
+    "backToSearch": "Вернуться к поиску",
+    "minutes": "мин",
+    "km": "км",
+    "badgePopular": "Популярный",
+    "badgeTop": "Лучший",
+    "badgeNew": "Новый"
+  },
+  "map": {
+    "closestToYou": "Ближайшие к вам"
+  },
+  "promo": {
+    "title": "Первая запись — скидка 20%",
+    "subtitle": "Используй код FIRST20 при оплате",
+    "cta": "Получить"
+  },
+  "login": {
+    "title": "Вход",
+    "subtitle": "Введите номер телефона — отправим код в Telegram",
+    "phonePlaceholder": "+7 (___) ___-__-__",
+    "phoneLabel": "Номер телефона",
+    "submit": "Получить код",
+    "submitting": "Отправляем...",
+    "otpTitle": "Введите код",
+    "otpSubtitle": "Отправили код в Telegram на номер",
+    "otpLabel": "Код из Telegram",
+    "verify": "Войти",
+    "verifying": "Проверяем...",
+    "changePhone": "Изменить номер",
+    "resendHint": "Не пришёл код?",
+    "resend": "Отправить снова",
+    "invalidCode": "Неверный код. Попробуйте ещё раз."
+  }
+}

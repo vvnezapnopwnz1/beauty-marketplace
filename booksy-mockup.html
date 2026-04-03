@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beautica — Book beauty services</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #FAF7F2;
+    --ink: #1A1612;
+    --ink-soft: #6B6460;
+    --ink-faint: #C2BDB8;
+    --blush: #E8C4B0;
+    --blush-light: #F5EBE4;
+    --sage: #8FAF8A;
+    --sage-light: #EAF0E9;
+    --accent: #C4703F;
+    --accent-light: #F2E6DC;
+    --white: #FFFFFF;
+    --card-shadow: 0 2px 16px rgba(26,22,18,0.07);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-pill: 100px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    background: var(--white);
+    border-bottom: 1px solid #EDE8E2;
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+  }
+
+  .logo span { color: var(--accent); }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: 14px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-weight: 400;
+    transition: color 0.15s;
+  }
+
+  .nav-links a:hover { color: var(--ink); }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn-ghost {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    transition: background 0.15s;
+  }
+
+  .btn-ghost:hover { background: var(--blush-light); }
+
+  .btn-primary {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--white);
+    background: var(--ink);
+    border: none;
+    cursor: pointer;
+    padding: 9px 20px;
+    border-radius: var(--radius-pill);
+    transition: background 0.15s;
+  }
+
+  .btn-primary:hover { background: #2e2a26; }
+
+  /* HERO */
+  .hero {
+    background: var(--white);
+    padding: 64px 40px 56px;
+    text-align: center;
+    border-bottom: 1px solid #EDE8E2;
+  }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    margin-bottom: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 52px;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -1.5px;
+    color: var(--ink);
+    margin-bottom: 12px;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin-bottom: 36px;
+    font-weight: 300;
+  }
+
+  /* SEARCH BAR */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    max-width: 660px;
+    margin: 0 auto;
+    background: var(--cream);
+    border: 1.5px solid #E0D8D0;
+    border-radius: var(--radius-pill);
+    padding: 6px 6px 6px 20px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .search-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(196,112,63,0.1);
+  }
+
+  .search-input {
+    flex: 1;
+    border: none;
+    background: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+    min-width: 0;
+  }
+
+  .search-input::placeholder { color: var(--ink-faint); }
+
+  .search-divider {
+    width: 1px;
+    height: 20px;
+    background: #DDD7D0;
+    margin: 0 16px;
+    flex-shrink: 0;
+  }
+
+  .search-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+
+  .loc-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--sage);
+    flex-shrink: 0;
+  }
+
+  .search-btn {
+    background: var(--accent);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 10px 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .search-btn:hover { background: #b0622f; }
+
+  /* CATEGORIES */
+  .categories {
+    background: var(--white);
+    border-bottom: 1px solid #EDE8E2;
+    padding: 0 40px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .categories::-webkit-scrollbar { display: none; }
+
+  .cat-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .cat-btn:hover { color: var(--ink); }
+
+  .cat-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .cat-icon {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 0;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 40px;
+    gap: 32px;
+  }
+
+  /* FILTER ROW */
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-right: 4px;
+  }
+
+  .filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ink);
+    background: var(--white);
+    border: 1px solid #E0D8D0;
+    border-radius: var(--radius-pill);
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-chip:hover { border-color: var(--ink-soft); }
+
+  .filter-chip.active {
+    background: var(--ink);
+    color: var(--white);
+    border-color: var(--ink);
+  }
+
+  .filter-chip svg { flex-shrink: 0; }
+
+  /* RESULTS HEADER */
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .results-count {
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+
+  .results-count strong { color: var(--ink); }
+
+  .sort-select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--white);
+    border: 1px solid #E0D8D0;
+    border-radius: var(--radius-pill);
+    padding: 7px 14px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6460' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  /* CARDS GRID */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .salon-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid #EDE8E2;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+
+  .salon-card:hover {
+    box-shadow: var(--card-shadow);
+    transform: translateY(-2px);
+  }
+
+  .card-img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+    background: var(--blush-light);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-img-placeholder {
+    width: 100%;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    position: relative;
+  }
+
+  .card-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.3px;
+  }
+
+  .badge-new {
+    background: var(--ink);
+    color: var(--white);
+  }
+
+  .badge-popular {
+    background: var(--accent);
+    color: var(--white);
+  }
+
+  .badge-top {
+    background: var(--sage);
+    color: var(--white);
+  }
+
+  .card-fav {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .card-body {
+    padding: 14px 16px 16px;
+  }
+
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+
+  .card-rating {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .star { color: #F5A623; font-size: 11px; }
+
+  .dot-sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+  }
+
+  .card-services {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .service-tag {
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+    font-weight: 500;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-price {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .card-price strong {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .btn-book {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--white);
+    background: var(--ink);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-book:hover { background: var(--accent); }
+
+  /* SIDEBAR MAP */
+  .sidebar { position: relative; }
+
+  .map-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid #EDE8E2;
+    overflow: hidden;
+    position: sticky;
+    top: 88px;
+  }
+
+  .map-placeholder {
+    height: 320px;
+    background: #E8EBE4;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .map-roads {
+    position: absolute;
+    inset: 0;
+  }
+
+  .map-pin {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .map-pin:hover { transform: scale(1.1); }
+
+  .pin-bubble {
+    background: var(--ink);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+  }
+
+  .pin-bubble.active { background: var(--accent); }
+
+  .pin-tail {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--ink);
+  }
+
+  .pin-tail.active { border-top-color: var(--accent); }
+
+  .map-controls {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .map-ctrl-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--white);
+    border: 1px solid #E0D8D0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 300;
+    color: var(--ink-soft);
+    transition: background 0.1s;
+  }
+
+  .map-ctrl-btn:hover { background: var(--cream); }
+
+  .map-body {
+    padding: 16px;
+  }
+
+  .nearby-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+
+  .nearby-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .nearby-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .nearby-item:hover { background: var(--cream); }
+
+  .nearby-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--blush-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .nearby-info { flex: 1; min-width: 0; }
+
+  .nearby-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nearby-sub {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  .nearby-dist {
+    font-size: 12px;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  /* PROMO BANNER */
+  .promo-banner {
+    background: var(--ink);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .promo-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .promo-text { flex: 1; }
+
+  .promo-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 2px;
+  }
+
+  .promo-sub {
+    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+  }
+
+  .btn-promo {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--white);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 8px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* COLORS FOR PLACEHOLDERS */
+  .bg1 { background: linear-gradient(135deg, #F5EBE4 0%, #EDD5C5 100%); }
+  .bg2 { background: linear-gradient(135deg, #EAF0E9 0%, #D5E5D3 100%); }
+  .bg3 { background: linear-gradient(135deg, #E6EAF5 0%, #D0D8F0 100%); }
+  .bg4 { background: linear-gradient(135deg, #F5EEE4 0%, #EDDDC5 100%); }
+  .bg5 { background: linear-gradient(135deg, #F0E4F5 0%, #E0C5ED 100%); }
+  .bg6 { background: linear-gradient(135deg, #E4F0F5 0%, #C5DFE8 100%); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">beauti<span>ca</span></div>
+  <ul class="nav-links">
+    <li><a href="#">Services</a></li>
+    <li><a href="#">For businesses</a></li>
+    <li><a href="#">Gift cards</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="btn-ghost">Log in</button>
+    <button class="btn-primary">Sign up free</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag">✦ Over 12,000 salons nearby</div>
+  <h1>Beauty on your<br><em>schedule</em></h1>
+  <p class="hero-sub">Find and book top-rated salons, spas, and stylists</p>
+
+  <div class="search-bar">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-right:8px;">
+      <circle cx="7" cy="7" r="5" stroke="#C2BDB8" stroke-width="1.5"/>
+      <path d="M11 11l3 3" stroke="#C2BDB8" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <input class="search-input" type="text" placeholder="Haircut, massage, manicure...">
+    <div class="search-divider"></div>
+    <div class="search-location">
+      <div class="loc-dot"></div>
+      Berlin, Mitte
+    </div>
+    <button class="search-btn" style="margin-left:12px;">Search</button>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<div class="categories">
+  <button class="cat-btn active"><span class="cat-icon">✂</span> Hair</button>
+  <button class="cat-btn"><span class="cat-icon">💅</span> Nails</button>
+  <button class="cat-btn"><span class="cat-icon">✦</span> Spa</button>
+  <button class="cat-btn"><span class="cat-icon">🪒</span> Barber</button>
+  <button class="cat-btn"><span class="cat-icon">◎</span> Brows & Lashes</button>
+  <button class="cat-btn"><span class="cat-icon">◑</span> Makeup</button>
+  <button class="cat-btn"><span class="cat-icon">◻</span> Massage</button>
+  <button class="cat-btn"><span class="cat-icon">◈</span> Skin Care</button>
+  <button class="cat-btn"><span class="cat-icon">☽</span> Hair Removal</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div>
+    <!-- FILTERS -->
+    <div class="filter-row">
+      <span class="filter-label">Filter:</span>
+      <button class="filter-chip active">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v5m0 0l2-2m-2 2L4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2 9h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Available today
+      </button>
+      <button class="filter-chip">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 3.5V6l1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Open now
+      </button>
+      <button class="filter-chip">Under €50</button>
+      <button class="filter-chip">Top rated</button>
+      <button class="filter-chip">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1l1.3 3.9h4.1L8 7.2l1.3 3.9L6 9l-3.3 2.1L4 7.2.6 4.9h4.1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        New arrivals
+      </button>
+    </div>
+
+    <!-- RESULTS HEADER -->
+    <div class="results-header">
+      <p class="results-count"><strong>148 salons</strong> found in Berlin, Mitte</p>
+      <select class="sort-select">
+        <option>Sort: Recommended</option>
+        <option>Highest rated</option>
+        <option>Price: Low to high</option>
+        <option>Distance</option>
+      </select>
+    </div>
+
+    <!-- CARDS -->
+    <div class="cards-grid">
+
+      <!-- Card 1 -->
+      <div class="salon-card">
+        <div class="card-img-placeholder bg1">
+          <span style="font-size:52px;">✂</span>
+          <div class="card-badge badge-popular">Popular</div>
+          <div class="card-fav">♡</div>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Studio Blanc</div>
+          <div class="card-meta">
+            <div class="card-rating">
+              <span class="star">★</span> 4.9
+            </div>
+            <div class="dot-sep"></div>
+            <span>312 reviews</span>
+            <div class="dot-sep"></div>
+            <span>0.4 km</span>
+          </div>
+          <div class="card-services">
+            <span class="service-tag">Cut & Style</span>
+            <span class="service-tag">Coloring</span>
+            <span class="service-tag">Balayage</span>
+          </div>
+          <div class="card-footer">
+            <div class="card-price">from <strong>€45</strong></div>
+            <button class="btn-book">Book now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="salon-card">
+        <div class="card-img-placeholder bg2">
+          <span style="font-size:52px;">💆</span>
+          <div class="card-badge badge-top">Top rated</div>
+          <div class="card-fav">♡</div>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Serenity Spa & Wellness</div>
+          <div class="card-meta">
+            <div class="card-rating">
+              <span class="star">★</span> 5.0
+            </div>
+            <div class="dot-sep"></div>
+            <span>89 reviews</span>
+            <div class="dot-sep"></div>
+            <span>0.7 km</span>
+          </div>
+          <div class="card-services">
+            <span class="service-tag">Massage</span>
+            <span class="service-tag">Facials</span>
+          </div>
+          <div class="card-footer">
+            <div class="card-price">from <strong>€60</strong></div>
+            <button class="btn-book">Book now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="salon-card">
+        <div class="card-img-placeholder bg3">
+          <span style="font-size:52px;">💅</span>
+          <div class="card-badge badge-new">New</div>
+          <div class="card-fav">♡</div>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Nail Atelier Nord</div>
+          <div class="card-meta">
+            <div class="card-rating">
+              <span class="star">★</span> 4.7
+            </div>
+            <div class="dot-sep"></div>
+            <span>43 reviews</span>
+            <div class="dot-sep"></div>
+            <span>1.1 km</span>
+          </div>
+          <div class="card-services">
+            <span class="service-tag">Gel Nails</span>
+            <span class="service-tag">Nail Art</span>
+            <span class="service-tag">Pedicure</span>
+          </div>
+          <div class="card-footer">
+            <div class="card-price">from <strong>€28</strong></div>
+            <button class="btn-book">Book now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="salon-card">
+        <div class="card-img-placeholder bg4">
+          <span style="font-size:52px;">🪒</span>
+          <div class="card-fav">♡</div>
+        </div>
+        <div class="card-body">
+          <div class="card-title">The Gentleman's Quarter</div>
+          <div class="card-meta">
+            <div class="card-rating">
+              <span class="star">★</span> 4.8
+            </div>
+            <div class="dot-sep"></div>
+            <span>201 reviews</span>
+            <div class="dot-sep"></div>
+            <span>0.9 km</span>
+          </div>
+          <div class="card-services">
+            <span class="service-tag">Haircut</span>
+            <span class="service-tag">Beard Trim</span>
+          </div>
+          <div class="card-footer">
+            <div class="card-price">from <strong>€32</strong></div>
+            <button class="btn-book">Book now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="salon-card">
+        <div class="card-img-placeholder bg5">
+          <span style="font-size:52px;">◎</span>
+          <div class="card-badge badge-popular">Popular</div>
+          <div class="card-fav">♡</div>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Brow & Lash Studio M</div>
+          <div class="card-meta">
+            <div class="card-rating">
+              <span class="star">★</span> 4.9
+            </div>
+            <div class="dot-sep"></div>
+            <span>156 reviews</span>
+            <div class="dot-sep"></div>
+            <span>0.6 km</span>
+          </div>
+          <div class="card-services">
+            <span class="service-tag">Lash Lift</span>
+            <span class="service-tag">Brow Tint</span>
+          </div>
+          <div class="card-footer">
+            <div class="card-price">from <strong>€38</strong></div>
+            <button class="btn-book">Book now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="salon-card">
+        <div class="card-img-placeholder bg6">
+          <span style="font-size:52px;">✦</span>
+          <div class="card-fav">♡</div>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Glow Skin Clinic</div>
+          <div class="card-meta">
+            <div class="card-rating">
+              <span class="star">★</span> 4.6
+            </div>
+            <div class="dot-sep"></div>
+            <span>78 reviews</span>
+            <div class="dot-sep"></div>
+            <span>1.4 km</span>
+          </div>
+          <div class="card-services">
+            <span class="service-tag">HydraFacial</span>
+            <span class="service-tag">Peeling</span>
+          </div>
+          <div class="card-footer">
+            <div class="card-price">from <strong>€55</strong></div>
+            <button class="btn-book">Book now</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- PROMO -->
+    <div class="promo-banner">
+      <div class="promo-icon">🎁</div>
+      <div class="promo-text">
+        <div class="promo-title">First booking — 20% off</div>
+        <div class="promo-sub">Use code FIRST20 at checkout</div>
+      </div>
+      <button class="btn-promo">Get offer</button>
+    </div>
+
+    <!-- MAP CARD -->
+    <div class="map-card">
+      <div class="map-placeholder">
+        <div class="map-grid"></div>
+        <svg class="map-roads" viewBox="0 0 380 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 120h380" stroke="white" stroke-width="12" opacity="0.5"/>
+          <path d="M0 200h380" stroke="white" stroke-width="8" opacity="0.4"/>
+          <path d="M140 0v320" stroke="white" stroke-width="12" opacity="0.5"/>
+          <path d="M240 0v320" stroke="white" stroke-width="8" opacity="0.4"/>
+          <path d="M60 0v320" stroke="white" stroke-width="6" opacity="0.3"/>
+          <path d="M320 0v320" stroke="white" stroke-width="6" opacity="0.3"/>
+          <path d="M0 60h380" stroke="white" stroke-width="6" opacity="0.3"/>
+          <path d="M0 270h380" stroke="white" stroke-width="6" opacity="0.3"/>
+          <rect x="30" y="70" width="80" height="35" rx="6" fill="white" opacity="0.25"/>
+          <rect x="160" y="70" width="60" height="35" rx="6" fill="white" opacity="0.25"/>
+          <rect x="260" y="70" width="90" height="35" rx="6" fill="white" opacity="0.25"/>
+          <rect x="30" y="140" width="90" height="45" rx="6" fill="white" opacity="0.25"/>
+          <rect x="160" y="140" width="60" height="45" rx="6" fill="white" opacity="0.25"/>
+          <rect x="260" y="140" width="80" height="45" rx="6" fill="white" opacity="0.25"/>
+          <rect x="30" y="220" width="80" height="55" rx="6" fill="white" opacity="0.2"/>
+          <rect x="160" y="220" width="60" height="55" rx="6" fill="white" opacity="0.2"/>
+          <rect x="260" y="220" width="90" height="55" rx="6" fill="white" opacity="0.2"/>
+        </svg>
+
+        <!-- Map Pins -->
+        <div class="map-pin" style="top:76px;left:72px;">
+          <div class="pin-bubble active">Studio Blanc</div>
+          <div class="pin-tail active"></div>
+        </div>
+        <div class="map-pin" style="top:56px;left:185px;">
+          <div class="pin-bubble">€60</div>
+          <div class="pin-tail"></div>
+        </div>
+        <div class="map-pin" style="top:96px;right:64px;">
+          <div class="pin-bubble">€28</div>
+          <div class="pin-tail"></div>
+        </div>
+        <div class="map-pin" style="bottom:100px;left:52px;">
+          <div class="pin-bubble">€32</div>
+          <div class="pin-tail"></div>
+        </div>
+        <div class="map-pin" style="bottom:80px;right:80px;">
+          <div class="pin-bubble">€38</div>
+          <div class="pin-tail"></div>
+        </div>
+
+        <div class="map-controls">
+          <button class="map-ctrl-btn">+</button>
+          <button class="map-ctrl-btn">−</button>
+        </div>
+      </div>
+
+      <div class="map-body">
+        <div class="nearby-title">Closest to you</div>
+        <div class="nearby-list">
+          <div class="nearby-item">
+            <div class="nearby-avatar bg1">✂</div>
+            <div class="nearby-info">
+              <div class="nearby-name">Studio Blanc</div>
+              <div class="nearby-sub">⭑ 4.9 · Hair · 312 reviews</div>
+            </div>
+            <div class="nearby-dist">0.4 km</div>
+          </div>
+          <div class="nearby-item">
+            <div class="nearby-avatar bg5">◎</div>
+            <div class="nearby-info">
+              <div class="nearby-name">Brow & Lash Studio M</div>
+              <div class="nearby-sub">⭑ 4.9 · Brows · 156 reviews</div>
+            </div>
+            <div class="nearby-dist">0.6 km</div>
+          </div>
+          <div class="nearby-item">
+            <div class="nearby-avatar bg2">💆</div>
+            <div class="nearby-info">
+              <div class="nearby-name">Serenity Spa</div>
+              <div class="nearby-sub">⭑ 5.0 · Spa · 89 reviews</div>
+            </div>
+            <div class="nearby-dist">0.7 km</div>
+          </div>
+          <div class="nearby-item">
+            <div class="nearby-avatar bg4">🪒</div>
+            <div class="nearby-info">
+              <div class="nearby-name">The Gentleman's Quarter</div>
+              <div class="nearby-sub">⭑ 4.8 · Barber · 201 reviews</div>
+            </div>
+            <div class="nearby-dist">0.9 km</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
