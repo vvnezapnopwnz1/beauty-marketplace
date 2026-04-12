@@ -7,7 +7,6 @@ export interface Category {
 }
 
 export const CATEGORIES: Category[] = [
-  { id: 'all',          labelKey: 'categories.all',         emoji: '✦' },
   { id: 'hair',         labelKey: 'categories.hair',        emoji: '✂' },
   { id: 'nails',        labelKey: 'categories.nails',       emoji: '💅' },
   { id: 'spa',          labelKey: 'categories.spa',         emoji: '✦' },

@@ -1,20 +1,30 @@
 import { Box, Typography, Button } from '@mui/material'
 import { useTranslation } from 'react-i18next'
-import { COLORS } from '@shared/theme'
+import { useBrandColors } from '@shared/theme'
 
-export function PromoBanner() {
+type PromoLayout = 'default' | 'sidebar'
+
+interface Props {
+  /** Узкая колонка справа: вертикальный стек, кнопка на всю ширину */
+  layout?: PromoLayout
+}
+
+export function PromoBanner({ layout = 'default' }: Props) {
   const { t } = useTranslation()
+  const COLORS = useBrandColors()
+  const isSidebar = layout === 'sidebar'
 
   return (
     <Box
       sx={{
         bgcolor: COLORS.ink,
         borderRadius: '16px',
-        p: '20px',
-        mb: '20px',
+        p: isSidebar ? '16px' : '20px',
+        mb: isSidebar ? 0 : '20px',
         display: 'flex',
-        alignItems: 'center',
-        gap: '14px',
+        flexDirection: isSidebar ? 'column' : 'row',
+        alignItems: isSidebar ? 'stretch' : 'center',
+        gap: isSidebar ? '12px' : '14px',
       }}
     >
       <Box
@@ -28,13 +38,27 @@ export function PromoBanner() {
           justifyContent: 'center',
           fontSize: 22,
           flexShrink: 0,
+          alignSelf: isSidebar ? 'center' : undefined,
         }}
       >
         🎁
       </Box>
 
-      <Box sx={{ flex: 1 }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 500, color: COLORS.white, mb: '2px' }}>
+      <Box
+        sx={{
+          flex: isSidebar ? undefined : 1,
+          minWidth: 0,
+          textAlign: isSidebar ? 'center' : 'left',
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: isSidebar ? 13 : 14,
+            fontWeight: 500,
+            color: COLORS.white,
+            mb: '2px',
+          }}
+        >
           {t('promo.title')}
         </Typography>
         <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
@@ -54,6 +78,7 @@ export function PromoBanner() {
           py: 1,
           whiteSpace: 'nowrap',
           flexShrink: 0,
+          width: isSidebar ? '100%' : 'auto',
           '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
         }}
       >

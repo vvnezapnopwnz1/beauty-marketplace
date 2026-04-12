@@ -2,11 +2,13 @@ import { configureStore } from '@reduxjs/toolkit'
 import { useDispatch, useSelector } from 'react-redux'
 import { searchSlice } from '@features/search-salons/model/searchSlice'
 import { authSlice } from '@features/auth-by-phone/model/authSlice'
+import { locationSlice } from '@features/location/model/locationSlice'
 
 export const store = configureStore({
   reducer: {
     search: searchSlice.reducer,
     auth: authSlice.reducer,
+    location: locationSlice.reducer,
   },
 })
 

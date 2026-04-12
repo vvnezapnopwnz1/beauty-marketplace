@@ -1,21 +1,26 @@
-import { createSlice, createSelector } from '@reduxjs/toolkit'
+import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { RootState } from '@app/store'
 import type { CategoryId } from '@entities/salon'
-import { mockSalons } from '@entities/salon'
 
 interface SearchState {
   query: string
   category: CategoryId
   onlyAvailableToday: boolean
-  sortBy: 'distance' | 'rating'
+  onlineOnly: boolean
+  openNow: boolean
+  highRating: boolean
+  sortBy: 'popular' | 'nearby' | 'rating'
 }
 
 const initialState: SearchState = {
   query: '',
-  category: 'all',
+  category: 'hair',
   onlyAvailableToday: false,
-  sortBy: 'distance',
+  onlineOnly: false,
+  openNow: false,
+  highRating: false,
+  sortBy: 'popular',
 }
 
 export const searchSlice = createSlice({
@@ -25,39 +30,29 @@ export const searchSlice = createSlice({
     setQuery: (state, action: PayloadAction<string>) => { state.query = action.payload },
     setCategory: (state, action: PayloadAction<CategoryId>) => { state.category = action.payload },
     toggleAvailableToday: state => { state.onlyAvailableToday = !state.onlyAvailableToday },
+    toggleOnlineOnly: state => { state.onlineOnly = !state.onlineOnly },
+    toggleOpenNow: state => { state.openNow = !state.openNow },
+    toggleHighRating: state => { state.highRating = !state.highRating },
     setSortBy: (state, action: PayloadAction<SearchState['sortBy']>) => { state.sortBy = action.payload },
     resetFilters: () => initialState,
   },
 })
 
-export const { setQuery, setCategory, toggleAvailableToday, setSortBy, resetFilters } = searchSlice.actions
-
-// Selectors
-const selectSearchState = (state: RootState) => state.search
+export const {
+  setQuery,
+  setCategory,
+  toggleAvailableToday,
+  toggleOnlineOnly,
+  toggleOpenNow,
+  toggleHighRating,
+  setSortBy,
+  resetFilters,
+} = searchSlice.actions
 
 export const selectSearchQuery = (state: RootState) => state.search.query
 export const selectSearchCategory = (state: RootState) => state.search.category
 export const selectOnlyAvailableToday = (state: RootState) => state.search.onlyAvailableToday
+export const selectOnlineOnly = (state: RootState) => state.search.onlineOnly
+export const selectOpenNow = (state: RootState) => state.search.openNow
+export const selectHighRating = (state: RootState) => state.search.highRating
 export const selectSortBy = (state: RootState) => state.search.sortBy
-
-export const selectFilteredSalons = createSelector(selectSearchState, ({ query, category, onlyAvailableToday, sortBy }) => {
-  let list = mockSalons
-
-  if (category !== 'all') {
-    list = list.filter(s => s.category === category)
-  }
-  if (query.trim()) {
-    const q = query.toLowerCase()
-    list = list.filter(s =>
-      s.name.toLowerCase().includes(q) ||
-      s.services.some(sv => sv.name.toLowerCase().includes(q)),
-    )
-  }
-  if (onlyAvailableToday) {
-    list = list.filter(s => s.availableToday)
-  }
-
-  return [...list].sort((a, b) =>
-    sortBy === 'rating' ? b.rating - a.rating : a.distanceKm - b.distanceKm,
-  )
-})

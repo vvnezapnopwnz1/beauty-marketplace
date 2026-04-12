@@ -3,7 +3,7 @@ package persistence
 import (
 	"context"
 
-	"github.com/yourusername/beauty-marketplace/internal/domain/repository"
+	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"gorm.io/gorm"
 )
 

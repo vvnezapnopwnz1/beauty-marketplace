@@ -1,0 +1,22 @@
+---
+description: Implementation workflow and done criteria
+alwaysApply: true
+---
+
+# Workflow
+
+For coding tasks:
+
+1. Read impacted files first.
+2. Implement minimal focused change.
+3. Run relevant checks:
+   - backend: `go test ./...`
+   - frontend: `npm run lint`
+   - frontend build-sensitive: `npm run build`
+4. Report what was changed, what was verified, and any remaining risk.
+
+# Git Safety
+
+- Do not commit unless user explicitly asks.
+- Do not push unless user explicitly asks.
+- Do not use destructive git commands without explicit request.

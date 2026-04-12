@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Box, Typography, Stack, Button } from '@mui/material'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -5,25 +6,36 @@ import { useTranslation } from 'react-i18next'
 import type { Salon } from '../model/types'
 import { formatPrice, CARD_GRADIENTS } from '../model/mockData'
 import { salonPath } from '@shared/config/routes'
-import { COLORS } from '@shared/theme'
+import { useBrandColors } from '@shared/theme'
 
 interface Props {
   salon: Salon
 }
 
-const BADGE_STYLES: Record<string, { bgcolor: string; color: string; labelKey: string }> = {
-  popular: { bgcolor: COLORS.accent, color: COLORS.white, labelKey: 'salon.badgePopular' },
-  top:     { bgcolor: COLORS.sage,   color: COLORS.white, labelKey: 'salon.badgeTop' },
-  new:     { bgcolor: COLORS.ink,    color: COLORS.white, labelKey: 'salon.badgeNew' },
+function formatDistance(km: number): string | null {
+  if (!km) return null
+  if (km < 1) return `${Math.round(km * 1000)} м`
+  return `${km.toFixed(1)} км`
 }
 
 export function SalonCard({ salon }: Props) {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const COLORS = useBrandColors()
+  const badgeStyles = useMemo(
+    () =>
+      ({
+        popular: { bgcolor: COLORS.accent, color: COLORS.onAccent, labelKey: 'salon.badgePopular' },
+        top: { bgcolor: COLORS.sage, color: COLORS.onAccent, labelKey: 'salon.badgeTop' },
+        new: { bgcolor: COLORS.ink, color: COLORS.onAccent, labelKey: 'salon.badgeNew' },
+      }) as Record<string, { bgcolor: string; color: string; labelKey: string }>,
+    [COLORS],
+  )
 
-  const price = Math.min(...salon.services.map(s => s.priceCents))
+  const prices = salon.services.map(s => s.priceCents)
+  const price = prices.length > 0 ? Math.min(...prices) : null
   const gradient = CARD_GRADIENTS[salon.cardGradient] ?? CARD_GRADIENTS.bg1
-  const badge = salon.badge ? BADGE_STYLES[salon.badge] : null
+  const badge = salon.badge ? badgeStyles[salon.badge] : null
 
   return (
     <motion.div
@@ -135,14 +147,18 @@ export function SalonCard({ salon }: Props) {
           </Typography>
 
           <Stack direction="row" alignItems="center" gap={1} sx={{ fontSize: 12, color: COLORS.inkSoft, mb: '10px' }}>
-            <Stack direction="row" alignItems="center" gap={0.4} sx={{ fontWeight: 500, color: COLORS.ink }}>
-              <Box component="span" sx={{ color: '#F5A623', fontSize: 11 }}>★</Box>
-              {salon.rating.toFixed(1)}
+            <Stack direction="row" alignItems="center" gap={0.4}>
+              <Box component="span" sx={{ color: '#E8A020', fontSize: 12 }}>★</Box>
+              <Box component="span" sx={{ fontWeight: 600, color: COLORS.ink, fontSize: 13 }}>{salon.rating.toFixed(1)}</Box>
             </Stack>
             <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: COLORS.inkFaint }} />
-            <span>{salon.reviewCount} reviews</span>
-            <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: COLORS.inkFaint }} />
-            <span>{salon.distanceKm} {t('salon.km')}</span>
+            <span>{salon.reviewCount} {t('salon.reviewsCount')}</span>
+            {formatDistance(salon.distanceKm) && (
+              <>
+                <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: COLORS.inkFaint }} />
+                <span>{formatDistance(salon.distanceKm)}</span>
+              </>
+            )}
           </Stack>
 
           <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mb: '12px' }}>
@@ -165,9 +181,13 @@ export function SalonCard({ salon }: Props) {
           </Stack>
 
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 'auto' }}>
-            <Typography sx={{ fontSize: 13, color: COLORS.inkSoft }}>
-              от <Box component="strong" sx={{ fontSize: 15, fontWeight: 500, color: COLORS.ink }}>{formatPrice(price)} ₽</Box>
-            </Typography>
+            {price != null ? (
+              <Typography sx={{ fontSize: 13, color: COLORS.inkSoft }}>
+                от <Box component="strong" sx={{ fontSize: 15, fontWeight: 500, color: COLORS.ink }}>{formatPrice(price)} ₽</Box>
+              </Typography>
+            ) : (
+              <Box />
+            )}
             {salon.onlineBooking ? (
               <Button
                 variant="contained"
@@ -179,12 +199,12 @@ export function SalonCard({ salon }: Props) {
                 sx={{
                   fontSize: 12,
                   fontWeight: 500,
-                  bgcolor: COLORS.ink,
-                  color: COLORS.white,
+                  bgcolor: '#6B0606',
+                  color: '#DFBFA8',
                   borderRadius: 100,
                   px: 2,
                   py: 1,
-                  '&:hover': { bgcolor: COLORS.accent },
+                  '&:hover': { bgcolor: '#8a0707' },
                 }}
               >
                 {t('salon.bookOnline')}

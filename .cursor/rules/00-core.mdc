@@ -1,0 +1,16 @@
+---
+description: Core project rules for Cursor agents
+alwaysApply: true
+---
+
+# Cursor Core Rules
+
+Follow `AGENTS.md` as primary guidance for:
+
+- project context
+- engineering rules
+- safety rules
+- verification checklist
+- MCP governance
+
+When `AGENTS.md` and this file conflict, prioritize `AGENTS.md`.

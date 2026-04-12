@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16
@@ -9,9 +7,73 @@ services:
       POSTGRES_PASSWORD: beauty
       POSTGRES_DB: beauty
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beauty -d beauty"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: beauty_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HTTP_ADDR: ":8080"
+      LOG_LEVEL: production
+      DATABASE_DSN: postgres://beauty:beauty@postgres:5432/beauty?sslmode=disable
+      2GIS_API_KEY: ${TWO_GIS_API_KEY:-}
+      2GIS_REGION_ID: ${TWO_GIS_REGION_ID:-32}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-in-production}
+    ports:
+      - "8080:8080"
+
+  # UI: http://localhost:5173 — геолокация в браузере требует secure context (HTTPS или localhost).
+  # Открытие по http://<LAN-IP>:5173 без HTTPS обычно блокирует GPS; образы/контейнеры тут ни при чём.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: beauty_frontend
+    depends_on:
+      - backend
+    environment:
+      # Прокси Vite dev (сервер внутри контейнера): /api → backend
+      VITE_PROXY_TARGET: http://backend:8080
+      # Браузер на хосте ходит на API напрямую (обходит сбои прокси); для доступа с другого ПК в LAN замените на http://<IP-хоста>:8080
+      VITE_API_URL: http://localhost:8080
+    ports:
+      - "5173:5173"
+
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    container_name: beauty_openobserve
+    environment:
+      ZO_ROOT_USER_EMAIL: admin@example.com
+      ZO_ROOT_USER_PASSWORD: admin123
+      ZO_DATA_DIR: /data
+    ports:
+      - "5080:5080"
+    volumes:
+      - openobserve_data:/data
+
+  vector:
+    image: timberio/vector:0.39.0-alpine
+    container_name: beauty_vector
+    depends_on:
+      - openobserve
+      - backend
+    command: ["--config", "/etc/vector/vector.yaml"]
+    volumes:
+      - ./observability/vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 volumes:
   pgdata:
+  openobserve_data:

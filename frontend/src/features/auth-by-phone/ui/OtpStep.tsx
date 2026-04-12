@@ -7,11 +7,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import {
   backToPhone,
-  verifyOtpStart,
-  verifyOtpSuccess,
-  verifyOtpFail,
-  requestOtpStart,
-  requestOtpSuccess,
+  confirmOtp,
+  sendOtp,
   selectAuthPhone,
   selectAuthLoading,
   selectAuthError,
@@ -41,22 +38,15 @@ export function OtpStep() {
     defaultValues: { code: '' },
   })
 
-  const onSubmit = ({ code }: FormValues) => {
-    dispatch(verifyOtpStart())
-    // TODO: POST /api/auth/otp/verify
-    setTimeout(() => {
-      if (code === '1234') {
-        dispatch(verifyOtpSuccess('mock-jwt-token'))
-        navigate(ROUTES.HOME)
-      } else {
-        dispatch(verifyOtpFail(t('login.invalidCode')))
-      }
-    }, 800)
+  const onSubmit = async ({ code }: FormValues) => {
+    const result = await dispatch(confirmOtp({ phone, code }))
+    if (confirmOtp.fulfilled.match(result)) {
+      navigate(ROUTES.HOME)
+    }
   }
 
   const handleResend = () => {
-    dispatch(requestOtpStart())
-    setTimeout(() => dispatch(requestOtpSuccess()), 800)
+    dispatch(sendOtp(phone))
   }
 
   return (

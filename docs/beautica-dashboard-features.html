@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beautica — Dashboard для бизнеса: исследование и предложения</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#111;--surface:#1a1a1a;--card:#222;--card-hover:#2a2a2a;
+    --text:#f0eae3;--text2:#a89e94;--accent:#D8956B;--accent2:#c07a50;
+    --green:#6BCB77;--red:#FF6B6B;--blue:#4ECDC4;--purple:#B088F9;
+    --yellow:#FFD93D;--pink:#FF8FAB;
+    --radius:12px;--radius-sm:8px;
+  }
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+
+  /* NAV */
+  .nav{position:sticky;top:0;z-index:100;background:rgba(17,17,17,.92);backdrop-filter:blur(16px);border-bottom:1px solid #333;padding:0 24px}
+  .nav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:12px 0}
+  .nav-inner::-webkit-scrollbar{display:none}
+  .nav-logo{font-weight:700;font-size:18px;color:var(--accent);margin-right:16px;white-space:nowrap}
+  .tab{padding:8px 16px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);white-space:nowrap;transition:.2s;border:1px solid transparent}
+  .tab:hover{color:var(--text);background:#2a2a2a}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* SECTIONS */
+  .container{max-width:1200px;margin:0 auto;padding:32px 24px}
+  .section{display:none}
+  .section.active{display:block}
+
+  h1{font-size:32px;font-weight:700;margin-bottom:8px}
+  h2{font-size:22px;font-weight:600;margin:32px 0 16px;color:var(--accent)}
+  h3{font-size:17px;font-weight:600;margin:20px 0 10px}
+  .subtitle{color:var(--text2);font-size:15px;margin-bottom:32px}
+  p{margin-bottom:12px;color:var(--text2);font-size:14px}
+
+  /* CARDS */
+  .grid{display:grid;gap:16px}
+  .grid-2{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+  .grid-3{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .grid-4{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+
+  .card{background:var(--card);border-radius:var(--radius);padding:20px;border:1px solid #333;transition:.25s}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px);background:var(--card-hover)}
+
+  .card-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+  .card-title{font-size:15px;font-weight:600}
+  .card-subtitle{font-size:12px;color:var(--text2)}
+  .card-body{font-size:13px;color:var(--text2);line-height:1.7}
+  .card-body ul{margin:8px 0 0 16px}
+  .card-body li{margin-bottom:4px}
+
+  /* BADGES */
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:4px}
+  .badge-green{background:rgba(107,203,119,.15);color:var(--green)}
+  .badge-red{background:rgba(255,107,107,.15);color:var(--red)}
+  .badge-blue{background:rgba(78,205,196,.15);color:var(--blue)}
+  .badge-purple{background:rgba(176,136,249,.15);color:var(--purple)}
+  .badge-yellow{background:rgba(255,217,61,.15);color:var(--yellow)}
+  .badge-pink{background:rgba(255,143,171,.15);color:var(--pink)}
+  .badge-accent{background:rgba(216,149,107,.15);color:var(--accent)}
+
+  /* PRIORITY */
+  .priority{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+  .priority-mvp{background:rgba(255,107,107,.15);color:var(--red)}
+  .priority-soon{background:rgba(255,217,61,.15);color:var(--yellow)}
+  .priority-later{background:rgba(78,205,196,.15);color:var(--blue)}
+
+  /* COMPARISON TABLE */
+  .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid #333;margin:16px 0}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#1e1e1e;padding:12px 14px;text-align:left;font-weight:600;color:var(--text);white-space:nowrap;position:sticky;top:0;border-bottom:2px solid var(--accent)}
+  td{padding:10px 14px;border-bottom:1px solid #2a2a2a;color:var(--text2);vertical-align:top}
+  tr:hover td{background:rgba(216,149,107,.05)}
+  .check{color:var(--green);font-weight:700}
+  .cross{color:#555}
+  .star{color:var(--yellow)}
+  .highlight-row td{background:rgba(216,149,107,.08)}
+
+  /* FEATURE DETAIL */
+  .feature-detail{background:var(--card);border-radius:var(--radius);padding:24px;border:1px solid #333;margin:16px 0}
+  .feature-detail h3{margin-top:0;color:var(--accent)}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  .detail-box{background:var(--bg);border-radius:var(--radius-sm);padding:14px;border:1px solid #2a2a2a}
+  .detail-box h4{font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)}
+  .detail-box ul{margin:0 0 0 14px;font-size:12px;color:var(--text2)}
+  .detail-box li{margin-bottom:3px}
+
+  /* MOCKUP DASHBOARD */
+  .mockup{background:var(--surface);border-radius:var(--radius);border:1px solid #333;overflow:hidden;margin:16px 0}
+  .mockup-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#1e1e1e;border-bottom:1px solid #333}
+  .mockup-topbar-left{display:flex;align-items:center;gap:12px}
+  .mockup-topbar .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  .mockup-topbar-title{font-size:14px;font-weight:600}
+  .mockup-topbar-right{display:flex;gap:8px}
+  .mockup-btn{padding:5px 12px;border-radius:6px;font-size:12px;background:#333;border:none;color:var(--text2);cursor:pointer}
+  .mockup-btn.active{background:var(--accent);color:#fff}
+
+  .mockup-body{display:flex;min-height:500px}
+  .mockup-sidebar{width:220px;background:#161616;border-right:1px solid #2a2a2a;padding:16px 0;flex-shrink:0}
+  .sidebar-item{padding:9px 20px;font-size:13px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s}
+  .sidebar-item:hover,.sidebar-item.active{background:rgba(216,149,107,.1);color:var(--accent)}
+  .sidebar-item.active{border-right:2px solid var(--accent)}
+  .sidebar-section{padding:12px 20px 6px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#555;font-weight:700}
+
+  .mockup-content{flex:1;padding:24px;overflow-y:auto}
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  .stat-card{background:var(--card);border-radius:var(--radius-sm);padding:16px;border:1px solid #2a2a2a}
+  .stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+  .stat-value{font-size:24px;font-weight:700;color:var(--text)}
+  .stat-change{font-size:11px;margin-top:4px}
+  .stat-up{color:var(--green)}
+  .stat-down{color:var(--red)}
+
+  .mini-chart{display:flex;align-items:end;gap:3px;height:40px;margin-top:8px}
+  .mini-bar{width:8px;border-radius:3px 3px 0 0;background:var(--accent);opacity:.6;transition:.2s}
+  .mini-bar:last-child{opacity:1}
+
+  .calendar-mock{display:grid;grid-template-columns:60px repeat(5,1fr);gap:1px;background:#2a2a2a;border-radius:var(--radius-sm);overflow:hidden;margin-top:16px}
+  .cal-header{background:#1e1e1e;padding:8px;font-size:11px;font-weight:600;text-align:center}
+  .cal-time{background:#161616;padding:6px 8px;font-size:11px;color:var(--text2);display:flex;align-items:center;justify-content:center}
+  .cal-cell{background:var(--card);padding:4px;min-height:48px;position:relative}
+  .cal-event{font-size:10px;padding:3px 6px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-event.booked{background:rgba(216,149,107,.2);color:var(--accent);border-left:2px solid var(--accent)}
+  .cal-event.confirmed{background:rgba(107,203,119,.15);color:var(--green);border-left:2px solid var(--green)}
+  .cal-event.pending{background:rgba(255,217,61,.15);color:var(--yellow);border-left:2px solid var(--yellow)}
+  .cal-event.blocked{background:rgba(255,107,107,.1);color:var(--red);border-left:2px solid var(--red)}
+
+  /* TIMELINE */
+  .timeline{position:relative;padding-left:28px;margin:24px 0}
+  .timeline::before{content:'';position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:#333}
+  .timeline-item{position:relative;margin-bottom:24px}
+  .timeline-item::before{content:'';position:absolute;left:-24px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);background:var(--bg)}
+  .timeline-item.done::before{background:var(--accent)}
+  .timeline-phase{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-weight:700;margin-bottom:4px}
+  .timeline-title{font-size:15px;font-weight:600;margin-bottom:4px}
+  .timeline-desc{font-size:13px;color:var(--text2)}
+
+  /* PILL TABS inside sections */
+  .pill-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+  .pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;background:#2a2a2a;color:var(--text2);border:1px solid transparent;transition:.2s}
+  .pill:hover{color:var(--text);border-color:#444}
+  .pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  .sub-section{display:none}
+  .sub-section.active{display:block}
+
+  /* SCORE BAR */
+  .score-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .score-label{font-size:12px;color:var(--text2);width:100px;flex-shrink:0}
+  .score-bar-bg{flex:1;height:8px;background:#2a2a2a;border-radius:4px;overflow:hidden}
+  .score-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+  .score-value{font-size:12px;font-weight:600;width:36px;text-align:right}
+
+  @media(max-width:768px){
+    .grid-2,.grid-3{grid-template-columns:1fr}
+    .stat-row{grid-template-columns:repeat(2,1fr)}
+    .detail-grid{grid-template-columns:1fr}
+    .mockup-sidebar{width:180px}
+    .calendar-mock{grid-template-columns:40px repeat(3,1fr)}
+    h1{font-size:24px}
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">Beautica Business</div>
+    <div class="tab active" data-tab="audit">📊 Аудит</div>
+    <div class="tab" data-tab="competitors">🏆 Конкуренты</div>
+    <div class="tab" data-tab="features">💡 Фичи</div>
+    <div class="tab" data-tab="mockup">🖥️ Мокап</div>
+    <div class="tab" data-tab="roadmap">🗓️ Роадмап</div>
+  </div>
+</nav>
+
+<!-- ==================== TAB 1: AUDIT ==================== -->
+<div class="container">
+<div class="section active" id="audit">
+  <h1>Аудит текущего Dashboard</h1>
+  <p class="subtitle">Что есть сейчас в бизнес-панели Beautica и что критически не хватает</p>
+
+  <h2>Текущее состояние</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(107,203,119,.15)">✅</div>
+        <div><div class="card-title">Есть в коде</div><div class="card-subtitle">UI-каркас существует</div></div>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>DashboardPage.tsx — страница существует</li>
+          <li>Роут /dashboard — подключен</li>
+          <li>Авторизация salon_owner — роль в БД</li>
+          <li>Appointments таблица — схема готова</li>
+          <li>Staff, WorkingHour, Services — модели есть</li>
+          <li>SalonMember связь owner ↔ salon</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,217,61,.15)">⚠️</div>
+        <div><div class="card-title">Частично</div><div class="card-subtitle">Заглушки и моки</div></div>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>Dashboard — все данные mock</li>
+          <li>Booking slot = «завтра 10:00» (заглушка)</li>
+          <li>Нет реального календаря</li>
+          <li>Нет API для управления записями</li>
+          <li>SalonPage — расписание/мастера пустые</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,.15)">❌</div>
+        <div><div class="card-title">Не начато</div><div class="card-subtitle">Критически не хватает</div></div>
+      </div>
+      <div class="card-body">
+        <ul>
+          <li>API владельца: записи, расписание, услуги</li>
+          <li>Управление статусами записей</li>
+          <li>Реальный календарь с таймслотами</li>
+          <li>Аналитика (ноль)</li>
+          <li>CRM / клиентская база</li>
+          <li>Маркетинг / уведомления</li>
+          <li>Управление мастерами</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h2>Gap-анализ: Beautica vs рынок</h2>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>Фича</th>
+        <th>YCLIENTS</th>
+        <th>Fresha</th>
+        <th>Booksy</th>
+        <th>DIKIDI</th>
+        <th style="color:var(--accent)">Beautica</th>
+      </tr>
+      <tr><td>Календарь записей</td><td class="check">✓✓</td><td class="check">✓✓</td><td class="check">✓✓</td><td class="check">✓✓</td><td class="cross">mock</td></tr>
+      <tr><td>Управление статусами</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr><td>Аналитика и отчёты</td><td class="check">✓✓</td><td class="check">✓✓✓</td><td class="check">✓✓</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr><td>CRM / клиенты</td><td class="check">✓</td><td class="check">✓✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr><td>Управление услугами</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr><td>Управление мастерами</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr><td>Уведомления клиентам</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr><td>Маркетинг / акции</td><td class="check">✓</td><td class="check">✓✓</td><td class="cross">—</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr><td>Отзывы / репутация</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓✓</td><td class="check">✓</td><td class="cross">схема</td></tr>
+      <tr><td>Программа лояльности</td><td class="cross">—</td><td class="check">✓</td><td class="cross">—</td><td class="check">✓</td><td class="cross">—</td></tr>
+      <tr class="highlight-row"><td>AI-ассистент</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td></tr>
+      <tr class="highlight-row"><td>No-show предикция</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td></tr>
+      <tr class="highlight-row"><td>Unified Inbox (Telegram/WA)</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="check">частично</td><td class="cross">—</td></tr>
+      <tr class="highlight-row"><td>Динамическое ценообразование</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td></tr>
+      <tr class="highlight-row"><td>Smart-waitlist (авто-замена)</td><td class="cross">—</td><td class="check">2026</td><td class="cross">—</td><td class="cross">—</td><td class="cross">—</td></tr>
+    </table>
+  </div>
+  <p style="font-size:12px;margin-top:8px">Жёлтые строки = <strong>рыночные пустоты</strong> — ни один конкурент на рынке РФ не делает это хорошо. Это шанс Beautica.</p>
+
+  <h2>Критика текущего дашборда</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,.15)">🔴</div>
+        <div><div class="card-title">Критично: нет ценности для бизнеса</div></div>
+      </div>
+      <div class="card-body">Dashboard сейчас — пустая страница. Владелец салона не получает ни одной полезной цифры. Без реального функционала салоны не будут регистрироваться. Это blocker для монетизации.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,.15)">🔴</div>
+        <div><div class="card-title">Критично: записи не управляются</div></div>
+      </div>
+      <div class="card-body">Appointment модель в БД есть, но нет API для владельца: нельзя видеть записи, менять статус (confirm/cancel), управлять расписанием. Гостевая запись уходит "в пустоту".</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,217,61,.15)">🟡</div>
+        <div><div class="card-title">Важно: нет календаря</div></div>
+      </div>
+      <div class="card-body">Все конкуренты строятся вокруг календаря. Без визуального расписания по дням/часам невозможно управлять загрузкой салона. Это core feature номер один.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,217,61,.15)">🟡</div>
+        <div><div class="card-title">Важно: нет клиентской базы</div></div>
+      </div>
+      <div class="card-body">Даже простой CRM нет: кто записывался, сколько раз, какие услуги. Для удержания клиентов это must have. Данные уже частично есть в appointments — нужно агрегировать.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 2: COMPETITORS ==================== -->
+<div class="section" id="competitors">
+  <h1>Анализ конкурентов</h1>
+  <p class="subtitle">Что предлагают топ-10 платформ и где их слабые места</p>
+
+  <h2>Матрица фич (бизнес-дашборд)</h2>
+  <div class="table-wrap">
+    <table>
+      <tr>
+        <th>Платформа</th>
+        <th>Страна</th>
+        <th>Цена/мес</th>
+        <th>Дашборд</th>
+        <th>AI</th>
+        <th>Маркетинг</th>
+        <th>Инвентарь</th>
+        <th>Зарплата</th>
+        <th>Unified Inbox</th>
+        <th>Лояльность</th>
+      </tr>
+      <tr><td><strong>YCLIENTS</strong></td><td>🇷🇺</td><td>$8–37</td><td>⭐⭐</td><td>—</td><td>⭐⭐</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>DIKIDI</strong></td><td>🇷🇺</td><td>бесплатно</td><td>⭐</td><td>—</td><td>⭐⭐</td><td>—</td><td>—</td><td>⭐</td><td>⭐⭐</td></tr>
+      <tr><td><strong>Fresha</strong></td><td>🌍</td><td>бесплатно</td><td>⭐⭐⭐</td><td>—</td><td>⭐⭐</td><td>⭐⭐</td><td>—</td><td>—</td><td>⭐</td></tr>
+      <tr><td><strong>Booksy</strong></td><td>🌍</td><td>бесплатно+</td><td>⭐⭐</td><td>—</td><td>⭐</td><td>⭐⭐</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Vagaro</strong></td><td>🇺🇸</td><td>$23+</td><td>⭐⭐</td><td>—</td><td>⭐⭐</td><td>⭐⭐</td><td>⭐⭐⭐</td><td>—</td><td>⭐</td></tr>
+      <tr><td><strong>GlossGenius</strong></td><td>🇺🇸</td><td>$24+</td><td>⭐⭐⭐</td><td>—</td><td>⭐⭐</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Boulevard</strong></td><td>🇺🇸</td><td>$176+</td><td>⭐⭐⭐</td><td>—</td><td>⭐</td><td>⭐⭐</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Mangomint</strong></td><td>🇺🇸</td><td>$165+</td><td>⭐⭐</td><td>—</td><td>⭐⭐</td><td>—</td><td>⭐⭐</td><td>⭐⭐⭐</td><td>⭐</td></tr>
+      <tr><td><strong>Zenoti</strong></td><td>🌍</td><td>Premium</td><td>⭐⭐⭐</td><td>⭐⭐⭐</td><td>⭐⭐⭐</td><td>⭐⭐</td><td>—</td><td>—</td><td>⭐</td></tr>
+      <tr><td><strong>Square</strong></td><td>🇺🇸</td><td>бесплатно+</td><td>⭐⭐</td><td>⭐</td><td>⭐</td><td>⭐</td><td>⭐</td><td>—</td><td>—</td></tr>
+    </table>
+  </div>
+
+  <h2>Ключевые выводы</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,107,107,.15)">🇷🇺</div>
+        <div><div class="card-title">Рынок РФ отстаёт</div></div>
+      </div>
+      <div class="card-body">YCLIENTS и DIKIDI — B2B-инструменты без маркетплейса. У них нет AI-фич, нет unified inbox, нет динамического ценообразования. Они застряли в парадигме 2018 года. Beautica может перескочить сразу в 2026.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(176,136,249,.15)">🤖</div>
+        <div><div class="card-title">AI — главный разрыв</div></div>
+      </div>
+      <div class="card-body">Только Zenoti имеет глубокий AI (Zeenie). На российском рынке <strong>ноль конкурентов с AI</strong>. No-show предикция, AI-ресепшн, smart scheduling — всё свободно.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(78,205,196,.15)">💬</div>
+        <div><div class="card-title">Мессенджеры = Россия</div></div>
+      </div>
+      <div class="card-body">В РФ Telegram и WhatsApp — основные каналы связи. Ни YCLIENTS, ни DIKIDI не дают unified inbox для бизнеса. Mangomint Connect (только США) показывает спрос на такую фичу.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:rgba(255,217,61,.15)">⚡</div>
+        <div><div class="card-title">Маркетплейс + SaaS = редкость</div></div>
+      </div>
+      <div class="card-body">Большинство платформ — либо маркетплейс (Booksy), либо SaaS (YCLIENTS). Beautica может стать единственным, кто совмещает: клиент находит салон <strong>и</strong> салон управляет бизнесом в одном месте.</div>
+    </div>
+  </div>
+
+  <h2>Что забирать у лидеров</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(107,203,119,.15)">📊</div><div><div class="card-title">Fresha → Аналитика</div></div></div>
+      <div class="card-body">50+ отчётов, multi-location дашборд. Взять: виджеты с KPI на главном экране, графики по выручке/загрузке за неделю.</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(216,149,107,.15)">📅</div><div><div class="card-title">Vagaro → Календарь</div></div></div>
+      <div class="card-body">До 25 мастеров одновременно, drag & drop. Взять: многоколоночный календарь по мастерам, визуальное управление записями.</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(176,136,249,.15)">🤖</div><div><div class="card-title">Zenoti → AI</div></div></div>
+      <div class="card-body">Zeenie AI: NL-запросы к данным, auto-маркетинг, AI-ресепшн. Взять концепт, адаптировать для малого бизнеса в РФ.</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(78,205,196,.15)">💬</div><div><div class="card-title">Mangomint → Connect</div></div></div>
+      <div class="card-body">Unified inbox: звонки + SMS + чат. Взять: объединить Telegram + WhatsApp + запись в одном окне.</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(255,143,171,.15)">💎</div><div><div class="card-title">GlossGenius → UX</div></div></div>
+      <div class="card-body">Красивый mobile-first дизайн. Взять: простота и минимализм интерфейса, портфолио мастера с фото до/после.</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(255,217,61,.15)">🏷️</div><div><div class="card-title">DIKIDI → Лояльность</div></div></div>
+      <div class="card-body">Сертификаты, бонусы, скидки. Взять: гибкую систему лояльности адаптированную под РФ рынок.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 3: FEATURES ==================== -->
+<div class="section" id="features">
+  <h1>Предлагаемые фичи</h1>
+  <p class="subtitle">26 фич для бизнес-дашборда, от базовых до уникальных</p>
+
+  <div class="pill-tabs" id="featurePills">
+    <div class="pill active" data-sub="core">🔧 Core (MVP)</div>
+    <div class="pill" data-sub="smart">🧠 Smart фичи</div>
+    <div class="pill" data-sub="unique">🚀 Уникальные</div>
+    <div class="pill" data-sub="growth">📈 Рост</div>
+  </div>
+
+  <!-- CORE MVP -->
+  <div class="sub-section active" id="core">
+    <h2>Core — минимум для работающего дашборда</h2>
+    <p>Без этих фич дашборд бесполезен. Это то, что есть у всех конкурентов — паритет рынка.</p>
+    <div class="grid grid-2">
+      <div class="feature-detail">
+        <h3>1. Живой календарь записей</h3>
+        <span class="priority priority-mvp">MVP</span> <span class="badge badge-red">Блокер</span>
+        <p style="margin-top:8px">Визуальный календарь с записями по дням, часам и мастерам. Drag & drop для перемещения. Цветовая индикация статусов.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Backend (новые эндпоинты)</h4>
+            <ul>
+              <li><code>GET /api/v1/dashboard/appointments?from=&to=</code></li>
+              <li><code>PATCH /api/v1/dashboard/appointments/{id}/status</code></li>
+              <li><code>PUT /api/v1/dashboard/appointments/{id}</code> (перенос)</li>
+              <li><code>POST /api/v1/dashboard/appointments</code> (ручная запись)</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Frontend</h4>
+            <ul>
+              <li>Вид: день / неделя / месяц</li>
+              <li>Колонки по мастерам (staff)</li>
+              <li>Статусы: pending → confirmed → completed / cancelled / no_show</li>
+              <li>Click на слот → создать запись</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>2. Управление записями</h3>
+        <span class="priority priority-mvp">MVP</span> <span class="badge badge-red">Блокер</span>
+        <p style="margin-top:8px">Список всех записей с фильтрами, изменение статуса, детали клиента. Без этого гостевые записи уходят в никуда.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Что нужно</h4>
+            <ul>
+              <li>Таблица записей с пагинацией и фильтрами</li>
+              <li>Быстрые действия: подтвердить / отменить / завершить</li>
+              <li>Детали: клиент, услуга, мастер, время, заметка</li>
+              <li>Push/Telegram уведомление при новой записи</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Готовность</h4>
+            <ul>
+              <li>✅ Модель Appointment — есть</li>
+              <li>✅ Статусы (enum) — определены</li>
+              <li>✅ POST bookings — работает</li>
+              <li>❌ GET/PATCH для dashboard — нет</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>3. Управление услугами</h3>
+        <span class="priority priority-mvp">MVP</span>
+        <p style="margin-top:8px">CRUD для услуг салона: название, длительность, цена, сортировка, активность. Без этого клиент не знает что бронировать.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Backend</h4>
+            <ul>
+              <li><code>GET /api/v1/dashboard/services</code></li>
+              <li><code>POST /api/v1/dashboard/services</code></li>
+              <li><code>PUT /api/v1/dashboard/services/{id}</code></li>
+              <li><code>DELETE /api/v1/dashboard/services/{id}</code></li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Frontend</h4>
+            <ul>
+              <li>Таблица услуг с inline-edit</li>
+              <li>Drag-sort для порядка отображения</li>
+              <li>Toggle активности</li>
+              <li>Категории услуг (группировка)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>4. Управление мастерами</h3>
+        <span class="priority priority-mvp">MVP</span>
+        <p style="margin-top:8px">Список мастеров, их расписание, привязка услуг к конкретным мастерам.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Backend</h4>
+            <ul>
+              <li><code>GET/POST/PUT/DELETE /api/v1/dashboard/staff</code></li>
+              <li><code>GET/PUT /api/v1/dashboard/staff/{id}/schedule</code></li>
+              <li>Привязка staff ↔ services (M:N)</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Что видит владелец</h4>
+            <ul>
+              <li>Карточки мастеров с фото и статусом</li>
+              <li>Расписание каждого мастера (WorkingHour)</li>
+              <li>Какие услуги оказывает</li>
+              <li>Статистика по мастеру (позже)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>5. Расписание салона</h3>
+        <span class="priority priority-mvp">MVP</span>
+        <p style="margin-top:8px">Рабочие часы по дням недели, выходные, праздники. WorkingHour уже в БД — нужен только UI и API.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Backend</h4>
+            <ul>
+              <li><code>GET /api/v1/dashboard/schedule</code></li>
+              <li><code>PUT /api/v1/dashboard/schedule</code></li>
+              <li>Поддержка valid_from / valid_to для сезонных графиков</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Frontend</h4>
+            <ul>
+              <li>Сетка ПН–ВС с opens_at / closes_at</li>
+              <li>Исключения (праздники, отпуск)</li>
+              <li>Применить расписание к конкретному мастеру</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>6. Виджеты главного экрана</h3>
+        <span class="priority priority-mvp">MVP</span>
+        <p style="margin-top:8px">При входе в Dashboard — сразу ключевые цифры: записи сегодня, новые записи, выручка, загрузка.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Виджеты (первая версия)</h4>
+            <ul>
+              <li>📅 Записей сегодня: X (из них подтверждённых Y)</li>
+              <li>🆕 Новых записей за неделю: +N</li>
+              <li>👥 Всего клиентов: N</li>
+              <li>⭐ Средний рейтинг: 4.8</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Backend</h4>
+            <ul>
+              <li><code>GET /api/v1/dashboard/stats</code></li>
+              <li>Агрегация по appointments за период</li>
+              <li>Подсчёт уникальных клиентов</li>
+              <li>Средний рейтинг из reviews (позже)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMART FEATURES -->
+  <div class="sub-section" id="smart">
+    <h2>Smart фичи — выше паритета</h2>
+    <p>Эти фичи делают дашборд умнее чем у YCLIENTS/DIKIDI. Реализуемы за 1–3 недели каждая.</p>
+    <div class="grid grid-2">
+      <div class="feature-detail">
+        <h3>7. CRM: клиентская база</h3>
+        <span class="priority priority-soon">Скоро</span> <span class="badge badge-blue">Конкурентное преимущество</span>
+        <p style="margin-top:8px">Профили клиентов с историей визитов, предпочтениями, заметками. Данные собираются из appointments автоматически.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Что показывать</h4>
+            <ul>
+              <li>Имя, телефон, дата первого визита</li>
+              <li>Количество визитов, LTV</li>
+              <li>Любимые услуги, любимый мастер</li>
+              <li>Последний визит + когда ожидаем следующий</li>
+              <li>Заметки мастера (формулы красок, аллергии)</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Чего нет у конкурентов</h4>
+            <ul>
+              <li>❌ YCLIENTS: CRM слабый, нет прогноза</li>
+              <li>❌ DIKIDI: только история записей</li>
+              <li>✅ Beautica: можем добавить предикцию «когда клиент вернётся» по истории визитов</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>8. Умные уведомления (Telegram-first)</h3>
+        <span class="priority priority-soon">Скоро</span> <span class="badge badge-purple">Уникально для РФ</span>
+        <p style="margin-top:8px">Система уведомлений через Telegram Bot API — дешевле SMS, выше открываемость (98% vs 20% email). Это уже в плане проекта!</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Для владельца</h4>
+            <ul>
+              <li>🔔 Новая запись → Telegram мгновенно</li>
+              <li>⚠️ Отмена → уведомление + предложение заполнить слот</li>
+              <li>📊 Ежедневная сводка: записи на завтра</li>
+              <li>💰 Еженедельный отчёт: выручка, загрузка</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Для клиента</h4>
+            <ul>
+              <li>✅ Подтверждение записи</li>
+              <li>⏰ Напоминание за 24ч и за 2ч</li>
+              <li>🌟 Просьба оставить отзыв после визита</li>
+              <li>🎁 Персональные предложения</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>9. Аналитика загрузки</h3>
+        <span class="priority priority-soon">Скоро</span>
+        <p style="margin-top:8px">Графики: загрузка по дням недели, пиковые часы, самые популярные услуги, конверсия записей.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Графики и метрики</h4>
+            <ul>
+              <li>📊 Загрузка по часам (heatmap)</li>
+              <li>📈 Тренд записей за 30 дней</li>
+              <li>🏆 Топ-5 услуг по выручке</li>
+              <li>👤 Топ мастеров по загрузке</li>
+              <li>🔄 Процент возврата клиентов</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Реализация</h4>
+            <ul>
+              <li>Всё считается по таблице appointments</li>
+              <li>SQL агрегация + кэш 1 час</li>
+              <li>Библиотека: Recharts (уже в стеке React)</li>
+              <li>Один endpoint: <code>GET /api/v1/dashboard/analytics</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>10. Быстрые действия (Command Center)</h3>
+        <span class="priority priority-soon">Скоро</span>
+        <p style="margin-top:8px">На главной дашборда — actionable карточки: «3 записи ждут подтверждения», «Мастер X не работает завтра — 5 записей», «Клиент Y не приходил 60 дней».</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Типы карточек</h4>
+            <ul>
+              <li>🟡 Записи требующие подтверждения</li>
+              <li>🔴 Конфликты расписания</li>
+              <li>💤 «Спящие» клиенты (давно не были)</li>
+              <li>⚡ Свободные слоты сегодня (потеря выручки)</li>
+              <li>⭐ Новые отзывы без ответа</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Почему это сильно</h4>
+            <ul>
+              <li>YCLIENTS: только сухие таблицы</li>
+              <li>DIKIDI: только уведомления</li>
+              <li>Beautica: <strong>проактивные подсказки</strong> — дашборд говорит владельцу что делать</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>11. Отзывы и репутация</h3>
+        <span class="priority priority-soon">Скоро</span>
+        <p style="margin-top:8px">Модерация и ответы на отзывы. Схема Review уже в БД — нужен API и UI. Верифицированные отзывы (только после записи) — конкурентное преимущество.</p>
+      </div>
+
+      <div class="feature-detail">
+        <h3>12. Профиль салона (редактирование)</h3>
+        <span class="priority priority-soon">Скоро</span>
+        <p style="margin-top:8px">Редактирование публичного профиля: фото, описание, контакты, категория. Сейчас профиль формируется из 2GIS — нужна возможность «заклеймить» и дополнить.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNIQUE FEATURES -->
+  <div class="sub-section" id="unique">
+    <h2>Уникальные фичи — то, чего нет у конкурентов в РФ</h2>
+    <p>Именно эти фичи создают «вау-эффект» и привлекают салоны на платформу. Ни одна из них не реализована на российском рынке.</p>
+    <div class="grid grid-2">
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>13. 🤖 AI-ассистент «Beautica AI»</h3>
+        <span class="priority priority-later">Глубокая фича</span> <span class="badge badge-purple">🏆 Главный дифференциатор</span>
+        <p style="margin-top:8px">Чат-бот в дашборде который отвечает на вопросы владельца на естественном языке: «Какой мастер загружен меньше всего на этой неделе?», «Покажи выручку за март», «Какие клиенты давно не были?»</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Что умеет</h4>
+            <ul>
+              <li>NL-запросы к данным салона</li>
+              <li>Рекомендации по расписанию</li>
+              <li>Подсказки по маркетингу</li>
+              <li>Генерация текста для акций</li>
+              <li>Ответы на отзывы</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Реализация</h4>
+            <ul>
+              <li>LLM API (Claude/GPT) + RAG по данным салона</li>
+              <li>Стоимость: ~$0.01–0.05 за запрос</li>
+              <li>Можно сделать в платном тарифе</li>
+              <li>MVP: 5 фиксированных типов запросов</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>14. 🔮 No-Show предикция</h3>
+        <span class="priority priority-later">Глубокая фича</span> <span class="badge badge-purple">🏆 Нет на рынке РФ</span>
+        <p style="margin-top:8px">ML-модель предсказывает вероятность неявки по истории клиента, дню недели, времени, погоде. Автоматически предлагает действия: подтверждение, предоплата, overbooking.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Сигналы для модели</h4>
+            <ul>
+              <li>История no_show клиента</li>
+              <li>День недели + время</li>
+              <li>Интервал до записи (заранее vs день-в-день)</li>
+              <li>Способ записи (онлайн vs ручная)</li>
+              <li>Погода (опционально, API)</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Действия</h4>
+            <ul>
+              <li>🟢 Низкий риск → обычное напоминание</li>
+              <li>🟡 Средний → двойное подтверждение</li>
+              <li>🔴 Высокий → предоплата / overbooking</li>
+              <li>Статистика: Zenoti даёт −40% no-show</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>15. 💬 Unified Inbox (Telegram + WhatsApp)</h3>
+        <span class="priority priority-later">Глубокая фича</span> <span class="badge badge-purple">🏆 Нет аналога в РФ</span>
+        <p style="margin-top:8px">Все сообщения от клиентов — Telegram, WhatsApp, чат на сайте — в одном окне. Привязка к профилю клиента. Быстрые ответы, шаблоны.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Как это работает</h4>
+            <ul>
+              <li>Telegram Bot API → webhook → наш backend</li>
+              <li>WhatsApp Business API (через провайдера)</li>
+              <li>Каждое сообщение привязано к client_user_id</li>
+              <li>Владелец отвечает из дашборда</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Аналог: Mangomint Connect</h4>
+            <ul>
+              <li>Mangomint Connect = звонки + SMS + чат</li>
+              <li>$75/мес — дорого для РФ</li>
+              <li>Beautica: Telegram-first (бесплатный API)</li>
+              <li>WhatsApp: через Wazzup/Chat-API ($10–30/мес)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>16. ⏰ Smart Waitlist (авто-замена отмен)</h3>
+        <span class="priority priority-later">Глубокая фича</span> <span class="badge badge-purple">🏆 Нет на рынке РФ</span>
+        <p style="margin-top:8px">Клиент отменил → система автоматически предлагает освободившийся слот тем, кто в waitlist на эту услугу/мастера/день. Модель WaitlistEntry уже в БД!</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Логика</h4>
+            <ul>
+              <li>Клиент отменяет → trigger</li>
+              <li>Ищем waitlist записи matching (service, staff, date range)</li>
+              <li>Отправляем push/Telegram: «Слот освободился! Записаться?»</li>
+              <li>Первый кто нажал «Да» — получает слот</li>
+              <li>Timeout 30 мин → следующий в очереди</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Ценность</h4>
+            <ul>
+              <li>−50% пустых слотов от отмен</li>
+              <li>Клиенты довольны (получают слот быстрее)</li>
+              <li>Салон не теряет выручку</li>
+              <li>Fresha только в 2026 это планирует!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>17. 💰 Динамическое ценообразование</h3>
+        <span class="priority priority-later">Глубокая фича</span> <span class="badge badge-yellow">Осторожно: деликатная тема</span>
+        <p style="margin-top:8px">Автоматические скидки в непиковые часы, повышение в пиковые. Не «surge pricing» — а «умные акции»: «Стрижка в ПН–СР до 12:00 со скидкой 20%».</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Подход для РФ</h4>
+            <ul>
+              <li>Позиционировать как «акции», не «surge pricing»</li>
+              <li>Владелец задаёт % скидки для off-peak</li>
+              <li>Система подсказывает оптимальные часы по данным</li>
+              <li>Бейдж «🔥 -20% до 12:00» на клиентской стороне</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Результат</h4>
+            <ul>
+              <li>+15–25% загрузка в непиковые часы</li>
+              <li>Клиенты получают скидку</li>
+              <li>Салон заполняет пустые слоты</li>
+              <li>Win-win для обеих сторон</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>18. 📸 Портфолио мастера (до/после)</h3>
+        <span class="priority priority-soon">Скоро</span> <span class="badge badge-pink">Визуальный вау</span>
+        <p style="margin-top:8px">Мастер загружает фото работ с привязкой к услуге. На клиентской стороне — галерея «До/После». GlossGenius показал что это сильно конвертит.</p>
+      </div>
+
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>19. 🎯 Маркетинг-автоматизация</h3>
+        <span class="priority priority-later">Глубокая фича</span> <span class="badge badge-green">Монетизация</span>
+        <p style="margin-top:8px">Автоматические Telegram-кампании по триггерам: клиент не был 30 дней → «Скучаем! Скидка 15%». День рождения → поздравление + предложение. Первый визит → «Как вам? Оставьте отзыв».</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Триггеры</h4>
+            <ul>
+              <li>⏰ Клиент не был N дней</li>
+              <li>🎂 День рождения</li>
+              <li>👋 Первый визит завершён</li>
+              <li>⭐ Нет отзыва после визита</li>
+              <li>📅 Регулярный клиент — пора записаться</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Канал доставки</h4>
+            <ul>
+              <li>Telegram Bot API (бесплатно)</li>
+              <li>WhatsApp Business (по подписке)</li>
+              <li>Push-уведомления (когда будет PWA/app)</li>
+              <li>Шаблоны сообщений с персонализацией</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail" style="border-color:var(--accent)">
+        <h3>20. 🏆 Программа лояльности</h3>
+        <span class="priority priority-later">Глубокая фича</span>
+        <p style="margin-top:8px">Бонусные баллы за визиты, реферальная программа, VIP-статусы. DIKIDI делает это, но примитивно. Мы можем сделать с геймификацией: бейджи, уровни, челленджи.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GROWTH FEATURES -->
+  <div class="sub-section" id="growth">
+    <h2>Фичи для роста платформы</h2>
+    <p>Эти фичи увеличивают ценность платформы и помогают с монетизацией.</p>
+    <div class="grid grid-2">
+      <div class="feature-detail">
+        <h3>21. Статистика из маркетплейса</h3>
+        <span class="priority priority-soon">Скоро</span> <span class="badge badge-accent">Маркетплейс-only</span>
+        <p style="margin-top:8px">Только маркетплейс может дать это: сколько людей видели карточку салона, сколько кликнули, конверсия в запись. YCLIENTS этого не может — они не маркетплейс.</p>
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h4>Метрики</h4>
+            <ul>
+              <li>👁️ Просмотры карточки в поиске</li>
+              <li>👆 Клики на профиль</li>
+              <li>📱 Клики на «Записаться»</li>
+              <li>✅ Завершённые записи</li>
+              <li>📊 Воронка: показы → клики → записи → визиты</li>
+            </ul>
+          </div>
+          <div class="detail-box">
+            <h4>Почему это киллер-фича</h4>
+            <ul>
+              <li>Данные собираются автоматически (frontend events)</li>
+              <li>Прямо показывают ROI от присутствия на платформе</li>
+              <li>Мотивируют улучшать профиль (фото, отзывы)</li>
+              <li>Основа для продажи «приоритета в выдаче»</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-detail">
+        <h3>22. Приоритет в выдаче (монетизация)</h3>
+        <span class="priority priority-later">Позже</span> <span class="badge badge-green">💰 Доход</span>
+        <p style="margin-top:8px">Платная услуга: «Поднять салон в поиске». Интеграция с bento grid — featured card → для платных клиентов. Лёгкие деньги когда есть трафик.</p>
+      </div>
+
+      <div class="feature-detail">
+        <h3>23. Онлайн-оплата записи</h3>
+        <span class="priority priority-later">Позже</span>
+        <p style="margin-top:8px">ЮКасса / СБП. Предоплата снижает no-show на 40–60%. Уже в плане проекта, но привязка к dashboard: владелец видит платежи, возвраты, баланс.</p>
+      </div>
+
+      <div class="feature-detail">
+        <h3>24. Мульти-локации</h3>
+        <span class="priority priority-later">Позже</span>
+        <p style="margin-top:8px">Один владелец — несколько салонов. Единый дашборд с переключением + сводная аналитика. SalonMember уже поддерживает это в схеме.</p>
+      </div>
+
+      <div class="feature-detail">
+        <h3>25. Подписки клиентов (абонементы)</h3>
+        <span class="priority priority-later">Позже</span>
+        <p style="margin-top:8px">Клиент покупает абонемент «4 стрижки в месяц». Рекуррентная выручка для салона, скидка для клиента. Тренд 2025–2026: membership economy в бьюти.</p>
+      </div>
+
+      <div class="feature-detail">
+        <h3>26. Интеграция с Instagram / TikTok</h3>
+        <span class="priority priority-later">Позже</span>
+        <p style="margin-top:8px">Кнопка «Записаться» в Instagram профиле салона → переход на Beautica. Синхронизация фото из Instagram в портфолио на платформе.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 4: MOCKUP ==================== -->
+<div class="section" id="mockup">
+  <h1>Мокап Dashboard</h1>
+  <p class="subtitle">Как должен выглядеть бизнес-дашборд Beautica в Warm Mocha теме</p>
+
+  <div class="mockup">
+    <div class="mockup-topbar">
+      <div class="mockup-topbar-left">
+        <div class="dot"></div>
+        <div class="mockup-topbar-title">Beautica Business — Студия Мария</div>
+      </div>
+      <div class="mockup-topbar-right">
+        <div class="mockup-btn">🔔 3</div>
+        <div class="mockup-btn">Мария К.</div>
+      </div>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-sidebar">
+        <div class="sidebar-section">Главное</div>
+        <div class="sidebar-item active" data-view="overview">📊 Обзор</div>
+        <div class="sidebar-item" data-view="calendar">📅 Календарь</div>
+        <div class="sidebar-item" data-view="appointments">📋 Записи</div>
+        <div class="sidebar-section">Управление</div>
+        <div class="sidebar-item" data-view="clients">👥 Клиенты</div>
+        <div class="sidebar-item" data-view="services">💇 Услуги</div>
+        <div class="sidebar-item" data-view="staff">👤 Мастера</div>
+        <div class="sidebar-item" data-view="schedule">🕐 Расписание</div>
+        <div class="sidebar-section">Маркетинг</div>
+        <div class="sidebar-item" data-view="analytics">📈 Аналитика</div>
+        <div class="sidebar-item" data-view="reviews">⭐ Отзывы</div>
+        <div class="sidebar-item" data-view="campaigns">📣 Кампании</div>
+        <div class="sidebar-item" data-view="loyalty">🎁 Лояльность</div>
+        <div class="sidebar-section">Инструменты</div>
+        <div class="sidebar-item" data-view="inbox">💬 Сообщения</div>
+        <div class="sidebar-item" data-view="ai">🤖 AI-ассистент</div>
+        <div class="sidebar-item" data-view="settings">⚙️ Настройки</div>
+      </div>
+      <div class="mockup-content" id="mockupContent">
+        <!-- OVERVIEW VIEW -->
+        <div class="mockup-view active" id="view-overview">
+          <h3 style="margin-top:0;margin-bottom:16px">Добро пожаловать, Мария 👋</h3>
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="stat-label">Записей сегодня</div>
+              <div class="stat-value">12</div>
+              <div class="stat-change stat-up">↑ 3 vs вчера</div>
+              <div class="mini-chart"><div class="mini-bar" style="height:40%"></div><div class="mini-bar" style="height:60%"></div><div class="mini-bar" style="height:45%"></div><div class="mini-bar" style="height:80%"></div><div class="mini-bar" style="height:55%"></div><div class="mini-bar" style="height:70%"></div><div class="mini-bar" style="height:90%"></div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Новых за неделю</div>
+              <div class="stat-value">+28</div>
+              <div class="stat-change stat-up">↑ 12% vs прошл.</div>
+              <div class="mini-chart"><div class="mini-bar" style="height:30%"></div><div class="mini-bar" style="height:50%"></div><div class="mini-bar" style="height:65%"></div><div class="mini-bar" style="height:45%"></div><div class="mini-bar" style="height:70%"></div><div class="mini-bar" style="height:85%"></div><div class="mini-bar" style="height:80%"></div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Загрузка</div>
+              <div class="stat-value">74%</div>
+              <div class="stat-change stat-up">↑ 5%</div>
+              <div class="mini-chart"><div class="mini-bar" style="height:55%"></div><div class="mini-bar" style="height:60%"></div><div class="mini-bar" style="height:50%"></div><div class="mini-bar" style="height:70%"></div><div class="mini-bar" style="height:65%"></div><div class="mini-bar" style="height:78%"></div><div class="mini-bar" style="height:74%"></div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Рейтинг</div>
+              <div class="stat-value">4.8 ⭐</div>
+              <div class="stat-change stat-up">+2 отзыва</div>
+            </div>
+          </div>
+
+          <h3 style="color:var(--accent)">⚡ Требует внимания</h3>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,217,61,.08);padding:12px 16px;border-radius:8px;border-left:3px solid var(--yellow)">
+              <span style="font-size:20px">🟡</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">3 записи ждут подтверждения</div><div style="font-size:12px;color:var(--text2)">Алина К. — Стрижка, 14:00 · Ольга М. — Окрашивание, 15:30 · Дарья С. — Маникюр, 16:00</div></div>
+              <div class="mockup-btn active" style="font-size:11px">Подтвердить все</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,107,107,.08);padding:12px 16px;border-radius:8px;border-left:3px solid var(--red)">
+              <span style="font-size:20px">🔴</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Отмена: Марина Л. на 11:00</div><div style="font-size:12px;color:var(--text2)">Слот свободен. 2 клиента в waitlist на это время.</div></div>
+              <div class="mockup-btn active" style="font-size:11px">Предложить слот</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(176,136,249,.08);padding:12px 16px;border-radius:8px;border-left:3px solid var(--purple)">
+              <span style="font-size:20px">💤</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">5 клиентов давно не были</div><div style="font-size:12px;color:var(--text2)">Не записывались более 60 дней. Отправить напоминание?</div></div>
+              <div class="mockup-btn active" style="font-size:11px">Отправить</div>
+            </div>
+          </div>
+
+          <h3 style="color:var(--accent);margin-top:24px">📅 Расписание на сегодня</h3>
+          <div class="calendar-mock">
+            <div class="cal-header"></div>
+            <div class="cal-header">Анна</div>
+            <div class="cal-header">Мария</div>
+            <div class="cal-header">Катя</div>
+            <div class="cal-header">Ольга</div>
+            <div class="cal-header">Лена</div>
+
+            <div class="cal-time">10:00</div>
+            <div class="cal-cell"><div class="cal-event confirmed">Стрижка — Ирина</div></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Окрашивание — Дарья</div></div>
+            <div class="cal-cell"><div class="cal-event pending">Маникюр — Оля</div></div>
+            <div class="cal-cell"></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Укладка — Нина</div></div>
+
+            <div class="cal-time">11:00</div>
+            <div class="cal-cell"><div class="cal-event confirmed">Мелирование — Алла</div></div>
+            <div class="cal-cell"></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Педикюр — Света</div></div>
+            <div class="cal-cell"><div class="cal-event blocked">❌ Отмена</div></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Брови — Вика</div></div>
+
+            <div class="cal-time">12:00</div>
+            <div class="cal-cell"></div>
+            <div class="cal-cell"><div class="cal-event pending">Стрижка — Лена</div></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Гель-лак — Таня</div></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Наращивание — Юля</div></div>
+            <div class="cal-cell"></div>
+
+            <div class="cal-time">13:00</div>
+            <div class="cal-cell"><div class="cal-event booked">Окрашивание — Настя</div></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Укладка — Маша</div></div>
+            <div class="cal-cell"></div>
+            <div class="cal-cell"><div class="cal-event confirmed">Ресницы — Кристина</div></div>
+            <div class="cal-cell"><div class="cal-event pending">Маникюр — Алина</div></div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text2)">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green);margin-right:4px"></span>Подтверждена</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--yellow);margin-right:4px"></span>Ожидает</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:4px"></span>Новая</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--red);margin-right:4px"></span>Отмена</span>
+          </div>
+        </div>
+
+        <!-- CALENDAR VIEW -->
+        <div class="mockup-view" id="view-calendar" style="display:none">
+          <h3 style="margin-top:0">Календарь — Неделя 14–18 апреля</h3>
+          <div style="display:flex;gap:8px;margin:12px 0">
+            <div class="mockup-btn">‹</div>
+            <div class="mockup-btn active">Неделя</div>
+            <div class="mockup-btn">День</div>
+            <div class="mockup-btn">Месяц</div>
+            <div class="mockup-btn">›</div>
+          </div>
+          <div class="calendar-mock">
+            <div class="cal-header"></div><div class="cal-header">ПН 14</div><div class="cal-header">ВТ 15</div><div class="cal-header">СР 16</div><div class="cal-header">ЧТ 17</div><div class="cal-header">ПТ 18</div>
+            <div class="cal-time">10:00</div><div class="cal-cell"><div class="cal-event confirmed">Стрижка</div></div><div class="cal-cell"><div class="cal-event confirmed">Окрашивание</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Укладка</div></div><div class="cal-cell"><div class="cal-event booked">Мелирование</div></div>
+            <div class="cal-time">11:00</div><div class="cal-cell"><div class="cal-event confirmed">Маникюр</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event pending">Брови</div></div><div class="cal-cell"><div class="cal-event confirmed">Педикюр</div></div><div class="cal-cell"><div class="cal-event confirmed">Стрижка</div></div>
+            <div class="cal-time">12:00</div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Гель-лак</div></div><div class="cal-cell"><div class="cal-event confirmed">Окрашивание</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event pending">Ресницы</div></div>
+            <div class="cal-time">13:00</div><div class="cal-cell"><div class="cal-event confirmed">Наращивание</div></div><div class="cal-cell"><div class="cal-event confirmed">Укладка</div></div><div class="cal-cell"><div class="cal-event confirmed">Маникюр</div></div><div class="cal-cell"><div class="cal-event booked">Стрижка</div></div><div class="cal-cell"></div>
+          </div>
+          <p style="margin-top:12px;font-size:12px">💡 Клик на пустую ячейку → создать запись. Drag на событие → перенести.</p>
+        </div>
+
+        <!-- CLIENTS VIEW -->
+        <div class="mockup-view" id="view-clients" style="display:none">
+          <h3 style="margin-top:0">Клиентская база</h3>
+          <div style="display:flex;gap:8px;margin:12px 0;align-items:center">
+            <input type="text" placeholder="Поиск по имени или телефону..." style="flex:1;padding:8px 14px;border-radius:8px;border:1px solid #333;background:var(--bg);color:var(--text);font-size:13px">
+            <div class="mockup-btn">Фильтры</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--card);border-radius:8px;border:1px solid #2a2a2a">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">ИК</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Ирина Козлова</div><div style="font-size:11px;color:var(--text2)">+7 999 123-45-67 · 8 визитов · Последний: 5 дней назад</div></div>
+              <div><span class="badge badge-green">Постоянная</span></div>
+              <div style="font-size:12px;color:var(--text2)">LTV: 24 500 ₽</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--card);border-radius:8px;border:1px solid #2a2a2a">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff">АМ</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Алина Морозова</div><div style="font-size:11px;color:var(--text2)">+7 916 987-65-43 · 3 визита · Последний: 28 дней назад</div></div>
+              <div><span class="badge badge-yellow">Скоро уйдёт</span></div>
+              <div style="font-size:12px;color:var(--text2)">LTV: 9 200 ₽</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--card);border-radius:8px;border:1px solid #2a2a2a">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff">ОС</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Ольга Смирнова</div><div style="font-size:11px;color:var(--text2)">+7 903 555-12-34 · 1 визит · Последний: 2 дня назад</div></div>
+              <div><span class="badge badge-blue">Новая</span></div>
+              <div style="font-size:12px;color:var(--text2)">LTV: 3 500 ₽</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI ASSISTANT VIEW -->
+        <div class="mockup-view" id="view-ai" style="display:none">
+          <h3 style="margin-top:0">🤖 AI-ассистент Beautica</h3>
+          <p style="font-size:12px;margin-bottom:16px">Задайте вопрос о вашем бизнесе на обычном языке</p>
+          <div style="background:var(--bg);border-radius:12px;padding:16px;border:1px solid #2a2a2a;margin-bottom:12px">
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">👤</div>
+              <div style="background:#2a2a2a;padding:10px 14px;border-radius:10px;font-size:13px">Какой мастер загружен меньше всего на этой неделе?</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">🤖</div>
+              <div style="background:rgba(176,136,249,.1);padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(176,136,249,.2)">
+                <strong>Ольга</strong> загружена на <strong>48%</strong> на этой неделе (6 записей из 12.5 возможных слотов). Это на 26% ниже средней загрузки команды (74%).<br><br>
+                💡 <em>Рекомендация: рассмотрите акцию «-15% на услуги Ольги в среду и четверг» — у неё 4 свободных слота в эти дни.</em>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <div style="padding:6px 12px;border-radius:8px;font-size:11px;background:#2a2a2a;color:var(--text2);cursor:pointer">Выручка за месяц</div>
+            <div style="padding:6px 12px;border-radius:8px;font-size:11px;background:#2a2a2a;color:var(--text2);cursor:pointer">Кто давно не был</div>
+            <div style="padding:6px 12px;border-radius:8px;font-size:11px;background:#2a2a2a;color:var(--text2);cursor:pointer">Топ услуг</div>
+            <div style="padding:6px 12px;border-radius:8px;font-size:11px;background:#2a2a2a;color:var(--text2);cursor:pointer">Напиши текст акции</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" placeholder="Спросите что-нибудь о бизнесе..." style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid #333;background:var(--bg);color:var(--text);font-size:13px">
+            <div class="mockup-btn active" style="padding:10px 16px">→</div>
+          </div>
+        </div>
+
+        <!-- INBOX VIEW -->
+        <div class="mockup-view" id="view-inbox" style="display:none">
+          <h3 style="margin-top:0">💬 Unified Inbox</h3>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div class="mockup-btn active">Все</div>
+            <div class="mockup-btn">Telegram</div>
+            <div class="mockup-btn">WhatsApp</div>
+            <div class="mockup-btn">Сайт</div>
+          </div>
+          <div style="display:grid;grid-template-columns:280px 1fr;gap:1px;background:#2a2a2a;border-radius:8px;overflow:hidden;min-height:300px">
+            <div style="background:var(--card);padding:8px">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(216,149,107,.1);border-radius:8px;margin-bottom:4px;cursor:pointer">
+                <div style="position:relative"><div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px">ИК</div><div style="position:absolute;bottom:-1px;right:-1px;width:12px;height:12px;border-radius:50%;background:#0088cc;border:2px solid var(--card);font-size:7px;display:flex;align-items:center;justify-content:center">✈</div></div>
+                <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">Ирина Козлова</div><div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Можно перенести на 15:00?</div></div>
+                <div style="font-size:10px;color:var(--text2)">2м</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:4px;cursor:pointer">
+                <div style="position:relative"><div style="width:32px;height:32px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">АМ</div><div style="position:absolute;bottom:-1px;right:-1px;width:12px;height:12px;border-radius:50%;background:#25D366;border:2px solid var(--card);font-size:7px;display:flex;align-items:center;justify-content:center">W</div></div>
+                <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">Алина Морозова</div><div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Спасибо, всё понравилось!</div></div>
+                <div style="font-size:10px;color:var(--text2)">1ч</div>
+              </div>
+            </div>
+            <div style="background:var(--bg);padding:16px;display:flex;flex-direction:column;justify-content:space-between">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #2a2a2a">
+                  <strong style="font-size:13px">Ирина Козлова</strong>
+                  <span class="badge badge-blue" style="font-size:10px">Telegram</span>
+                  <span style="font-size:11px;color:var(--text2)">· Запись: Стрижка, сегодня 14:00</span>
+                </div>
+                <div style="font-size:13px;color:var(--text2);background:#2a2a2a;padding:10px;border-radius:8px;margin-bottom:8px">Можно перенести на 15:00? Опаздываю немного 🙏</div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <input type="text" placeholder="Ответить..." style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:var(--card);color:var(--text);font-size:12px">
+                <div class="mockup-btn active">↑</div>
+                <div class="mockup-btn">Перенести</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ANALYTICS VIEW -->
+        <div class="mockup-view" id="view-analytics" style="display:none">
+          <h3 style="margin-top:0">📈 Аналитика</h3>
+          <div class="stat-row">
+            <div class="stat-card"><div class="stat-label">Выручка (апрель)</div><div class="stat-value">187 500 ₽</div><div class="stat-change stat-up">↑ 18% vs март</div></div>
+            <div class="stat-card"><div class="stat-label">Всего записей</div><div class="stat-value">142</div><div class="stat-change stat-up">↑ 8%</div></div>
+            <div class="stat-card"><div class="stat-label">No-show</div><div class="stat-value">4.2%</div><div class="stat-change stat-down">↓ 1.3%</div></div>
+            <div class="stat-card"><div class="stat-label">Возвращаемость</div><div class="stat-value">68%</div><div class="stat-change stat-up">↑ 3%</div></div>
+          </div>
+          <h3 style="color:var(--accent)">Загрузка мастеров</h3>
+          <div style="margin-top:12px">
+            <div class="score-row"><div class="score-label">Анна</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:85%;background:var(--green)"></div></div><div class="score-value" style="color:var(--green)">85%</div></div>
+            <div class="score-row"><div class="score-label">Мария</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:78%;background:var(--green)"></div></div><div class="score-value" style="color:var(--green)">78%</div></div>
+            <div class="score-row"><div class="score-label">Катя</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:72%;background:var(--accent)"></div></div><div class="score-value" style="color:var(--accent)">72%</div></div>
+            <div class="score-row"><div class="score-label">Лена</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:65%;background:var(--accent)"></div></div><div class="score-value" style="color:var(--accent)">65%</div></div>
+            <div class="score-row"><div class="score-label">Ольга</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:48%;background:var(--red)"></div></div><div class="score-value" style="color:var(--red)">48%</div></div>
+          </div>
+          <h3 style="color:var(--accent);margin-top:24px">Топ услуг по выручке</h3>
+          <div style="margin-top:12px">
+            <div class="score-row"><div class="score-label">Окрашивание</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:100%;background:var(--accent)"></div></div><div class="score-value">48 200 ₽</div></div>
+            <div class="score-row"><div class="score-label">Стрижка</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:72%;background:var(--accent)"></div></div><div class="score-value">34 800 ₽</div></div>
+            <div class="score-row"><div class="score-label">Маникюр</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:58%;background:var(--accent)"></div></div><div class="score-value">28 000 ₽</div></div>
+            <div class="score-row"><div class="score-label">Наращивание</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:40%;background:var(--accent)"></div></div><div class="score-value">19 500 ₽</div></div>
+          </div>
+          <h3 style="color:var(--accent);margin-top:24px">📊 Воронка маркетплейса</h3>
+          <p style="font-size:12px">Показывает путь клиента от просмотра до визита — данные только из маркетплейса.</p>
+          <div style="margin-top:12px">
+            <div class="score-row"><div class="score-label" style="width:140px">Показы в поиске</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:100%;background:var(--blue)"></div></div><div class="score-value">1,240</div></div>
+            <div class="score-row"><div class="score-label" style="width:140px">Клики на профиль</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:32%;background:var(--blue)"></div></div><div class="score-value">398</div></div>
+            <div class="score-row"><div class="score-label" style="width:140px">Нажали «Записаться»</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:11%;background:var(--blue)"></div></div><div class="score-value">142</div></div>
+            <div class="score-row"><div class="score-label" style="width:140px">Завершённые визиты</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:10%;background:var(--green)"></div></div><div class="score-value">128</div></div>
+          </div>
+        </div>
+
+        <!-- DEFAULT for other views -->
+        <div class="mockup-view" id="view-default" style="display:none">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--text2)">
+            <div style="font-size:48px;margin-bottom:12px">🚧</div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:4px">Раздел в разработке</div>
+            <div style="font-size:13px">Нажмите на Обзор, Календарь, Клиенты, Аналитика, Сообщения или AI-ассистент для демо</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 5: ROADMAP ==================== -->
+<div class="section" id="roadmap">
+  <h1>Роадмап Dashboard</h1>
+  <p class="subtitle">Поэтапный план реализации: от базового дашборда до AI-powered платформы</p>
+
+  <div class="timeline">
+    <div class="timeline-item done">
+      <div class="timeline-phase">Фаза 0 — Сейчас (done)</div>
+      <div class="timeline-title">Фундамент</div>
+      <div class="timeline-desc">✅ DashboardPage.tsx + роут · ✅ Модели Appointment, Staff, WorkingHour, Service · ✅ POST bookings · ✅ Auth с ролями</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Фаза 1 — 2–3 недели</div>
+      <div class="timeline-title">Рабочий дашборд (Core MVP)</div>
+      <div class="timeline-desc">
+        <span class="badge badge-red">Блокер</span> Backend API для dashboard: CRUD записей, услуг, мастеров, расписания. Виджеты главного экрана. Визуальный календарь (день/неделя). Управление статусами записей. Без этого салоны не могут работать на платформе.<br><br>
+        <strong>Новые эндпоинты:</strong> ~12 endpoints (GET/POST/PUT/PATCH/DELETE для appointments, services, staff, schedule, stats)
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Фаза 2 — 2–4 недели</div>
+      <div class="timeline-title">Умный дашборд (Smart)</div>
+      <div class="timeline-desc">
+        Telegram-уведомления (для владельца + клиента). CRM с историей клиентов. Аналитика загрузки (Recharts). Command Center (проактивные подсказки). Отзывы. Редактирование профиля.<br><br>
+        <strong>Ключевое:</strong> Telegram Bot API интеграция = 2–3 дня. CRM собирается из существующих appointments.
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Фаза 3 — 3–6 недель</div>
+      <div class="timeline-title">Уникальные фичи (Дифференциация)</div>
+      <div class="timeline-desc">
+        Smart Waitlist (авто-замена отмен). Unified Inbox (Telegram + WhatsApp). Маркетинг-автоматизация (триггерные кампании). Портфолио мастеров (до/после). Маркетплейс-аналитика (воронка показы→записи).<br><br>
+        <strong>Ключевое:</strong> WaitlistEntry уже в БД. Telegram Bot API уже нужен для фазы 2 — расширяем.
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase">Фаза 4 — 4–8 недель</div>
+      <div class="timeline-title">AI и монетизация</div>
+      <div class="timeline-desc">
+        AI-ассистент (NL-запросы к данным). No-show предикция. Динамическое ценообразование. Программа лояльности. Онлайн-оплата (ЮКасса/СБП). Приоритет в выдаче (paid). Мульти-локации.<br><br>
+        <strong>Ключевое:</strong> AI-ассистент MVP = обёртка над LLM API + SQL-запросы. No-show предикция начинается с простых правил (history-based), потом ML.
+      </div>
+    </div>
+  </div>
+
+  <h2>Приоритетная матрица</h2>
+  <div class="table-wrap">
+    <table>
+      <tr><th>#</th><th>Фича</th><th>Импакт</th><th>Сложность</th><th>Фаза</th><th>Уникальность</th></tr>
+      <tr><td>1</td><td>Календарь записей</td><td>🔥🔥🔥</td><td>🔧🔧</td><td><span class="priority priority-mvp">1</span></td><td>Паритет</td></tr>
+      <tr><td>2</td><td>Управление записями</td><td>🔥🔥🔥</td><td>🔧🔧</td><td><span class="priority priority-mvp">1</span></td><td>Паритет</td></tr>
+      <tr><td>3</td><td>CRUD услуг</td><td>🔥🔥🔥</td><td>🔧</td><td><span class="priority priority-mvp">1</span></td><td>Паритет</td></tr>
+      <tr><td>4</td><td>Управление мастерами</td><td>🔥🔥</td><td>🔧🔧</td><td><span class="priority priority-mvp">1</span></td><td>Паритет</td></tr>
+      <tr><td>5</td><td>Расписание салона</td><td>🔥🔥🔥</td><td>🔧</td><td><span class="priority priority-mvp">1</span></td><td>Паритет</td></tr>
+      <tr><td>6</td><td>Виджеты главного экрана</td><td>🔥🔥</td><td>🔧</td><td><span class="priority priority-mvp">1</span></td><td>Паритет</td></tr>
+      <tr><td>7</td><td>Telegram уведомления</td><td>🔥🔥🔥</td><td>🔧🔧</td><td><span class="priority priority-soon">2</span></td><td>⭐ РФ-unique</td></tr>
+      <tr><td>8</td><td>CRM клиентов</td><td>🔥🔥</td><td>🔧🔧</td><td><span class="priority priority-soon">2</span></td><td>Улучшенный</td></tr>
+      <tr><td>9</td><td>Аналитика</td><td>🔥🔥</td><td>🔧🔧</td><td><span class="priority priority-soon">2</span></td><td>Паритет+</td></tr>
+      <tr><td>10</td><td>Command Center</td><td>🔥🔥🔥</td><td>🔧</td><td><span class="priority priority-soon">2</span></td><td>⭐ Уникально</td></tr>
+      <tr class="highlight-row"><td>13</td><td>AI-ассистент</td><td>🔥🔥🔥</td><td>🔧🔧🔧</td><td><span class="priority priority-later">4</span></td><td>🏆 Нет в РФ</td></tr>
+      <tr class="highlight-row"><td>14</td><td>No-show предикция</td><td>🔥🔥🔥</td><td>🔧🔧🔧</td><td><span class="priority priority-later">4</span></td><td>🏆 Нет в РФ</td></tr>
+      <tr class="highlight-row"><td>15</td><td>Unified Inbox</td><td>🔥🔥🔥</td><td>🔧🔧🔧</td><td><span class="priority priority-later">3</span></td><td>🏆 Нет в РФ</td></tr>
+      <tr class="highlight-row"><td>16</td><td>Smart Waitlist</td><td>🔥🔥</td><td>🔧🔧</td><td><span class="priority priority-later">3</span></td><td>🏆 Нет в РФ</td></tr>
+      <tr class="highlight-row"><td>17</td><td>Динамическое ценообразование</td><td>🔥🔥</td><td>🔧🔧🔧</td><td><span class="priority priority-later">4</span></td><td>🏆 Нет в РФ</td></tr>
+      <tr><td>21</td><td>Маркетплейс-аналитика</td><td>🔥🔥🔥</td><td>🔧</td><td><span class="priority priority-later">3</span></td><td>⭐ Marketplace-only</td></tr>
+    </table>
+  </div>
+  <p style="font-size:12px;margin-top:8px">Жёлтые строки — <strong>главные дифференциаторы</strong>. Именно они отличают Beautica от YCLIENTS/DIKIDI.</p>
+</div>
+</div>
+
+<script>
+// Tab navigation
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Sub-tabs (pills)
+document.querySelectorAll('.pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const parent = pill.closest('.section');
+    parent.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    parent.querySelectorAll('.sub-section').forEach(s => s.classList.remove('active'));
+    pill.classList.add('active');
+    document.getElementById(pill.dataset.sub).classList.add('active');
+  });
+});
+
+// Mockup sidebar navigation
+const viewMap = ['overview','calendar','clients','ai','inbox','analytics'];
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    const view = item.dataset.view;
+    document.querySelectorAll('.mockup-view').forEach(v => v.style.display = 'none');
+    const target = document.getElementById('view-' + view);
+    if (target) {
+      target.style.display = 'block';
+    } else {
+      document.getElementById('view-default').style.display = 'block';
+    }
+  });
+});
+</script>
+</body>
+</html>

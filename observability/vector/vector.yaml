@@ -1,0 +1,62 @@
+data_dir: /tmp/vector
+
+sources:
+  backend_docker:
+    type: docker_logs
+    include_containers:
+      - beauty_backend
+
+transforms:
+  parse_json:
+    type: remap
+    inputs:
+      - backend_docker
+    source: |
+      .service = "backend"
+      .env = "local"
+      .stream = "backend_logs"
+
+      .raw_message = string!(.message)
+      parsed, err = parse_json(.raw_message)
+      if err == null {
+        . = parsed
+        .service = "backend"
+        .env = "local"
+        .stream = "backend_logs"
+      } else {
+        .message = .raw_message
+        .component = "raw_stdout"
+      }
+      if exists(.ts) {
+        .event_ts, err = to_string(.ts)
+        if err != null {
+          .event_ts = ""
+        }
+      }
+      if !exists(.request_id) {
+        .request_id = ""
+      }
+      if !exists(.client_request_id) {
+        .client_request_id = ""
+      }
+      if !exists(.client_action) {
+        .client_action = ""
+      }
+      .ingest_source = "docker_logs"
+
+sinks:
+  openobserve_logs:
+    type: http
+    inputs:
+      - parse_json
+    method: post
+    uri: http://openobserve:5080/api/default/backend_logs/_json
+    auth:
+      strategy: basic
+      user: admin@example.com
+      password: admin123
+    encoding:
+      codec: json
+    compression: gzip
+    healthcheck:
+      enabled: true

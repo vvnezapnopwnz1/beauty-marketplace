@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beautica — Редизайн v2: Цвета, UX, Компоненты</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --shell-bg: #111;
+  --shell-card: #1a1a1a;
+  --shell-border: rgba(255,255,255,0.08);
+  --shell-text: #f0f0f0;
+  --shell-muted: #888;
+  --shell-accent: #d8956b;
+}
+
+/* ══════════════ SHELL ══════════════ */
+body { font-family: 'Inter', sans-serif; background: var(--shell-bg); color: var(--shell-text); min-height: 100vh; overflow-x: hidden; }
+
+.shell-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+  background: rgba(17,17,17,0.92); backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--shell-border);
+  height: 56px; display: flex; align-items: center;
+  padding: 0 32px; justify-content: space-between;
+}
+.shell-nav-logo { font-family: 'Fraunces', serif; font-size: 18px; color: var(--shell-accent); letter-spacing: -0.5px; }
+.shell-tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.05); border-radius: 100px; padding: 3px; }
+.shell-tab { padding: 7px 18px; border-radius: 100px; font-size: 12px; font-weight: 500; color: var(--shell-muted); cursor: pointer; border: none; background: none; transition: all .25s; white-space: nowrap; }
+.shell-tab.active { background: var(--shell-accent); color: #1a0e09; font-weight: 600; }
+.shell-tab:hover:not(.active) { color: var(--shell-text); }
+
+.section { display: none; padding: 80px 40px 60px; max-width: 1300px; margin: 0 auto; animation: fadeUp .4s ease; }
+.section.active { display: block; }
+@keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+.sec-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--shell-accent); margin-bottom: 12px; }
+.sec-title { font-family: 'Fraunces', serif; font-size: 38px; font-weight: 600; line-height: 1.15; margin-bottom: 16px; }
+.sec-desc { font-size: 15px; color: var(--shell-muted); max-width: 600px; line-height: 1.7; margin-bottom: 48px; }
+
+/* ══════════════ PALETTES ══════════════ */
+.palettes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.palette-card {
+  border-radius: 20px; overflow: hidden;
+  border: 1px solid var(--shell-border);
+  transition: transform .3s, border-color .3s;
+  cursor: pointer;
+}
+.palette-card:hover { transform: translateY(-4px); border-color: rgba(216,149,107,0.4); }
+.palette-card.recommended { border-color: var(--shell-accent); position: relative; }
+.palette-card.recommended::before {
+  content: '★ Рекомендую';
+  position: absolute; top: 16px; right: 16px; z-index: 2;
+  background: var(--shell-accent); color: #1a0e09;
+  font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 100px;
+}
+
+.palette-preview { height: 200px; display: flex; align-items: flex-end; padding: 20px; position: relative; overflow: hidden; }
+.palette-preview-ui { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.palette-mock-nav { height: 8px; background: rgba(255,255,255,0.12); border-radius: 4px; width: 60%; }
+.palette-mock-title { height: 14px; background: rgba(255,255,255,0.25); border-radius: 4px; width: 80%; }
+.palette-mock-cards { display: flex; gap: 8px; }
+.palette-mock-card { flex: 1; height: 60px; border-radius: 8px; background: rgba(255,255,255,0.08); }
+.palette-mock-card.highlight { background: rgba(255,255,255,0.18); }
+
+.palette-info { padding: 24px; }
+.palette-name { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+.palette-tagline { font-size: 13px; color: var(--shell-muted); margin-bottom: 16px; line-height: 1.5; }
+.palette-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.swatch-dot { width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+.swatch-label { font-size: 10px; color: var(--shell-muted); font-family: monospace; }
+
+/* Live preview */
+.palette-live { margin-top: 40px; }
+.live-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--shell-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.live-label::after { content: ''; flex: 1; height: 1px; background: var(--shell-border); }
+.live-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; border-radius: 16px; overflow: hidden; border: 1px solid var(--shell-border); }
+.live-col { padding: 20px; }
+
+/* ══════════════ PALETTE: CURRENT ══════════════ */
+.p-current { background: #FAF7F2; }
+.p-current-card { background: #fff; border: 1px solid #ede8e2; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+.p-current-title { font-size: 14px; font-weight: 600; color: #1A1612; margin-bottom: 4px; }
+.p-current-meta { font-size: 12px; color: #6B6460; }
+.p-current-chip { display: inline-block; background: #F5EBE4; color: #C4703F; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; margin-top: 8px; }
+.p-current-btn { background: #C4703F; color: white; border: none; padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 8px; cursor: pointer; }
+
+/* ══════════════ PALETTE: WARM MOCHA ══════════════ */
+.p-mocha { background: #2B241F; }
+.p-mocha-card { background: #3A3028; border: 1px solid #4A423A; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+.p-mocha-title { font-size: 14px; font-weight: 600; color: #F0EAE3; margin-bottom: 4px; }
+.p-mocha-meta { font-size: 12px; color: #B8A896; }
+.p-mocha-chip { display: inline-block; background: rgba(216,149,107,0.15); color: #D8956B; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; margin-top: 8px; }
+.p-mocha-btn { background: #D8956B; color: #1a0e09; border: none; padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 8px; cursor: pointer; }
+
+/* ══════════════ PALETTE: VELVET ROSE ══════════════ */
+.p-rose { background: #2D1F26; }
+.p-rose-card { background: #3D2A35; border: 1px solid #4D3A47; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+.p-rose-title { font-size: 14px; font-weight: 600; color: #F2E8EB; margin-bottom: 4px; }
+.p-rose-meta { font-size: 12px; color: #C4B0BC; }
+.p-rose-chip { display: inline-block; background: rgba(217,165,196,0.15); color: #D9A5C4; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; margin-top: 8px; }
+.p-rose-btn { background: #D9A5C4; color: #2D1F26; border: none; padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 8px; cursor: pointer; }
+
+/* ══════════════ PALETTE: SAGE LUXE ══════════════ */
+.p-sage { background: #1F2B25; }
+.p-sage-card { background: #2A3A31; border: 1px solid #3D4D42; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+.p-sage-title { font-size: 14px; font-weight: 600; color: #EEF1ED; margin-bottom: 4px; }
+.p-sage-meta { font-size: 12px; color: #B5BDB0; }
+.p-sage-chip { display: inline-block; background: rgba(168,213,184,0.15); color: #A8D5B8; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; margin-top: 8px; }
+.p-sage-btn { background: #A8D5B8; color: #1F2B25; border: none; padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 8px; cursor: pointer; }
+
+/* ══════════════ PALETTE: WARM NOIR ══════════════ */
+.p-noir { background: #1F1A17; }
+.p-noir-card { background: #2A2420; border: 1px solid #3D3530; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+.p-noir-title { font-size: 14px; font-weight: 600; color: #F5F1EC; margin-bottom: 4px; }
+.p-noir-meta { font-size: 12px; color: #B8AFA3; }
+.p-noir-chip { display: inline-block; background: rgba(232,184,160,0.15); color: #E8B8A0; padding: 5px 12px; border-radius: 100px; font-size: 12px; font-weight: 500; margin-top: 8px; }
+.p-noir-btn { background: #E8B8A0; color: #1F1A17; border: none; padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 8px; cursor: pointer; }
+
+/* ══════════════ COMPONENTS ══════════════ */
+.components-grid { display: grid; gap: 48px; }
+.comp-block { background: var(--shell-card); border: 1px solid var(--shell-border); border-radius: 20px; overflow: hidden; }
+.comp-header { padding: 20px 28px; border-bottom: 1px solid var(--shell-border); display: flex; justify-content: space-between; align-items: center; }
+.comp-title { font-size: 14px; font-weight: 600; }
+.comp-badge { font-size: 11px; padding: 4px 10px; border-radius: 100px; background: rgba(216,149,107,0.15); color: var(--shell-accent); font-weight: 600; }
+.comp-body { padding: 28px; background: #2B241F; }
+
+/* Card Demo — Warm Mocha */
+.demo-card-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.demo-card {
+  background: #3A3028; border-radius: 14px; overflow: hidden;
+  border: 1px solid #4A423A; cursor: pointer;
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s;
+}
+.demo-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(216,149,107,0.18); }
+.demo-card.featured-v { grid-row: span 2; }
+.demo-card.featured-h { grid-column: span 2; }
+
+.demo-card-img {
+  height: 140px; position: relative; display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.demo-card.featured-v .demo-card-img { height: 200px; }
+.demo-card.featured-h .demo-card-img { display: none; }
+.demo-card.featured-h { display: grid; grid-template-columns: 200px 1fr; }
+.demo-card.featured-h .demo-card-img { height: 100%; display: flex; }
+
+.grad-1 { background: linear-gradient(135deg, #4a3328 0%, #3a2820 100%); }
+.grad-2 { background: linear-gradient(135deg, #2a3a30 0%, #1f2b25 100%); }
+.grad-3 { background: linear-gradient(135deg, #352840 0%, #27203a 100%); }
+.grad-4 { background: linear-gradient(135deg, #3a2f28 0%, #2a2218 100%); }
+.grad-5 { background: linear-gradient(135deg, #2a3035 0%, #1f2830 100%); }
+
+.card-emoji { font-size: 36px; opacity: 0.5; }
+.demo-card.featured-v .card-emoji { font-size: 52px; }
+
+.card-badge {
+  position: absolute; top: 10px; left: 10px;
+  background: rgba(26,14,9,0.6); backdrop-filter: blur(8px);
+  color: #D8956B; font-size: 10px; font-weight: 700;
+  padding: 3px 8px; border-radius: 6px;
+}
+.card-avail {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(42,58,49,0.7); backdrop-filter: blur(8px);
+  border: 1px solid rgba(168,213,184,0.3);
+  color: #A8D5B8; font-size: 10px; font-weight: 600;
+  padding: 4px 8px; border-radius: 100px;
+  display: flex; align-items: center; gap: 4px;
+}
+.pulse { width: 5px; height: 5px; border-radius: 50%; background: #A8D5B8; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.5; transform:scale(1.5); } }
+
+.demo-card-body { padding: 12px 14px 14px; }
+.demo-card.featured-h .demo-card-body { padding: 20px; display: flex; flex-direction: column; justify-content: center; }
+.demo-card.featured-v .demo-card-body { padding: 14px 16px 16px; }
+.dcb-name { font-size: 13px; font-weight: 600; color: #F0EAE3; margin-bottom: 3px; }
+.demo-card.featured-v .dcb-name { font-size: 16px; margin-bottom: 6px; }
+.demo-card.featured-h .dcb-name { font-size: 18px; margin-bottom: 8px; }
+.dcb-meta { font-size: 11px; color: #8C8076; }
+.dcb-rating { display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 500; color: #D8956B; margin-top: 4px; }
+.dcb-services { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+.dcb-service { display: flex; justify-content: space-between; font-size: 12px; color: #B8A896; border-bottom: 1px solid #4A423A; padding-bottom: 4px; }
+.dcb-book-btn {
+  margin-top: 12px; width: 100%; padding: 9px; border-radius: 100px;
+  background: #D8956B; color: #1a0e09; border: none;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: box-shadow .2s, transform .2s;
+}
+.dcb-book-btn:hover { box-shadow: 0 0 18px rgba(216,149,107,0.35); transform: scale(1.02); }
+
+/* Toggle Button Demo */
+.toggle-demo { position: relative; height: 200px; border-radius: 14px; overflow: hidden; background: #2A3A31; display: flex; align-items: center; justify-content: center; }
+.toggle-map-pins { position: absolute; inset: 0; }
+.tpin { position: absolute; width: 10px; height: 10px; background: #7CB39E; border-radius: 50%; border: 2px solid #1F2B25; box-shadow: 0 0 10px rgba(124,179,158,0.4); }
+.toggle-fab {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #1F2B25; color: #EEF1ED; border: none;
+  padding: 12px 24px; border-radius: 100px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  transition: transform .2s, box-shadow .2s;
+}
+.toggle-fab:hover { transform: translateX(-50%) scale(1.05); box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+
+/* Filter chips demo */
+.filter-demo { display: flex; flex-direction: column; gap: 16px; }
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.demo-chip {
+  padding: 9px 16px; border-radius: 100px; font-size: 13px; font-weight: 500;
+  border: 1.5px solid #4A423A; background: transparent; color: #B8A896; cursor: pointer;
+  transition: all .25s cubic-bezier(.34,1.56,.64,1); white-space: nowrap;
+}
+.demo-chip:hover { border-color: #D8956B; color: #F0EAE3; }
+.demo-chip.active { background: #D8956B; color: #1a0e09; border-color: #D8956B; font-weight: 600; }
+.demo-chip.active::before { content: '✓ '; }
+.demo-sort { padding: 9px 16px; border-radius: 100px; border: 1.5px solid #4A423A; background: transparent; color: #B8A896; font-size: 13px; cursor: pointer; }
+.view-toggle { display: flex; gap: 2px; background: #3A3028; border-radius: 100px; padding: 3px; margin-left: auto; }
+.vt-btn { padding: 7px 16px; border-radius: 100px; font-size: 12px; font-weight: 500; border: none; background: none; color: #8C8076; cursor: pointer; transition: all .2s; }
+.vt-btn.active { background: #4A423A; color: #F0EAE3; }
+
+/* Skeleton Demo */
+.skeleton-demo { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.skel-card { background: #3A3028; border-radius: 14px; overflow: hidden; border: 1px solid #4A423A; }
+.skel-img { height: 120px; background: linear-gradient(90deg, #3A3028 0%, #4A423A 50%, #3A3028 100%); background-size: 200% 100%; animation: shimmer 1.8s infinite; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skel-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.skel-line { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #3A3028 0%, #4A423A 50%, #3A3028 100%); background-size: 200% 100%; animation: shimmer 1.8s infinite; }
+.skel-line.w80 { width: 80%; }
+.skel-line.w60 { width: 60%; }
+.skel-line.w40 { width: 40%; }
+
+/* Empty State Demo */
+.empty-demo {
+  background: linear-gradient(135deg, #3A3028 0%, #2B241F 100%);
+  border-radius: 14px; padding: 40px; text-align: center; border: 1px dashed #4A423A;
+}
+.empty-icon { font-size: 56px; margin-bottom: 16px; animation: bob 3s ease-in-out infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.empty-title { font-size: 17px; font-weight: 700; color: #F0EAE3; margin-bottom: 8px; }
+.empty-desc { font-size: 14px; color: #8C8076; margin-bottom: 24px; line-height: 1.6; }
+.empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.empty-btn { padding: 10px 20px; border-radius: 10px; border: 1.5px solid #4A423A; background: transparent; color: #D8956B; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.empty-btn:hover { background: rgba(216,149,107,0.08); border-color: #D8956B; }
+
+/* Search Demo */
+.search-demo { position: relative; }
+.search-pill {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  background: #3A3028; border: 1.5px solid #4A423A; border-radius: 100px;
+  padding: 12px 20px; font-size: 14px; color: #8C8076;
+  transition: border-color .2s, box-shadow .2s;
+}
+.search-pill:focus-within { border-color: #D8956B; box-shadow: 0 0 0 3px rgba(216,149,107,0.12); }
+.search-pill input { flex: 1; background: none; border: none; color: #F0EAE3; font-size: 14px; outline: none; }
+.search-pill input::placeholder { color: #8C8076; }
+.search-divider { width: 1px; height: 18px; background: #4A423A; }
+.search-location { font-size: 13px; color: #B8A896; white-space: nowrap; }
+.search-btn { background: #D8956B; color: #1a0e09; border: none; padding: 8px 20px; border-radius: 100px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.search-suggestions-box {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  background: #3A3028; border: 1px solid #4A423A; border-radius: 16px;
+  overflow: hidden; z-index: 10;
+}
+.sugg-section { padding: 14px 0; border-bottom: 1px solid #4A423A; }
+.sugg-section:last-child { border: none; }
+.sugg-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #5C5048; padding: 0 16px 8px; }
+.sugg-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 13px; color: #B8A896; cursor: pointer; transition: background .15s; }
+.sugg-item:hover { background: #4A423A; color: #F0EAE3; }
+.sugg-item-icon { font-size: 14px; opacity: .6; }
+
+/* NavBar Demo */
+.navbar-demo {
+  display: flex; align-items: center; gap: 0;
+  background: #2B241F; border-radius: 14px; overflow: hidden; border: 1px solid #4A423A;
+  padding: 0 24px; height: 58px;
+}
+.nd-logo { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: #F0EAE3; margin-right: 32px; flex-shrink: 0; }
+.nd-logo span { color: #D8956B; }
+.nd-links { display: flex; gap: 24px; list-style: none; }
+.nd-links a { font-size: 13px; color: #8C8076; text-decoration: none; transition: color .15s; }
+.nd-links a:hover { color: #F0EAE3; }
+.nd-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.nd-location { font-size: 12px; color: #8C8076; background: #3A3028; padding: 7px 14px; border-radius: 100px; cursor: pointer; }
+.nd-login { font-size: 13px; font-weight: 500; color: #F0EAE3; background: none; border: none; cursor: pointer; }
+.nd-signup { font-size: 13px; font-weight: 600; background: #D8956B; color: #1a0e09; border: none; padding: 8px 20px; border-radius: 100px; cursor: pointer; }
+
+/* Hero Demo */
+.hero-demo {
+  background: linear-gradient(180deg, #35271E 0%, #2B241F 100%);
+  border-radius: 14px; padding: 40px; text-align: center;
+}
+.hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(216,149,107,0.15); border: 1px solid rgba(216,149,107,0.3); color: #D8956B; font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 100px; margin-bottom: 20px; letter-spacing: .5px; }
+.hero-title { font-family: 'Fraunces', serif; font-size: 42px; font-weight: 600; color: #F0EAE3; line-height: 1.1; margin-bottom: 8px; }
+.hero-title em { color: #D8956B; font-style: italic; }
+.hero-sub { font-size: 15px; color: #B8A896; margin-bottom: 28px; }
+
+/* Category scroll demo */
+.cat-scroll-demo { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.cat-scroll-demo::-webkit-scrollbar { height: 3px; }
+.cat-scroll-demo::-webkit-scrollbar-thumb { background: #4A423A; border-radius: 3px; }
+.cat-chip { padding: 10px 18px; border-radius: 100px; font-size: 13px; font-weight: 500; border: 1.5px solid #4A423A; background: transparent; color: #B8A896; cursor: pointer; white-space: nowrap; transition: all .25s cubic-bezier(.34,1.56,.64,1); flex-shrink: 0; }
+.cat-chip.active { background: #D8956B; border-color: #D8956B; color: #1a0e09; font-weight: 600; }
+.cat-chip:hover:not(.active) { border-color: #D8956B; color: #F0EAE3; }
+
+/* ══════════════ UX IMPROVEMENTS ══════════════ */
+.ux-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.ux-card { background: var(--shell-card); border: 1px solid var(--shell-border); border-radius: 16px; padding: 28px; transition: border-color .3s; }
+.ux-card:hover { border-color: rgba(216,149,107,0.3); }
+.ux-effort { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 5px 12px; border-radius: 100px; margin-bottom: 14px; }
+.effort-quick { background: rgba(168,213,184,0.12); color: #A8D5B8; }
+.effort-medium { background: rgba(245,158,11,0.12); color: #F59E0B; }
+.effort-deep { background: rgba(239,68,68,0.12); color: #EF4444; }
+.ux-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--shell-text); }
+.ux-card p { font-size: 13px; color: var(--shell-muted); line-height: 1.65; }
+.ux-card .impact { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--shell-border); font-size: 12px; color: var(--shell-accent); font-weight: 500; }
+.ux-card code { font-size: 11px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: #A8D5B8; font-family: monospace; }
+
+/* ══════════════ COMPARISON ══════════════ */
+.compare-row { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 0; background: var(--shell-card); border: 1px solid var(--shell-border); border-radius: 20px; overflow: hidden; margin-bottom: 24px; }
+.compare-before { padding: 28px; background: #FAF7F2; }
+.compare-after { padding: 28px; }
+.compare-divider { background: var(--shell-border); }
+.compare-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.lbl-before { color: #999; }
+.lbl-after { color: var(--shell-accent); }
+.lbl-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+</style>
+</head>
+<body>
+
+<nav class="shell-nav">
+  <div class="shell-nav-logo">Beautica · Redesign v2</div>
+  <div class="shell-tabs">
+    <button class="shell-tab active" onclick="show('palettes',this)">Цвета</button>
+    <button class="shell-tab" onclick="show('components',this)">Компоненты</button>
+    <button class="shell-tab" onclick="show('uxwins',this)">UX улучшения</button>
+    <button class="shell-tab" onclick="show('compare',this)">До / После</button>
+  </div>
+</nav>
+
+<!-- ══════════════ SECTION: PALETTES ══════════════ -->
+<div class="section active" id="palettes">
+  <div class="sec-label">Цветовые палитры</div>
+  <div class="sec-title">4 варианта — выбери свой</div>
+  <div class="sec-desc">Текущий кремовый (#FAF7F2) слишком светлый и создаёт ощущение незаконченности. Все 4 варианта — менее светлые, более насыщенные, beauty-релевантные.</div>
+
+  <div class="palettes-grid">
+
+    <!-- WARM MOCHA — recommended -->
+    <div class="palette-card recommended">
+      <div class="palette-preview" style="background: linear-gradient(135deg, #2B241F 0%, #4A423A 60%, #3A3028 100%);">
+        <div class="palette-preview-ui">
+          <div class="palette-mock-nav"></div>
+          <div class="palette-mock-title"></div>
+          <div class="palette-mock-cards">
+            <div class="palette-mock-card highlight"></div>
+            <div class="palette-mock-card"></div>
+            <div class="palette-mock-card"></div>
+          </div>
+        </div>
+      </div>
+      <div class="palette-info">
+        <div class="palette-name">Warm Mocha ☕</div>
+        <div class="palette-tagline">Роскошный редакционный коричневый. Тёплый, без холодности чёрного. Работает на всех бьюти-категориях. Максимальная универсальность для старта.</div>
+        <div class="palette-swatches">
+          <div class="swatch"><div class="swatch-dot" style="background:#2B241F"></div><div class="swatch-label">#2B241F</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#3A3028"></div><div class="swatch-label">#3A3028</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#F0EAE3"></div><div class="swatch-label">#F0EAE3</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#D8956B"></div><div class="swatch-label">#D8956B</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#C17F57"></div><div class="swatch-label">#C17F57</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VELVET ROSE -->
+    <div class="palette-card">
+      <div class="palette-preview" style="background: linear-gradient(135deg, #2D1F26 0%, #4D3A47 60%, #3D2A35 100%);">
+        <div class="palette-preview-ui">
+          <div class="palette-mock-nav"></div>
+          <div class="palette-mock-title"></div>
+          <div class="palette-mock-cards">
+            <div class="palette-mock-card highlight"></div>
+            <div class="palette-mock-card"></div>
+            <div class="palette-mock-card"></div>
+          </div>
+        </div>
+      </div>
+      <div class="palette-info">
+        <div class="palette-name">Velvet Rose 🌹</div>
+        <div class="palette-tagline">Глубокий маво/пыльная роза. Прямая отсылка к бьюти-индустрии, современно и дорого. Идеально если позиционируешься как cosmetics/makeup-first.</div>
+        <div class="palette-swatches">
+          <div class="swatch"><div class="swatch-dot" style="background:#2D1F26"></div><div class="swatch-label">#2D1F26</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#3D2A35"></div><div class="swatch-label">#3D2A35</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#F2E8EB"></div><div class="swatch-label">#F2E8EB</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#D9A5C4"></div><div class="swatch-label">#D9A5C4</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#A87B94"></div><div class="swatch-label">#A87B94</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAGE LUXE -->
+    <div class="palette-card">
+      <div class="palette-preview" style="background: linear-gradient(135deg, #1F2B25 0%, #3D4D42 60%, #2A3A31 100%);">
+        <div class="palette-preview-ui">
+          <div class="palette-mock-nav"></div>
+          <div class="palette-mock-title"></div>
+          <div class="palette-mock-cards">
+            <div class="palette-mock-card highlight"></div>
+            <div class="palette-mock-card"></div>
+            <div class="palette-mock-card"></div>
+          </div>
+        </div>
+      </div>
+      <div class="palette-info">
+        <div class="palette-name">Sage Luxe 🌿</div>
+        <div class="palette-tagline">Лесной зелёный, ботанический, wellness-атмосфера. Идеально для СПА, массаж, уход за кожей. Психологически успокаивает. Экологичный premium.</div>
+        <div class="palette-swatches">
+          <div class="swatch"><div class="swatch-dot" style="background:#1F2B25"></div><div class="swatch-label">#1F2B25</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#2A3A31"></div><div class="swatch-label">#2A3A31</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#EEF1ED"></div><div class="swatch-label">#EEF1ED</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#A8D5B8"></div><div class="swatch-label">#A8D5B8</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#7CB39E"></div><div class="swatch-label">#7CB39E</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WARM NOIR -->
+    <div class="palette-card">
+      <div class="palette-preview" style="background: linear-gradient(135deg, #1F1A17 0%, #3D3530 60%, #2A2420 100%);">
+        <div class="palette-preview-ui">
+          <div class="palette-mock-nav"></div>
+          <div class="palette-mock-title"></div>
+          <div class="palette-mock-cards">
+            <div class="palette-mock-card highlight"></div>
+            <div class="palette-mock-card"></div>
+            <div class="palette-mock-card"></div>
+          </div>
+        </div>
+      </div>
+      <div class="palette-info">
+        <div class="palette-name">Warm Noir 🖤</div>
+        <div class="palette-tagline">Максимально тёмный люкс. Glamour-атмосфера, вечерний шик. Акценты светятся на тёмном фоне. Самый bold выбор — заметен мгновенно, но требует сильного контента.</div>
+        <div class="palette-swatches">
+          <div class="swatch"><div class="swatch-dot" style="background:#1F1A17"></div><div class="swatch-label">#1F1A17</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#2A2420"></div><div class="swatch-label">#2A2420</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#F5F1EC"></div><div class="swatch-label">#F5F1EC</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#E8B8A0"></div><div class="swatch-label">#E8B8A0</div></div>
+          <div class="swatch"><div class="swatch-dot" style="background:#D4A574"></div><div class="swatch-label">#D4A574</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Live palette preview -->
+  <div class="palette-live" style="margin-top: 48px;">
+    <div class="live-label">Живые превью — все 5 палитр рядом</div>
+    <div class="live-grid">
+
+      <div class="live-col" style="background:#FAF7F2;">
+        <div style="font-size:11px;font-weight:700;color:#6B6460;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Текущий (Cream)</div>
+        <div class="p-current-card">
+          <div class="p-current-title">Эконом стиль</div>
+          <div class="p-current-meta">★ 5.0 · 13 отзывов · 200 м</div>
+          <div class="p-current-chip">Онлайн-запись</div>
+          <button class="p-current-btn">Записаться</button>
+        </div>
+      </div>
+
+      <div class="live-col" style="background:#2B241F;">
+        <div style="font-size:11px;font-weight:700;color:#5C5048;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Warm Mocha ⭐</div>
+        <div class="p-mocha-card">
+          <div class="p-mocha-title">Эконом стиль</div>
+          <div class="p-mocha-meta">★ 5.0 · 13 отзывов · 200 м</div>
+          <div class="p-mocha-chip">Онлайн-запись</div>
+          <button class="p-mocha-btn">Записаться</button>
+        </div>
+      </div>
+
+      <div class="live-col" style="background:#2D1F26;">
+        <div style="font-size:11px;font-weight:700;color:#5C4055;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Velvet Rose</div>
+        <div class="p-rose-card">
+          <div class="p-rose-title">Эконом стиль</div>
+          <div class="p-rose-meta">★ 5.0 · 13 отзывов · 200 м</div>
+          <div class="p-rose-chip">Онлайн-запись</div>
+          <button class="p-rose-btn">Записаться</button>
+        </div>
+      </div>
+
+      <div class="live-col" style="background:#1F2B25;">
+        <div style="font-size:11px;font-weight:700;color:#3D4D42;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Sage Luxe</div>
+        <div class="p-sage-card">
+          <div class="p-sage-title">Эконом стиль</div>
+          <div class="p-sage-meta">★ 5.0 · 13 отзывов · 200 м</div>
+          <div class="p-sage-chip">Онлайн-запись</div>
+          <button class="p-sage-btn">Записаться</button>
+        </div>
+      </div>
+
+      <div class="live-col" style="background:#1F1A17;">
+        <div style="font-size:11px;font-weight:700;color:#3D3530;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Warm Noir</div>
+        <div class="p-noir-card">
+          <div class="p-noir-title">Эконом стиль</div>
+          <div class="p-noir-meta">★ 5.0 · 13 отзывов · 200 м</div>
+          <div class="p-noir-chip">Онлайн-запись</div>
+          <button class="p-noir-btn">Записаться</button>
+        </div>
+      </div>
+
+      <div class="live-col" style="background:#111; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px;">
+        <div>
+          <div style="font-size:32px;margin-bottom:12px;">🏆</div>
+          <div style="font-size:13px;font-weight:700;color:#D8956B;margin-bottom:6px;">Рекомендую Warm Mocha</div>
+          <div style="font-size:12px;color:#888;line-height:1.5;">Тёплый, без холодности.<br>Работает для всех категорий.<br>Легко масштабировать.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SECTION: COMPONENTS ══════════════ -->
+<div class="section" id="components">
+  <div class="sec-label">Компоненты</div>
+  <div class="sec-title">Улучшенные UI-элементы</div>
+  <div class="sec-desc">Все компоненты показаны на палитре Warm Mocha. Hover по карточкам — интерактивный.</div>
+
+  <div class="components-grid">
+
+    <!-- NavBar -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">NavBar</span><span class="comp-badge">Улучшение</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="navbar-demo">
+          <div class="nd-logo">beauti<span>ca</span></div>
+          <ul class="nd-links">
+            <li><a href="#">Услуги</a></li>
+            <li><a href="#">Для бизнеса</a></li>
+            <li><a href="#">Карты</a></li>
+          </ul>
+          <div class="nd-right">
+            <div class="nd-location">📍 Москва</div>
+            <button class="nd-login">Войти</button>
+            <button class="nd-signup">Регистрация</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Тёмный navbar — сразу ощущение premium. Pill-кнопка регистрации цвета акцента.</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">Hero — компактный</span><span class="comp-badge">≤30% viewport</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="hero-demo">
+          <div class="hero-badge">✦ БОЛЕЕ 1000 МАСТЕРОВ В МОСКВЕ</div>
+          <h2 class="hero-title">Красота на твоих<br><em>условиях</em></h2>
+          <p class="hero-sub">Найди и запишись к лучшим мастерам</p>
+          <div class="search-pill" style="max-width:520px;margin:0 auto;">
+            <span style="font-size:16px;opacity:.5">🔍</span>
+            <input placeholder="Маникюр, стрижка, брови..." />
+            <div class="search-divider"></div>
+            <span class="search-location">📍 Москва</span>
+            <button class="search-btn">Найти</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Hero не занимает весь экран. Поиск прямо в hero-блоке. Карточки видны сразу.</div>
+      </div>
+    </div>
+
+    <!-- Category + Filters -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">Категории + Фильтры</span><span class="comp-badge">Горизонтальный скролл</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="cat-scroll-demo" style="margin-bottom:16px;">
+          <button class="cat-chip active">💇‍♀️ Волосы</button>
+          <button class="cat-chip">💅 Маникюр</button>
+          <button class="cat-chip">🧖 СПА</button>
+          <button class="cat-chip">✂️ Барбер</button>
+          <button class="cat-chip">👁️ Брови</button>
+          <button class="cat-chip">💄 Макияж</button>
+          <button class="cat-chip">🌿 Массаж</button>
+          <button class="cat-chip">✨ Уход за кожей</button>
+          <button class="cat-chip">🪒 Эпиляция</button>
+        </div>
+        <div class="filter-demo">
+          <div class="filter-row">
+            <button class="demo-chip active">Онлайн-запись</button>
+            <button class="demo-chip">Свободно сегодня</button>
+            <button class="demo-chip">Открыто сейчас</button>
+            <button class="demo-chip">Высокий рейтинг</button>
+            <select class="demo-sort"><option>По популярности</option></select>
+            <div class="view-toggle">
+              <button class="vt-btn active">≡ Список</button>
+              <button class="vt-btn">⊞ Сетка</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Категории — горизонтальный скролл (нет переноса на 2-ю строку). Переключатель вид перемещён в правую часть фильтров.</div>
+      </div>
+    </div>
+
+    <!-- Bento Cards -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">Bento Grid Cards</span><span class="comp-badge">Hover интерактивный</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="demo-card-grid">
+
+          <!-- FEATURED VERTICAL — spans 2 rows -->
+          <div class="demo-card featured-v grad-1">
+            <div class="demo-card-img grad-1">
+              <div class="card-badge">2ГИС</div>
+              <div class="card-avail"><div class="pulse"></div>Свободно</div>
+              <span class="card-emoji">💇‍♀️</span>
+            </div>
+            <div class="demo-card-body">
+              <div class="dcb-name">Эконом стиль, парикмахерская</div>
+              <div class="dcb-meta">📍 200 м · Молодёжная ул.</div>
+              <div class="dcb-rating">★ 5.0 <span style="font-weight:400;color:#8C8076">(13)</span></div>
+              <div class="dcb-services">
+                <div class="dcb-service"><span>Стрижка</span><span>900 ₽</span></div>
+                <div class="dcb-service"><span>Окрашивание</span><span>2 400 ₽</span></div>
+                <div class="dcb-service"><span>Укладка</span><span>600 ₽</span></div>
+              </div>
+              <button class="dcb-book-btn">Записаться онлайн</button>
+            </div>
+          </div>
+
+          <!-- normal -->
+          <div class="demo-card grad-2">
+            <div class="demo-card-img grad-2">
+              <div class="card-badge">2ГИС</div>
+              <span class="card-emoji">✂️</span>
+            </div>
+            <div class="demo-card-body">
+              <div class="dcb-name">Для всей семьи</div>
+              <div class="dcb-meta">📍 100 м</div>
+              <div class="dcb-rating">★ 3.5 <span style="font-weight:400;color:#8C8076">(6)</span></div>
+            </div>
+          </div>
+
+          <!-- normal -->
+          <div class="demo-card grad-3">
+            <div class="demo-card-img grad-3">
+              <div class="card-badge">2ГИС</div>
+              <span class="card-emoji">🪮</span>
+            </div>
+            <div class="demo-card-body">
+              <div class="dcb-name">Парикмахерская</div>
+              <div class="dcb-meta">📍 100 м</div>
+              <div class="dcb-rating">★ 0.0 <span style="font-weight:400;color:#8C8076">(0)</span></div>
+            </div>
+          </div>
+
+          <!-- normal -->
+          <div class="demo-card grad-4">
+            <div class="demo-card-img grad-4">
+              <div class="card-badge">2ГИС</div>
+              <span class="card-emoji">💅</span>
+            </div>
+            <div class="demo-card-body">
+              <div class="dcb-name">Grace, студия</div>
+              <div class="dcb-meta">📍 100 м</div>
+              <div class="dcb-rating">★ 0.0 <span style="font-weight:400;color:#8C8076">(0)</span></div>
+            </div>
+          </div>
+
+          <!-- FEATURED HORIZONTAL — spans 2 cols -->
+          <div class="demo-card featured-h grad-5" style="grid-column: span 2;">
+            <div class="demo-card-img grad-5">
+              <div class="card-avail"><div class="pulse"></div>50 отзывов</div>
+              <span class="card-emoji" style="font-size:48px;opacity:.4;">💆</span>
+            </div>
+            <div class="demo-card-body">
+              <div class="dcb-name">Леди стиль, салон красоты</div>
+              <div class="dcb-meta">📍 400 м · Молодёжная ул, 28Б</div>
+              <div class="dcb-rating">★ 5.0 <span style="font-weight:400;color:#8C8076">(50)</span></div>
+              <div class="dcb-services" style="margin-top:8px;">
+                <div class="dcb-service"><span>Маникюр гель-лак</span><span>1 500 ₽</span></div>
+                <div class="dcb-service"><span>Педикюр</span><span>1 800 ₽</span></div>
+              </div>
+              <button class="dcb-book-btn" style="max-width:180px;margin-top:12px;">Записаться</button>
+            </div>
+          </div>
+
+        </div>
+        <div style="margin-top:16px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Featured-вертикальная: больше инфо, услуги с ценами, кнопка «Записаться». Featured-горизонтальная: фото слева, данные справа.</div>
+      </div>
+    </div>
+
+    <!-- Map Toggle FAB -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">Map Toggle FAB</span><span class="comp-badge">Fixed bottom-center</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="toggle-demo">
+          <div class="toggle-map-pins">
+            <div class="tpin" style="top:30%;left:25%"></div>
+            <div class="tpin" style="top:45%;left:40%"></div>
+            <div class="tpin" style="top:35%;left:60%"></div>
+            <div class="tpin" style="top:55%;left:70%"></div>
+            <div class="tpin" style="top:65%;left:45%"></div>
+          </div>
+          <button class="toggle-fab">🗺 На карте</button>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Airbnb-паттерн: <code>position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%)</code>. Всегда видна при скролле, не конфликтует с фильтрами.</div>
+      </div>
+    </div>
+
+    <!-- Search with suggestions -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">Search с подсказками</span><span class="comp-badge">Recent + Popular</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="search-demo">
+          <div class="search-pill">
+            <span style="font-size:14px;opacity:.5">🔍</span>
+            <input placeholder="Маникюр, стрижка, брови..." value="Маник" />
+            <div class="search-divider"></div>
+            <span class="search-location">📍 Москва</span>
+            <button class="search-btn">Найти</button>
+          </div>
+          <div class="search-suggestions-box">
+            <div class="sugg-section">
+              <div class="sugg-label">Недавние</div>
+              <div class="sugg-item"><span class="sugg-item-icon">🕐</span>Маникюр рядом</div>
+              <div class="sugg-item"><span class="sugg-item-icon">🕐</span>Гель-лак</div>
+            </div>
+            <div class="sugg-section">
+              <div class="sugg-label">Популярные</div>
+              <div class="sugg-item"><span class="sugg-item-icon">🔥</span>Маникюр гель-лак</div>
+              <div class="sugg-item"><span class="sugg-item-icon">🔥</span>Маникюр педикюр</div>
+              <div class="sugg-item"><span class="sugg-item-icon">🔥</span>Маникюр французский</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Dropdown с историей и популярными. Фокус → тень-акцент + открытие dropdown.</div>
+      </div>
+    </div>
+
+    <!-- Skeleton Loading -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">Skeleton Loading</span><span class="comp-badge">Shimmer анимация</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="skeleton-demo">
+          <div class="skel-card">
+            <div class="skel-img"></div>
+            <div class="skel-body">
+              <div class="skel-line w80"></div>
+              <div class="skel-line w60"></div>
+              <div class="skel-line w40"></div>
+            </div>
+          </div>
+          <div class="skel-card">
+            <div class="skel-img" style="animation-delay:.2s"></div>
+            <div class="skel-body">
+              <div class="skel-line w80" style="animation-delay:.2s"></div>
+              <div class="skel-line w60" style="animation-delay:.2s"></div>
+            </div>
+          </div>
+          <div class="skel-card">
+            <div class="skel-img" style="animation-delay:.4s"></div>
+            <div class="skel-body">
+              <div class="skel-line w80" style="animation-delay:.4s"></div>
+              <div class="skel-line w40" style="animation-delay:.4s"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Shimmer: <code>background-size: 200%</code> + <code>animation</code>. Задержки у разных карточек — staggered эффект.</div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="comp-block">
+      <div class="comp-header"><span class="comp-title">Empty State</span><span class="comp-badge">Нет результатов</span></div>
+      <div class="comp-body" style="background:#2B241F;">
+        <div class="empty-demo">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">Ничего не найдено</div>
+          <div class="empty-desc">Мастеров с онлайн-записью рядом пока мало.<br>Попробуй изменить фильтры или расширить радиус.</div>
+          <div class="empty-actions">
+            <button class="empty-btn">↑ Увеличить радиус</button>
+            <button class="empty-btn">✕ Сбросить фильтры</button>
+            <button class="empty-btn">🗺 На карте</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:#5C5048;padding:0 4px;">↑ Bobbing-анимация иконки + 3 конкретных action. Не просто «ничего нет» — помогаем решить проблему.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ SECTION: UX WINS ══════════════ -->
+<div class="section" id="uxwins">
+  <div class="sec-label">UX улучшения</div>
+  <div class="sec-title">Конкретные изменения с impact</div>
+  <div class="sec-desc">Отсортированы по соотношению «усилие / визуальный эффект». Первые 4 — Quick Wins, остальные — следующая итерация.</div>
+
+  <div class="ux-grid">
+
+    <div class="ux-card">
+      <div class="ux-effort effort-quick">⚡ 30 минут</div>
+      <h3>Горизонтальный скролл категорий</h3>
+      <p>«Эпиляция» переносится на вторую строку и нарушает визуальную линию. Решение: <code>overflow-x: auto</code> + <code>white-space: nowrap</code> + скрыть scrollbar. Все 9 категорий — одна строка.</p>
+      <div class="impact">→ Устраняет визуальный баг, делает UI чище</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-quick">⚡ 1–2 часа</div>
+      <h3>FAB «На карте» — fixed bottom-center</h3>
+      <p>Кнопка сейчас в строке фильтров — смотрится как активный фильтр, путает. Перенести в <code>position: fixed; bottom: 24px; left: 50%</code>. Та же кнопка, новое место — другой UX.</p>
+      <div class="impact">→ Исправляет критическую путаницу «фильтр vs режим»</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-quick">⚡ 30 минут</div>
+      <h3>Убрать список под картой</h3>
+      <p>«Ближайшие к вам» под картой создаёт два параллельных режима одновременно. В map-режиме должна быть только карта. Список — только через кнопку «Список».</p>
+      <div class="impact">→ Убирает UX-путаницу двойного режима</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-quick">⚡ 15 минут</div>
+      <h3>Обрезать длинные адреса</h3>
+      <p>«Белоозёрский (Воскресенск городской округ, Московская обл.) Молодёжная улица, 1к» — переполняет карточку. Нужен <code>-webkit-line-clamp: 2</code> с ellipsis. Адрес — вспомогательная инфо.</p>
+      <div class="impact">→ Карточки читаются, контент не перегружает</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-medium">🔧 2–4 часа</div>
+      <h3>Featured-карточка с реальным контентом</h3>
+      <p>Сейчас featured больше по размеру, но показывает то же самое. Нужно: услуги с ценами из <code>item.services[]</code>, кнопка «Записаться» если <code>onlineBooking: true</code>, категория-бейдж из <code>rubricNames</code>. Для plain 2GIS — хотя бы 3 тега рубрик.</p>
+      <div class="impact">→ Визуальный смысл bento grid, конверсия карточки</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-medium">🔧 2–3 часа</div>
+      <h3>Skeleton Loading при загрузке</h3>
+      <p>Сейчас при смене категории — мгновенный пустой экран, потом карточки. Нужен shimmer-placeholder в форме карточек: <code>background: gradient + animation: shimmer 1.8s infinite</code>. Staggered delay у разных карточек.</p>
+      <div class="impact">→ Воспринимаемая скорость +40%, профессиональное ощущение</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-medium">🔧 3–4 часа</div>
+      <h3>Hover-эффекты на карточках</h3>
+      <p>Карточки статичны — нет отклика на hover. Добавить: <code>transform: translateY(-6px)</code> + усиление <code>box-shadow</code> + zoom фото <code>scale(1.05)</code> внутри <code>overflow: hidden</code>. Только на <code>@media (hover: hover)</code> — не ломает мобилку.</p>
+      <div class="impact">→ Воспринимаемое качество продукта +45%</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-medium">🔧 4–6 часов</div>
+      <h3>Empty State при нулевых результатах</h3>
+      <p>Когда фильтр «Онлайн-запись» даёт 0 результатов — сейчас пустой экран. Нужен: иконка + заголовок + описание («Салонов с онлайн-записью рядом пока мало») + 3 кнопки действий. Особенно важно для фильтров класса B.</p>
+      <div class="impact">→ Доверие пользователя, помощь в навигации</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-medium">🔧 1 день</div>
+      <h3>Hero — компактный (≤30% viewport)</h3>
+      <p>Hero сейчас занимает ~50% экрана. Категории и карточки не видны без скролла. Уменьшить padding hero, убрать поиск из hero (перенести в sticky bar) или интегрировать поиск прямо в hero-блок как у Fresha.</p>
+      <div class="impact">→ Контент выше fold, CTR по категориям</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-deep">🏗 2–3 дня</div>
+      <h3>Смена палитры на Warm Mocha</h3>
+      <p>Заменить CSS-переменные в проекте: <code>--cream: #2B241F</code>, <code>--card: #3A3028</code>, <code>--text: #F0EAE3</code>, <code>--accent: #D8956B</code>. Проверить все компоненты. Тёмные карточки не требуют реальных фото — градиент сам по себе красив.</p>
+      <div class="impact">→ Трансформация восприятия бренда</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-deep">🏗 1–2 дня</div>
+      <h3>Поп-ап при клике на маркер карты</h3>
+      <p>Сейчас клик по маркеру ничего не делает. Нужен mini-card popup над маркером: название + рейтинг + кнопка «Подробнее». При ховере карточки в list-режиме — подсвечивать маркер на карте.</p>
+      <div class="impact">→ Связка карта↔список, engagement на карте</div>
+    </div>
+
+    <div class="ux-card">
+      <div class="ux-effort effort-deep">🏗 1 день</div>
+      <h3>Анимации фильтров и категорий</h3>
+      <p>При активации chip — ripple-эффект + scale transition. При смене категории — карточки fade out → fade in (staggered). При первой загрузке — карточки появляются последовательно снизу вверх.</p>
+      <div class="impact">→ Живой, современный feel приложения</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ SECTION: COMPARE ══════════════ -->
+<div class="section" id="compare">
+  <div class="sec-label">До / После</div>
+  <div class="sec-title">Текущее vs предложенное</div>
+  <div class="sec-desc">Сравнение ключевых элементов интерфейса в текущей палитре и Warm Mocha.</div>
+
+  <!-- Card comparison -->
+  <div class="compare-row">
+    <div class="compare-before">
+      <div class="compare-label lbl-before"><div class="lbl-dot"></div>Сейчас (Cream)</div>
+      <div style="background:#fff; border:1px solid #ede8e2; border-radius:12px; overflow:hidden;">
+        <div style="height:100px;background:linear-gradient(135deg,#f5ebe4,#e8e0d8);display:flex;align-items:center;justify-content:center;font-size:28px;">💇‍♀️</div>
+        <div style="padding:12px;">
+          <div style="font-size:8px;background:#f5f5f5;color:#999;padding:2px 6px;border-radius:4px;display:inline-block;margin-bottom:6px;">2ГИС</div>
+          <div style="font-size:13px;font-weight:600;color:#1A1612;margin-bottom:4px;">Эконом стиль, парикмахерская</div>
+          <div style="font-size:11px;color:#6B6460;margin-bottom:2px;">Белоозёрский (Воскресенск городской округ, Московская обл.) Молодёжная улица, 1к</div>
+          <div style="font-size:12px;color:#C4703F;">★ 5.0 · 13 отзывов · 200 м</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#999;margin-top:8px;">Длинный адрес, нет услуг, нет CTA</div>
+    </div>
+    <div class="compare-divider"></div>
+    <div class="compare-after">
+      <div class="compare-label lbl-after"><div class="lbl-dot"></div>Warm Mocha</div>
+      <div class="demo-card grad-1" style="max-width:280px;">
+        <div class="demo-card-img grad-1" style="height:100px;">
+          <div class="card-badge">2ГИС</div>
+          <div class="card-avail"><div class="pulse"></div>Свободно</div>
+          <span class="card-emoji" style="font-size:28px;">💇‍♀️</span>
+        </div>
+        <div class="demo-card-body">
+          <div class="dcb-name">Эконом стиль</div>
+          <div class="dcb-meta">📍 200 м · Молодёжная ул.</div>
+          <div class="dcb-rating">★ 5.0 <span style="font-weight:400;color:#8C8076">(13)</span></div>
+          <div class="dcb-services" style="margin-top:8px;">
+            <div class="dcb-service"><span>Стрижка</span><span>900 ₽</span></div>
+            <div class="dcb-service"><span>Укладка</span><span>600 ₽</span></div>
+          </div>
+          <button class="dcb-book-btn" style="font-size:11px;padding:7px;">Записаться онлайн</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#888;margin-top:8px;">Короткий адрес, услуги с ценами, CTA</div>
+    </div>
+  </div>
+
+  <!-- Filter row comparison -->
+  <div class="compare-row">
+    <div class="compare-before">
+      <div class="compare-label lbl-before"><div class="lbl-dot"></div>Сейчас — «На карте» в фильтрах</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#f5f0ea;padding:12px;border-radius:10px;">
+        <span style="font-size:12px;color:#6B6460;">Сортировка:</span>
+        <span style="padding:7px 14px;background:#f0ebe4;border:1px solid #ddd;border-radius:100px;font-size:12px;color:#1A1612;">Онлайн-запись</span>
+        <span style="padding:7px 14px;background:#f0ebe4;border:1px solid #ddd;border-radius:100px;font-size:12px;color:#1A1612;">Свободно сегодня</span>
+        <span style="padding:7px 14px;background:#1A1612;border-radius:100px;font-size:12px;color:white;font-weight:600;">🗺 На карте</span>
+        <span style="padding:7px 14px;background:#f0ebe4;border:1px solid #ddd;border-radius:100px;font-size:12px;color:#1A1612;">Высокий рейтинг</span>
+      </div>
+      <div style="font-size:12px;color:#f00;margin-top:8px;">❌ Тёмная кнопка среди светлых фильтров — выглядит как активный фильтр</div>
+    </div>
+    <div class="compare-divider"></div>
+    <div class="compare-after">
+      <div class="compare-label lbl-after"><div class="lbl-dot"></div>После — FAB fixed bottom-center</div>
+      <div style="background:#2B241F;padding:12px;border-radius:10px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="demo-chip active" style="font-size:11px;padding:7px 12px;">Онлайн-запись</button>
+        <button class="demo-chip" style="font-size:11px;padding:7px 12px;">Свободно сегодня</button>
+        <button class="demo-chip" style="font-size:11px;padding:7px 12px;">Высокий рейтинг</button>
+        <select class="demo-sort" style="font-size:11px;"><option>По популярности</option></select>
+      </div>
+      <div style="position:relative;height:60px;margin-top:8px;">
+        <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:#1F2B25;color:#EEF1ED;padding:10px 22px;border-radius:100px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4);display:flex;gap:6px;align-items:center;">🗺 На карте</div>
+      </div>
+      <div style="font-size:12px;color:#A8D5B8;margin-top:4px;">✓ Фильтры чистые, FAB отдельно — нет путаницы</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function show(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.shell-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>

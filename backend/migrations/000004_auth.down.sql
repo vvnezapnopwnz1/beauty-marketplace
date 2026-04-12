@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS otp_codes;
+ALTER TABLE users DROP COLUMN IF EXISTS global_role;
+DROP TYPE IF EXISTS global_role;

@@ -1,8 +1,20 @@
+import React from 'react'
 import { Box, Select, MenuItem } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { useAppDispatch, useAppSelector } from '@app/store'
-import { toggleAvailableToday, setSortBy, selectOnlyAvailableToday, selectSortBy } from '../model/searchSlice'
-import { COLORS } from '@shared/theme'
+import {
+  toggleAvailableToday,
+  toggleOnlineOnly,
+  toggleOpenNow,
+  toggleHighRating,
+  setSortBy,
+  selectOnlyAvailableToday,
+  selectOnlineOnly,
+  selectOpenNow,
+  selectHighRating,
+  selectSortBy,
+} from '../model/searchSlice'
+import { useBrandColors } from '@shared/theme'
 
 interface FilterChipProps {
   label: string
@@ -12,6 +24,7 @@ interface FilterChipProps {
 }
 
 function FilterChip({ label, active = false, onClick, icon }: FilterChipProps) {
+  const COLORS = useBrandColors()
   return (
     <Box
       component="button"
@@ -22,7 +35,7 @@ function FilterChip({ label, active = false, onClick, icon }: FilterChipProps) {
         gap: '6px',
         fontFamily: "'DM Sans', sans-serif",
         fontSize: 13,
-        fontWeight: 400,
+        fontWeight: 500,
         color: active ? COLORS.white : COLORS.ink,
         bgcolor: active ? COLORS.ink : COLORS.white,
         border: `1px solid ${active ? COLORS.ink : COLORS.borderLight}`,
@@ -62,10 +75,21 @@ const StarIcon = () => (
   </Box>
 )
 
+const OnlineIcon = () => (
+  <Box component="svg" width={12} height={12} viewBox="0 0 12 12" fill="none" sx={{ flexShrink: 0 }}>
+    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M6 3v3l2 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </Box>
+)
+
 export function FilterRow() {
   const { t } = useTranslation()
+  const COLORS = useBrandColors()
   const dispatch = useAppDispatch()
   const onlyAvailableToday = useAppSelector(selectOnlyAvailableToday)
+  const onlineOnly = useAppSelector(selectOnlineOnly)
+  const openNow = useAppSelector(selectOpenNow)
+  const highRating = useAppSelector(selectHighRating)
   const sortBy = useAppSelector(selectSortBy)
 
   return (
@@ -75,6 +99,12 @@ export function FilterRow() {
       </Box>
 
       <FilterChip
+        label={t('search.onlineBooking')}
+        active={onlineOnly}
+        onClick={() => dispatch(toggleOnlineOnly())}
+        icon={<OnlineIcon />}
+      />
+      <FilterChip
         label={t('search.availableToday')}
         active={onlyAvailableToday}
         onClick={() => dispatch(toggleAvailableToday())}
@@ -82,12 +112,14 @@ export function FilterRow() {
       />
       <FilterChip
         label={t('search.openNow')}
+        active={openNow}
+        onClick={() => dispatch(toggleOpenNow())}
         icon={<ClockIcon />}
       />
-      <FilterChip label={t('search.budget')} />
-      <FilterChip label={t('search.topRated')} />
       <FilterChip
-        label={t('search.newOnly')}
+        label={t('search.topRated')}
+        active={highRating}
+        onClick={() => dispatch(toggleHighRating())}
         icon={<StarIcon />}
       />
 
@@ -95,7 +127,7 @@ export function FilterRow() {
         <Select
           size="small"
           value={sortBy}
-          onChange={e => dispatch(setSortBy(e.target.value as 'distance' | 'rating'))}
+          onChange={e => dispatch(setSortBy(e.target.value as 'popular' | 'nearby' | 'rating'))}
           sx={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: 13,
@@ -107,7 +139,8 @@ export function FilterRow() {
             '& .MuiSelect-select': { py: '7px', px: '14px' },
           }}
         >
-          <MenuItem value="distance">{t('search.sortByDistance')}</MenuItem>
+          <MenuItem value="popular">{t('search.sortByPopular')}</MenuItem>
+          <MenuItem value="nearby">{t('search.sortByDistance')}</MenuItem>
           <MenuItem value="rating">{t('search.sortByRating')}</MenuItem>
         </Select>
       </Box>

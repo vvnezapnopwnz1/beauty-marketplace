@@ -1,0 +1,10 @@
+-- Выдать пользователю доступ к дашборду салона (роль owner или admin в salon_members).
+-- Подставьте реальные UUID из БД после регистрации пользователя и создания салона.
+--
+-- Найти user_id:
+--   SELECT id, phone_e164 FROM users ORDER BY created_at DESC LIMIT 5;
+-- Найти salon_id:
+--   SELECT id, name_override FROM salons LIMIT 10;
+--
+-- INSERT INTO salon_members (salon_id, user_id, role) VALUES
+--   ('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, 'owner');

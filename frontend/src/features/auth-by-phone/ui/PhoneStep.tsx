@@ -1,15 +1,10 @@
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import { TextField, Button, Typography, Stack, Link } from '@mui/material'
+import { TextField, Button, Typography, Stack, Link, Alert } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { useAppDispatch, useAppSelector } from '@app/store'
-import {
-  setPhone,
-  requestOtpStart,
-  requestOtpSuccess,
-  selectAuthLoading,
-} from '../model/authSlice'
+import { sendOtp, selectAuthLoading, selectAuthError } from '../model/authSlice'
 import { formatPhone } from '@shared/lib/formatPhone'
 
 const schema = yup.object({
@@ -25,6 +20,7 @@ export function PhoneStep() {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const loading = useAppSelector(selectAuthLoading)
+  const error = useAppSelector(selectAuthError)
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: yupResolver(schema),
@@ -32,10 +28,8 @@ export function PhoneStep() {
   })
 
   const onSubmit = ({ phone }: FormValues) => {
-    dispatch(setPhone(phone))
-    dispatch(requestOtpStart())
-    // TODO: POST /api/auth/otp/request
-    setTimeout(() => dispatch(requestOtpSuccess()), 800)
+    const e164 = phone.replace(/\D/g, '').replace(/^8/, '7')
+    dispatch(sendOtp(`+${e164}`))
   }
 
   return (
@@ -44,6 +38,8 @@ export function PhoneStep() {
         <Typography variant="h5" fontWeight={700}>{t('login.title')}</Typography>
         <Typography color="text.secondary" mt={0.5}>{t('login.subtitle')}</Typography>
       </div>
+
+      {error && <Alert severity="error">{error}</Alert>}
 
       <Controller
         name="phone"
