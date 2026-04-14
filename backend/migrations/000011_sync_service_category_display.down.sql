@@ -1,0 +1,1 @@
+-- Previous category text values are not stored; cannot restore.

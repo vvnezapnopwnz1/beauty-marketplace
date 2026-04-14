@@ -1,0 +1,105 @@
+-- Dashboard service category taxonomy (see docs/service-categories.md). Independent from 2GIS rubrics.
+
+CREATE TABLE IF NOT EXISTS service_categories (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    salon_id    uuid REFERENCES salons (id) ON DELETE CASCADE,
+    slug        text NOT NULL,
+    name_ru     text NOT NULL,
+    parent_slug text NOT NULL,
+    sort_order  int  NOT NULL DEFAULT 0,
+    is_system   bool NOT NULL DEFAULT true
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS service_categories_system_slug_unique
+    ON service_categories (slug)
+    WHERE salon_id IS NULL;
+
+CREATE INDEX IF NOT EXISTS service_categories_parent_sort ON service_categories (parent_slug, sort_order);
+
+COMMENT ON TABLE service_categories IS 'Preset service folders for salon dashboard; system rows have salon_id NULL.';
+COMMENT ON COLUMN service_categories.salon_id IS 'NULL = global catalog row; future: per-salon custom categories.';
+
+ALTER TABLE salons
+    ADD COLUMN IF NOT EXISTS salon_type text;
+
+COMMENT ON COLUMN salons.salon_type IS 'Salon business type slug (hair_salon, barbershop, …) for filtering category picker; see docs/service-categories.md.';
+
+ALTER TABLE services
+    ADD COLUMN IF NOT EXISTS category_slug text;
+
+COMMENT ON COLUMN services.category_slug IS 'FK-like reference to service_categories.slug (system rows); legacy text remains in category.';
+
+-- Seed 72 system categories (slug unique among salon_id IS NULL)
+INSERT INTO service_categories (salon_id, slug, name_ru, parent_slug, sort_order, is_system) VALUES
+(NULL, 'hair_cuts', 'Стрижки', 'hair', 10, true),
+(NULL, 'hair_coloring', 'Окрашивание', 'hair', 20, true),
+(NULL, 'hair_highlights', 'Мелирование и балаяж', 'hair', 30, true),
+(NULL, 'hair_styling', 'Укладки и причёски', 'hair', 40, true),
+(NULL, 'hair_perm', 'Химическая завивка', 'hair', 50, true),
+(NULL, 'hair_straightening', 'Выпрямление и кератин', 'hair', 60, true),
+(NULL, 'hair_treatment', 'Уход и восстановление', 'hair', 70, true),
+(NULL, 'hair_extensions', 'Наращивание волос', 'hair', 80, true),
+(NULL, 'hair_coloring_mens', 'Окрашивание мужское', 'hair', 90, true),
+(NULL, 'barber_haircuts', 'Стрижки', 'barbershop', 10, true),
+(NULL, 'barber_beard', 'Борода и усы', 'barbershop', 20, true),
+(NULL, 'barber_shaving', 'Бритьё', 'barbershop', 30, true),
+(NULL, 'barber_coloring', 'Окрашивание', 'barbershop', 40, true),
+(NULL, 'barber_styling', 'Укладка и оформление', 'barbershop', 50, true),
+(NULL, 'barber_care', 'Уход за кожей лица', 'barbershop', 60, true),
+(NULL, 'nails_manicure', 'Маникюр', 'nails', 10, true),
+(NULL, 'nails_gel_polish', 'Покрытие гель-лак', 'nails', 20, true),
+(NULL, 'nails_extensions', 'Наращивание ногтей', 'nails', 30, true),
+(NULL, 'nails_design', 'Дизайн и декор', 'nails', 40, true),
+(NULL, 'nails_pedicure', 'Педикюр', 'nails', 50, true),
+(NULL, 'nails_pedicure_coating', 'Педикюр с покрытием', 'nails', 60, true),
+(NULL, 'nails_medical_pedicure', 'Медицинский педикюр', 'nails', 70, true),
+(NULL, 'nails_spa', 'СПА-уход для рук и ног', 'nails', 80, true),
+(NULL, 'brows_correction', 'Коррекция бровей', 'brows', 10, true),
+(NULL, 'brows_coloring', 'Окрашивание бровей', 'brows', 20, true),
+(NULL, 'brows_lamination', 'Ламинирование бровей', 'brows', 30, true),
+(NULL, 'brows_styling', 'Укладка бровей', 'brows', 40, true),
+(NULL, 'brows_permanent', 'Перманентный макияж бровей', 'brows', 50, true),
+(NULL, 'lashes_extensions', 'Наращивание ресниц', 'lashes', 10, true),
+(NULL, 'lashes_lamination', 'Ламинирование ресниц', 'lashes', 20, true),
+(NULL, 'lashes_perm', 'Биозавивка ресниц', 'lashes', 30, true),
+(NULL, 'lashes_coloring', 'Окрашивание ресниц', 'lashes', 40, true),
+(NULL, 'lashes_removal', 'Снятие наращивания', 'lashes', 50, true),
+(NULL, 'permanent_brows', 'Перманентный макияж бровей', 'permanent', 10, true),
+(NULL, 'permanent_lips', 'Перманентный макияж губ', 'permanent', 20, true),
+(NULL, 'permanent_eyeliner', 'Татуаж век и стрелки', 'permanent', 30, true),
+(NULL, 'permanent_correction', 'Коррекция перманентного макияжа', 'permanent', 40, true),
+(NULL, 'permanent_removal', 'Удаление перманентного макияжа', 'permanent', 50, true),
+(NULL, 'makeup_day_evening', 'Дневной и вечерний макияж', 'makeup', 10, true),
+(NULL, 'makeup_wedding', 'Свадебный макияж', 'makeup', 20, true),
+(NULL, 'makeup_photo', 'Макияж для фотосессии', 'makeup', 30, true),
+(NULL, 'makeup_lessons', 'Уроки макияжа', 'makeup', 40, true),
+(NULL, 'skin_cleansing', 'Чистка лица', 'skin', 10, true),
+(NULL, 'skin_peeling', 'Пилинги', 'skin', 20, true),
+(NULL, 'skin_care_procedures', 'Уходовые процедуры', 'skin', 30, true),
+(NULL, 'skin_hardware', 'Аппаратная косметология', 'skin', 40, true),
+(NULL, 'skin_injections', 'Инъекционная косметология', 'skin', 50, true),
+(NULL, 'skin_massage_face', 'Массаж лица', 'skin', 60, true),
+(NULL, 'massage_relaxing', 'Расслабляющий массаж', 'massage', 10, true),
+(NULL, 'massage_therapeutic', 'Лечебный массаж', 'massage', 20, true),
+(NULL, 'massage_anticellulite', 'Антицеллюлитный массаж', 'massage', 30, true),
+(NULL, 'massage_lymphatic', 'Лимфодренажный массаж', 'massage', 40, true),
+(NULL, 'massage_specialty', 'Авторские и специальные техники', 'massage', 50, true),
+(NULL, 'massage_face', 'Массаж лица и головы', 'massage', 60, true),
+(NULL, 'spa_wraps', 'Обёртывания', 'spa', 10, true),
+(NULL, 'spa_body_scrub', 'Скрабы и пилинги тела', 'spa', 20, true),
+(NULL, 'spa_programs', 'СПА-программы', 'spa', 30, true),
+(NULL, 'spa_rituals', 'Ритуалы и хаммам', 'spa', 40, true),
+(NULL, 'spa_body_care', 'Уход за кожей тела', 'spa', 50, true),
+(NULL, 'spa_correction', 'Коррекция фигуры', 'spa', 60, true),
+(NULL, 'spa_pressotherapy', 'Прессотерапия и лимфодренаж', 'spa', 70, true),
+(NULL, 'depil_wax_sugar', 'Шугаринг и восковая депиляция', 'depilation', 10, true),
+(NULL, 'depil_laser', 'Лазерная эпиляция', 'depilation', 20, true),
+(NULL, 'depil_photo_elos', 'Фото- и ЭЛОС-эпиляция', 'depilation', 30, true),
+(NULL, 'tanning_solarium', 'Солярий', 'tanning', 10, true),
+(NULL, 'tanning_spray', 'Спрей-загар', 'tanning', 20, true),
+(NULL, 'teeth_whitening', 'Отбеливание зубов', 'teeth', 10, true),
+(NULL, 'teeth_hygiene', 'Гигиеническая чистка', 'teeth', 20, true),
+(NULL, 'packages_bride', 'Образ невесты', 'packages', 10, true),
+(NULL, 'packages_prom', 'Образ выпускницы', 'packages', 20, true),
+(NULL, 'packages_beauty_day', 'День красоты', 'packages', 30, true),
+(NULL, 'packages_other', 'Другие комплексы', 'packages', 40, true);

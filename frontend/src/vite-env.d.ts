@@ -6,8 +6,6 @@ interface ImportMetaEnv {
   /** Origin бэкенда для fetch из браузера (например http://localhost:8080). Пусто — относительные /api через прокси Vite. */
   readonly VITE_API_URL?: string
   readonly VITE_API_BASE?: string
-  /** 0 / false — реальный API дашборда в dev; иначе в dev подставляются локальные мок-данные без JWT. */
-  readonly VITE_DASHBOARD_STUB?: string
 }
 
 interface ImportMeta {

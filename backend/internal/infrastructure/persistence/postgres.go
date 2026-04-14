@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/yourusername/beauty-marketplace/internal/config"
+	"github.com/yourusername/beauty-marketplace/internal/devseed"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
@@ -30,6 +31,16 @@ func NewDB(lc fx.Lifecycle, cfg *config.Config, log *zap.Logger) (*gorm.DB, erro
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			if !cfg.DevDemoSeed {
+				return nil
+			}
+			// Seed can take a few seconds; use a fresh context so fx startup timeout is not the limit.
+			if err := devseed.Run(context.Background(), db, log); err != nil {
+				return fmt.Errorf("dev demo seed: %w", err)
+			}
+			return nil
+		},
 		OnStop: func(ctx context.Context) error {
 			return sqlDB.Close()
 		},

@@ -7,10 +7,11 @@ import {
   type DashboardStats,
   type DashboardAppointment,
 } from '@shared/api/dashboardApi'
+import { mocha } from '@pages/dashboard/theme/mocha'
 
 const CARD = {
-  bgcolor: '#222',
-  border: '1px solid rgba(255,255,255,0.08)',
+  bgcolor: mocha.card,
+  border: `1px solid ${mocha.borderSubtle}`,
   borderRadius: '14px',
   p: 2.5,
 }
@@ -60,7 +61,7 @@ export function DashboardOverview() {
   if (loading && !stats) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress sx={{ color: '#D8956B' }} />
+        <CircularProgress sx={{ color: mocha.accent }} />
       </Box>
     )
   }
@@ -68,64 +69,64 @@ export function DashboardOverview() {
   return (
     <Box>
       {err && (
-        <Alert severity="error" sx={{ mb: 2, bgcolor: '#2a1a1a', color: '#f0eae3' }}>
+        <Alert severity="error" sx={{ mb: 2, bgcolor: mocha.errorBg, color: mocha.text }}>
           {err}
         </Alert>
       )}
 
       <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mb: 3 }}>
         <Box sx={{ ...CARD, flex: '1 1 200px', minWidth: 0 }}>
-          <Typography sx={{ fontSize: 12, color: '#a89e94' }}>Записей сегодня</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: '#f0eae3', fontWeight: 500 }}>
+          <Typography sx={{ fontSize: 12, color: mocha.muted }}>Записей сегодня</Typography>
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: mocha.text, fontWeight: 500 }}>
             {stats?.appointmentsToday ?? 0}
           </Typography>
-          <Typography sx={{ fontSize: 12, color: '#6BCB77' }}>
+          <Typography sx={{ fontSize: 12, color: mocha.green }}>
             подтверждено: {stats?.appointmentsTodayConfirmed ?? 0}
           </Typography>
         </Box>
         <Box sx={{ ...CARD, flex: '1 1 200px', minWidth: 0 }}>
-          <Typography sx={{ fontSize: 12, color: '#a89e94' }}>Новых за 7 дней</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: '#f0eae3', fontWeight: 500 }}>
+          <Typography sx={{ fontSize: 12, color: mocha.muted }}>Новых за 7 дней</Typography>
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: mocha.text, fontWeight: 500 }}>
             {stats?.newAppointmentsWeek ?? 0}
           </Typography>
-          <Typography sx={{ fontSize: 12, color: stats && stats.weekChangePct >= 0 ? '#6BCB77' : '#FF6B6B' }}>
+          <Typography sx={{ fontSize: 12, color: stats && stats.weekChangePct >= 0 ? mocha.green : mocha.red }}>
             {stats ? `${stats.weekChangePct >= 0 ? '+' : ''}${stats.weekChangePct.toFixed(0)}% к прошлой неделе` : '—'}
           </Typography>
         </Box>
         <Box sx={{ ...CARD, flex: '1 1 200px', minWidth: 0 }}>
-          <Typography sx={{ fontSize: 12, color: '#a89e94' }}>Загрузка (подтв./все сегодня)</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: '#f0eae3', fontWeight: 500 }}>
+          <Typography sx={{ fontSize: 12, color: mocha.muted }}>Загрузка (подтв./все сегодня)</Typography>
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: mocha.text, fontWeight: 500 }}>
             {stats ? `${stats.loadPct.toFixed(0)}%` : '0%'}
           </Typography>
         </Box>
         <Box sx={{ ...CARD, flex: '1 1 200px', minWidth: 0 }}>
-          <Typography sx={{ fontSize: 12, color: '#a89e94' }}>Рейтинг</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: '#f0eae3', fontWeight: 500 }}>
+          <Typography sx={{ fontSize: 12, color: mocha.muted }}>Рейтинг</Typography>
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: mocha.text, fontWeight: 500 }}>
             {stats ? stats.rating.toFixed(1) : '—'}
           </Typography>
-          <Typography sx={{ fontSize: 12, color: '#a89e94' }}>{stats?.reviewCount ?? 0} отзывов</Typography>
+          <Typography sx={{ fontSize: 12, color: mocha.muted }}>{stats?.reviewCount ?? 0} отзывов</Typography>
         </Box>
       </Stack>
 
-      <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#f0eae3', mb: 1.5 }}>Быстрые действия</Typography>
+      <Typography sx={{ fontSize: 13, fontWeight: 600, color: mocha.text, mb: 1.5 }}>Быстрые действия</Typography>
       <Stack direction="row" flexWrap="wrap" gap={1.5} sx={{ mb: 4 }}>
         <Button
           variant="outlined"
           size="small"
-          sx={{ borderColor: '#FFD93D', color: '#FFD93D', borderRadius: 100 }}
+          sx={{ borderColor: mocha.yellow, color: mocha.yellow, borderRadius: 100 }}
           onClick={() => void load()}
         >
           Обновить данные
         </Button>
-        <Typography sx={{ fontSize: 12, color: '#a89e94', alignSelf: 'center' }}>
+        <Typography sx={{ fontSize: 12, color: mocha.muted, alignSelf: 'center' }}>
           Ожидают: {stats?.pendingCount ?? 0}
         </Typography>
       </Stack>
 
-      <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#f0eae3', mb: 2 }}>Сегодня</Typography>
+      <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: mocha.text, mb: 2 }}>Сегодня</Typography>
       <Box sx={{ ...CARD, p: 0, overflow: 'hidden' }}>
         {today.length === 0 ? (
-          <Typography sx={{ p: 3, color: '#a89e94' }}>Нет записей на сегодня</Typography>
+          <Typography sx={{ p: 3, color: mocha.muted }}>Нет записей на сегодня</Typography>
         ) : (
           today.map((a, i) => (
             <Box
@@ -137,17 +138,17 @@ export function DashboardOverview() {
                 alignItems: 'center',
                 px: 2,
                 py: 1.5,
-                borderTop: i ? '1px solid rgba(255,255,255,0.06)' : undefined,
+                borderTop: i ? `1px solid ${mocha.borderHairline}` : undefined,
               }}
             >
-              <Typography sx={{ color: '#f0eae3', fontSize: 14 }}>{a.clientLabel}</Typography>
-              <Typography sx={{ color: '#a89e94', fontSize: 13 }}>{a.serviceName}</Typography>
-              <Typography sx={{ color: '#a89e94', fontSize: 12 }}>
+              <Typography sx={{ color: mocha.text, fontSize: 14 }}>{a.clientLabel}</Typography>
+              <Typography sx={{ color: mocha.muted, fontSize: 13 }}>{a.serviceName}</Typography>
+              <Typography sx={{ color: mocha.muted, fontSize: 12 }}>
                 {new Date(a.startsAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               </Typography>
               <Stack direction="row" gap={0.5}>
                 {a.status === 'pending' && (
-                  <Button size="small" sx={{ color: '#6BCB77', fontSize: 11 }} onClick={() => void quickConfirm(a.id)}>
+                  <Button size="small" sx={{ color: mocha.green, fontSize: 11 }} onClick={() => void quickConfirm(a.id)}>
                     Подтвердить
                   </Button>
                 )}
@@ -164,8 +165,8 @@ export function DashboardOverview() {
 }
 
 function statusColor(s: string) {
-  if (s === 'confirmed') return '#6BCB77'
-  if (s === 'pending') return '#FFD93D'
-  if (s.startsWith('cancelled')) return '#FF6B6B'
-  return '#a89e94'
+  if (s === 'confirmed') return mocha.green
+  if (s === 'pending') return mocha.yellow
+  if (s.startsWith('cancelled')) return mocha.red
+  return mocha.muted
 }

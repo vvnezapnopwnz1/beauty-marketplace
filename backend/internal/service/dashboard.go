@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/yourusername/beauty-marketplace/internal/servicecategory"
 	"gorm.io/gorm"
 )
 
@@ -23,24 +25,35 @@ type DashboardService interface {
 	UpdateAppointment(ctx context.Context, salonID uuid.UUID, in UpdateAppointmentInput) error
 
 	ListServices(ctx context.Context, salonID uuid.UUID) ([]model.SalonService, error)
+	ServiceStaffNamesMap(ctx context.Context, salonID uuid.UUID) (map[uuid.UUID][]string, error)
 	CreateService(ctx context.Context, salonID uuid.UUID, in ServiceInput) (*model.SalonService, error)
 	UpdateService(ctx context.Context, salonID, serviceID uuid.UUID, in ServiceInput) (*model.SalonService, error)
 	DeleteService(ctx context.Context, salonID, serviceID uuid.UUID) error
 
 	ListStaff(ctx context.Context, salonID uuid.UUID) ([]model.Staff, error)
-	CreateStaff(ctx context.Context, salonID uuid.UUID, name string) (*model.Staff, error)
-	UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, name string, active bool) (*model.Staff, error)
+	ListStaffDashboard(ctx context.Context, salonID uuid.UUID) ([]StaffListRow, error)
+	GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.Staff, []uuid.UUID, error)
+	CreateStaff(ctx context.Context, salonID uuid.UUID, in StaffInput) (*model.Staff, error)
+	UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, in StaffInput) (*model.Staff, error)
 	DeleteStaff(ctx context.Context, salonID, staffID uuid.UUID) error
 
+	StaffMetrics(ctx context.Context, salonID, staffID uuid.UUID, period string) (*StaffMetricsDTO, error)
+
 	GetSchedule(ctx context.Context, salonID uuid.UUID) ([]model.WorkingHour, error)
+	GetSalonScheduleBundle(ctx context.Context, salonID uuid.UUID) (*SalonScheduleBundle, error)
 	PutSchedule(ctx context.Context, salonID uuid.UUID, rows []WorkingHourInput) error
+	PutSalonScheduleBundle(ctx context.Context, salonID uuid.UUID, in SalonSchedulePayload) error
 
 	GetStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID) ([]model.StaffWorkingHour, error)
+	GetStaffScheduleBundle(ctx context.Context, salonID, staffID uuid.UUID) (*StaffScheduleBundle, error)
 	PutStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID, rows []StaffWorkingHourInput) error
+	PutStaffScheduleBundle(ctx context.Context, salonID, staffID uuid.UUID, in StaffSchedulePayload) error
 
 	Stats(ctx context.Context, salonID uuid.UUID, period string) (*DashboardStats, error)
 	GetSalonProfile(ctx context.Context, salonID uuid.UUID) (*model.Salon, error)
 	PutSalonProfile(ctx context.Context, salonID uuid.UUID, in SalonProfileInput) (*model.Salon, error)
+
+	ListServiceCategories(ctx context.Context, salonID uuid.UUID, fullList bool) (*ServiceCategoriesResponse, error)
 }
 
 type ManualAppointmentInput struct {
@@ -58,30 +71,42 @@ type UpdateAppointmentInput struct {
 	StartsAt      *time.Time
 	EndsAt        *time.Time
 	StaffID       *uuid.UUID
+	ClearStaffID  bool
 	ServiceID     *uuid.UUID
 	ClientNote    *string
+	GuestName     *string
+	GuestPhone    *string
 }
 
 type ServiceInput struct {
-	Name              string `json:"name"`
-	DurationMinutes   int    `json:"durationMinutes"`
-	PriceCents        *int64 `json:"priceCents"`
-	IsActive          bool   `json:"isActive"`
-	SortOrder         int    `json:"sortOrder"`
+	Name               string      `json:"name"`
+	Category           *string     `json:"category"`
+	CategorySlug       string      `json:"categorySlug"`
+	AllowAllCategories bool        `json:"allowAllCategories"`
+	Description        *string     `json:"description"`
+	DurationMinutes    int         `json:"durationMinutes"`
+	PriceCents         *int64      `json:"priceCents"`
+	IsActive           bool        `json:"isActive"`
+	SortOrder          int         `json:"sortOrder"`
+	StaffIDs           []uuid.UUID `json:"staffIds,omitempty"`
 }
 
 type WorkingHourInput struct {
-	DayOfWeek int16  `json:"dayOfWeek"`
-	OpensAt   string `json:"opensAt"`
-	ClosesAt  string `json:"closesAt"`
-	Closed    bool   `json:"closed"`
+	DayOfWeek     int16   `json:"dayOfWeek"`
+	OpensAt       string  `json:"opensAt"`
+	ClosesAt      string  `json:"closesAt"`
+	Closed        bool    `json:"closed"`
+	BreakStartsAt *string `json:"breakStartsAt,omitempty"`
+	BreakEndsAt   *string `json:"breakEndsAt,omitempty"`
 }
 
 type StaffWorkingHourInput struct {
-	DayOfWeek int16  `json:"dayOfWeek"`
-	OpensAt   string `json:"opensAt"`
-	ClosesAt  string `json:"closesAt"`
-	IsDayOff  bool   `json:"isDayOff"`
+	DayOfWeek     int16   `json:"dayOfWeek"`
+	OpensAt       string  `json:"opensAt"`
+	ClosesAt      string  `json:"closesAt"`
+	IsDayOff      bool    `json:"isDayOff"`
+	BreakStartsAt *string `json:"breakStartsAt,omitempty"`
+	BreakEndsAt   *string `json:"breakEndsAt,omitempty"`
 }
 
 type SalonProfileInput struct {
@@ -89,6 +114,7 @@ type SalonProfileInput struct {
 	Description           *string  `json:"description"`
 	PhonePublic           *string  `json:"phonePublic"`
 	CategoryID            *string  `json:"categoryId"`
+	SalonType             *string  `json:"salonType"`
 	BusinessType          *string  `json:"businessType"`
 	OnlineBookingEnabled  *bool    `json:"onlineBookingEnabled"`
 	AddressOverride       *string  `json:"addressOverride"`
@@ -98,6 +124,90 @@ type SalonProfileInput struct {
 	Lng                   *float64 `json:"lng"`
 	PhotoURL              *string  `json:"photoUrl"`
 	Timezone              *string  `json:"timezone"`
+}
+
+// StaffInput is create/update body for dashboard staff.
+type StaffInput struct {
+	DisplayName           string      `json:"displayName"`
+	Role                  *string     `json:"role"`
+	Level                 *string     `json:"level"`
+	Bio                   *string     `json:"bio"`
+	Phone                 *string     `json:"phone"`
+	TelegramUsername      *string     `json:"telegramUsername"`
+	Email                 *string     `json:"email"`
+	Color                 *string     `json:"color"`
+	JoinedAt              *string     `json:"joinedAt"`
+	DashboardAccess       bool        `json:"dashboardAccess"`
+	TelegramNotifications bool        `json:"telegramNotifications"`
+	IsActive              bool        `json:"isActive"`
+	ServiceIDs            []uuid.UUID `json:"serviceIds"`
+}
+
+// StaffListRow is one master card on the dashboard list.
+type StaffListRow struct {
+	Staff             model.Staff `json:"staff"`
+	ConnectedServices []ServiceTag `json:"connectedServices"`
+	LoadPercentWeek   float64     `json:"loadPercentWeek"`
+	RatingAvg         *float64    `json:"ratingAvg"`
+	ReviewCount       int64       `json:"reviewCount"`
+	CompletedVisits   int64       `json:"completedVisits"`
+	RevenueMonthCents int64       `json:"revenueMonthCents"`
+}
+
+// ServiceTag is a linked service label for staff cards.
+type ServiceTag struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// StaffMetricsDTO is GET /staff/:id/metrics.
+type StaffMetricsDTO struct {
+	Rating            *float64 `json:"rating"`
+	ReviewCount       int64    `json:"reviewCount"`
+	TotalVisits       int64    `json:"totalVisits"`
+	RevenueMonthCents int64    `json:"revenueMonthCents"`
+	LoadPercent       float64  `json:"loadPercent"`
+	UpcomingCount     int64    `json:"upcomingCount"`
+}
+
+// SalonScheduleBundle is GET /schedule full payload.
+type SalonScheduleBundle struct {
+	SlotDurationMinutes int                       `json:"slotDurationMinutes"`
+	WorkingHours        []model.WorkingHour       `json:"workingHours"`
+	DateOverrides       []model.SalonDateOverride `json:"dateOverrides"`
+}
+
+// StaffScheduleBundle is GET /staff/:id/schedule full payload.
+type StaffScheduleBundle struct {
+	Rows     []model.StaffWorkingHour `json:"rows"`
+	Absences []model.StaffAbsence     `json:"absences"`
+}
+
+// DateOverrideInput is one salon calendar exception.
+type DateOverrideInput struct {
+	OnDate   string  `json:"onDate"`
+	IsClosed bool    `json:"isClosed"`
+	Note     *string `json:"note"`
+}
+
+// StaffAbsenceInput is vacation/sick range.
+type StaffAbsenceInput struct {
+	StartsOn string `json:"startsOn"`
+	EndsOn   string `json:"endsOn"`
+	Kind     string `json:"kind"`
+}
+
+// SalonSchedulePayload is PUT /schedule body (optional slot + overrides).
+type SalonSchedulePayload struct {
+	SlotDurationMinutes *int                   `json:"slotDurationMinutes,omitempty"`
+	WorkingHours        []WorkingHourInput     `json:"workingHours,omitempty"`
+	DateOverrides       []DateOverrideInput    `json:"dateOverrides,omitempty"`
+}
+
+// StaffSchedulePayload is PUT staff schedule + absences.
+type StaffSchedulePayload struct {
+	Rows     []StaffWorkingHourInput `json:"rows,omitempty"`
+	Absences []StaffAbsenceInput     `json:"absences,omitempty"`
 }
 
 // DashboardStats is returned by GET /dashboard/stats.
@@ -111,6 +221,27 @@ type DashboardStats struct {
 	Rating                   float64 `json:"rating"`
 	ReviewCount              int     `json:"reviewCount"`
 	PendingCount             int64   `json:"pendingCount"`
+}
+
+// ServiceCategoryItemDTO is one preset row in GET /dashboard/service-categories.
+type ServiceCategoryItemDTO struct {
+	Slug       string `json:"slug"`
+	NameRu     string `json:"nameRu"`
+	ParentSlug string `json:"parentSlug"`
+	SortOrder  int    `json:"sortOrder"`
+}
+
+// ServiceCategoryGroupDTO groups items by parent_slug.
+type ServiceCategoryGroupDTO struct {
+	ParentSlug string                   `json:"parentSlug"`
+	Label      string                   `json:"label"`
+	Items      []ServiceCategoryItemDTO `json:"items"`
+}
+
+// ServiceCategoriesResponse is GET /dashboard/service-categories.
+type ServiceCategoriesResponse struct {
+	SalonType *string                   `json:"salonType"`
+	Groups    []ServiceCategoryGroupDTO `json:"groups"`
 }
 
 type dashboardService struct {
@@ -223,7 +354,9 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 		}
 		a.ServiceID = *in.ServiceID
 	}
-	if in.StaffID != nil {
+	if in.ClearStaffID {
+		a.StaffID = nil
+	} else if in.StaffID != nil {
 		if *in.StaffID != uuid.Nil {
 			st, err := s.dash.GetStaff(ctx, salonID, *in.StaffID)
 			if err != nil {
@@ -244,6 +377,34 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 	if in.ClientNote != nil {
 		a.ClientNote = in.ClientNote
 	}
+	if in.GuestName != nil {
+		n := trimSpace(*in.GuestName)
+		if n == "" {
+			a.GuestName = nil
+		} else {
+			a.GuestName = &n
+		}
+	}
+	if in.GuestPhone != nil {
+		p := trimSpace(*in.GuestPhone)
+		if p == "" {
+			a.GuestPhoneE164 = nil
+		} else if !phoneDashRe.MatchString(p) {
+			return fmt.Errorf("invalid phone, use E.164 +7XXXXXXXXXX")
+		} else {
+			a.GuestPhoneE164 = &p
+		}
+	}
+	if in.EndsAt == nil && (in.StartsAt != nil || in.ServiceID != nil) {
+		svc, err := s.dash.GetService(ctx, salonID, a.ServiceID)
+		if err != nil {
+			return err
+		}
+		if svc == nil {
+			return fmt.Errorf("service not found")
+		}
+		a.EndsAt = a.StartsAt.Add(time.Duration(svc.DurationMinutes) * time.Minute).UTC()
+	}
 	if a.EndsAt.Before(a.StartsAt) {
 		return fmt.Errorf("ends_at before starts_at")
 	}
@@ -252,6 +413,102 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 
 func (s *dashboardService) ListServices(ctx context.Context, salonID uuid.UUID) ([]model.SalonService, error) {
 	return s.dash.ListServices(ctx, salonID)
+}
+
+func (s *dashboardService) ListServiceCategories(ctx context.Context, salonID uuid.UUID, fullList bool) (*ServiceCategoriesResponse, error) {
+	rows, err := s.dash.ListSystemServiceCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	salon, err := s.dash.FindSalonModel(ctx, salonID)
+	if err != nil {
+		return nil, err
+	}
+	if salon == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	st := ""
+	if salon.SalonType != nil {
+		st = *salon.SalonType
+	}
+	allowed := servicecategory.ParentSlugsForSalonType(st)
+	if !fullList && allowed != nil {
+		filtered := make([]model.ServiceCategory, 0, len(rows))
+		for _, r := range rows {
+			if servicecategory.ParentAllowedForSalonType(r.ParentSlug, allowed) {
+				filtered = append(filtered, r)
+			}
+		}
+		rows = filtered
+	}
+	byParent := make(map[string][]model.ServiceCategory)
+	for _, r := range rows {
+		byParent[r.ParentSlug] = append(byParent[r.ParentSlug], r)
+	}
+	out := &ServiceCategoriesResponse{SalonType: salon.SalonType, Groups: make([]ServiceCategoryGroupDTO, 0)}
+	for _, ps := range servicecategory.ParentSlugs {
+		items := byParent[ps]
+		if len(items) == 0 {
+			continue
+		}
+		g := ServiceCategoryGroupDTO{
+			ParentSlug: ps,
+			Label:      servicecategory.ParentSlugLabelRu(ps),
+			Items:      make([]ServiceCategoryItemDTO, 0, len(items)),
+		}
+		for _, it := range items {
+			g.Items = append(g.Items, ServiceCategoryItemDTO{
+				Slug: it.Slug, NameRu: it.NameRu, ParentSlug: it.ParentSlug, SortOrder: it.SortOrder,
+			})
+		}
+		out.Groups = append(out.Groups, g)
+	}
+	return out, nil
+}
+
+func (s *dashboardService) applyServiceCategory(ctx context.Context, salonID uuid.UUID, in ServiceInput, row *model.SalonService, isUpdate bool) error {
+	slug := trimSpace(in.CategorySlug)
+	if slug == "" && isUpdate && row.CategorySlug != nil && trimSpace(*row.CategorySlug) != "" {
+		slug = *row.CategorySlug
+	}
+	if slug == "" {
+		if in.Category != nil && trimSpace(*in.Category) != "" {
+			row.Category = in.Category
+			row.CategorySlug = nil
+			return nil
+		}
+		if isUpdate {
+			return nil
+		}
+		return fmt.Errorf("categorySlug is required")
+	}
+	cat, err := s.dash.GetSystemServiceCategoryBySlug(ctx, slug)
+	if err != nil {
+		return err
+	}
+	if cat == nil {
+		return fmt.Errorf("unknown category slug")
+	}
+	salon, err := s.dash.FindSalonModel(ctx, salonID)
+	if err != nil {
+		return err
+	}
+	st := ""
+	if salon != nil && salon.SalonType != nil {
+		st = *salon.SalonType
+	}
+	allowed := servicecategory.ParentSlugsForSalonType(st)
+	if !in.AllowAllCategories && !servicecategory.ParentAllowedForSalonType(cat.ParentSlug, allowed) {
+		return fmt.Errorf("category not allowed for salon type; use allowAllCategories to pick from full list")
+	}
+	name := cat.NameRu
+	row.CategorySlug = &slug
+	row.Category = &name
+	return nil
+}
+
+func (s *dashboardService) ServiceStaffNamesMap(ctx context.Context, salonID uuid.UUID) (map[uuid.UUID][]string, error) {
+	return s.dash.ServiceStaffNamesMap(ctx, salonID)
 }
 
 func (s *dashboardService) CreateService(ctx context.Context, salonID uuid.UUID, in ServiceInput) (*model.SalonService, error) {
@@ -264,13 +521,23 @@ func (s *dashboardService) CreateService(ctx context.Context, salonID uuid.UUID,
 	svc := &model.SalonService{
 		SalonID:         salonID,
 		Name:            trimSpace(in.Name),
+		Category:        in.Category,
+		Description:     in.Description,
 		DurationMinutes: in.DurationMinutes,
 		PriceCents:      in.PriceCents,
 		IsActive:        in.IsActive,
 		SortOrder:       in.SortOrder,
 	}
+	if err := s.applyServiceCategory(ctx, salonID, in, svc, false); err != nil {
+		return nil, err
+	}
 	if err := s.dash.CreateService(ctx, svc); err != nil {
 		return nil, err
+	}
+	if len(in.StaffIDs) > 0 {
+		if err := s.dash.ReplaceServiceStaff(ctx, salonID, svc.ID, dedupeUUIDs(in.StaffIDs)); err != nil {
+			return nil, err
+		}
 	}
 	return svc, nil
 }
@@ -289,11 +556,20 @@ func (s *dashboardService) UpdateService(ctx context.Context, salonID, serviceID
 	if in.DurationMinutes > 0 {
 		svc.DurationMinutes = in.DurationMinutes
 	}
+	svc.Description = in.Description
+	if err := s.applyServiceCategory(ctx, salonID, in, svc, true); err != nil {
+		return nil, err
+	}
 	svc.PriceCents = in.PriceCents
 	svc.IsActive = in.IsActive
 	svc.SortOrder = in.SortOrder
 	if err := s.dash.UpdateService(ctx, svc); err != nil {
 		return nil, err
+	}
+	if in.StaffIDs != nil {
+		if err := s.dash.ReplaceServiceStaff(ctx, salonID, serviceID, dedupeUUIDs(in.StaffIDs)); err != nil {
+			return nil, err
+		}
 	}
 	return svc, nil
 }
@@ -310,19 +586,43 @@ func (s *dashboardService) ListStaff(ctx context.Context, salonID uuid.UUID) ([]
 	return s.dash.ListStaff(ctx, salonID)
 }
 
-func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, name string) (*model.Staff, error) {
-	n := trimSpace(name)
+func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, in StaffInput) (*model.Staff, error) {
+	n := trimSpace(in.DisplayName)
 	if n == "" {
 		return nil, fmt.Errorf("display name is required")
 	}
-	st := &model.Staff{SalonID: salonID, DisplayName: n, IsActive: true}
+	st := &model.Staff{
+		SalonID:               salonID,
+		DisplayName:           n,
+		Role:                  in.Role,
+		Level:                 in.Level,
+		Bio:                   in.Bio,
+		Phone:                 in.Phone,
+		TelegramUsername:      in.TelegramUsername,
+		Email:                 in.Email,
+		Color:                 in.Color,
+		DashboardAccess:       in.DashboardAccess,
+		TelegramNotifications: in.TelegramNotifications,
+		IsActive:              in.IsActive,
+	}
+	if in.JoinedAt != nil && trimSpace(*in.JoinedAt) != "" {
+		t, err := time.Parse("2006-01-02", trimSpace(*in.JoinedAt))
+		if err == nil {
+			st.JoinedAt = &t
+		}
+	}
 	if err := s.dash.CreateStaff(ctx, st); err != nil {
 		return nil, err
+	}
+	if len(in.ServiceIDs) > 0 {
+		if err := s.dash.ReplaceStaffServices(ctx, salonID, st.ID, dedupeUUIDs(in.ServiceIDs)); err != nil {
+			return nil, err
+		}
 	}
 	return st, nil
 }
 
-func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, name string, active bool) (*model.Staff, error) {
+func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, in StaffInput) (*model.Staff, error) {
 	st, err := s.dash.GetStaff(ctx, salonID, staffID)
 	if err != nil {
 		return nil, err
@@ -330,14 +630,53 @@ func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uui
 	if st == nil {
 		return nil, gorm.ErrRecordNotFound
 	}
-	if trimSpace(name) != "" {
-		st.DisplayName = trimSpace(name)
+	if trimSpace(in.DisplayName) != "" {
+		st.DisplayName = trimSpace(in.DisplayName)
 	}
-	st.IsActive = active
+	st.Role = in.Role
+	st.Level = in.Level
+	st.Bio = in.Bio
+	st.Phone = in.Phone
+	st.TelegramUsername = in.TelegramUsername
+	st.Email = in.Email
+	st.Color = in.Color
+	if in.JoinedAt != nil {
+		if trimSpace(*in.JoinedAt) == "" {
+			st.JoinedAt = nil
+		} else {
+			t, err := time.Parse("2006-01-02", trimSpace(*in.JoinedAt))
+			if err == nil {
+				st.JoinedAt = &t
+			}
+		}
+	}
+	st.DashboardAccess = in.DashboardAccess
+	st.TelegramNotifications = in.TelegramNotifications
+	st.IsActive = in.IsActive
 	if err := s.dash.UpdateStaff(ctx, st); err != nil {
 		return nil, err
 	}
+	if in.ServiceIDs != nil {
+		if err := s.dash.ReplaceStaffServices(ctx, salonID, staffID, dedupeUUIDs(in.ServiceIDs)); err != nil {
+			return nil, err
+		}
+	}
 	return st, nil
+}
+
+func (s *dashboardService) GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.Staff, []uuid.UUID, error) {
+	st, err := s.dash.GetStaff(ctx, salonID, staffID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if st == nil {
+		return nil, nil, nil
+	}
+	ids, err := s.dash.ListStaffServiceIDs(ctx, salonID, staffID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return st, ids, nil
 }
 
 func (s *dashboardService) DeleteStaff(ctx context.Context, salonID, staffID uuid.UUID) error {
@@ -349,31 +688,89 @@ func (s *dashboardService) GetSchedule(ctx context.Context, salonID uuid.UUID) (
 }
 
 func (s *dashboardService) PutSchedule(ctx context.Context, salonID uuid.UUID, rows []WorkingHourInput) error {
-	out := make([]model.WorkingHour, 0, len(rows))
-	for _, r := range rows {
-		if r.DayOfWeek < 0 || r.DayOfWeek > 6 {
-			return fmt.Errorf("invalid day_of_week")
-		}
-		if r.Closed {
-			out = append(out, model.WorkingHour{
-				DayOfWeek: r.DayOfWeek,
-				OpensAt:   "10:00:00",
-				ClosesAt:  "18:00:00",
-				IsClosed:  true,
-			})
-			continue
-		}
-		if r.OpensAt == "" || r.ClosesAt == "" {
-			return fmt.Errorf("opens_at and closes_at required when not closed")
-		}
-		out = append(out, model.WorkingHour{
-			DayOfWeek: r.DayOfWeek,
-			OpensAt:   normalizeTimeStr(r.OpensAt),
-			ClosesAt:  normalizeTimeStr(r.ClosesAt),
-			IsClosed:  false,
-		})
+	return s.PutSalonScheduleBundle(ctx, salonID, SalonSchedulePayload{WorkingHours: rows})
+}
+
+func (s *dashboardService) GetSalonScheduleBundle(ctx context.Context, salonID uuid.UUID) (*SalonScheduleBundle, error) {
+	salon, err := s.dash.FindSalonModel(ctx, salonID)
+	if err != nil {
+		return nil, err
 	}
-	return s.dash.ReplaceWorkingHours(ctx, salonID, out)
+	if salon == nil {
+		return nil, fmt.Errorf("salon not found")
+	}
+	hours, err := s.dash.ListWorkingHours(ctx, salonID)
+	if err != nil {
+		return nil, err
+	}
+	ov, err := s.dash.ListSalonDateOverrides(ctx, salonID)
+	if err != nil {
+		return nil, err
+	}
+	return &SalonScheduleBundle{
+		SlotDurationMinutes: salon.SlotDurationMinutes,
+		WorkingHours:        hours,
+		DateOverrides:       ov,
+	}, nil
+}
+
+func (s *dashboardService) PutSalonScheduleBundle(ctx context.Context, salonID uuid.UUID, in SalonSchedulePayload) error {
+	if in.SlotDurationMinutes != nil && *in.SlotDurationMinutes > 0 && *in.SlotDurationMinutes <= 240 {
+		if err := s.dash.UpdateSalonSlotDuration(ctx, salonID, *in.SlotDurationMinutes); err != nil {
+			return err
+		}
+	}
+	if len(in.WorkingHours) > 0 {
+		out := make([]model.WorkingHour, 0, len(in.WorkingHours))
+		for _, r := range in.WorkingHours {
+			if r.DayOfWeek < 0 || r.DayOfWeek > 6 {
+				return fmt.Errorf("invalid day_of_week")
+			}
+			if r.Closed {
+				out = append(out, model.WorkingHour{
+					DayOfWeek: r.DayOfWeek,
+					OpensAt:   "10:00:00",
+					ClosesAt:  "18:00:00",
+					IsClosed:  true,
+				})
+				continue
+			}
+			if r.OpensAt == "" || r.ClosesAt == "" {
+				return fmt.Errorf("opens_at and closes_at required when not closed")
+			}
+			bs, be := normalizeBreakPair(r.BreakStartsAt, r.BreakEndsAt)
+			out = append(out, model.WorkingHour{
+				DayOfWeek:     r.DayOfWeek,
+				OpensAt:       normalizeTimeStr(r.OpensAt),
+				ClosesAt:      normalizeTimeStr(r.ClosesAt),
+				IsClosed:      false,
+				BreakStartsAt: bs,
+				BreakEndsAt:   be,
+			})
+		}
+		if err := s.dash.ReplaceWorkingHours(ctx, salonID, out); err != nil {
+			return err
+		}
+	}
+	if in.DateOverrides != nil {
+		rows := make([]model.SalonDateOverride, 0, len(in.DateOverrides))
+		for _, d := range in.DateOverrides {
+			t, err := time.Parse("2006-01-02", d.OnDate)
+			if err != nil {
+				return fmt.Errorf("invalid onDate")
+			}
+			rows = append(rows, model.SalonDateOverride{
+				SalonID:  salonID,
+				OnDate:   t,
+				IsClosed: d.IsClosed,
+				Note:     d.Note,
+			})
+		}
+		if err := s.dash.ReplaceSalonDateOverrides(ctx, salonID, rows); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func normalizeTimeStr(s string) string {
@@ -383,32 +780,300 @@ func normalizeTimeStr(s string) string {
 	return s
 }
 
+func normalizeBreakPair(a, b *string) (*string, *string) {
+	if a == nil || b == nil {
+		return nil, nil
+	}
+	if trimSpace(*a) == "" || trimSpace(*b) == "" {
+		return nil, nil
+	}
+	as := normalizeTimeStr(trimSpace(*a))
+	bs := normalizeTimeStr(trimSpace(*b))
+	return &as, &bs
+}
+
+func dedupeUUIDs(ids []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{})
+	var out []uuid.UUID
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].String() < out[j].String() })
+	return out
+}
+
+func clockToMinutes(s string) int {
+	s = normalizeTimeStr(trimSpace(s))
+	t, err := time.Parse("15:04:05", s)
+	if err != nil {
+		t, _ = time.Parse("15:04", s)
+	}
+	return t.Hour()*60 + t.Minute()
+}
+
+func breakOverlapMinutes(openMin, closeMin int, bStart, bEnd *string) int {
+	if bStart == nil || bEnd == nil {
+		return 0
+	}
+	bs := clockToMinutes(*bStart)
+	be := clockToMinutes(*bEnd)
+	if be <= bs {
+		return 0
+	}
+	// overlap with [openMin, closeMin]
+	start := bs
+	if openMin > start {
+		start = openMin
+	}
+	end := be
+	if closeMin < end {
+		end = closeMin
+	}
+	if end <= start {
+		return 0
+	}
+	return end - start
+}
+
+func mondayStart(loc *time.Location, t time.Time) time.Time {
+	t = t.In(loc)
+	wd := int(t.Weekday()) // Sun=0, Mon=1
+	fromMon := (wd + 6) % 7
+	return time.Date(t.Year(), t.Month(), t.Day()-fromMon, 0, 0, 0, 0, loc)
+}
+
+func (s *dashboardService) staffWeekCapacityMinutes(ctx context.Context, salonID, staffID uuid.UUID) (int, error) {
+	staffRows, err := s.dash.ListStaffWorkingHours(ctx, staffID, salonID)
+	if err != nil {
+		return 0, err
+	}
+	salonRows, err := s.dash.ListWorkingHours(ctx, salonID)
+	if err != nil {
+		return 0, err
+	}
+	staffBy := make(map[int16]model.StaffWorkingHour)
+	for _, r := range staffRows {
+		staffBy[r.DayOfWeek] = r
+	}
+	salonBy := make(map[int16]model.WorkingHour)
+	for _, r := range salonRows {
+		salonBy[r.DayOfWeek] = r
+	}
+	total := 0
+	for dow := int16(0); dow <= 6; dow++ {
+		if sh, ok := staffBy[dow]; ok {
+			if sh.IsDayOff {
+				continue
+			}
+			o := clockToMinutes(sh.OpensAt)
+			c := clockToMinutes(sh.ClosesAt)
+			br := breakOverlapMinutes(o, c, sh.BreakStartsAt, sh.BreakEndsAt)
+			dayMin := c - o - br
+			if dayMin < 0 {
+				dayMin = 0
+			}
+			total += dayMin
+			continue
+		}
+		sal, ok := salonBy[dow]
+		if !ok || sal.IsClosed {
+			continue
+		}
+		o := clockToMinutes(sal.OpensAt)
+		c := clockToMinutes(sal.ClosesAt)
+		br := breakOverlapMinutes(o, c, sal.BreakStartsAt, sal.BreakEndsAt)
+		dayMin := c - o - br
+		if dayMin < 0 {
+			dayMin = 0
+		}
+		total += dayMin
+	}
+	return total, nil
+}
+
+func (s *dashboardService) StaffMetrics(ctx context.Context, salonID, staffID uuid.UUID, period string) (*StaffMetricsDTO, error) {
+	_ = period
+	salon, err := s.dash.FindSalonModel(ctx, salonID)
+	if err != nil {
+		return nil, err
+	}
+	if salon == nil {
+		return nil, fmt.Errorf("salon not found")
+	}
+	loc, err := time.LoadLocation(salon.Timezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	now := time.Now().In(loc)
+	avg, revN, err := s.dash.StaffAvgRating(ctx, salonID, staffID)
+	if err != nil {
+		return nil, err
+	}
+	totalVisits, err := s.dash.CountStaffAppointments(ctx, salonID, staffID, nil, nil, []string{"completed"})
+	if err != nil {
+		return nil, err
+	}
+	mStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+	mEnd := mStart.AddDate(0, 1, 0)
+	rev, err := s.dash.SumStaffRevenueCents(ctx, salonID, staffID, mStart.UTC(), mEnd.UTC())
+	if err != nil {
+		return nil, err
+	}
+	wStart := mondayStart(loc, now)
+	wEnd := wStart.AddDate(0, 0, 7)
+	ws := wStart.UTC()
+	we := wEnd.UTC()
+	active := []string{"pending", "confirmed", "completed", "no_show"}
+	booked, err := s.dash.CountStaffAppointments(ctx, salonID, staffID, &ws, &we, active)
+	if err != nil {
+		return nil, err
+	}
+	capMin, err := s.staffWeekCapacityMinutes(ctx, salonID, staffID)
+	if err != nil {
+		return nil, err
+	}
+	slot := salon.SlotDurationMinutes
+	if slot < 1 {
+		slot = 30
+	}
+	maxSlots := capMin / slot
+	if maxSlots < 1 {
+		maxSlots = 1
+	}
+	loadPct := float64(booked) / float64(maxSlots) * 100
+	if loadPct > 100 {
+		loadPct = 100
+	}
+	if loadPct < 0 {
+		loadPct = 0
+	}
+	future := now.UTC()
+	upcoming, err := s.dash.CountStaffAppointments(ctx, salonID, staffID, &future, nil, []string{"pending", "confirmed"})
+	if err != nil {
+		return nil, err
+	}
+	return &StaffMetricsDTO{
+		Rating:            avg,
+		ReviewCount:       revN,
+		TotalVisits:       totalVisits,
+		RevenueMonthCents: rev,
+		LoadPercent:       loadPct,
+		UpcomingCount:     upcoming,
+	}, nil
+}
+
+func (s *dashboardService) ListStaffDashboard(ctx context.Context, salonID uuid.UUID) ([]StaffListRow, error) {
+	staffList, err := s.dash.ListStaff(ctx, salonID)
+	if err != nil {
+		return nil, err
+	}
+	lines, err := s.dash.StaffServiceLines(ctx, salonID)
+	if err != nil {
+		return nil, err
+	}
+	byStaff := make(map[uuid.UUID][]ServiceTag)
+	for _, ln := range lines {
+		byStaff[ln.StaffID] = append(byStaff[ln.StaffID], ServiceTag{ID: ln.ServiceID, Name: ln.ServiceName})
+	}
+	out := make([]StaffListRow, 0, len(staffList))
+	for _, st := range staffList {
+		m, err := s.StaffMetrics(ctx, salonID, st.ID, "month")
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, StaffListRow{
+			Staff:             st,
+			ConnectedServices: byStaff[st.ID],
+			LoadPercentWeek:   m.LoadPercent,
+			RatingAvg:         m.Rating,
+			ReviewCount:       m.ReviewCount,
+			CompletedVisits:   m.TotalVisits,
+			RevenueMonthCents: m.RevenueMonthCents,
+		})
+	}
+	return out, nil
+}
+
 func (s *dashboardService) GetStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID) ([]model.StaffWorkingHour, error) {
 	return s.dash.ListStaffWorkingHours(ctx, staffID, salonID)
 }
 
 func (s *dashboardService) PutStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID, rows []StaffWorkingHourInput) error {
-	out := make([]model.StaffWorkingHour, 0, len(rows))
-	for _, r := range rows {
-		if r.DayOfWeek < 0 || r.DayOfWeek > 6 {
-			return fmt.Errorf("invalid day_of_week")
-		}
-		o := model.StaffWorkingHour{
-			DayOfWeek: r.DayOfWeek,
-			IsDayOff:  r.IsDayOff,
-			OpensAt:   "10:00:00",
-			ClosesAt:  "18:00:00",
-		}
-		if !r.IsDayOff {
-			if r.OpensAt == "" || r.ClosesAt == "" {
-				return fmt.Errorf("opens_at and closes_at required when not day off")
-			}
-			o.OpensAt = normalizeTimeStr(r.OpensAt)
-			o.ClosesAt = normalizeTimeStr(r.ClosesAt)
-		}
-		out = append(out, o)
+	return s.PutStaffScheduleBundle(ctx, salonID, staffID, StaffSchedulePayload{Rows: rows})
+}
+
+func (s *dashboardService) GetStaffScheduleBundle(ctx context.Context, salonID, staffID uuid.UUID) (*StaffScheduleBundle, error) {
+	rows, err := s.dash.ListStaffWorkingHours(ctx, staffID, salonID)
+	if err != nil {
+		return nil, err
 	}
-	return s.dash.ReplaceStaffWorkingHours(ctx, staffID, salonID, out)
+	abs, err := s.dash.ListStaffAbsences(ctx, salonID, staffID)
+	if err != nil {
+		return nil, err
+	}
+	return &StaffScheduleBundle{Rows: rows, Absences: abs}, nil
+}
+
+func (s *dashboardService) PutStaffScheduleBundle(ctx context.Context, salonID, staffID uuid.UUID, in StaffSchedulePayload) error {
+	if len(in.Rows) > 0 {
+		out := make([]model.StaffWorkingHour, 0, len(in.Rows))
+		for _, r := range in.Rows {
+			if r.DayOfWeek < 0 || r.DayOfWeek > 6 {
+				return fmt.Errorf("invalid day_of_week")
+			}
+			o := model.StaffWorkingHour{
+				DayOfWeek: r.DayOfWeek,
+				IsDayOff:  r.IsDayOff,
+				OpensAt:   "10:00:00",
+				ClosesAt:  "18:00:00",
+			}
+			if !r.IsDayOff {
+				if r.OpensAt == "" || r.ClosesAt == "" {
+					return fmt.Errorf("opens_at and closes_at required when not day off")
+				}
+				o.OpensAt = normalizeTimeStr(r.OpensAt)
+				o.ClosesAt = normalizeTimeStr(r.ClosesAt)
+			}
+			bs, be := normalizeBreakPair(r.BreakStartsAt, r.BreakEndsAt)
+			o.BreakStartsAt = bs
+			o.BreakEndsAt = be
+			out = append(out, o)
+		}
+		if err := s.dash.ReplaceStaffWorkingHours(ctx, staffID, salonID, out); err != nil {
+			return err
+		}
+	}
+	if in.Absences != nil {
+		rows := make([]model.StaffAbsence, 0, len(in.Absences))
+		for _, a := range in.Absences {
+			s0, err := time.Parse("2006-01-02", a.StartsOn)
+			if err != nil {
+				return fmt.Errorf("invalid absence startsOn")
+			}
+			s1, err := time.Parse("2006-01-02", a.EndsOn)
+			if err != nil {
+				return fmt.Errorf("invalid absence endsOn")
+			}
+			kind := a.Kind
+			if kind == "" {
+				kind = "vacation"
+			}
+			rows = append(rows, model.StaffAbsence{
+				StaffID:  staffID,
+				StartsOn: s0,
+				EndsOn:   s1,
+				Kind:     kind,
+			})
+		}
+		if err := s.dash.ReplaceStaffAbsences(ctx, salonID, staffID, rows); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func dayBoundsInTZ(loc *time.Location, t time.Time) (startUTC, endUTC time.Time) {
@@ -521,6 +1186,16 @@ func (s *dashboardService) PutSalonProfile(ctx context.Context, salonID uuid.UUI
 	}
 	if in.CategoryID != nil {
 		salon.CategoryID = in.CategoryID
+	}
+	if in.SalonType != nil {
+		t := trimSpace(*in.SalonType)
+		if t == "" {
+			salon.SalonType = nil
+		} else if !servicecategory.ValidSalonType(t) {
+			return nil, fmt.Errorf("invalid salonType")
+		} else {
+			salon.SalonType = &t
+		}
 	}
 	if in.BusinessType != nil {
 		salon.BusinessType = in.BusinessType

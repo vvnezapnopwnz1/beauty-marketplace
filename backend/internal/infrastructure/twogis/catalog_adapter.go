@@ -75,7 +75,7 @@ func (a *CatalogAdapter) SearchNearby(ctx context.Context, in model.PlacesSearch
 	q.Set("search_is_query_text_complete", "true")
 	q.Set("search_nearby", "true")
 	q.Set("locale", in.Locale)
-	
+
 	if in.HasRating {
 		q.Set("has_rating", "true")
 	}

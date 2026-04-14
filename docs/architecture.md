@@ -331,7 +331,7 @@
 - `Salon`: `ID`, `ExternalIDs`, `NameOverride`, `AddressOverride`, `Timezone`, `Description`, `PhonePublic`, `OnlineBookingEnabled`, `CategoryID`, `BusinessType`, `Lat`, `Lng`, `Address`, `District`, `PhotoURL`, `Badge`, `CardGradient`, `Emoji`, `CachedRating`, `CachedReviewCount`, `CreatedAt`
 - `SalonMember`: `SalonID`, `UserID`, `Role`
 - `Staff`: `ID`, `SalonID`, `DisplayName`, `IsActive`, `CreatedAt`
-- `SalonService` (`services`): `ID`, `SalonID`, `Name`, `DurationMinutes`, `PriceCents`, `IsActive`, `SortOrder`
+- `SalonService` (`services`): `ID`, `SalonID`, `Name`, `DurationMinutes`, `PriceCents`, `IsActive`, `SortOrder`, `Category`, `CategorySlug`, `Description` (см. миграции dashboard)
 - `WorkingHour`: `ID`, `SalonID`, `DayOfWeek`, `OpensAt`, `ClosesAt`, `ValidFrom`, `ValidTo`
 - `SalonSubscription`: `ID`, `SalonID`, `Plan`, `Status`, `CurrentPeriodEnd`, `ExternalPaymentRef`, `PaymentProvider`, `CreatedAt`
 - `Appointment`: `ID`, `SalonID`, `ClientUserID`, `GuestName`, `GuestPhoneE164`, `StaffID`, `ServiceID`, `StartsAt`, `EndsAt`, `Status`, `ClientNote`, `CreatedAt`, `UpdatedAt`
@@ -370,7 +370,8 @@
 - `salon_external_ids`: `salon_id`, `source`, `external_id`, `meta`, `synced_at`
 - `salon_members`: `salon_id`, `user_id`, `role`
 - `staff`: `id`, `salon_id`, `display_name`, `is_active`, `created_at`
-- `services`: `id`, `salon_id`, `name`, `duration_minutes`, `price_cents`, `is_active`, `sort_order`
+- `services`: `id`, `salon_id`, `name`, `duration_minutes`, `price_cents`, `is_active`, `sort_order`, `category`, `category_slug`, `description`
+- `service_categories`: системный справочник категорий услуг (см. миграция `000010`)
 - `working_hours`: `id`, `salon_id`, `day_of_week`, `opens_at`, `closes_at`, `valid_from`, `valid_to`
 - `salon_subscriptions`: `id`, `salon_id`, `plan`, `status`, `current_period_end`, `external_payment_ref`, `payment_provider`, `created_at`
 - `appointments`: `id`, `salon_id`, `client_user_id`, `guest_name`, `guest_phone_e164`, `staff_id`, `service_id`, `starts_at`, `ends_at`, `status`, `client_note`, `created_at`, `updated_at`
@@ -513,6 +514,7 @@ Store: `frontend/src/app/store.ts`
 - `000005_guest_appointments.down.sql`: откат гостевых изменений
 - `000006_external_ids.up.sql`: нормализация внешних id в `salon_external_ids`, перенос данных из `salons.external_source/external_id`
 - `000006_external_ids.down.sql`: обратная денормализация в `salons.external_source/external_id`
+- Далее: `000007`–`000008` (графики staff/salon), `000009` (расширение dashboard: staff, services, слоты, перерывы), `000010` (`service_categories`, `salon_type`, `services.category_slug`), `000011` и др. — см. `backend/migrations/`.
 
 ### Ключевые индексы и constraints
 
@@ -582,7 +584,36 @@ Store: `frontend/src/app/store.ts`
 
 Бизнесово текущий поиск реализует воронку "охват внешнего рынка -> конверсия в собственную запись". Пользователь всегда получает выдачу по близости и категории даже если база собственных салонов неполная, потому что 2GIS выступает источником широкого покрытия; одновременно платформа поднимает приоритет "своих" салонов за счет обогащения карточек (ID внутри платформы, услуги, онлайн-запись), что позволяет конвертировать внешний трафик в внутренние бронирования. Категоризация (`hair`, `nails`, `spa`, etc.), гео-привязка, fallback на rubric-only и фильтрация спама уменьшают мусор в выдаче и повышают релевантность без ручной модерации каждой карточки. По сути, поиск уже работает как гибридный маркетплейс-слой: discovery приходит из внешнего справочника, монетизируемая ценность формируется там, где внешняя организация связана с внутренним salon-профилем, поддерживает онлайн-бронь и может развиваться в подписки/продвижение внутри платформы.
 
-## 7. Что НЕ реализовано (заглушки и TODO)
+## 7. Кабинет салона (Dashboard)
+
+### Бэкенд
+
+- **Регистрация в DI** (`backend/internal/app/app.go`): `persistence.NewDashboardRepository`, `service.NewDashboardService`, `controller.NewDashboardController`.
+- **Точка входа HTTP:** префикс `/api/v1/dashboard` (см. `DashboardController.DashboardRoutes` в [`dashboard_controller.go`](backend/internal/controller/dashboard_controller.go)); перед этим `auth.RequireAuth` и проверка членства в салоне.
+- **Логика:** [`service/dashboard.go`](backend/internal/service/dashboard.go); **персистенция:** [`dashboard_repository.go`](backend/internal/infrastructure/persistence/dashboard_repository.go); интерфейс [`repository/dashboard.go`](backend/internal/repository/dashboard.go).
+- **Данные:** таблица `service_categories` (системный каталог slug), поля `services.category_slug`, `salons.salon_type`, `salons.slot_duration_minutes`, `staff_services`, расширения staff/schedule — см. миграции `000009`–`000011` и [`docs/service-categories.md`](service-categories.md).
+
+**Типовые группы эндпоинтов (не исчерпывающе):**
+
+| Область | Методы и путь (под `/api/v1/dashboard`) |
+|--------|----------------------------------------|
+| Записи | `GET /appointments`, `POST /appointments`, `PUT /appointments/{id}`, `PATCH /appointments/{id}/status` |
+| Услуги | `GET/POST/PUT/DELETE /services`, связи staff–service |
+| Категории услуг | `GET /service-categories` (в т.ч. режим полного списка для валидации) |
+| Мастера, расписание, профиль | отдельные пути `/staff`, `/schedule`, `/profile`, bundle-роуты по необходимости |
+| Статистика | `GET /stats` |
+
+### Фронтенд
+
+- **Клиент API:** [`frontend/src/shared/api/dashboardApi.ts`](frontend/src/shared/api/dashboardApi.ts) — все вызовы кабинета.
+- **Корневой экран:** [`DashboardPage.tsx`](frontend/src/pages/dashboard/ui/DashboardPage.tsx) — секции через `?section=`: overview, calendar, appointments, services, staff, schedule, profile; вложенный маршрут `/dashboard/staff/:staffId` для карточки мастера.
+- **Услуги и категории:** [`views/ServicesView.tsx`](frontend/src/pages/dashboard/ui/views/ServicesView.tsx), [`modals/ServiceFormModal.tsx`](frontend/src/pages/dashboard/ui/modals/ServiceFormModal.tsx), [`lib/salonTypeOptions.ts`](frontend/src/pages/dashboard/lib/salonTypeOptions.ts).
+- **Записи:** [`DashboardAppointments.tsx`](frontend/src/pages/dashboard/ui/DashboardAppointments.tsx) — список, создание, редактирование (в т.ч. двойной щелчок по строке).
+- **Календарь:** [`DashboardCalendar.tsx`](frontend/src/pages/dashboard/ui/DashboardCalendar.tsx); сетки день/неделя/месяц — [`CalendarDayStaffGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarDayStaffGrid.tsx), [`CalendarWeekGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarWeekGrid.tsx), [`CalendarMonthGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarMonthGrid.tsx); расчёт позиций и длительности — [`lib/calendarGridUtils.ts`](frontend/src/pages/dashboard/lib/calendarGridUtils.ts) (таймлайн по локальному времени, `startsAt`/`endsAt`, пересечения событий в колонке).
+
+Подробнее для постановки задач агенту см. **`docs/status.md` §7**.
+
+## 8. Что НЕ реализовано (заглушки и TODO)
 
 ### Backend
 
@@ -611,7 +642,7 @@ Store: `frontend/src/app/store.ts`
   - fallback загрузки из `mockSalons` для не-UUID `id`
   - map section как placeholder
 - `frontend/src/pages/dashboard/ui/DashboardPage.tsx`
-  - mock data (`const now = 13`, placeholder sections "Раздел в разработке")
+  - часть подразделов кабинета всё ещё упрощается по UX (например drag-drop в календаре не подключён к API)
 - `frontend/src/features/location/ui/CityPickerModal.tsx`
   - статический `DEFAULT_CITIES`
 - hardcoded московские fallback-координаты:

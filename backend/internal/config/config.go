@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Config holds runtime configuration loaded from the environment.
@@ -18,6 +19,12 @@ type Config struct {
 	TwoGisRegionID int
 	// JWTSecret is the HMAC key for signing access tokens. Required.
 	JWTSecret string
+	// DevDemoSeed wipes and repopulates a fixed demo salon on API startup (local dev only).
+	// Env: DEV_DEMO_SEED=1 / true.
+	DevDemoSeed bool
+	// DevOTPBypass allows fixed code "1234" on verify when an active OTP exists (local dev only).
+	// Env: DEV_OTP_BYPASS=1 / true.
+	DevOTPBypass bool
 }
 
 // Load reads configuration from environment variables with defaults for local dev.
@@ -29,9 +36,11 @@ func Load() (*Config, error) {
 			"DATABASE_DSN",
 			"postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable",
 		),
-		TwoGisAPIKey:   os.Getenv("2GIS_API_KEY"),
-		TwoGisRegionID: getenvInt("2GIS_REGION_ID", 32),
-		JWTSecret: getenv("JWT_SECRET", "dev-secret-change-me-in-production"),
+		TwoGisAPIKey:   twoGisAPIKeyFromEnv(),
+		TwoGisRegionID: getenvIntFirst([]string{"2GIS_REGION_ID", "TWO_GIS_REGION_ID"}, 32),
+		JWTSecret:     getenv("JWT_SECRET", "dev-secret-change-me-in-production"),
+		DevDemoSeed:   getenvBool("DEV_DEMO_SEED", false),
+		DevOTPBypass:  getenvBool("DEV_OTP_BYPASS", false),
 	}
 	if cfg.HTTPAddr == "" {
 		return nil, fmt.Errorf("HTTP_ADDR must not be empty")
@@ -56,4 +65,39 @@ func getenvInt(key string, def int) int {
 		}
 	}
 	return def
+}
+
+// twoGisAPIKeyFromEnv reads Catalog API key. Names 2GIS_* work in Docker YAML but are not valid
+// shell identifiers; use TWO_GIS_API_KEY in zsh/bash (see docker-compose TWO_GIS_API_KEY → 2GIS_API_KEY).
+func twoGisAPIKeyFromEnv() string {
+	if v := os.Getenv("2GIS_API_KEY"); v != "" {
+		return v
+	}
+	return os.Getenv("TWO_GIS_API_KEY")
+}
+
+func getenvIntFirst(keys []string, def int) int {
+	for _, k := range keys {
+		if v := os.Getenv(k); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				return n
+			}
+		}
+	}
+	return def
+}
+
+func getenvBool(key string, def bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return def
+	}
 }

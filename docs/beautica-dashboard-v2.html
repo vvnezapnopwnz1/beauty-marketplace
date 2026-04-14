@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beautica — Dashboard для бизнеса v2</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#111;--surface:#1a1a1a;--card:#222;--card-hover:#2a2a2a;
+    --text:#f0eae3;--text2:#a89e94;--accent:#D8956B;--accent2:#c07a50;
+    --green:#6BCB77;--red:#FF6B6B;--blue:#4ECDC4;--purple:#B088F9;
+    --yellow:#FFD93D;--pink:#FF8FAB;
+    --radius:12px;--radius-sm:8px;
+  }
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+
+  /* NAV */
+  .nav{position:sticky;top:0;z-index:100;background:rgba(17,17,17,.92);backdrop-filter:blur(16px);border-bottom:1px solid #333;padding:0 24px}
+  .nav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:12px 0}
+  .nav-inner::-webkit-scrollbar{display:none}
+  .nav-logo{font-weight:700;font-size:18px;color:var(--accent);margin-right:16px;white-space:nowrap}
+  .tab{padding:8px 16px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);white-space:nowrap;transition:.2s;border:1px solid transparent}
+  .tab:hover{color:var(--text);background:#2a2a2a}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* SECTIONS */
+  .container{max-width:1200px;margin:0 auto;padding:32px 24px}
+  .section{display:none}
+  .section.active{display:block}
+
+  h1{font-size:32px;font-weight:700;margin-bottom:8px}
+  h2{font-size:22px;font-weight:600;margin:32px 0 16px;color:var(--accent)}
+  h3{font-size:17px;font-weight:600;margin:20px 0 10px}
+  .subtitle{color:var(--text2);font-size:15px;margin-bottom:32px}
+  p{margin-bottom:12px;color:var(--text2);font-size:14px}
+
+  /* CARDS */
+  .grid{display:grid;gap:16px}
+  .grid-2{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+  .grid-3{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .grid-4{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+
+  .card{background:var(--card);border-radius:var(--radius);padding:20px;border:1px solid #333;transition:.25s}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px);background:var(--card-hover)}
+
+  /* BADGES */
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:4px}
+  .badge-green{background:rgba(107,203,119,.15);color:var(--green)}
+  .badge-red{background:rgba(255,107,107,.15);color:var(--red)}
+  .badge-blue{background:rgba(78,205,196,.15);color:var(--blue)}
+  .badge-purple{background:rgba(176,136,249,.15);color:var(--purple)}
+  .badge-yellow{background:rgba(255,217,61,.15);color:var(--yellow)}
+  .badge-pink{background:rgba(255,143,171,.15);color:var(--pink)}
+  .badge-accent{background:rgba(216,149,107,.15);color:var(--accent)}
+  .badge-gray{background:rgba(255,255,255,.07);color:var(--text2)}
+
+  /* SCORE BAR */
+  .score-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .score-label{font-size:12px;color:var(--text2);width:100px;flex-shrink:0}
+  .score-bar-bg{flex:1;height:8px;background:#2a2a2a;border-radius:4px;overflow:hidden}
+  .score-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+  .score-value{font-size:12px;font-weight:600;width:36px;text-align:right}
+
+  /* MOCKUP DASHBOARD */
+  .mockup{background:var(--surface);border-radius:var(--radius);border:1px solid #333;overflow:hidden;margin:16px 0}
+  .mockup-topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#1e1e1e;border-bottom:1px solid #333}
+  .mockup-topbar-left{display:flex;align-items:center;gap:12px}
+  .mockup-topbar .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  .mockup-topbar-title{font-size:14px;font-weight:600}
+  .mockup-topbar-right{display:flex;gap:8px}
+  .mockup-btn{padding:5px 12px;border-radius:6px;font-size:12px;background:#333;border:none;color:var(--text2);cursor:pointer;transition:.15s;white-space:nowrap}
+  .mockup-btn:hover{background:#3a3a3a;color:var(--text)}
+  .mockup-btn.active{background:var(--accent);color:#fff}
+  .mockup-btn.danger{background:rgba(255,107,107,.15);color:var(--red)}
+
+  .mockup-body{display:flex;min-height:600px}
+  .mockup-sidebar{width:220px;background:#161616;border-right:1px solid #2a2a2a;padding:16px 0;flex-shrink:0}
+  .sidebar-item{padding:9px 20px;font-size:13px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s}
+  .sidebar-item:hover,.sidebar-item.active{background:rgba(216,149,107,.1);color:var(--accent)}
+  .sidebar-item.active{border-right:2px solid var(--accent)}
+  .sidebar-section{padding:12px 20px 6px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#555;font-weight:700}
+
+  .mockup-content{flex:1;padding:24px;overflow-y:auto}
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  .stat-card{background:var(--card);border-radius:var(--radius-sm);padding:16px;border:1px solid #2a2a2a}
+  .stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+  .stat-value{font-size:24px;font-weight:700;color:var(--text)}
+  .stat-change{font-size:11px;margin-top:4px}
+  .stat-up{color:var(--green)}
+  .stat-down{color:var(--red)}
+
+  .mini-chart{display:flex;align-items:end;gap:3px;height:40px;margin-top:8px}
+  .mini-bar{width:8px;border-radius:3px 3px 0 0;background:var(--accent);opacity:.6;transition:.2s}
+  .mini-bar:last-child{opacity:1}
+
+  .calendar-mock{display:grid;grid-template-columns:60px repeat(5,1fr);gap:1px;background:#2a2a2a;border-radius:var(--radius-sm);overflow:hidden;margin-top:16px}
+  .cal-header{background:#1e1e1e;padding:8px;font-size:11px;font-weight:600;text-align:center}
+  .cal-time{background:#161616;padding:6px 8px;font-size:11px;color:var(--text2);display:flex;align-items:center;justify-content:center}
+  .cal-cell{background:var(--card);padding:4px;min-height:48px;position:relative}
+  .cal-event{font-size:10px;padding:3px 6px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-event.booked{background:rgba(216,149,107,.2);color:var(--accent);border-left:2px solid var(--accent)}
+  .cal-event.confirmed{background:rgba(107,203,119,.15);color:var(--green);border-left:2px solid var(--green)}
+  .cal-event.pending{background:rgba(255,217,61,.15);color:var(--yellow);border-left:2px solid var(--yellow)}
+  .cal-event.blocked{background:rgba(255,107,107,.1);color:var(--red);border-left:2px solid var(--red)}
+
+  /* STAFF CARDS */
+  .staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:16px}
+  .staff-card{background:var(--card);border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;transition:.2s;cursor:pointer}
+  .staff-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .staff-card-header{padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #2a2a2a}
+  .staff-avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;position:relative}
+  .staff-online{position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--card);background:var(--green)}
+  .staff-name{font-size:14px;font-weight:600;margin-bottom:2px}
+  .staff-role{font-size:12px;color:var(--text2)}
+  .staff-card-body{padding:14px 16px}
+  .staff-services{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
+  .staff-service-tag{padding:3px 8px;border-radius:6px;font-size:11px;background:#1e1e1e;color:var(--text2);border:1px solid #333}
+  .staff-schedule-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px}
+  .staff-schedule-day{color:var(--text2);width:28px}
+  .staff-schedule-time{color:var(--text);font-weight:500}
+  .staff-schedule-off{color:#555;font-style:italic}
+  .staff-card-footer{padding:12px 16px;border-top:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between}
+  .staff-stats-row{display:flex;gap:16px}
+  .staff-stat{text-align:center}
+  .staff-stat-val{font-size:15px;font-weight:700;color:var(--text)}
+  .staff-stat-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+  .staff-load-bar{width:100%;height:4px;background:#2a2a2a;border-radius:2px;margin-top:4px;overflow:hidden}
+  .staff-load-fill{height:100%;border-radius:2px;background:var(--green)}
+
+  /* SCHEDULE SECTIONS */
+  .schedule-tabs{display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid #2a2a2a;padding-bottom:12px}
+  .sch-tab{padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:.2s}
+  .sch-tab:hover{color:var(--text);background:#2a2a2a}
+  .sch-tab.active{background:rgba(216,149,107,.15);color:var(--accent)}
+
+  .week-schedule-grid{display:grid;grid-template-columns:120px repeat(7,1fr);gap:1px;background:#2a2a2a;border-radius:10px;overflow:hidden;margin-top:16px}
+  .wsg-header{background:#1a1a1a;padding:10px 8px;font-size:11px;font-weight:600;text-align:center;color:var(--text2)}
+  .wsg-header.today{color:var(--accent)}
+  .wsg-label{background:#161616;padding:10px 12px;font-size:12px;color:var(--text2);display:flex;align-items:center}
+  .wsg-cell{background:var(--card);padding:8px;min-height:56px;display:flex;align-items:center;justify-content:center}
+  .wsg-cell.active-cell{background:rgba(107,203,119,.06)}
+  .wsg-cell.off-cell{background:rgba(255,107,107,.04)}
+  .wsg-time-block{background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--green);text-align:center;width:100%}
+  .wsg-off-block{background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--red);text-align:center;width:100%}
+  .wsg-break-block{background:rgba(255,217,61,.08);border:1px solid rgba(255,217,61,.2);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--yellow);text-align:center;width:100%}
+
+  .toggle-switch{position:relative;width:36px;height:20px;display:inline-block;flex-shrink:0}
+  .toggle-switch input{display:none}
+  .toggle-slider{position:absolute;inset:0;background:#333;border-radius:20px;cursor:pointer;transition:.2s}
+  .toggle-slider::before{content:'';position:absolute;width:14px;height:14px;background:#888;border-radius:50%;top:3px;left:3px;transition:.2s}
+  .toggle-switch input:checked+.toggle-slider{background:rgba(107,203,119,.3)}
+  .toggle-switch input:checked+.toggle-slider::before{background:var(--green);transform:translateX(16px)}
+
+  /* TIME PICKER ROW */
+  .time-picker-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1e1e1e}
+  .time-picker-day{font-size:13px;color:var(--text);width:90px;flex-shrink:0;font-weight:500}
+  .time-input{background:#1e1e1e;border:1px solid #333;border-radius:6px;padding:5px 10px;color:var(--text);font-size:12px;width:76px;text-align:center}
+  .time-sep{color:var(--text2);font-size:12px}
+
+  /* MODAL OVERLAY */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal{background:var(--surface);border:1px solid #333;border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.6)}
+  .modal-header{padding:24px 28px 18px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:2}
+  .modal-title{font-size:18px;font-weight:700}
+  .modal-close{width:32px;height:32px;border-radius:8px;background:#2a2a2a;border:none;color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+  .modal-close:hover{background:#333;color:var(--text)}
+  .modal-body{padding:24px 28px}
+  .modal-footer{padding:18px 28px;border-top:1px solid #2a2a2a;display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--surface)}
+
+  /* FORM ELEMENTS */
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .form-row.full{grid-template-columns:1fr}
+  .form-group{display:flex;flex-direction:column;gap:6px}
+  .form-label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+  .form-input{background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;transition:.15s}
+  .form-input:focus{border-color:var(--accent)}
+  .form-select{background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a89e94'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+  .form-textarea{background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;resize:vertical;min-height:80px;font-family:inherit;transition:.15s}
+  .form-textarea:focus{border-color:var(--accent)}
+  .form-section-title{font-size:13px;font-weight:700;color:var(--accent);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid #2a2a2a}
+
+  .services-picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .service-pick-tag{padding:5px 12px;border-radius:8px;font-size:12px;background:#1e1e1e;border:1px solid #333;color:var(--text2);cursor:pointer;transition:.15s}
+  .service-pick-tag.selected{background:rgba(216,149,107,.15);border-color:var(--accent);color:var(--accent)}
+
+  .avatar-picker{display:flex;gap:10px;align-items:center;margin-bottom:4px}
+  .avatar-preview{width:64px;height:64px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex-shrink:0}
+  .color-swatches{display:flex;gap:6px;flex-wrap:wrap}
+  .color-swatch{width:24px;height:24px;border-radius:50%;cursor:pointer;transition:.15s;border:2px solid transparent}
+  .color-swatch.selected{border-color:#fff;transform:scale(1.2)}
+
+  .btn{padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.15s}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent2)}
+  .btn-secondary{background:#2a2a2a;color:var(--text2)}
+  .btn-secondary:hover{background:#333;color:var(--text)}
+  .btn-danger{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.2)}
+  .btn-danger:hover{background:rgba(255,107,107,.25)}
+
+  /* STAFF DETAIL VIEW */
+  .staff-detail-header{display:flex;align-items:flex-start;gap:20px;margin-bottom:20px;padding:20px;background:var(--card);border-radius:12px;border:1px solid #2a2a2a}
+  .staff-detail-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;flex-shrink:0}
+  .staff-detail-info{flex:1}
+  .staff-detail-name{font-size:20px;font-weight:700;margin-bottom:4px}
+  .staff-detail-role{font-size:13px;color:var(--text2);margin-bottom:10px}
+  .staff-detail-actions{display:flex;gap:8px;margin-top:8px}
+
+  /* BACK BUTTON */
+  .back-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:#2a2a2a;color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:16px;border:none;transition:.15s}
+  .back-btn:hover{background:#333;color:var(--text)}
+
+  /* SECTION-ONLY modal preview */
+  .modal-preview-section{margin-top:40px;padding:32px 0 0;border-top:2px dashed #333}
+  .modal-preview-label{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#555;font-weight:700;margin-bottom:20px}
+
+  @media(max-width:768px){
+    .stat-row{grid-template-columns:repeat(2,1fr)}
+    .staff-grid{grid-template-columns:1fr}
+    .mockup-sidebar{width:180px}
+    .week-schedule-grid{grid-template-columns:80px repeat(7,1fr)}
+    .form-row{grid-template-columns:1fr}
+    h1{font-size:24px}
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">Beautica Business</div>
+    <div class="tab active" data-tab="mockup">🖥️ Мокап Дашборда</div>
+    <div class="tab" data-tab="modal-preview">👤 Форма Мастера</div>
+    <div class="tab" data-tab="notes">📝 Заметки по UI</div>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ==================== MOCKUP TAB ==================== -->
+<div class="section active" id="mockup">
+  <h1>Beautica — Dashboard Мокап v2</h1>
+  <p class="subtitle">Доработанные разделы: Мастера, Расписание, + полный интерактивный мокап</p>
+
+  <div class="mockup">
+    <div class="mockup-topbar">
+      <div class="mockup-topbar-left">
+        <div class="dot"></div>
+        <div class="mockup-topbar-title">Beautica Business — Студия Мария</div>
+      </div>
+      <div class="mockup-topbar-right">
+        <div class="mockup-btn">🔔 3</div>
+        <div class="mockup-btn">Мария К.</div>
+      </div>
+    </div>
+    <div class="mockup-body">
+      <!-- SIDEBAR -->
+      <div class="mockup-sidebar">
+        <div class="sidebar-section">Главное</div>
+        <div class="sidebar-item active" data-view="overview">📊 Обзор</div>
+        <div class="sidebar-item" data-view="calendar">📅 Календарь</div>
+        <div class="sidebar-item" data-view="appointments">📋 Записи</div>
+        <div class="sidebar-section">Управление</div>
+        <div class="sidebar-item" data-view="clients">👥 Клиенты</div>
+        <div class="sidebar-item" data-view="services">💇 Услуги</div>
+        <div class="sidebar-item" data-view="staff">👤 Мастера</div>
+        <div class="sidebar-item" data-view="schedule">🕐 Расписание</div>
+        <div class="sidebar-section">Маркетинг</div>
+        <div class="sidebar-item" data-view="analytics">📈 Аналитика</div>
+        <div class="sidebar-item" data-view="reviews">⭐ Отзывы</div>
+        <div class="sidebar-item" data-view="campaigns">📣 Кампании</div>
+        <div class="sidebar-section">Инструменты</div>
+        <div class="sidebar-item" data-view="inbox">💬 Сообщения</div>
+        <div class="sidebar-item" data-view="ai">🤖 AI-ассистент</div>
+        <div class="sidebar-item" data-view="settings">⚙️ Настройки</div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="mockup-content" id="mockupContent">
+
+        <!-- ===== OVERVIEW ===== -->
+        <div class="mockup-view active" id="view-overview">
+          <h3 style="margin-top:0;margin-bottom:16px">Добро пожаловать, Мария 👋</h3>
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="stat-label">Записей сегодня</div>
+              <div class="stat-value">12</div>
+              <div class="stat-change stat-up">↑ 3 vs вчера</div>
+              <div class="mini-chart"><div class="mini-bar" style="height:40%"></div><div class="mini-bar" style="height:60%"></div><div class="mini-bar" style="height:45%"></div><div class="mini-bar" style="height:80%"></div><div class="mini-bar" style="height:55%"></div><div class="mini-bar" style="height:70%"></div><div class="mini-bar" style="height:90%"></div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Новых за неделю</div>
+              <div class="stat-value">+28</div>
+              <div class="stat-change stat-up">↑ 12% vs прошл.</div>
+              <div class="mini-chart"><div class="mini-bar" style="height:30%"></div><div class="mini-bar" style="height:50%"></div><div class="mini-bar" style="height:65%"></div><div class="mini-bar" style="height:45%"></div><div class="mini-bar" style="height:70%"></div><div class="mini-bar" style="height:85%"></div><div class="mini-bar" style="height:80%"></div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Загрузка</div>
+              <div class="stat-value">74%</div>
+              <div class="stat-change stat-up">↑ 5%</div>
+              <div class="mini-chart"><div class="mini-bar" style="height:55%"></div><div class="mini-bar" style="height:60%"></div><div class="mini-bar" style="height:50%"></div><div class="mini-bar" style="height:70%"></div><div class="mini-bar" style="height:65%"></div><div class="mini-bar" style="height:78%"></div><div class="mini-bar" style="height:74%"></div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Рейтинг</div>
+              <div class="stat-value">4.8 ⭐</div>
+              <div class="stat-change stat-up">+2 отзыва</div>
+            </div>
+          </div>
+
+          <h3 style="color:var(--accent)">⚡ Требует внимания</h3>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,217,61,.08);padding:12px 16px;border-radius:8px;border-left:3px solid var(--yellow)">
+              <span style="font-size:20px">🟡</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">3 записи ждут подтверждения</div><div style="font-size:12px;color:var(--text2)">Алина К. — Стрижка, 14:00 · Ольга М. — Окрашивание, 15:30 · Дарья С. — Маникюр, 16:00</div></div>
+              <div class="mockup-btn active" style="font-size:11px">Подтвердить все</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,107,107,.08);padding:12px 16px;border-radius:8px;border-left:3px solid var(--red)">
+              <span style="font-size:20px">🔴</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Отмена: Марина Л. на 11:00</div><div style="font-size:12px;color:var(--text2)">Слот свободен. 2 клиента в waitlist на это время.</div></div>
+              <div class="mockup-btn active" style="font-size:11px">Предложить слот</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;background:rgba(176,136,249,.08);padding:12px 16px;border-radius:8px;border-left:3px solid var(--purple)">
+              <span style="font-size:20px">💤</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">5 клиентов давно не были</div><div style="font-size:12px;color:var(--text2)">Не записывались более 60 дней. Отправить напоминание?</div></div>
+              <div class="mockup-btn active" style="font-size:11px">Отправить</div>
+            </div>
+          </div>
+
+          <h3 style="color:var(--accent);margin-top:24px">📅 Сетка на сегодня</h3>
+          <div class="calendar-mock">
+            <div class="cal-header"></div><div class="cal-header">Анна</div><div class="cal-header">Мария</div><div class="cal-header">Катя</div><div class="cal-header">Ольга</div><div class="cal-header">Лена</div>
+            <div class="cal-time">10:00</div><div class="cal-cell"><div class="cal-event confirmed">Стрижка — Ирина</div></div><div class="cal-cell"><div class="cal-event confirmed">Окрашивание — Дарья</div></div><div class="cal-cell"><div class="cal-event pending">Маникюр — Оля</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Укладка — Нина</div></div>
+            <div class="cal-time">11:00</div><div class="cal-cell"><div class="cal-event confirmed">Мелирование — Алла</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Педикюр — Света</div></div><div class="cal-cell"><div class="cal-event blocked">❌ Отмена</div></div><div class="cal-cell"><div class="cal-event confirmed">Брови — Вика</div></div>
+            <div class="cal-time">12:00</div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event pending">Стрижка — Лена</div></div><div class="cal-cell"><div class="cal-event confirmed">Гель-лак — Таня</div></div><div class="cal-cell"><div class="cal-event confirmed">Наращивание — Юля</div></div><div class="cal-cell"></div>
+          </div>
+        </div>
+
+        <!-- ===== CALENDAR ===== -->
+        <div class="mockup-view" id="view-calendar" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="margin:0">Календарь — Неделя 14–18 апреля</h3>
+            <div class="mockup-btn active" style="font-size:12px">+ Новая запись</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div class="mockup-btn">‹</div>
+            <div class="mockup-btn active">Неделя</div>
+            <div class="mockup-btn">День</div>
+            <div class="mockup-btn">Месяц</div>
+            <div class="mockup-btn">›</div>
+            <div style="flex:1"></div>
+            <div class="mockup-btn">Все мастера ▾</div>
+          </div>
+          <div class="calendar-mock">
+            <div class="cal-header"></div><div class="cal-header">ПН 14</div><div class="cal-header" style="color:var(--accent)">ВТ 15 ●</div><div class="cal-header">СР 16</div><div class="cal-header">ЧТ 17</div><div class="cal-header">ПТ 18</div>
+            <div class="cal-time">09:00</div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Стрижка — Ирина</div></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event booked">Мелирование</div></div>
+            <div class="cal-time">10:00</div><div class="cal-cell"><div class="cal-event confirmed">Окрашивание</div></div><div class="cal-cell"><div class="cal-event confirmed">Укладка</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Укладка</div></div><div class="cal-cell"><div class="cal-event confirmed">Стрижка</div></div>
+            <div class="cal-time">11:00</div><div class="cal-cell"><div class="cal-event confirmed">Маникюр</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event pending">Брови</div></div><div class="cal-cell"><div class="cal-event confirmed">Педикюр</div></div><div class="cal-cell"><div class="cal-event confirmed">Стрижка</div></div>
+            <div class="cal-time">12:00</div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Гель-лак</div></div><div class="cal-cell"><div class="cal-event confirmed">Окрашивание</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event pending">Ресницы</div></div>
+            <div class="cal-time">13:00</div><div class="cal-cell"><div class="cal-event booked">Наращивание</div></div><div class="cal-cell"><div class="cal-event confirmed">Укладка</div></div><div class="cal-cell"><div class="cal-event confirmed">Маникюр</div></div><div class="cal-cell"><div class="cal-event booked">Стрижка</div></div><div class="cal-cell"></div>
+            <div class="cal-time">14:00</div><div class="cal-cell"><div class="cal-event confirmed">Стрижка — Алина</div></div><div class="cal-cell"><div class="cal-event pending">Окрашивание</div></div><div class="cal-cell"></div><div class="cal-cell"><div class="cal-event confirmed">Наращивание</div></div><div class="cal-cell"><div class="cal-event confirmed">Маникюр</div></div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text2)">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green);margin-right:4px"></span>Подтверждена</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--yellow);margin-right:4px"></span>Ожидает</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:4px"></span>Новая</span>
+          </div>
+          <p style="margin-top:10px;font-size:12px">💡 Клик на пустую ячейку → создать запись. Drag на событие → перенести.</p>
+        </div>
+
+        <!-- ===== APPOINTMENTS ===== -->
+        <div class="mockup-view" id="view-appointments" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="margin:0">Записи</h3>
+            <div class="mockup-btn active">+ Создать запись</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <div class="mockup-btn active">Сегодня</div>
+            <div class="mockup-btn">Завтра</div>
+            <div class="mockup-btn">Эта неделя</div>
+            <div class="mockup-btn">Все</div>
+            <div style="flex:1"></div>
+            <input type="text" placeholder="Поиск..." style="padding:6px 12px;border-radius:6px;border:1px solid #333;background:var(--bg);color:var(--text);font-size:12px;width:160px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:grid;grid-template-columns:80px 1fr 120px 100px 120px 90px;gap:12px;padding:8px 14px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #2a2a2a">
+              <span>Время</span><span>Клиент</span><span>Услуга</span><span>Мастер</span><span>Статус</span><span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:80px 1fr 120px 100px 120px 90px;gap:12px;padding:10px 14px;background:var(--card);border-radius:8px;align-items:center;font-size:13px">
+              <span style="font-weight:600;color:var(--accent)">10:00</span>
+              <div><div style="font-weight:600">Ирина Козлова</div><div style="font-size:11px;color:var(--text2)">+7 999 123-45-67</div></div>
+              <span>Стрижка</span>
+              <span style="color:var(--text2)">Анна</span>
+              <span><span class="badge badge-green">Подтверждена</span></span>
+              <div style="display:flex;gap:4px"><div class="mockup-btn" style="padding:4px 8px;font-size:11px">✏️</div><div class="mockup-btn danger" style="padding:4px 8px;font-size:11px">✗</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:80px 1fr 120px 100px 120px 90px;gap:12px;padding:10px 14px;background:var(--card);border-radius:8px;align-items:center;font-size:13px">
+              <span style="font-weight:600;color:var(--yellow)">11:30</span>
+              <div><div style="font-weight:600">Алина Морозова</div><div style="font-size:11px;color:var(--text2)">+7 916 987-65-43</div></div>
+              <span>Окрашивание</span>
+              <span style="color:var(--text2)">Мария</span>
+              <span><span class="badge badge-yellow">Ожидает</span></span>
+              <div style="display:flex;gap:4px"><div class="mockup-btn active" style="padding:4px 8px;font-size:11px">✓</div><div class="mockup-btn danger" style="padding:4px 8px;font-size:11px">✗</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:80px 1fr 120px 100px 120px 90px;gap:12px;padding:10px 14px;background:var(--card);border-radius:8px;align-items:center;font-size:13px">
+              <span style="font-weight:600;color:var(--accent)">14:00</span>
+              <div><div style="font-weight:600">Ольга Смирнова</div><div style="font-size:11px;color:var(--text2)">+7 903 555-12-34</div></div>
+              <span>Маникюр</span>
+              <span style="color:var(--text2)">Катя</span>
+              <span><span class="badge badge-accent">Новая</span></span>
+              <div style="display:flex;gap:4px"><div class="mockup-btn active" style="padding:4px 8px;font-size:11px">✓</div><div class="mockup-btn danger" style="padding:4px 8px;font-size:11px">✗</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:80px 1fr 120px 100px 120px 90px;gap:12px;padding:10px 14px;background:var(--card);border-radius:8px;align-items:center;font-size:13px;opacity:.6">
+              <span style="font-weight:600;color:var(--red)">11:00</span>
+              <div><div style="font-weight:600;text-decoration:line-through">Марина Липова</div><div style="font-size:11px;color:var(--text2)">+7 926 344-78-90</div></div>
+              <span>Педикюр</span>
+              <span style="color:var(--text2)">Лена</span>
+              <span><span class="badge badge-red">Отмена</span></span>
+              <div style="display:flex;gap:4px"><div class="mockup-btn" style="padding:4px 8px;font-size:11px">↺</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== CLIENTS ===== -->
+        <div class="mockup-view" id="view-clients" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin:0">Клиентская база</h3>
+            <div style="display:flex;gap:8px">
+              <div class="mockup-btn">Экспорт</div>
+              <div class="mockup-btn active">+ Добавить</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+            <input type="text" placeholder="Поиск по имени или телефону..." style="flex:1;padding:8px 14px;border-radius:8px;border:1px solid #333;background:var(--bg);color:var(--text);font-size:13px">
+            <div class="mockup-btn">Фильтры</div>
+            <div class="mockup-btn">Все ▾</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--card);border-radius:8px;border:1px solid #2a2a2a">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">ИК</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Ирина Козлова</div><div style="font-size:11px;color:var(--text2)">+7 999 123-45-67 · 8 визитов · Последний: 5 дней назад · Любимый мастер: Анна</div></div>
+              <span class="badge badge-green">Постоянная</span>
+              <div style="font-size:12px;color:var(--text2)">LTV: 24 500 ₽</div>
+              <div class="mockup-btn" style="font-size:11px">Записать</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--card);border-radius:8px;border:1px solid #2a2a2a">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff">АМ</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Алина Морозова</div><div style="font-size:11px;color:var(--text2)">+7 916 987-65-43 · 3 визита · Последний: 28 дней назад · Любимый мастер: Мария</div></div>
+              <span class="badge badge-yellow">Скоро уйдёт</span>
+              <div style="font-size:12px;color:var(--text2)">LTV: 9 200 ₽</div>
+              <div class="mockup-btn" style="font-size:11px">Напомнить</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--card);border-radius:8px;border:1px solid #2a2a2a">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff">ОС</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Ольга Смирнова</div><div style="font-size:11px;color:var(--text2)">+7 903 555-12-34 · 1 визит · Последний: 2 дня назад</div></div>
+              <span class="badge badge-blue">Новая</span>
+              <div style="font-size:12px;color:var(--text2)">LTV: 3 500 ₽</div>
+              <div class="mockup-btn" style="font-size:11px">Записать</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== SERVICES ===== -->
+        <div class="mockup-view" id="view-services" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="margin:0">Услуги</h3>
+            <div class="mockup-btn active">+ Добавить услугу</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <div class="mockup-btn active">Все</div>
+            <div class="mockup-btn">Волосы</div>
+            <div class="mockup-btn">Ногти</div>
+            <div class="mockup-btn">Брови/ресницы</div>
+            <div class="mockup-btn">Массаж</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:grid;grid-template-columns:1fr 80px 80px 120px 60px;gap:12px;padding:8px 14px;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #2a2a2a">
+              <span>Услуга</span><span>Цена</span><span>Длит.</span><span>Мастера</span><span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 80px 80px 120px 60px;gap:12px;padding:10px 14px;background:var(--card);border-radius:8px;align-items:center;font-size:13px">
+              <div><div style="font-weight:600">Женская стрижка</div><div style="font-size:11px;color:var(--text2)">Мытьё + укладка включено</div></div>
+              <span>от 2 500 ₽</span>
+              <span style="color:var(--text2)">60 мин</span>
+              <span style="color:var(--text2);font-size:12px">Анна, Мария</span>
+              <div class="mockup-btn" style="padding:4px 8px;font-size:11px">✏️</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 80px 80px 120px 60px;gap:12px;padding:10px 14px;background:var(--card);border-radius:8px;align-items:center;font-size:13px">
+              <div><div style="font-weight:600">Окрашивание</div><div style="font-size:11px;color:var(--text2)">Однотонное, корни</div></div>
+              <span>от 4 800 ₽</span>
+              <span style="color:var(--text2)">120 мин</span>
+              <span style="color:var(--text2);font-size:12px">Мария, Анна</span>
+              <div class="mockup-btn" style="padding:4px 8px;font-size:11px">✏️</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 80px 80px 120px 60px;gap:12px;padding:10px 14px;background:var(--card);border-radius:8px;align-items:center;font-size:13px">
+              <div><div style="font-weight:600">Маникюр + гель-лак</div><div style="font-size:11px;color:var(--text2)">Аппаратный</div></div>
+              <span>2 800 ₽</span>
+              <span style="color:var(--text2)">75 мин</span>
+              <span style="color:var(--text2);font-size:12px">Катя, Лена</span>
+              <div class="mockup-btn" style="padding:4px 8px;font-size:11px">✏️</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== STAFF (LIST) ===== -->
+        <div class="mockup-view" id="view-staff" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h3 style="margin:0">Мастера</h3>
+            <div style="display:flex;gap:8px">
+              <div class="mockup-btn">Все ▾</div>
+              <div class="mockup-btn active" onclick="showStaffModal()">+ Добавить мастера</div>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:16px">5 мастеров · Средняя загрузка: 69%</p>
+
+          <div class="staff-grid">
+
+            <!-- ANNA -->
+            <div class="staff-card" onclick="showStaffDetail('anna')">
+              <div class="staff-card-header">
+                <div class="staff-avatar" style="background:rgba(216,149,107,.2);color:var(--accent)">АС
+                  <div class="staff-online"></div>
+                </div>
+                <div style="flex:1">
+                  <div class="staff-name">Анна Соколова</div>
+                  <div class="staff-role">Стилист-колорист · Старший мастер</div>
+                </div>
+                <span class="badge badge-green">Работает</span>
+              </div>
+              <div class="staff-card-body">
+                <div style="font-size:11px;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">Услуги</div>
+                <div class="staff-services">
+                  <span class="staff-service-tag">Стрижка</span>
+                  <span class="staff-service-tag">Окрашивание</span>
+                  <span class="staff-service-tag">Мелирование</span>
+                  <span class="staff-service-tag">Укладка</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <div style="flex:1">
+                    <div style="font-size:11px;color:var(--text2);margin-bottom:3px">Пн–Пт: 10:00–20:00</div>
+                    <div style="font-size:11px;color:var(--text2)">Сб: 10:00–18:00 · Вс: выходной</div>
+                  </div>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:11px;color:var(--text2)">Загрузка этой неделей</span>
+                    <span style="font-size:11px;color:var(--green);font-weight:600">85%</span>
+                  </div>
+                  <div class="staff-load-bar"><div class="staff-load-fill" style="width:85%"></div></div>
+                </div>
+              </div>
+              <div class="staff-card-footer">
+                <div class="staff-stats-row">
+                  <div class="staff-stat"><div class="staff-stat-val">4.9 ⭐</div><div class="staff-stat-lbl">Рейтинг</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">126</div><div class="staff-stat-lbl">Визитов</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">58 400 ₽</div><div class="staff-stat-lbl">Выручка/мес</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- MARIA -->
+            <div class="staff-card" onclick="showStaffDetail('maria')">
+              <div class="staff-card-header">
+                <div class="staff-avatar" style="background:rgba(176,136,249,.2);color:var(--purple)">МВ
+                  <div class="staff-online"></div>
+                </div>
+                <div style="flex:1">
+                  <div class="staff-name">Мария Васильева</div>
+                  <div class="staff-role">Колорист · Мастер по окрашиванию</div>
+                </div>
+                <span class="badge badge-green">Работает</span>
+              </div>
+              <div class="staff-card-body">
+                <div style="font-size:11px;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">Услуги</div>
+                <div class="staff-services">
+                  <span class="staff-service-tag">Окрашивание</span>
+                  <span class="staff-service-tag">Мелирование</span>
+                  <span class="staff-service-tag">Тонирование</span>
+                  <span class="staff-service-tag">Балаяж</span>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="font-size:11px;color:var(--text2);margin-bottom:3px">Пн–Сб: 11:00–21:00</div>
+                  <div style="font-size:11px;color:var(--text2)">Вс: выходной</div>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:11px;color:var(--text2)">Загрузка этой неделей</span>
+                    <span style="font-size:11px;color:var(--green);font-weight:600">78%</span>
+                  </div>
+                  <div class="staff-load-bar"><div class="staff-load-fill" style="width:78%"></div></div>
+                </div>
+              </div>
+              <div class="staff-card-footer">
+                <div class="staff-stats-row">
+                  <div class="staff-stat"><div class="staff-stat-val">4.8 ⭐</div><div class="staff-stat-lbl">Рейтинг</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">98</div><div class="staff-stat-lbl">Визитов</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">47 200 ₽</div><div class="staff-stat-lbl">Выручка/мес</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- KATYA -->
+            <div class="staff-card" onclick="showStaffDetail('katya')">
+              <div class="staff-card-header">
+                <div class="staff-avatar" style="background:rgba(78,205,196,.2);color:var(--blue)">КН</div>
+                <div style="flex:1">
+                  <div class="staff-name">Катя Никитина</div>
+                  <div class="staff-role">Мастер маникюра и педикюра</div>
+                </div>
+                <span class="badge badge-yellow">Обед</span>
+              </div>
+              <div class="staff-card-body">
+                <div class="staff-services">
+                  <span class="staff-service-tag">Маникюр</span>
+                  <span class="staff-service-tag">Педикюр</span>
+                  <span class="staff-service-tag">Гель-лак</span>
+                  <span class="staff-service-tag">Наращивание</span>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="font-size:11px;color:var(--text2);margin-bottom:3px">Ср–Вс: 10:00–19:00</div>
+                  <div style="font-size:11px;color:var(--text2)">Пн–Вт: выходной</div>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:11px;color:var(--text2)">Загрузка этой неделей</span>
+                    <span style="font-size:11px;color:var(--accent);font-weight:600">72%</span>
+                  </div>
+                  <div class="staff-load-bar"><div class="staff-load-fill" style="width:72%;background:var(--accent)"></div></div>
+                </div>
+              </div>
+              <div class="staff-card-footer">
+                <div class="staff-stats-row">
+                  <div class="staff-stat"><div class="staff-stat-val">4.7 ⭐</div><div class="staff-stat-lbl">Рейтинг</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">84</div><div class="staff-stat-lbl">Визитов</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">32 600 ₽</div><div class="staff-stat-lbl">Выручка/мес</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- OLGA -->
+            <div class="staff-card" onclick="showStaffDetail('olga')">
+              <div class="staff-card-header">
+                <div class="staff-avatar" style="background:rgba(255,143,171,.2);color:var(--pink)">ОП</div>
+                <div style="flex:1">
+                  <div class="staff-name">Ольга Петрова</div>
+                  <div class="staff-role">Мастер бровей и ресниц</div>
+                </div>
+                <span class="badge badge-green">Работает</span>
+              </div>
+              <div class="staff-card-body">
+                <div class="staff-services">
+                  <span class="staff-service-tag">Брови</span>
+                  <span class="staff-service-tag">Ресницы</span>
+                  <span class="staff-service-tag">Ламинирование</span>
+                  <span class="staff-service-tag">Архитектура бровей</span>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="font-size:11px;color:var(--text2);margin-bottom:3px">Вт–Сб: 10:00–20:00</div>
+                  <div style="font-size:11px;color:var(--text2)">Пн, Вс: выходной</div>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:11px;color:var(--text2)">Загрузка этой неделей</span>
+                    <span style="font-size:11px;color:var(--red);font-weight:600">48%</span>
+                  </div>
+                  <div class="staff-load-bar"><div class="staff-load-fill" style="width:48%;background:var(--red)"></div></div>
+                </div>
+              </div>
+              <div class="staff-card-footer">
+                <div class="staff-stats-row">
+                  <div class="staff-stat"><div class="staff-stat-val">4.9 ⭐</div><div class="staff-stat-lbl">Рейтинг</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">52</div><div class="staff-stat-lbl">Визитов</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">19 800 ₽</div><div class="staff-stat-lbl">Выручка/мес</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- LENA -->
+            <div class="staff-card" onclick="showStaffDetail('lena')">
+              <div class="staff-card-header">
+                <div class="staff-avatar" style="background:rgba(255,217,61,.2);color:var(--yellow)">ЛИ</div>
+                <div style="flex:1">
+                  <div class="staff-name">Лена Иванова</div>
+                  <div class="staff-role">Мастер маникюра</div>
+                </div>
+                <span class="badge badge-gray">Выходной</span>
+              </div>
+              <div class="staff-card-body">
+                <div class="staff-services">
+                  <span class="staff-service-tag">Маникюр</span>
+                  <span class="staff-service-tag">Покрытие</span>
+                  <span class="staff-service-tag">Дизайн ногтей</span>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="font-size:11px;color:var(--text2)">Пн–Чт: 10:00–18:00 · Пт–Вс: выходной</div>
+                </div>
+                <div style="margin-top:10px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:11px;color:var(--text2)">Загрузка этой неделей</span>
+                    <span style="font-size:11px;color:var(--accent);font-weight:600">65%</span>
+                  </div>
+                  <div class="staff-load-bar"><div class="staff-load-fill" style="width:65%;background:var(--accent)"></div></div>
+                </div>
+              </div>
+              <div class="staff-card-footer">
+                <div class="staff-stats-row">
+                  <div class="staff-stat"><div class="staff-stat-val">4.6 ⭐</div><div class="staff-stat-lbl">Рейтинг</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">67</div><div class="staff-stat-lbl">Визитов</div></div>
+                  <div class="staff-stat"><div class="staff-stat-val">23 400 ₽</div><div class="staff-stat-lbl">Выручка/мес</div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ===== STAFF DETAIL ===== -->
+        <div class="mockup-view" id="view-staff-detail" style="display:none">
+          <button class="back-btn" onclick="goBack('staff')">← Назад к мастерам</button>
+          <div class="staff-detail-header">
+            <div class="staff-detail-avatar" style="background:rgba(216,149,107,.2);color:var(--accent)" id="detail-avatar">АС</div>
+            <div class="staff-detail-info">
+              <div class="staff-detail-name" id="detail-name">Анна Соколова</div>
+              <div class="staff-detail-role" id="detail-role">Стилист-колорист · Старший мастер</div>
+              <div style="display:flex;gap:12px;margin-top:8px">
+                <div class="staff-stat"><div class="staff-stat-val" style="font-size:18px">4.9 ⭐</div><div class="staff-stat-lbl">Рейтинг</div></div>
+                <div class="staff-stat"><div class="staff-stat-val" style="font-size:18px">126</div><div class="staff-stat-lbl">Визитов</div></div>
+                <div class="staff-stat"><div class="staff-stat-val" style="font-size:18px">58 400 ₽</div><div class="staff-stat-lbl">Выручка/мес</div></div>
+                <div class="staff-stat"><div class="staff-stat-val" style="font-size:18px">85%</div><div class="staff-stat-lbl">Загрузка</div></div>
+              </div>
+              <div class="staff-detail-actions">
+                <div class="mockup-btn active" onclick="showStaffModal()">✏️ Редактировать</div>
+                <div class="mockup-btn">📅 Расписание</div>
+                <div class="mockup-btn">📊 Аналитика</div>
+                <div class="mockup-btn danger">⛔ Деактивировать</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Контактная информация</div>
+              <div style="font-size:13px;margin-bottom:6px;color:var(--text2)">📱 <span style="color:var(--text)">+7 916 234-56-78</span></div>
+              <div style="font-size:13px;margin-bottom:6px;color:var(--text2)">✈️ Telegram: <span style="color:var(--text)">@anna_stylist</span></div>
+              <div style="font-size:13px;color:var(--text2)">📅 В команде с: <span style="color:var(--text)">Март 2023</span></div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Специализация</div>
+              <div class="staff-services">
+                <span class="staff-service-tag">Стрижка</span>
+                <span class="staff-service-tag">Окрашивание</span>
+                <span class="staff-service-tag">Мелирование</span>
+                <span class="staff-service-tag">Укладка</span>
+                <span class="staff-service-tag">Балаяж</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">График на этой неделе</div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text2);margin-bottom:4px">ПН</div>
+                <div style="background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:6px;padding:6px 2px;font-size:10px;color:var(--green)">10–20</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--accent);margin-bottom:4px">ВТ ●</div>
+                <div style="background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:6px;padding:6px 2px;font-size:10px;color:var(--green)">10–20</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text2);margin-bottom:4px">СР</div>
+                <div style="background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:6px;padding:6px 2px;font-size:10px;color:var(--green)">10–20</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text2);margin-bottom:4px">ЧТ</div>
+                <div style="background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:6px;padding:6px 2px;font-size:10px;color:var(--green)">10–20</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text2);margin-bottom:4px">ПТ</div>
+                <div style="background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:6px;padding:6px 2px;font-size:10px;color:var(--green)">10–20</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text2);margin-bottom:4px">СБ</div>
+                <div style="background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:6px;padding:6px 2px;font-size:10px;color:var(--green)">10–18</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:10px;color:var(--text2);margin-bottom:4px">ВС</div>
+                <div style="background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);border-radius:6px;padding:6px 2px;font-size:10px;color:var(--red)">Вых.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Ближайшие записи</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg);border-radius:8px">
+                <span style="font-size:12px;font-weight:600;color:var(--accent);width:70px">Сег. 14:00</span>
+                <div style="flex:1;font-size:12px">Ирина Козлова — Стрижка (60 мин)</div>
+                <span class="badge badge-green" style="font-size:10px">Подтверждена</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg);border-radius:8px">
+                <span style="font-size:12px;font-weight:600;color:var(--accent);width:70px">Сег. 16:00</span>
+                <div style="flex:1;font-size:12px">Дарья Семёнова — Окрашивание (120 мин)</div>
+                <span class="badge badge-yellow" style="font-size:10px">Ожидает</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--bg);border-radius:8px">
+                <span style="font-size:12px;font-weight:600;color:var(--text2);width:70px">Завтра 10:00</span>
+                <div style="flex:1;font-size:12px">Наталья Кузова — Стрижка + укладка</div>
+                <span class="badge badge-accent" style="font-size:10px">Новая</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== SCHEDULE ===== -->
+        <div class="mockup-view" id="view-schedule" style="display:none">
+          <h3 style="margin-top:0;margin-bottom:16px">Расписание</h3>
+
+          <div class="schedule-tabs">
+            <div class="sch-tab active" onclick="switchSchTab('salon', this)">🏠 Салон (общее)</div>
+            <div class="sch-tab" onclick="switchSchTab('anna', this)">Анна С.</div>
+            <div class="sch-tab" onclick="switchSchTab('maria', this)">Мария В.</div>
+            <div class="sch-tab" onclick="switchSchTab('katya', this)">Катя Н.</div>
+            <div class="sch-tab" onclick="switchSchTab('olga', this)">Ольга П.</div>
+            <div class="sch-tab" onclick="switchSchTab('lena', this)">Лена И.</div>
+          </div>
+
+          <!-- SALON SCHEDULE -->
+          <div id="sch-salon" class="sch-view">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div>
+                <div style="font-size:14px;font-weight:600">Рабочие часы салона</div>
+                <div style="font-size:12px;color:var(--text2);margin-top:2px">Базовые часы. Мастера могут иметь свои отличные от этих часы.</div>
+              </div>
+              <div class="mockup-btn active">Сохранить</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div class="time-picker-row">
+                <span class="time-picker-day">Понедельник</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="21:00">
+                <span style="font-size:12px;color:var(--text2);margin-left:8px">Обед:</span>
+                <input class="time-input" value="14:00"> <span class="time-sep">—</span> <input class="time-input" value="15:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Вторник</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="21:00">
+                <span style="font-size:12px;color:var(--text2);margin-left:8px">Обед:</span>
+                <input class="time-input" value="14:00"> <span class="time-sep">—</span> <input class="time-input" value="15:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Среда</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="21:00">
+                <span style="font-size:12px;color:var(--text2);margin-left:8px">Обед:</span>
+                <input class="time-input" value="14:00"> <span class="time-sep">—</span> <input class="time-input" value="15:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Четверг</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="21:00">
+                <span style="font-size:12px;color:var(--text2);margin-left:8px">Обед:</span>
+                <input class="time-input" value="14:00"> <span class="time-sep">—</span> <input class="time-input" value="15:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Пятница</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="21:00">
+                <span style="font-size:12px;color:var(--text2);margin-left:8px">Обед:</span>
+                <input class="time-input" value="14:00"> <span class="time-sep">—</span> <input class="time-input" value="15:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Суббота</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="19:00">
+                <span style="font-size:12px;color:var(--text2);margin-left:8px">Обед:</span>
+                <input class="time-input" value="13:00"> <span class="time-sep">—</span> <input class="time-input" value="14:00">
+              </div>
+              <div class="time-picker-row" style="border-bottom:none">
+                <span class="time-picker-day">Воскресенье</span>
+                <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+                <span style="font-size:12px;color:var(--red);margin-left:4px">Выходной</span>
+              </div>
+            </div>
+
+            <div style="margin-top:20px">
+              <div style="font-size:14px;font-weight:600;margin-bottom:8px">Праздники и особые дни</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div style="padding:6px 12px;border-radius:8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);font-size:12px;color:var(--red)">1 мая — Выходной</div>
+                <div style="padding:6px 12px;border-radius:8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);font-size:12px;color:var(--red)">9 мая — Выходной</div>
+                <div class="mockup-btn">+ Добавить</div>
+              </div>
+            </div>
+
+            <div style="margin-top:20px">
+              <div style="font-size:14px;font-weight:600;margin-bottom:4px">Длительность слота записи</div>
+              <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Минимальный интервал между записями на одного мастера</div>
+              <div style="display:flex;gap:8px">
+                <div class="mockup-btn">15 мин</div>
+                <div class="mockup-btn active">30 мин</div>
+                <div class="mockup-btn">60 мин</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MASTER SCHEDULE (individual) -->
+          <div id="sch-anna" class="sch-view" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <div style="width:40px;height:40px;border-radius:50%;background:rgba(216,149,107,.2);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700">АС</div>
+              <div>
+                <div style="font-size:14px;font-weight:600">Анна Соколова — Индивидуальное расписание</div>
+                <div style="font-size:12px;color:var(--text2)">Отличия от базового расписания салона выделены</div>
+              </div>
+              <div style="flex:1"></div>
+              <div class="mockup-btn">Сбросить к базовому</div>
+              <div class="mockup-btn active">Сохранить</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div class="time-picker-row">
+                <span class="time-picker-day">Понедельник</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="20:00">
+                <span style="font-size:11px;color:var(--yellow);margin-left:8px">≠ салон</span>
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Вторник</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="20:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Среда</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="20:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Четверг</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="20:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Пятница</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="20:00">
+              </div>
+              <div class="time-picker-row">
+                <span class="time-picker-day">Суббота</span>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                <input class="time-input" value="10:00"> <span class="time-sep">—</span> <input class="time-input" value="18:00">
+              </div>
+              <div class="time-picker-row" style="border-bottom:none">
+                <span class="time-picker-day">Воскресенье</span>
+                <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+                <span style="font-size:12px;color:var(--red);margin-left:4px">Выходной</span>
+              </div>
+            </div>
+            <div style="margin-top:16px">
+              <div style="font-size:14px;font-weight:600;margin-bottom:8px">Отпуск / Больничный / Особые дни</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div style="padding:6px 12px;border-radius:8px;background:rgba(78,205,196,.1);border:1px solid rgba(78,205,196,.2);font-size:12px;color:var(--blue)">20–24 мая — Отпуск</div>
+                <div class="mockup-btn">+ Добавить отсутствие</div>
+              </div>
+            </div>
+
+            <!-- WEEK OVERVIEW -->
+            <div style="margin-top:16px">
+              <div style="font-size:14px;font-weight:600;margin-bottom:8px">Обзор недели — апрель 2026</div>
+              <div class="week-schedule-grid" style="grid-template-columns:100px repeat(7,1fr)">
+                <div class="wsg-header">Мастер</div>
+                <div class="wsg-header today">ПН 14</div>
+                <div class="wsg-header today">ВТ 15</div>
+                <div class="wsg-header">СР 16</div>
+                <div class="wsg-header">ЧТ 17</div>
+                <div class="wsg-header">ПТ 18</div>
+                <div class="wsg-header">СБ 19</div>
+                <div class="wsg-header">ВС 20</div>
+
+                <div class="wsg-label" style="font-size:11px;font-weight:600;color:var(--accent)">Анна С.</div>
+                <div class="wsg-cell active-cell"><div class="wsg-time-block">10–20</div></div>
+                <div class="wsg-cell active-cell"><div class="wsg-time-block">10–20</div></div>
+                <div class="wsg-cell active-cell"><div class="wsg-time-block">10–20</div></div>
+                <div class="wsg-cell active-cell"><div class="wsg-time-block">10–20</div></div>
+                <div class="wsg-cell active-cell"><div class="wsg-time-block">10–20</div></div>
+                <div class="wsg-cell active-cell"><div class="wsg-time-block">10–18</div></div>
+                <div class="wsg-cell off-cell"><div class="wsg-off-block">Вых.</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OTHER MASTERS (same structure shown with diff data) -->
+          <div id="sch-maria" class="sch-view" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <div style="width:40px;height:40px;border-radius:50%;background:rgba(176,136,249,.2);color:var(--purple);display:flex;align-items:center;justify-content:center;font-weight:700">МВ</div>
+              <div><div style="font-size:14px;font-weight:600">Мария Васильева — Индивидуальное расписание</div><div style="font-size:12px;color:var(--text2)">Пн–Сб: 11:00–21:00 · Вс: выходной</div></div>
+              <div style="flex:1"></div>
+              <div class="mockup-btn active">Сохранить</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div class="time-picker-row"><span class="time-picker-day">Понедельник</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="11:00"><span class="time-sep">—</span><input class="time-input" value="21:00"><span style="font-size:11px;color:var(--yellow);margin-left:8px">≠ салон</span></div>
+              <div class="time-picker-row"><span class="time-picker-day">Вторник</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="11:00"><span class="time-sep">—</span><input class="time-input" value="21:00"></div>
+              <div class="time-picker-row"><span class="time-picker-day">Среда</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="11:00"><span class="time-sep">—</span><input class="time-input" value="21:00"></div>
+              <div class="time-picker-row"><span class="time-picker-day">Четверг</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="11:00"><span class="time-sep">—</span><input class="time-input" value="21:00"></div>
+              <div class="time-picker-row"><span class="time-picker-day">Пятница</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="11:00"><span class="time-sep">—</span><input class="time-input" value="21:00"></div>
+              <div class="time-picker-row"><span class="time-picker-day">Суббота</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="11:00"><span class="time-sep">—</span><input class="time-input" value="20:00"></div>
+              <div class="time-picker-row" style="border-bottom:none"><span class="time-picker-day">Воскресенье</span><label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label><span style="font-size:12px;color:var(--red);margin-left:4px">Выходной</span></div>
+            </div>
+          </div>
+          <div id="sch-katya" class="sch-view" style="display:none">
+            <div style="padding:16px;text-align:center;color:var(--text2);font-size:13px">Выберите дни для Кати Никитиной (Ср–Вс)</div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div class="time-picker-row"><span class="time-picker-day">Понедельник</span><label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label><span style="font-size:12px;color:var(--red);margin-left:4px">Выходной</span></div>
+              <div class="time-picker-row"><span class="time-picker-day">Вторник</span><label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label><span style="font-size:12px;color:var(--red);margin-left:4px">Выходной</span></div>
+              <div class="time-picker-row"><span class="time-picker-day">Среда</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="19:00"></div>
+              <div class="time-picker-row"><span class="time-picker-day">Четверг</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="19:00"></div>
+              <div class="time-picker-row"><span class="time-picker-day">Пятница</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="19:00"></div>
+              <div class="time-picker-row"><span class="time-picker-day">Суббота</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="19:00"></div>
+              <div class="time-picker-row" style="border-bottom:none"><span class="time-picker-day">Воскресенье</span><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label><input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="18:00"></div>
+            </div>
+          </div>
+          <div id="sch-olga" class="sch-view" style="display:none"><div style="padding:16px;text-align:center;color:var(--text2)">Расписание Ольги Петровой (аналогичная форма)</div></div>
+          <div id="sch-lena" class="sch-view" style="display:none"><div style="padding:16px;text-align:center;color:var(--text2)">Расписание Лены Ивановой (аналогичная форма)</div></div>
+        </div>
+
+        <!-- ===== ANALYTICS ===== -->
+        <div class="mockup-view" id="view-analytics" style="display:none">
+          <h3 style="margin-top:0">📈 Аналитика</h3>
+          <div class="stat-row">
+            <div class="stat-card"><div class="stat-label">Выручка (апрель)</div><div class="stat-value">187 500 ₽</div><div class="stat-change stat-up">↑ 18% vs март</div></div>
+            <div class="stat-card"><div class="stat-label">Всего записей</div><div class="stat-value">142</div><div class="stat-change stat-up">↑ 8%</div></div>
+            <div class="stat-card"><div class="stat-label">No-show</div><div class="stat-value">4.2%</div><div class="stat-change stat-down">↓ 1.3%</div></div>
+            <div class="stat-card"><div class="stat-label">Возвращаемость</div><div class="stat-value">68%</div><div class="stat-change stat-up">↑ 3%</div></div>
+          </div>
+          <h3 style="color:var(--accent)">Загрузка мастеров</h3>
+          <div style="margin-top:12px">
+            <div class="score-row"><div class="score-label">Анна</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:85%;background:var(--green)"></div></div><div class="score-value" style="color:var(--green)">85%</div></div>
+            <div class="score-row"><div class="score-label">Мария</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:78%;background:var(--green)"></div></div><div class="score-value" style="color:var(--green)">78%</div></div>
+            <div class="score-row"><div class="score-label">Катя</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:72%;background:var(--accent)"></div></div><div class="score-value" style="color:var(--accent)">72%</div></div>
+            <div class="score-row"><div class="score-label">Лена</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:65%;background:var(--accent)"></div></div><div class="score-value" style="color:var(--accent)">65%</div></div>
+            <div class="score-row"><div class="score-label">Ольга</div><div class="score-bar-bg"><div class="score-bar-fill" style="width:48%;background:var(--red)"></div></div><div class="score-value" style="color:var(--red)">48%</div></div>
+          </div>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);padding:8px 12px;border-radius:8px;margin-top:4px">
+            <span style="font-size:12px;color:var(--red)">⚠️ Ольга загружена на 48% — рассмотрите акцию или перераспределение клиентов</span>
+          </div>
+        </div>
+
+        <!-- ===== REVIEWS ===== -->
+        <div class="mockup-view" id="view-reviews" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="margin:0">⭐ Отзывы</h3>
+            <div style="display:flex;gap:8px">
+              <div class="mockup-btn active">Новые (2)</div>
+              <div class="mockup-btn">Все</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">ИК</div>
+                <div><div style="font-size:13px;font-weight:600">Ирина Козлова</div><div style="font-size:11px;color:var(--text2)">Стрижка у Анны · 10 апреля</div></div>
+                <div style="margin-left:auto;font-size:14px">⭐⭐⭐⭐⭐</div>
+              </div>
+              <div style="font-size:13px;color:var(--text2);margin-bottom:12px">«Анна как всегда на высоте! Очень точно поняла что хочу, результат превзошёл ожидания. Всем советую!»</div>
+              <div style="display:flex;gap:8px">
+                <div class="mockup-btn active" style="font-size:11px">Ответить</div>
+                <span class="badge badge-green">Верифицирован</span>
+              </div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">НК</div>
+                <div><div style="font-size:13px;font-weight:600">Наталья Козлова</div><div style="font-size:11px;color:var(--text2)">Маникюр у Кати · 8 апреля</div></div>
+                <div style="margin-left:auto;font-size:14px">⭐⭐⭐⭐</div>
+              </div>
+              <div style="font-size:13px;color:var(--text2);margin-bottom:12px">«Хорошая работа, всё аккуратно. Единственное — немного долго ждала очереди.»</div>
+              <div style="display:flex;gap:8px">
+                <div class="mockup-btn active" style="font-size:11px">Ответить</div>
+                <span class="badge badge-green">Верифицирован</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== CAMPAIGNS ===== -->
+        <div class="mockup-view" id="view-campaigns" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="margin:0">📣 Маркетинг-кампании</h3>
+            <div class="mockup-btn active">+ Создать кампанию</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid #2a2a2a;display:flex;align-items:center;gap:12px">
+              <span style="font-size:20px">⏰</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Реактивация «спящих» клиентов</div><div style="font-size:12px;color:var(--text2)">Клиент не был 60+ дней → Telegram «Скучаем! Скидка 15%»</div></div>
+              <span class="badge badge-green">Активна</span>
+              <div style="font-size:12px;color:var(--text2)">5 отправлено · 2 открыли</div>
+              <div class="mockup-btn" style="font-size:11px">✏️</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid #2a2a2a;display:flex;align-items:center;gap:12px">
+              <span style="font-size:20px">🎂</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">День рождения</div><div style="font-size:12px;color:var(--text2)">За 3 дня до ДР → поздравление + промокод 10%</div></div>
+              <span class="badge badge-green">Активна</span>
+              <div style="font-size:12px;color:var(--text2)">12 отправлено · 8 открыли</div>
+              <div class="mockup-btn" style="font-size:11px">✏️</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid #2a2a2a;display:flex;align-items:center;gap:12px;opacity:.7">
+              <span style="font-size:20px">⭐</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Запрос отзыва</div><div style="font-size:12px;color:var(--text2)">Через 24ч после визита → «Как всё прошло? Оставьте отзыв»</div></div>
+              <span class="badge badge-gray">Пауза</span>
+              <div class="mockup-btn active" style="font-size:11px">Включить</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== INBOX ===== -->
+        <div class="mockup-view" id="view-inbox" style="display:none">
+          <h3 style="margin-top:0">💬 Unified Inbox</h3>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div class="mockup-btn active">Все</div>
+            <div class="mockup-btn">✈️ Telegram</div>
+            <div class="mockup-btn">W WhatsApp</div>
+          </div>
+          <div style="display:grid;grid-template-columns:280px 1fr;gap:1px;background:#2a2a2a;border-radius:8px;overflow:hidden;min-height:300px">
+            <div style="background:var(--card);padding:8px">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(216,149,107,.1);border-radius:8px;margin-bottom:4px;cursor:pointer">
+                <div style="position:relative"><div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px">ИК</div><div style="position:absolute;bottom:-1px;right:-1px;width:12px;height:12px;border-radius:50%;background:#0088cc;border:2px solid var(--card);font-size:7px;display:flex;align-items:center;justify-content:center">✈</div></div>
+                <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">Ирина Козлова</div><div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Можно перенести на 15:00?</div></div>
+                <div style="font-size:10px;color:var(--text2)">2м</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer">
+                <div style="position:relative"><div style="width:32px;height:32px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">АМ</div><div style="position:absolute;bottom:-1px;right:-1px;width:12px;height:12px;border-radius:50%;background:#25D366;border:2px solid var(--card);font-size:7px;display:flex;align-items:center;justify-content:center">W</div></div>
+                <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">Алина Морозова</div><div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Спасибо, всё понравилось!</div></div>
+                <div style="font-size:10px;color:var(--text2)">1ч</div>
+              </div>
+            </div>
+            <div style="background:var(--bg);padding:16px;display:flex;flex-direction:column;justify-content:space-between">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #2a2a2a">
+                  <strong style="font-size:13px">Ирина Козлова</strong>
+                  <span class="badge badge-blue" style="font-size:10px">Telegram</span>
+                  <span style="font-size:11px;color:var(--text2)">· Запись: Стрижка, сегодня 14:00</span>
+                </div>
+                <div style="font-size:13px;color:var(--text2);background:#2a2a2a;padding:10px;border-radius:8px;margin-bottom:8px">Можно перенести на 15:00? Опаздываю немного 🙏</div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <input type="text" placeholder="Ответить..." style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #333;background:var(--card);color:var(--text);font-size:12px">
+                <div class="mockup-btn active">↑</div>
+                <div class="mockup-btn">Перенести</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== AI ===== -->
+        <div class="mockup-view" id="view-ai" style="display:none">
+          <h3 style="margin-top:0">🤖 AI-ассистент Beautica</h3>
+          <p style="font-size:12px;margin-bottom:16px">Задайте вопрос о вашем бизнесе на обычном языке</p>
+          <div style="background:var(--bg);border-radius:12px;padding:16px;border:1px solid #2a2a2a;margin-bottom:12px">
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">👤</div>
+              <div style="background:#2a2a2a;padding:10px 14px;border-radius:10px;font-size:13px">Какой мастер загружен меньше всего на этой неделе?</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">🤖</div>
+              <div style="background:rgba(176,136,249,.1);padding:10px 14px;border-radius:10px;font-size:13px;border:1px solid rgba(176,136,249,.2)">
+                <strong>Ольга</strong> загружена на <strong>48%</strong> (6 из 12.5 слотов). Это на 26% ниже средней загрузки.<br><br>
+                💡 <em>Рекомендация: акция «-15% на услуги Ольги в среду и четверг» — у неё 4 свободных слота.</em>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <div style="padding:6px 12px;border-radius:8px;font-size:11px;background:#2a2a2a;color:var(--text2);cursor:pointer">Выручка за месяц</div>
+            <div style="padding:6px 12px;border-radius:8px;font-size:11px;background:#2a2a2a;color:var(--text2);cursor:pointer">Кто давно не был</div>
+            <div style="padding:6px 12px;border-radius:8px;font-size:11px;background:#2a2a2a;color:var(--text2);cursor:pointer">Топ услуг</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" placeholder="Спросите что-нибудь о бизнесе..." style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid #333;background:var(--bg);color:var(--text);font-size:13px">
+            <div class="mockup-btn active" style="padding:10px 16px">→</div>
+          </div>
+        </div>
+
+        <!-- ===== SETTINGS ===== -->
+        <div class="mockup-view" id="view-settings" style="display:none">
+          <h3 style="margin-top:0">⚙️ Настройки</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a;cursor:pointer" class="card">
+              <div style="font-size:20px;margin-bottom:8px">🏠</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Профиль салона</div>
+              <div style="font-size:12px;color:var(--text2)">Название, адрес, фото, описание, категория</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a;cursor:pointer" class="card">
+              <div style="font-size:20px;margin-bottom:8px">✈️</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Telegram-уведомления</div>
+              <div style="font-size:12px;color:var(--text2)">Подключить бота, настроить типы уведомлений</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a;cursor:pointer" class="card">
+              <div style="font-size:20px;margin-bottom:8px">💳</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Подписка и оплата</div>
+              <div style="font-size:12px;color:var(--text2)">Тарифный план, история платежей</div>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:16px;border:1px solid #2a2a2a;cursor:pointer" class="card">
+              <div style="font-size:20px;margin-bottom:8px">🔒</div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Доступы и роли</div>
+              <div style="font-size:12px;color:var(--text2)">Управление сотрудниками, уровни доступа</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DEFAULT -->
+        <div class="mockup-view" id="view-default" style="display:none">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:var(--text2)">
+            <div style="font-size:48px;margin-bottom:12px">🚧</div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:4px">Раздел в разработке</div>
+          </div>
+        </div>
+
+      </div><!-- /mockup-content -->
+    </div><!-- /mockup-body -->
+  </div><!-- /mockup -->
+</div>
+
+<!-- ==================== MODAL PREVIEW TAB ==================== -->
+<div class="section" id="modal-preview">
+  <h1>Форма создания / редактирования мастера</h1>
+  <p class="subtitle">Модальное окно — так выглядит форма при добавлении нового мастера или редактировании существующего</p>
+
+  <!-- Inline modal render -->
+  <div style="background:#0d0d0d;border-radius:16px;padding:40px 24px;display:flex;justify-content:center;align-items:flex-start;min-height:500px">
+    <div class="modal" style="position:relative;max-height:none">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Добавить мастера</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Заполните информацию о мастере</div>
+        </div>
+        <button class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Avatar / Color -->
+        <div class="form-section-title">Аватар и цвет</div>
+        <div class="avatar-picker">
+          <div class="avatar-preview" id="modalAvatar" style="background:#D8956B">АС</div>
+          <div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Цвет карточки мастера в календаре</div>
+            <div class="color-swatches">
+              <div class="color-swatch selected" style="background:#D8956B" onclick="pickColor(this,'#D8956B')"></div>
+              <div class="color-swatch" style="background:#B088F9" onclick="pickColor(this,'#B088F9')"></div>
+              <div class="color-swatch" style="background:#4ECDC4" onclick="pickColor(this,'#4ECDC4')"></div>
+              <div class="color-swatch" style="background:#6BCB77" onclick="pickColor(this,'#6BCB77')"></div>
+              <div class="color-swatch" style="background:#FF8FAB" onclick="pickColor(this,'#FF8FAB')"></div>
+              <div class="color-swatch" style="background:#FFD93D" onclick="pickColor(this,'#FFD93D')"></div>
+              <div class="color-swatch" style="background:#FF6B6B" onclick="pickColor(this,'#FF6B6B')"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Basic Info -->
+        <div class="form-section-title">Основная информация</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Имя</label>
+            <input class="form-input" type="text" placeholder="Анна" value="">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Фамилия</label>
+            <input class="form-input" type="text" placeholder="Соколова" value="">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Должность / Специализация</label>
+            <input class="form-input" type="text" placeholder="Стилист-колорист">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Уровень</label>
+            <select class="form-select">
+              <option>Стажёр</option>
+              <option>Мастер</option>
+              <option selected>Старший мастер</option>
+              <option>Топ-мастер</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Краткое описание (видно клиентам)</label>
+            <textarea class="form-textarea" placeholder="Специализируюсь на окрашивании и создании индивидуального образа. 8 лет опыта..."></textarea>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="form-section-title">Контакты</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Телефон</label>
+            <input class="form-input" type="tel" placeholder="+7 916 234-56-78">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telegram</label>
+            <input class="form-input" type="text" placeholder="@anna_stylist">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email (опционально)</label>
+            <input class="form-input" type="email" placeholder="anna@salon.ru">
+          </div>
+          <div class="form-group">
+            <label class="form-label">В команде с</label>
+            <input class="form-input" type="date" value="2023-03-01">
+          </div>
+        </div>
+
+        <!-- Services -->
+        <div class="form-section-title">Услуги мастера</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Выберите услуги, которые выполняет мастер</div>
+        <div class="services-picker">
+          <div class="service-pick-tag selected" onclick="this.classList.toggle('selected')">Стрижка</div>
+          <div class="service-pick-tag selected" onclick="this.classList.toggle('selected')">Окрашивание</div>
+          <div class="service-pick-tag selected" onclick="this.classList.toggle('selected')">Мелирование</div>
+          <div class="service-pick-tag selected" onclick="this.classList.toggle('selected')">Укладка</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Балаяж</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Маникюр</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Педикюр</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Гель-лак</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Брови</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Ресницы</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Массаж</div>
+          <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Макияж</div>
+        </div>
+
+        <!-- Schedule (quick setup inside modal) -->
+        <div class="form-section-title">Рабочий график</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Базовое расписание. Можно уточнить в разделе «Расписание» после сохранения.</div>
+        <div style="background:#1a1a1a;border-radius:10px;overflow:hidden">
+          <div class="time-picker-row" style="padding:8px 12px">
+            <span class="time-picker-day" style="font-size:12px">Пн</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            <input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="20:00">
+          </div>
+          <div class="time-picker-row" style="padding:8px 12px">
+            <span class="time-picker-day" style="font-size:12px">Вт</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            <input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="20:00">
+          </div>
+          <div class="time-picker-row" style="padding:8px 12px">
+            <span class="time-picker-day" style="font-size:12px">Ср</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            <input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="20:00">
+          </div>
+          <div class="time-picker-row" style="padding:8px 12px">
+            <span class="time-picker-day" style="font-size:12px">Чт</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            <input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="20:00">
+          </div>
+          <div class="time-picker-row" style="padding:8px 12px">
+            <span class="time-picker-day" style="font-size:12px">Пт</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            <input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="20:00">
+          </div>
+          <div class="time-picker-row" style="padding:8px 12px">
+            <span class="time-picker-day" style="font-size:12px">Сб</span>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            <input class="time-input" value="10:00"><span class="time-sep">—</span><input class="time-input" value="18:00">
+          </div>
+          <div class="time-picker-row" style="border-bottom:none;padding:8px 12px">
+            <span class="time-picker-day" style="font-size:12px">Вс</span>
+            <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+            <span style="font-size:12px;color:var(--red);margin-left:4px">Выходной</span>
+          </div>
+        </div>
+
+        <!-- Visibility & Access -->
+        <div class="form-section-title">Видимость и доступ</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:500">Показывать на странице салона</div>
+              <div style="font-size:12px;color:var(--text2)">Мастер будет виден клиентам при выборе специалиста</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:500">Доступ к дашборду</div>
+              <div style="font-size:12px;color:var(--text2)">Мастер может видеть свои записи в личном кабинете</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:500">Telegram-уведомления о записях</div>
+              <div style="font-size:12px;color:var(--text2)">Отправлять мастеру уведомления о новых и изменённых записях</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+
+      </div><!-- /modal-body -->
+      <div class="modal-footer">
+        <button class="btn btn-danger" style="margin-right:auto">Удалить мастера</button>
+        <button class="btn btn-secondary">Отмена</button>
+        <button class="btn btn-primary">Сохранить мастера</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== NOTES TAB ==================== -->
+<div class="section" id="notes">
+  <h1>Заметки по UI — что нового в v2</h1>
+  <p class="subtitle">Что доработано и ключевые решения по дизайну</p>
+
+  <h2>Новые разделы</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div style="font-size:18px;margin-bottom:8px">👤 Мастера — список</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Карточки мастеров с: аватар + цвет + онлайн-статус, специализация, список услуг, сжатое расписание (пн-вс), bar загрузки (green/yellow/red), 3 ключевые метрики в footer: рейтинг, визиты, выручка/мес. Клик на карточку → детальная страница мастера.
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:18px;margin-bottom:8px">👤 Мастер — детальная страница</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Header с аватаром, именем, ролью, 4 большими KPI-метриками. Блок контактов. Блок специализации. Визуальный недельный календарь. Список ближайших записей. Кнопки: Редактировать, Расписание, Аналитика, Деактивировать.
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:18px;margin-bottom:8px">🕐 Расписание — общее салона</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Таб-навигация: «Салон (общее)» + индивидуальный таб для каждого мастера. Общее расписание: toggle вкл/выкл для каждого дня, время-пикер начала/конца + обеденный перерыв. Праздники. Длительность слота (15/30/60 мин).
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:18px;margin-bottom:8px">🕐 Расписание — мастер</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Каждый мастер имеет свой таб в разделе Расписание. Значок «≠ салон» если время мастера отличается от базового. Кнопка «Сбросить к базовому». Блок «Отпуск/Больничный/Особые дни». Мини-обзор недели в виде цветных блоков.
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:18px;margin-bottom:8px">👤 Модальное окно мастера</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Форма создания/редактирования: выбор цвета карточки (7 цветов — отображается в календаре), ФИО + уровень + описание, контакты (телефон + Telegram + email), мультиселект услуг, инлайн-расписание по дням, настройки видимости и Telegram-уведомлений.
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:18px;margin-bottom:8px">📋 Записи — доработан</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7">
+        Табличный вид с фильтрами (Сегодня/Завтра/Неделя/Все), поиск, кнопки «Подтвердить» / «Отмена» у каждой записи прямо в строке. Статус-бейджи, отменённые записи с кнопкой «Восстановить».
+      </div>
+    </div>
+  </div>
+
+  <h2>Ключевые UX-паттерны</h2>
+  <div class="card" style="line-height:1.9;font-size:13px;color:var(--text2)">
+    <p>🎨 <strong>Цвет мастера в календаре</strong> — при создании мастера выбирается цвет. Все его записи в календаре отображаются этим цветом. Как в Google Calendar. Это критично для быстрой визуальной ориентации.</p>
+    <p>⚡ <strong>Статус онлайн/офлайн</strong> — зелёная точка у мастера если он сейчас в рабочие часы. Жёлтая = обед. Серая = выходной.</p>
+    <p>⚠️ <strong>«≠ салон»</strong> — желтый лейбл в расписании мастера, если его часы отличаются от базовых часов салона. Помогает быстро заметить расхождения.</p>
+    <p>📊 <strong>Загрузка bar</strong> — цвет меняется: green (>70%), orange/accent (50–70%), red (&lt;50%). Тревожный сигнал сразу виден на карточке.</p>
+    <p>🔒 <strong>Доступ к дашборду</strong> — мастер может иметь ограниченный доступ только к своим записям. Это важно для multi-staff салонов где мастера не должны видеть финансы друг друга.</p>
+    <p>↩️ <strong>Inline-подтверждение в списке записей</strong> — кнопки ✓ / ✗ прямо в строке без открытия модального окна. Как в Fresha — экономит время владельца.</p>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- STAFF MODAL (for button click inside mockup) -->
+<div class="modal-overlay" id="staffModal" style="display:none" onclick="if(event.target===this)closeStaffModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Добавить мастера</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">Новый мастер для салона</div>
+      </div>
+      <button class="modal-close" onclick="closeStaffModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section-title">Аватар и цвет</div>
+      <div class="avatar-picker">
+        <div class="avatar-preview" id="modalAvatar2">НМ</div>
+        <div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Цвет в календаре</div>
+          <div class="color-swatches">
+            <div class="color-swatch selected" style="background:#D8956B" onclick="pickColor2(this,'#D8956B')"></div>
+            <div class="color-swatch" style="background:#B088F9" onclick="pickColor2(this,'#B088F9')"></div>
+            <div class="color-swatch" style="background:#4ECDC4" onclick="pickColor2(this,'#4ECDC4')"></div>
+            <div class="color-swatch" style="background:#6BCB77" onclick="pickColor2(this,'#6BCB77')"></div>
+            <div class="color-swatch" style="background:#FF8FAB" onclick="pickColor2(this,'#FF8FAB')"></div>
+            <div class="color-swatch" style="background:#FFD93D" onclick="pickColor2(this,'#FFD93D')"></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-section-title">Основная информация</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Имя</label><input class="form-input" type="text" placeholder="Имя"></div>
+        <div class="form-group"><label class="form-label">Фамилия</label><input class="form-input" type="text" placeholder="Фамилия"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Специализация</label><input class="form-input" type="text" placeholder="Например: Колорист"></div>
+        <div class="form-group"><label class="form-label">Уровень</label><select class="form-select"><option>Стажёр</option><option>Мастер</option><option>Старший мастер</option><option>Топ-мастер</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Телефон</label><input class="form-input" type="tel" placeholder="+7 ..."></div>
+        <div class="form-group"><label class="form-label">Telegram</label><input class="form-input" type="text" placeholder="@username"></div>
+      </div>
+      <div class="form-section-title">Услуги</div>
+      <div class="services-picker">
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Стрижка</div>
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Окрашивание</div>
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Мелирование</div>
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Укладка</div>
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Маникюр</div>
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Педикюр</div>
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Брови</div>
+        <div class="service-pick-tag" onclick="this.classList.toggle('selected')">Ресницы</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeStaffModal()">Отмена</button>
+      <button class="btn btn-primary">Сохранить мастера</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab navigation (top nav)
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Mockup sidebar
+let prevView = 'overview';
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    const view = item.dataset.view;
+    document.querySelectorAll('.mockup-view').forEach(v => v.style.display = 'none');
+    const target = document.getElementById('view-' + view);
+    if (target) {
+      target.style.display = 'block';
+      prevView = view;
+    } else {
+      document.getElementById('view-default').style.display = 'block';
+    }
+  });
+});
+
+// Staff detail view
+function showStaffDetail(id) {
+  document.querySelectorAll('.mockup-view').forEach(v => v.style.display = 'none');
+  document.getElementById('view-staff-detail').style.display = 'block';
+}
+function goBack(to) {
+  document.querySelectorAll('.mockup-view').forEach(v => v.style.display = 'none');
+  document.getElementById('view-' + to).style.display = 'block';
+}
+
+// Schedule tabs
+function switchSchTab(name, el) {
+  document.querySelectorAll('.sch-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.sch-view').forEach(v => v.style.display = 'none');
+  document.getElementById('sch-' + name).style.display = 'block';
+}
+
+// Staff modal
+function showStaffModal() {
+  document.getElementById('staffModal').style.display = 'flex';
+}
+function closeStaffModal() {
+  document.getElementById('staffModal').style.display = 'none';
+}
+
+// Color pickers
+function pickColor(el, color) {
+  el.closest('.color-swatches').querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('modalAvatar').style.background = color;
+}
+function pickColor2(el, color) {
+  el.closest('.color-swatches').querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('modalAvatar2').style.background = color;
+}
+
+// Active name input for avatar initials in inline modal
+const firstNameInput = document.querySelector('.modal-body .form-input[placeholder="Анна"]');
+const lastNameInput = document.querySelector('.modal-body .form-input[placeholder="Соколова"]');
+if(firstNameInput && lastNameInput) {
+  [firstNameInput, lastNameInput].forEach(inp => {
+    inp.addEventListener('input', () => {
+      const f = firstNameInput.value.trim()[0] || '';
+      const l = lastNameInput.value.trim()[0] || '';
+      document.getElementById('modalAvatar').textContent = (f+l).toUpperCase() || 'НМ';
+    });
+  });
+}
+</script>
+</body>
+</html>

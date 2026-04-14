@@ -12,6 +12,11 @@ import (
 	"go.uber.org/zap"
 )
 
+// Marketplace search facets (hair, barber, spa, …) are independent from dashboard service_categories.
+// For projecting dashboard parent_slug → marketplace facet when indexing salon services, use
+// internal/servicecategory.ParentSlugToSearchCategory and docs/service-categories.md.
+// 2GIS numeric rubrics remain only in internal/infrastructure/twogis/catalog_adapter.go.
+
 const (
 	defaultSearchLat  = 55.7558
 	defaultSearchLon  = 37.6176

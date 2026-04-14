@@ -19,7 +19,7 @@ export function App() {
         <Route path={ROUTES.SALON} element={<SalonPage />} />
         <Route path={ROUTES.PLACE} element={<SalonPage />} />
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-        <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
+        <Route path={`${ROUTES.DASHBOARD}/*`} element={<DashboardPage />} />
       </Routes>
     </BrowserRouter>
   )

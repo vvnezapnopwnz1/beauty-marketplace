@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/auth"
+	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"github.com/yourusername/beauty-marketplace/internal/service"
 	"go.uber.org/zap"
@@ -58,6 +60,20 @@ func (h *DashboardController) DashboardRoutes(w http.ResponseWriter, r *http.Req
 	switch parts[0] {
 	case "appointments":
 		h.handleAppointments(w, r, salonID, parts)
+	case "service-categories":
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			full := r.URL.Query().Get("full") == "1" || strings.EqualFold(r.URL.Query().Get("full"), "true")
+			out, err := h.svc.ListServiceCategories(r.Context(), salonID, full)
+			if err != nil {
+				h.log.Error("service categories", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	case "services":
 		h.handleServices(w, r, salonID, parts)
 	case "staff":
@@ -160,6 +176,11 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 	if v := q.Get("staff_id"); v != "" {
 		if sid, err := uuid.Parse(v); err == nil {
 			f.StaffID = &sid
+		}
+	}
+	if v := q.Get("service_id"); v != "" {
+		if svcID, err := uuid.Parse(v); err == nil {
+			f.ServiceID = &svcID
 		}
 	}
 	if v := q.Get("page"); v != "" {
@@ -287,11 +308,14 @@ func (h *DashboardController) patchAppointmentStatus(w http.ResponseWriter, r *h
 }
 
 type putApptBody struct {
-	StartsAt   *string    `json:"startsAt"`
-	EndsAt     *string    `json:"endsAt"`
-	StaffID    *uuid.UUID `json:"staffId"`
-	ServiceID  *uuid.UUID `json:"serviceId"`
-	ClientNote *string    `json:"clientNote"`
+	StartsAt       *string    `json:"startsAt"`
+	EndsAt         *string    `json:"endsAt"`
+	StaffID        *uuid.UUID `json:"staffId"`
+	ClearStaffID   *bool      `json:"clearStaffId"`
+	ServiceID      *uuid.UUID `json:"serviceId"`
+	ClientNote     *string    `json:"clientNote"`
+	GuestName      *string    `json:"guestName"`
+	GuestPhone     *string    `json:"guestPhone"`
 }
 
 func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Request, salonID, id uuid.UUID) {
@@ -317,9 +341,15 @@ func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Requ
 		}
 		in.EndsAt = &t
 	}
-	in.StaffID = body.StaffID
+	if body.ClearStaffID != nil && *body.ClearStaffID {
+		in.ClearStaffID = true
+	} else {
+		in.StaffID = body.StaffID
+	}
 	in.ServiceID = body.ServiceID
 	in.ClientNote = body.ClientNote
+	in.GuestName = body.GuestName
+	in.GuestPhone = body.GuestPhone
 	if err := h.svc.UpdateAppointment(r.Context(), salonID, in); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			jsonError(w, "not found", http.StatusNotFound)
@@ -340,18 +370,36 @@ func (h *DashboardController) handleServices(w http.ResponseWriter, r *http.Requ
 				jsonError(w, "internal error", http.StatusInternalServerError)
 				return
 			}
+			namesMap, err := h.svc.ServiceStaffNamesMap(r.Context(), salonID)
+			if err != nil {
+				h.log.Error("service staff names", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
 			type svcRow struct {
 				ID              uuid.UUID `json:"id"`
 				SalonID         uuid.UUID `json:"salonId"`
 				Name            string    `json:"name"`
+				Category        *string   `json:"category"`
+				CategorySlug    *string   `json:"categorySlug"`
+				Description     *string   `json:"description"`
 				DurationMinutes int       `json:"durationMinutes"`
 				PriceCents      *int64    `json:"priceCents"`
 				IsActive        bool      `json:"isActive"`
 				SortOrder       int       `json:"sortOrder"`
+				StaffNames      []string  `json:"staffNames"`
 			}
 			out := make([]svcRow, len(list))
 			for i, s := range list {
-				out[i] = svcRow{ID: s.ID, SalonID: s.SalonID, Name: s.Name, DurationMinutes: s.DurationMinutes, PriceCents: s.PriceCents, IsActive: s.IsActive, SortOrder: s.SortOrder}
+				sn := namesMap[s.ID]
+				if sn == nil {
+					sn = []string{}
+				}
+				out[i] = svcRow{
+					ID: s.ID, SalonID: s.SalonID, Name: s.Name, Category: s.Category, CategorySlug: s.CategorySlug, Description: s.Description,
+					DurationMinutes: s.DurationMinutes, PriceCents: s.PriceCents, IsActive: s.IsActive, SortOrder: s.SortOrder,
+					StaffNames: sn,
+				}
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(out)
@@ -368,18 +416,31 @@ func (h *DashboardController) handleServices(w http.ResponseWriter, r *http.Requ
 				jsonError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			namesMap, _ := h.svc.ServiceStaffNamesMap(r.Context(), salonID)
+			sn := namesMap[svc.ID]
+			if sn == nil {
+				sn = []string{}
+			}
 			type svcRow struct {
 				ID              uuid.UUID `json:"id"`
 				SalonID         uuid.UUID `json:"salonId"`
 				Name            string    `json:"name"`
+				Category        *string   `json:"category"`
+				CategorySlug    *string   `json:"categorySlug"`
+				Description     *string   `json:"description"`
 				DurationMinutes int       `json:"durationMinutes"`
 				PriceCents      *int64    `json:"priceCents"`
 				IsActive        bool      `json:"isActive"`
 				SortOrder       int       `json:"sortOrder"`
+				StaffNames      []string  `json:"staffNames"`
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(svcRow{ID: svc.ID, SalonID: svc.SalonID, Name: svc.Name, DurationMinutes: svc.DurationMinutes, PriceCents: svc.PriceCents, IsActive: svc.IsActive, SortOrder: svc.SortOrder})
+			_ = json.NewEncoder(w).Encode(svcRow{
+				ID: svc.ID, SalonID: svc.SalonID, Name: svc.Name, Category: svc.Category, CategorySlug: svc.CategorySlug, Description: svc.Description,
+				DurationMinutes: svc.DurationMinutes, PriceCents: svc.PriceCents, IsActive: svc.IsActive, SortOrder: svc.SortOrder,
+				StaffNames: sn,
+			})
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -405,17 +466,30 @@ func (h *DashboardController) handleServices(w http.ResponseWriter, r *http.Requ
 			jsonError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		namesMap, _ := h.svc.ServiceStaffNamesMap(r.Context(), salonID)
+		sn := namesMap[svc.ID]
+		if sn == nil {
+			sn = []string{}
+		}
 		type svcRow struct {
 			ID              uuid.UUID `json:"id"`
 			SalonID         uuid.UUID `json:"salonId"`
 			Name            string    `json:"name"`
+			Category        *string   `json:"category"`
+			CategorySlug    *string   `json:"categorySlug"`
+			Description     *string   `json:"description"`
 			DurationMinutes int       `json:"durationMinutes"`
 			PriceCents      *int64    `json:"priceCents"`
 			IsActive        bool      `json:"isActive"`
 			SortOrder       int       `json:"sortOrder"`
+			StaffNames      []string  `json:"staffNames"`
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(svcRow{ID: svc.ID, SalonID: svc.SalonID, Name: svc.Name, DurationMinutes: svc.DurationMinutes, PriceCents: svc.PriceCents, IsActive: svc.IsActive, SortOrder: svc.SortOrder})
+		_ = json.NewEncoder(w).Encode(svcRow{
+			ID: svc.ID, SalonID: svc.SalonID, Name: svc.Name, Category: svc.Category, CategorySlug: svc.CategorySlug, Description: svc.Description,
+			DurationMinutes: svc.DurationMinutes, PriceCents: svc.PriceCents, IsActive: svc.IsActive, SortOrder: svc.SortOrder,
+			StaffNames: sn,
+		})
 		return
 	}
 	if r.Method == http.MethodDelete {
@@ -437,50 +511,34 @@ func (h *DashboardController) handleServices(w http.ResponseWriter, r *http.Requ
 func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request, salonID uuid.UUID, parts []string) {
 	if len(parts) == 1 {
 		if r.Method == http.MethodGet {
-			list, err := h.svc.ListStaff(r.Context(), salonID)
+			list, err := h.svc.ListStaffDashboard(r.Context(), salonID)
 			if err != nil {
-				h.log.Error("list staff", zap.Error(err))
+				h.log.Error("list staff dashboard", zap.Error(err))
 				jsonError(w, "internal error", http.StatusInternalServerError)
 				return
 			}
-			type staffRow struct {
-				ID          uuid.UUID `json:"id"`
-				SalonID     uuid.UUID `json:"salonId"`
-				DisplayName string    `json:"displayName"`
-				IsActive    bool      `json:"isActive"`
-				CreatedAt   time.Time `json:"createdAt"`
-			}
-			out := make([]staffRow, len(list))
-			for i, s := range list {
-				out[i] = staffRow{ID: s.ID, SalonID: s.SalonID, DisplayName: s.DisplayName, IsActive: s.IsActive, CreatedAt: s.CreatedAt}
-			}
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(out)
+			_ = json.NewEncoder(w).Encode(list)
 			return
 		}
 		if r.Method == http.MethodPost {
-			var body struct {
-				DisplayName string `json:"displayName"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			var in service.StaffInput
+			if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 				jsonError(w, "invalid json", http.StatusBadRequest)
 				return
 			}
-			st, err := h.svc.CreateStaff(r.Context(), salonID, body.DisplayName)
+			st, err := h.svc.CreateStaff(r.Context(), salonID, in)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			type staffRow struct {
-				ID          uuid.UUID `json:"id"`
-				SalonID     uuid.UUID `json:"salonId"`
-				DisplayName string    `json:"displayName"`
-				IsActive    bool      `json:"isActive"`
-				CreatedAt   time.Time `json:"createdAt"`
+			_, svcIDs, gerr := h.svc.GetStaff(r.Context(), salonID, st.ID)
+			if gerr != nil {
+				h.log.Error("get staff after create", zap.Error(gerr))
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(staffRow{ID: st.ID, SalonID: st.SalonID, DisplayName: st.DisplayName, IsActive: st.IsActive, CreatedAt: st.CreatedAt})
+			_ = json.NewEncoder(w).Encode(staffDetailJSON(st, svcIDs))
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -493,34 +551,40 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 	}
 	if len(parts) == 3 && parts[2] == "schedule" {
 		if r.Method == http.MethodGet {
-			rows, err := h.svc.GetStaffSchedule(r.Context(), salonID, id)
+			bundle, err := h.svc.GetStaffScheduleBundle(r.Context(), salonID, id)
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			type row struct {
-				ID        uuid.UUID `json:"id"`
-				StaffID   uuid.UUID `json:"staffId"`
-				DayOfWeek int16     `json:"dayOfWeek"`
-				OpensAt   string    `json:"opensAt"`
-				ClosesAt  string    `json:"closesAt"`
-				IsDayOff  bool      `json:"isDayOff"`
-			}
-			out := make([]row, len(rows))
-			for i, wh := range rows {
-				out[i] = row{ID: wh.ID, StaffID: wh.StaffID, DayOfWeek: wh.DayOfWeek, OpensAt: wh.OpensAt, ClosesAt: wh.ClosesAt, IsDayOff: wh.IsDayOff}
-			}
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(out)
+			_ = json.NewEncoder(w).Encode(staffScheduleBundleJSON(bundle))
 			return
 		}
 		if r.Method == http.MethodPut {
-			var rows []service.StaffWorkingHourInput
-			if err := json.NewDecoder(r.Body).Decode(&rows); err != nil {
+			raw, err := io.ReadAll(r.Body)
+			if err != nil {
+				jsonError(w, "read body", http.StatusBadRequest)
+				return
+			}
+			if len(raw) > 0 && raw[0] == '[' {
+				var rows []service.StaffWorkingHourInput
+				if err := json.Unmarshal(raw, &rows); err != nil {
+					jsonError(w, "invalid json", http.StatusBadRequest)
+					return
+				}
+				if err := h.svc.PutStaffSchedule(r.Context(), salonID, id, rows); err != nil {
+					jsonError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			var payload service.StaffSchedulePayload
+			if err := json.Unmarshal(raw, &payload); err != nil {
 				jsonError(w, "invalid json", http.StatusBadRequest)
 				return
 			}
-			if err := h.svc.PutStaffSchedule(r.Context(), salonID, id, rows); err != nil {
+			if err := h.svc.PutStaffScheduleBundle(r.Context(), salonID, id, payload); err != nil {
 				jsonError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -530,16 +594,88 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if len(parts) == 2 && r.Method == http.MethodPut {
-		var body struct {
-			DisplayName string `json:"displayName"`
-			IsActive    bool   `json:"isActive"`
+	if len(parts) == 3 && parts[2] == "appointments" && r.Method == http.MethodGet {
+		q := r.URL.Query()
+		f := repository.AppointmentListFilter{SalonID: salonID, StaffID: &id, Page: 1, PageSize: 20}
+		if v := q.Get("from"); v != "" {
+			t, err := time.Parse("2006-01-02", v)
+			if err == nil {
+				utc := t.UTC()
+				f.From = &utc
+			}
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if v := q.Get("to"); v != "" {
+			t, err := time.Parse("2006-01-02", v)
+			if err == nil {
+				end := t.Add(24 * time.Hour).UTC()
+				f.To = &end
+			}
+		}
+		rows, total, err := h.svc.ListAppointments(r.Context(), salonID, f)
+		if err != nil {
+			jsonError(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		type rowDTO struct {
+			ID             uuid.UUID  `json:"id"`
+			StartsAt       time.Time  `json:"startsAt"`
+			EndsAt         time.Time  `json:"endsAt"`
+			Status         string     `json:"status"`
+			ServiceName    string     `json:"serviceName"`
+			StaffName      *string    `json:"staffName,omitempty"`
+			ClientLabel    string     `json:"clientLabel"`
+			ClientPhone    *string    `json:"clientPhone,omitempty"`
+			ServiceID      uuid.UUID  `json:"serviceId"`
+			StaffID        *uuid.UUID `json:"staffId,omitempty"`
+		}
+		out := make([]rowDTO, len(rows))
+		for i, x := range rows {
+			out[i] = rowDTO{
+				ID: x.Appointment.ID, StartsAt: x.Appointment.StartsAt, EndsAt: x.Appointment.EndsAt,
+				Status: x.Appointment.Status, ServiceName: x.ServiceName, StaffName: x.StaffName,
+				ClientLabel: x.ClientLabel, ClientPhone: x.ClientPhone, ServiceID: x.Appointment.ServiceID,
+				StaffID: x.Appointment.StaffID,
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": out, "total": total})
+		return
+	}
+	if len(parts) == 3 && parts[2] == "metrics" && r.Method == http.MethodGet {
+		period := r.URL.Query().Get("period")
+		if period == "" {
+			period = "month"
+		}
+		met, err := h.svc.StaffMetrics(r.Context(), salonID, id, period)
+		if err != nil {
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(met)
+		return
+	}
+	if len(parts) == 2 && r.Method == http.MethodGet {
+		st, svcIDs, err := h.svc.GetStaff(r.Context(), salonID, id)
+		if err != nil {
+			jsonError(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if st == nil {
+			jsonError(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(staffDetailJSON(st, svcIDs))
+		return
+	}
+	if len(parts) == 2 && r.Method == http.MethodPut {
+		var in service.StaffInput
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 			jsonError(w, "invalid json", http.StatusBadRequest)
 			return
 		}
-		st, err := h.svc.UpdateStaff(r.Context(), salonID, id, body.DisplayName, body.IsActive)
+		st, err := h.svc.UpdateStaff(r.Context(), salonID, id, in)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				jsonError(w, "not found", http.StatusNotFound)
@@ -548,15 +684,13 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 			jsonError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		type staffRow struct {
-			ID          uuid.UUID `json:"id"`
-			SalonID     uuid.UUID `json:"salonId"`
-			DisplayName string    `json:"displayName"`
-			IsActive    bool      `json:"isActive"`
-			CreatedAt   time.Time `json:"createdAt"`
+		_, svcIDs, err := h.svc.GetStaff(r.Context(), salonID, id)
+		if err != nil {
+			jsonError(w, "internal error", http.StatusInternalServerError)
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(staffRow{ID: st.ID, SalonID: st.SalonID, DisplayName: st.DisplayName, IsActive: st.IsActive, CreatedAt: st.CreatedAt})
+		_ = json.NewEncoder(w).Encode(staffDetailJSON(st, svcIDs))
 		return
 	}
 	if len(parts) == 2 && r.Method == http.MethodDelete {
@@ -575,36 +709,74 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 }
 
 func (h *DashboardController) getSchedule(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
-	rows, err := h.svc.GetSchedule(r.Context(), salonID)
+	bundle, err := h.svc.GetSalonScheduleBundle(r.Context(), salonID)
 	if err != nil {
 		jsonError(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	type row struct {
-		ID        uuid.UUID  `json:"id"`
-		SalonID   uuid.UUID  `json:"salonId"`
-		DayOfWeek int16      `json:"dayOfWeek"`
-		OpensAt   string     `json:"opensAt"`
-		ClosesAt  string     `json:"closesAt"`
-		IsClosed  bool       `json:"isClosed"`
-		ValidFrom *time.Time `json:"validFrom,omitempty"`
-		ValidTo   *time.Time `json:"validTo,omitempty"`
+	type whRow struct {
+		ID            uuid.UUID  `json:"id"`
+		SalonID       uuid.UUID  `json:"salonId"`
+		DayOfWeek     int16      `json:"dayOfWeek"`
+		OpensAt       string     `json:"opensAt"`
+		ClosesAt      string     `json:"closesAt"`
+		IsClosed      bool       `json:"isClosed"`
+		BreakStartsAt *string    `json:"breakStartsAt,omitempty"`
+		BreakEndsAt   *string    `json:"breakEndsAt,omitempty"`
+		ValidFrom     *time.Time `json:"validFrom,omitempty"`
+		ValidTo       *time.Time `json:"validTo,omitempty"`
 	}
-	out := make([]row, len(rows))
-	for i, wh := range rows {
-		out[i] = row{ID: wh.ID, SalonID: wh.SalonID, DayOfWeek: wh.DayOfWeek, OpensAt: wh.OpensAt, ClosesAt: wh.ClosesAt, IsClosed: wh.IsClosed, ValidFrom: wh.ValidFrom, ValidTo: wh.ValidTo}
+	wh := make([]whRow, len(bundle.WorkingHours))
+	for i, row := range bundle.WorkingHours {
+		wh[i] = whRow{
+			ID: row.ID, SalonID: row.SalonID, DayOfWeek: row.DayOfWeek, OpensAt: row.OpensAt, ClosesAt: row.ClosesAt,
+			IsClosed: row.IsClosed, BreakStartsAt: row.BreakStartsAt, BreakEndsAt: row.BreakEndsAt,
+			ValidFrom: row.ValidFrom, ValidTo: row.ValidTo,
+		}
+	}
+	type ovRow struct {
+		ID       uuid.UUID `json:"id"`
+		OnDate   string    `json:"onDate"`
+		IsClosed bool      `json:"isClosed"`
+		Note     *string   `json:"note,omitempty"`
+	}
+	ov := make([]ovRow, len(bundle.DateOverrides))
+	for i, o := range bundle.DateOverrides {
+		ov[i] = ovRow{ID: o.ID, OnDate: o.OnDate.Format("2006-01-02"), IsClosed: o.IsClosed, Note: o.Note}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"slotDurationMinutes": bundle.SlotDurationMinutes,
+		"workingHours":        wh,
+		"dateOverrides":       ov,
+	})
 }
 
 func (h *DashboardController) putSchedule(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
-	var rows []service.WorkingHourInput
-	if err := json.NewDecoder(r.Body).Decode(&rows); err != nil {
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		jsonError(w, "read body", http.StatusBadRequest)
+		return
+	}
+	if len(raw) > 0 && raw[0] == '[' {
+		var rows []service.WorkingHourInput
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			jsonError(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		if err := h.svc.PutSchedule(r.Context(), salonID, rows); err != nil {
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	var payload service.SalonSchedulePayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
 		jsonError(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	if err := h.svc.PutSchedule(r.Context(), salonID, rows); err != nil {
+	if err := h.svc.PutSalonScheduleBundle(r.Context(), salonID, payload); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -637,6 +809,7 @@ func (h *DashboardController) getSalonProfile(w http.ResponseWriter, r *http.Req
 		Description            *string   `json:"description"`
 		PhonePublic            *string   `json:"phonePublic"`
 		CategoryID             *string   `json:"categoryId"`
+		SalonType              *string   `json:"salonType"`
 		BusinessType           *string   `json:"businessType"`
 		OnlineBookingEnabled   bool      `json:"onlineBookingEnabled"`
 		AddressOverride        *string   `json:"addressOverride"`
@@ -652,7 +825,7 @@ func (h *DashboardController) getSalonProfile(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out{
 		ID: s.ID, NameOverride: s.NameOverride, Description: s.Description, PhonePublic: s.PhonePublic,
-		CategoryID: s.CategoryID, BusinessType: s.BusinessType, OnlineBookingEnabled: s.OnlineBookingEnabled,
+		CategoryID: s.CategoryID, SalonType: s.SalonType, BusinessType: s.BusinessType, OnlineBookingEnabled: s.OnlineBookingEnabled,
 		AddressOverride: s.AddressOverride, Address: s.Address, District: s.District, Lat: s.Lat, Lng: s.Lng,
 		PhotoURL: s.PhotoURL, Timezone: s.Timezone, CachedRating: s.CachedRating, CachedReviewCount: s.CachedReviewCount,
 	})
@@ -675,6 +848,7 @@ func (h *DashboardController) putSalonProfile(w http.ResponseWriter, r *http.Req
 		Description          *string   `json:"description"`
 		PhonePublic          *string   `json:"phonePublic"`
 		CategoryID           *string   `json:"categoryId"`
+		SalonType            *string   `json:"salonType"`
 		BusinessType         *string   `json:"businessType"`
 		OnlineBookingEnabled bool      `json:"onlineBookingEnabled"`
 		AddressOverride      *string   `json:"addressOverride"`
@@ -690,8 +864,61 @@ func (h *DashboardController) putSalonProfile(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out{
 		ID: s.ID, NameOverride: s.NameOverride, Description: s.Description, PhonePublic: s.PhonePublic,
-		CategoryID: s.CategoryID, BusinessType: s.BusinessType, OnlineBookingEnabled: s.OnlineBookingEnabled,
+		CategoryID: s.CategoryID, SalonType: s.SalonType, BusinessType: s.BusinessType, OnlineBookingEnabled: s.OnlineBookingEnabled,
 		AddressOverride: s.AddressOverride, Address: s.Address, District: s.District, Lat: s.Lat, Lng: s.Lng,
 		PhotoURL: s.PhotoURL, Timezone: s.Timezone, CachedRating: s.CachedRating, CachedReviewCount: s.CachedReviewCount,
 	})
+}
+
+func staffDetailJSON(st *model.Staff, serviceIDs []uuid.UUID) map[string]any {
+	if serviceIDs == nil {
+		serviceIDs = []uuid.UUID{}
+	}
+	var joined any
+	if st.JoinedAt != nil {
+		joined = st.JoinedAt.Format("2006-01-02")
+	}
+	return map[string]any{
+		"id":                    st.ID,
+		"salonId":               st.SalonID,
+		"displayName":           st.DisplayName,
+		"role":                  st.Role,
+		"level":                 st.Level,
+		"bio":                   st.Bio,
+		"phone":                 st.Phone,
+		"telegramUsername":      st.TelegramUsername,
+		"email":                 st.Email,
+		"color":                 st.Color,
+		"joinedAt":              joined,
+		"dashboardAccess":       st.DashboardAccess,
+		"telegramNotifications": st.TelegramNotifications,
+		"isActive":              st.IsActive,
+		"createdAt":             st.CreatedAt,
+		"serviceIds":            serviceIDs,
+	}
+}
+
+func staffScheduleBundleJSON(b *service.StaffScheduleBundle) map[string]any {
+	rows := make([]map[string]any, len(b.Rows))
+	for i, wh := range b.Rows {
+		m := map[string]any{
+			"id": wh.ID, "staffId": wh.StaffID, "dayOfWeek": wh.DayOfWeek,
+			"opensAt": wh.OpensAt, "closesAt": wh.ClosesAt, "isDayOff": wh.IsDayOff,
+		}
+		if wh.BreakStartsAt != nil {
+			m["breakStartsAt"] = *wh.BreakStartsAt
+		}
+		if wh.BreakEndsAt != nil {
+			m["breakEndsAt"] = *wh.BreakEndsAt
+		}
+		rows[i] = m
+	}
+	abs := make([]map[string]any, len(b.Absences))
+	for i, a := range b.Absences {
+		abs[i] = map[string]any{
+			"id": a.ID, "startsOn": a.StartsOn.Format("2006-01-02"),
+			"endsOn": a.EndsOn.Format("2006-01-02"), "kind": a.Kind,
+		}
+	}
+	return map[string]any{"rows": rows, "absences": abs}
 }

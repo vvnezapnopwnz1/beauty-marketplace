@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Box, Typography, Drawer, IconButton, useMediaQuery } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
+import { Box, Typography, Drawer, IconButton, useMediaQuery } from '@mui/material'
+import { Route, Routes, useMatch, useNavigate, useSearchParams } from 'react-router-dom'
+import { mocha } from '@pages/dashboard/theme/mocha'
 import { ROUTES } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
-import { isDashboardStub } from '@shared/api/dashboardApi'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardCalendar } from './DashboardCalendar'
 import { DashboardAppointments } from './DashboardAppointments'
-import { DashboardServices } from './DashboardServices'
-import { DashboardStaff } from './DashboardStaff'
-import { DashboardSchedule } from './DashboardSchedule'
+import { ServicesView } from './views/ServicesView'
+import { StaffListView } from './views/StaffListView'
+import { ScheduleView } from './views/ScheduleView'
+import { StaffDetailView } from './views/StaffDetailView'
 import { DashboardProfile } from './DashboardProfile'
 
 type Section = 'overview' | 'calendar' | 'appointments' | 'services' | 'staff' | 'schedule' | 'profile'
@@ -30,50 +31,74 @@ const TITLES: Record<Section, string> = {
   appointments: 'Записи',
   services: 'Услуги',
   staff: 'Мастера',
-  schedule: 'Расписание салона',
+  schedule: 'Расписание',
   profile: 'Профиль салона',
 }
 
-const BG = '#111'
-const SIDEBAR = '#1a1a1a'
-const BORDER = 'rgba(255,255,255,0.08)'
-const TEXT = '#f0eae3'
-const MUTED = '#a89e94'
-const ACCENT = '#D8956B'
+function isSection(s: string | null): s is Section {
+  return s === 'overview' || s === 'calendar' || s === 'appointments' || s === 'services' || s === 'staff' || s === 'schedule' || s === 'profile'
+}
+
+function DashboardMainContent({ section }: { section: Section }) {
+  switch (section) {
+    case 'overview':
+      return <DashboardOverview />
+    case 'calendar':
+      return <DashboardCalendar />
+    case 'appointments':
+      return <DashboardAppointments />
+    case 'services':
+      return <ServicesView />
+    case 'staff':
+      return <StaffListView />
+    case 'schedule':
+      return <ScheduleView />
+    case 'profile':
+      return <DashboardProfile />
+    default:
+      return null
+  }
+}
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const staffMatch = useMatch('/dashboard/staff/:staffId')
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
-  const [section, setSection] = useState<Section>('overview')
+
+  const section = useMemo((): Section => {
+    if (staffMatch) return 'staff'
+    const s = searchParams.get('section')
+    if (isSection(s)) return s
+    return 'overview'
+  }, [staffMatch, searchParams])
 
   useEffect(() => {
-    if (isDashboardStub()) return
     if (!getStoredAccessToken()) {
       navigate(ROUTES.LOGIN, { replace: true, state: { from: ROUTES.DASHBOARD } })
     }
   }, [navigate])
 
-  const content = useMemo(() => {
-    switch (section) {
-      case 'overview':
-        return <DashboardOverview />
-      case 'calendar':
-        return <DashboardCalendar />
-      case 'appointments':
-        return <DashboardAppointments />
-      case 'services':
-        return <DashboardServices />
-      case 'staff':
-        return <DashboardStaff />
-      case 'schedule':
-        return <DashboardSchedule />
-      case 'profile':
-        return <DashboardProfile />
-      default:
-        return null
+  const headerTitle = useMemo(() => {
+    if (staffMatch) return 'Мастер'
+    return TITLES[section]
+  }, [staffMatch, section])
+
+  function goSection(id: Section) {
+    if (id === 'overview') {
+      navigate('/dashboard')
+      return
     }
-  }, [section])
+    navigate(`/dashboard?section=${id}`)
+  }
+
+  const content = (
+    <Routes>
+      <Route index element={<DashboardMainContent section={section} />} />
+      <Route path="staff/:staffId" element={<StaffDetailView />} />
+    </Routes>
+  )
 
   const sidebar = (
     <Box
@@ -82,15 +107,15 @@ export function DashboardPage() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: SIDEBAR,
-        borderRight: `1px solid ${BORDER}`,
+        bgcolor: mocha.sidebar,
+        borderRight: `1px solid ${mocha.borderSubtle}`,
       }}
     >
-      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${BORDER}`, cursor: 'pointer' }} onClick={() => navigate(ROUTES.HOME)}>
-        <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: TEXT }}>
-          beauti<Box component="span" sx={{ color: ACCENT }}>ca</Box>
+      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${mocha.borderSubtle}`, cursor: 'pointer' }} onClick={() => navigate(ROUTES.HOME)}>
+        <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: mocha.text }}>
+          beauti<Box component="span" sx={{ color: mocha.accent }}>ca</Box>
         </Typography>
-        <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.5 }}>Панель салона</Typography>
+        <Typography sx={{ fontSize: 11, color: mocha.muted, mt: 0.5 }}>Панель салона</Typography>
       </Box>
       <Box component="nav" sx={{ flex: 1, py: 1, overflow: 'auto' }}>
         {NAV.map(item => {
@@ -99,7 +124,7 @@ export function DashboardPage() {
             <Box
               key={item.id}
               onClick={() => {
-                setSection(item.id)
+                goSection(item.id)
                 setDrawer(false)
               }}
               sx={{
@@ -108,14 +133,14 @@ export function DashboardPage() {
                 py: 1,
                 borderRadius: '10px',
                 cursor: 'pointer',
-                color: on ? '#1a0e09' : MUTED,
-                bgcolor: on ? ACCENT : 'transparent',
+                color: on ? mocha.onAccent : mocha.muted,
+                bgcolor: on ? mocha.accent : 'transparent',
                 fontWeight: on ? 600 : 400,
                 fontSize: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                '&:hover': { bgcolor: on ? ACCENT : 'rgba(255,255,255,0.05)', color: on ? '#1a0e09' : TEXT },
+                '&:hover': { bgcolor: on ? mocha.accent : mocha.navHover, color: on ? mocha.onAccent : mocha.text },
               }}
             >
               <span>{item.icon}</span>
@@ -124,8 +149,8 @@ export function DashboardPage() {
           )
         })}
       </Box>
-      <Box sx={{ p: 2, borderTop: `1px solid ${BORDER}` }}>
-        <Typography onClick={() => navigate(ROUTES.HOME)} sx={{ fontSize: 13, color: MUTED, cursor: 'pointer' }}>
+      <Box sx={{ p: 2, borderTop: `1px solid ${mocha.borderSubtle}` }}>
+        <Typography onClick={() => navigate(ROUTES.HOME)} sx={{ fontSize: 13, color: mocha.muted, cursor: 'pointer' }}>
           ← На сайт
         </Typography>
       </Box>
@@ -133,11 +158,11 @@ export function DashboardPage() {
   )
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: BG, display: 'flex' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: mocha.page, display: 'flex' }}>
       {!narrow && sidebar}
       {narrow && (
         <>
-          <Drawer anchor="left" open={drawer} onClose={() => setDrawer(false)} PaperProps={{ sx: { bgcolor: SIDEBAR } }}>
+          <Drawer anchor="left" open={drawer} onClose={() => setDrawer(false)} PaperProps={{ sx: { bgcolor: mocha.sidebar } }}>
             {sidebar}
           </Drawer>
         </>
@@ -150,26 +175,18 @@ export function DashboardPage() {
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            borderBottom: `1px solid ${BORDER}`,
-            bgcolor: SIDEBAR,
+            borderBottom: `1px solid ${mocha.borderSubtle}`,
+            bgcolor: mocha.sidebar,
           }}
         >
           {narrow && (
-            <IconButton onClick={() => setDrawer(true)} sx={{ color: TEXT }}>
+            <IconButton onClick={() => setDrawer(true)} sx={{ color: mocha.text }}>
               ☰
             </IconButton>
           )}
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: TEXT }}>{TITLES[section]}</Typography>
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: mocha.text }}>{headerTitle}</Typography>
         </Box>
-        <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflow: 'auto' }}>
-          {isDashboardStub() && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Режим заглушки дашборда: данные только в браузере, без входа и без бэкенда. Отключить:{' '}
-              <code style={{ fontSize: 12 }}>VITE_DASHBOARD_STUB=0</code> в <code style={{ fontSize: 12 }}>.env</code>.
-            </Alert>
-          )}
-          {content}
-        </Box>
+        <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflow: 'auto' }}>{content}</Box>
       </Box>
     </Box>
   )

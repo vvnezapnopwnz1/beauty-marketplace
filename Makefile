@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild
+.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local db-migrate
 
 up:
 	@docker compose up -d --build
@@ -10,6 +10,26 @@ down:
 rebuild:
 	docker compose build --no-cache frontend backend
 	docker compose up -d
+
+# Накат SQL-миграций (нужен CLI: https://github.com/golang-migrate/migrate).
+# После git pull или свежей БД выполни один раз перед `make backend-local`.
+# DSN как у бэкенда: `DATABASE_DSN='...' make db-migrate`
+db-migrate:
+	@migrate -path backend/migrations -database "$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" up
+
+# Бэкенд на хосте (без Docker). Важно: cwd = backend/, иначе godotenv не найдёт ../.env с ключами.
+# БД: подними postgres отдельно, напр. `docker compose up -d postgres` → localhost:5433.
+# Сначала накатываются миграции (те же DSN), иначе seed упадёт на отсутствующих колонках.
+# В корневом `.env` задай TWO_GIS_API_KEY (имена вида 2GIS_* в shell экспортировать нельзя — см. config.go).
+# Переопределить DSN: `DATABASE_DSN='...' make backend-local`
+backend-local: db-migrate
+	@cd backend && \
+	HTTP_ADDR=:8080 \
+	LOG_LEVEL=development \
+	DEV_DEMO_SEED=1 \
+	DEV_OTP_BYPASS=1 \
+	DATABASE_DSN="$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" \
+	go run ./cmd/api
 
 # Проверка, что бэкенд отвечает (в т.ч. reverse geocode)
 diagnose:

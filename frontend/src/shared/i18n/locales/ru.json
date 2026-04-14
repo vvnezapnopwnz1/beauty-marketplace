@@ -126,6 +126,21 @@
     "error": "Не удалось отправить. Попробуйте позже.",
     "success": "Заявка отправлена. Салон свяжется с вами."
   },
+  "dashboard": {
+    "services": {
+      "all": "Все",
+      "countOf": "{{filtered}} из {{total}} услуг",
+      "addService": "+ Добавить услугу",
+      "minutes": "мин",
+      "priceUnknown": "цена не указана",
+      "active": "активна",
+      "inactive": "выкл",
+      "edit": "Изменить",
+      "deactivateConfirm": "Деактивировать услугу?",
+      "deactivate": "Выкл.",
+      "errorLoad": "Ошибка"
+    }
+  },
   "login": {
     "title": "Вход",
     "subtitle": "Введите номер телефона — отправим код в Telegram",

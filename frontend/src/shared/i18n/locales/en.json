@@ -1,0 +1,161 @@
+{
+  "nav": {
+    "services": "Services",
+    "forBusiness": "For business",
+    "forBusinesses": "For business",
+    "giftCards": "Gift cards",
+    "login": "Log in",
+    "signup": "Sign up",
+    "signUp": "Sign up",
+    "pickCity": "Choose city",
+    "changeRegion": "Change region",
+    "addressRefining": "Refining address"
+  },
+  "theme": {
+    "darkMode": "Dark mode"
+  },
+  "hero": {
+    "tag": "Over 1000 pros in Moscow",
+    "h1": "Beauty",
+    "h1accent": "near you",
+    "subtitle": "Find and book top salons and professionals",
+    "location": "Moscow, Center",
+    "searchBtn": "Search"
+  },
+  "search": {
+    "placeholder": "Manicure, haircut, brows...",
+    "searchBtn": "Search",
+    "availableToday": "Available today",
+    "openNow": "Open now",
+    "budget": "Under 2000 ₽",
+    "topRated": "Top rated",
+    "newOnly": "New",
+    "sortLabel": "Sort:",
+    "sortRecommended": "Recommended",
+    "sortRating": "By rating",
+    "sortPrice": "By price",
+    "onlineBooking": "Online booking",
+    "sortByPopular": "By popularity",
+    "sortByDistance": "By distance",
+    "sortByRating": "By rating",
+    "results": "<strong>{{count}} professionals</strong> found in Moscow",
+    "results_few": "{{count}} professionals found",
+    "noResults": "Nothing found",
+    "noResultsHint": "Try another query or clear filters",
+    "resetFilters": "Reset filters",
+    "title": "Book the best\npros nearby",
+    "twoGisBadge": "2GIS",
+    "availableNowBadge": "Available now",
+    "showMap": "Map",
+    "showList": "List"
+  },
+  "categories": {
+    "hair": "Hair",
+    "nails": "Nails",
+    "spa": "Spa",
+    "barber": "Barber",
+    "brows": "Brows & lashes",
+    "makeup": "Makeup",
+    "massage": "Massage",
+    "skin": "Skincare",
+    "hairRemoval": "Hair removal"
+  },
+  "salon": {
+    "typeVenue": "Salon",
+    "typeIndividual": "Independent professional",
+    "availableToday": "Slots today",
+    "verifiedReviews": "verified reviews",
+    "priceFrom": "from <strong>{{price}} ₽</strong>",
+    "bookOnline": "Book online",
+    "bookByPhone": "Book by phone",
+    "call": "Call",
+    "services": "Services & prices",
+    "schedule": "Hours",
+    "reviews": "Reviews",
+    "reviewsEmpty": "Reviews will appear after visits booked through the platform",
+    "reviewsNote": "Verified only — after a confirmed booking",
+    "bookingHint": "Pick a service above to book online",
+    "bookingFree": "Free, no prepayment",
+    "notFound": "Professional not found",
+    "loadError": "Could not load data from the server",
+    "guestBookingNeedApi": "Online booking is available for salons from the API catalog",
+    "backToSearch": "Back to search",
+    "minutes": "min",
+    "km": "km",
+    "reviewsCount": "reviews",
+    "badgePopular": "Popular",
+    "badgeTop": "Top",
+    "badgeNew": "New"
+  },
+  "places": {
+    "foundInCity": "places found via 2GIS"
+  },
+  "place": {
+    "loadError": "Could not load place",
+    "notFound": "Place not found",
+    "backToSearch": "Back to search",
+    "openIn2gis": "Open in 2GIS",
+    "about": "About",
+    "hours": "Hours",
+    "open247": "Open 24/7",
+    "contacts": "Contacts",
+    "reviewsCount": "{{count}} reviews",
+    "cardReviews": "{{count}} reviews"
+  },
+  "map": {
+    "closestToYou": "Closest to you",
+    "ratingShort": "Rating",
+    "priceOnRequest": "Price on request",
+    "closeCard": "Close"
+  },
+  "promo": {
+    "title": "First booking — 20% off",
+    "subtitle": "Use code FIRST20 at checkout",
+    "cta": "Get offer"
+  },
+  "guestBooking": {
+    "title": "Book a service",
+    "name": "Your name",
+    "phone": "Phone",
+    "note": "Comment",
+    "noteHint": "e.g. preferred time — the salon will contact you",
+    "cancel": "Cancel",
+    "submit": "Send request",
+    "nameRequired": "Enter your name",
+    "phoneInvalid": "Enter a number in +7 format",
+    "error": "Could not send. Try again later.",
+    "success": "Request sent. The salon will contact you."
+  },
+  "dashboard": {
+    "services": {
+      "all": "All",
+      "countOf": "{{filtered}} of {{total}} services",
+      "addService": "+ Add service",
+      "minutes": "min",
+      "priceUnknown": "price not set",
+      "active": "active",
+      "inactive": "off",
+      "edit": "Edit",
+      "deactivateConfirm": "Deactivate this service?",
+      "deactivate": "Off",
+      "errorLoad": "Error"
+    }
+  },
+  "login": {
+    "title": "Log in",
+    "subtitle": "Enter your phone — we’ll send a code in Telegram",
+    "phonePlaceholder": "+7 (___) ___-__-__",
+    "phoneLabel": "Phone number",
+    "submit": "Get code",
+    "submitting": "Sending...",
+    "otpTitle": "Enter code",
+    "otpSubtitle": "We sent a code in Telegram to",
+    "otpLabel": "Code from Telegram",
+    "verify": "Log in",
+    "verifying": "Verifying...",
+    "changePhone": "Change number",
+    "resendHint": "Didn’t get code?",
+    "resend": "Resend",
+    "invalidCode": "Invalid code. Try again."
+  }
+}

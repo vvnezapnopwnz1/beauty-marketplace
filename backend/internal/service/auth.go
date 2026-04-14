@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/auth"
+	"github.com/yourusername/beauty-marketplace/internal/config"
 	"github.com/yourusername/beauty-marketplace/internal/errs"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
@@ -24,17 +25,27 @@ const (
 )
 
 type AuthService struct {
-	repo   repository.AuthRepository
-	jwt    *auth.JWTManager
-	logger *zap.Logger
+	repo         repository.AuthRepository
+	jwt          *auth.JWTManager
+	logger       *zap.Logger
+	devOTPBypass bool
+	devOTPMagic  string // fixed code accepted when devOTPBypass is true (e.g. "1234")
 }
 
 func NewAuthService(
 	repo repository.AuthRepository,
 	jwt *auth.JWTManager,
 	logger *zap.Logger,
+	cfg *config.Config,
 ) *AuthService {
-	return &AuthService{repo: repo, jwt: jwt, logger: logger}
+	magic := "1234"
+	return &AuthService{
+		repo:         repo,
+		jwt:          jwt,
+		logger:       logger,
+		devOTPBypass: cfg.DevOTPBypass,
+		devOTPMagic:  magic,
+	}
 }
 
 type OTPRequestResult struct {
@@ -87,7 +98,12 @@ func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*Verif
 		return nil, fmt.Errorf("find otp: %w", err)
 	}
 
-	if otp.Code != code {
+	codeOK := otp.Code == code
+	if !codeOK && s.devOTPBypass && code == s.devOTPMagic {
+		codeOK = true
+		s.logger.Info("OTP verify: dev bypass (fixed code)", zap.String("phone", phone))
+	}
+	if !codeOK {
 		_ = s.repo.IncrementOTPAttempts(ctx, otp.ID)
 		return nil, errs.ErrOTPInvalid
 	}

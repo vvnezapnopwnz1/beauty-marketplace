@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beautica — Календарь, Мастера, Услуги — Детальный мокап</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0e0e10;--surface:#16161a;--card:#1c1c22;--card-hover:#222228;
+  --border:#2a2a32;--border-hover:#3a3a44;
+  --text:#f0ece6;--text2:#8a8494;--text3:#5a5464;
+  --accent:#D8956B;--accent2:#c07a50;--accent-bg:rgba(216,149,107,.1);
+  --green:#6BCB77;--green-bg:rgba(107,203,119,.12);
+  --red:#FF6B6B;--red-bg:rgba(255,107,107,.12);
+  --blue:#4ECDC4;--blue-bg:rgba(78,205,196,.12);
+  --purple:#B088F9;--purple-bg:rgba(176,136,249,.12);
+  --yellow:#FFD93D;--yellow-bg:rgba(255,217,61,.12);
+  --pink:#FF8FAB;--pink-bg:rgba(255,143,171,.12);
+  --orange:#FFA94D;--orange-bg:rgba(255,169,77,.12);
+  --radius:14px;--radius-sm:8px;--radius-xs:6px;
+  --shadow:0 4px 24px rgba(0,0,0,.3);
+  --transition:.2s cubic-bezier(.4,0,.2,1);
+}
+body{font-family:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* TABS */
+.top-nav{position:sticky;top:0;z-index:200;background:rgba(14,14,16,.94);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px}
+.top-nav-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:6px;padding:10px 0;overflow-x:auto;scrollbar-width:none}
+.top-nav-inner::-webkit-scrollbar{display:none}
+.logo{font-weight:800;font-size:17px;color:var(--accent);margin-right:20px;letter-spacing:-.3px;white-space:nowrap}
+.tab{padding:7px 16px;border-radius:20px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);white-space:nowrap;transition:var(--transition);border:1px solid transparent;user-select:none}
+.tab:hover{color:var(--text);background:var(--card)}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.container{max-width:1400px;margin:0 auto;padding:28px 24px}
+.section{display:none;animation:fadeUp .35s ease}
+.section.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+h1{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+h2{font-size:20px;font-weight:700;letter-spacing:-.3px;margin:28px 0 14px;color:var(--accent)}
+h3{font-size:16px;font-weight:700;margin:18px 0 10px}
+.subtitle{color:var(--text2);font-size:13px;margin-bottom:24px}
+p{color:var(--text2);font-size:13px;margin-bottom:10px}
+
+/* BUTTONS */
+.btn{padding:7px 16px;border-radius:var(--radius-xs);font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:var(--transition);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.btn:hover{background:var(--card-hover);color:var(--text);border-color:var(--border-hover)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.primary:hover{background:var(--accent2)}
+.btn.sm{padding:4px 10px;font-size:11px}
+.btn.danger{background:var(--red-bg);color:var(--red);border-color:transparent}
+.btn.ghost{background:transparent;border-color:transparent}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.2px}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-yellow{background:var(--yellow-bg);color:var(--yellow)}
+.badge-blue{background:var(--blue-bg);color:var(--blue)}
+.badge-purple{background:var(--purple-bg);color:var(--purple)}
+.badge-accent{background:var(--accent-bg);color:var(--accent)}
+.badge-gray{background:rgba(255,255,255,.06);color:var(--text2)}
+.badge-pink{background:var(--pink-bg);color:var(--pink)}
+.badge-orange{background:var(--orange-bg);color:var(--orange)}
+
+/* CARD */
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);transition:var(--transition)}
+.card:hover{border-color:var(--border-hover)}
+.card.clickable{cursor:pointer}
+.card.clickable:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar-spacer{flex:1;min-width:20px}
+.toolbar-group{display:flex;gap:4px}
+
+/* ============ CALENDAR ============ */
+.cal-container{position:relative;overflow:hidden}
+.cal-grid{display:grid;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+
+/* Day View — staff columns */
+.cal-day-grid{grid-template-columns:60px repeat(var(--staff-count,5),1fr)}
+.cal-day-header{display:contents}
+.cal-day-header>div{padding:12px 8px;text-align:center;background:var(--card);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;position:sticky;top:0;z-index:10}
+.cal-day-header .time-corner{font-size:10px;color:var(--text3);display:flex;align-items:center;justify-content:center}
+.cal-staff-col{display:flex;flex-direction:column;align-items:center;gap:4px}
+.cal-staff-col .avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.cal-staff-col .name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* Time rows */
+.cal-time-row{display:contents}
+.cal-time-label{padding:0 6px;font-size:10px;color:var(--text3);font-weight:600;text-align:right;border-right:1px solid var(--border);display:flex;align-items:flex-start;justify-content:flex-end;padding-top:2px;height:60px;position:relative}
+.cal-time-label::after{content:'';position:absolute;top:0;right:-1px;width:8px;height:1px;background:var(--border)}
+.cal-cell{border-right:1px solid rgba(42,42,50,.5);border-bottom:1px solid rgba(42,42,50,.3);height:60px;position:relative;cursor:pointer;transition:background .15s}
+.cal-cell:last-child{border-right:none}
+.cal-cell:hover{background:rgba(216,149,107,.04)}
+.cal-cell.non-working{background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(42,42,50,.15) 4px,rgba(42,42,50,.15) 5px)}
+
+/* Events */
+.cal-event{position:absolute;left:3px;right:3px;border-radius:var(--radius-xs);padding:4px 8px;font-size:11px;font-weight:600;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .15s;z-index:5;border-left:3px solid transparent;line-height:1.3}
+.cal-event:hover{z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.4);transform:scale(1.02)}
+.cal-event .ev-service{font-weight:700;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-event .ev-client{font-size:10px;font-weight:500;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-event .ev-time{font-size:9px;opacity:.6;margin-top:1px}
+.cal-event.confirmed{background:var(--green-bg);color:var(--green);border-left-color:var(--green)}
+.cal-event.pending{background:var(--yellow-bg);color:var(--yellow);border-left-color:var(--yellow)}
+.cal-event.completed{background:rgba(255,255,255,.05);color:var(--text2);border-left-color:var(--text3)}
+.cal-event.cancelled{background:var(--red-bg);color:var(--red);border-left-color:var(--red);opacity:.6}
+.cal-event.no-show{background:rgba(255,107,107,.08);color:#cc4444;border-left-color:#cc4444;opacity:.5}
+.cal-event.blocked{background:rgba(255,255,255,.03);color:var(--text3);border-left-color:var(--text3);border-style:dashed}
+
+/* Break indicator */
+.cal-break{position:absolute;left:3px;right:3px;border-radius:var(--radius-xs);padding:4px 8px;font-size:10px;color:var(--text3);background:repeating-linear-gradient(45deg,rgba(42,42,50,.2),rgba(42,42,50,.2) 3px,transparent 3px,transparent 6px);text-align:center;z-index:4}
+
+/* Current time line */
+.cal-now-line{position:absolute;left:60px;right:0;height:2px;background:var(--red);z-index:15;pointer-events:none}
+.cal-now-line::before{content:'';position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--red)}
+
+/* Week View */
+.cal-week-grid{grid-template-columns:60px repeat(7,1fr)}
+.cal-week-dayheader{padding:10px 4px;text-align:center;background:var(--card);border-bottom:1px solid var(--border);font-size:11px;font-weight:600}
+.cal-week-dayheader.today{color:var(--accent)}
+.cal-week-dayheader .day-num{font-size:18px;font-weight:800;margin-bottom:2px}
+.cal-week-dayheader .day-name{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.cal-week-dayheader.today .day-num{background:var(--accent);color:#fff;width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:2px}
+
+/* ============ APPOINTMENT DETAIL MODAL ============ */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:500;justify-content:center;align-items:flex-start;padding:60px 20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:560px;max-height:80vh;overflow-y:auto;animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h3{margin:0;font-size:17px}
+.modal-close{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);transition:var(--transition);font-size:18px;background:transparent;border:none;font-family:inherit}
+.modal-close:hover{background:var(--card);color:var(--text)}
+.modal-body{padding:20px 24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+/* Form */
+.form-group{margin-bottom:16px}
+.form-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
+.form-input{width:100%;padding:9px 14px;border-radius:var(--radius-xs);border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-family:inherit;transition:var(--transition);outline:none}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.form-input::placeholder{color:var(--text3)}
+select.form-input{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238a8494'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-hint{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* Client search */
+.client-search-result{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-xs);cursor:pointer;transition:var(--transition)}
+.client-search-result:hover{background:var(--accent-bg)}
+.client-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+
+/* ============ STAFF ============ */
+.staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.staff-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;transition:var(--transition);cursor:pointer}
+.staff-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.staff-card-top{padding:16px 18px;display:flex;gap:14px;align-items:flex-start}
+.staff-card-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;position:relative}
+.staff-card-avatar .online-dot{position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;background:var(--green);border:2px solid var(--card)}
+.staff-card-info{flex:1;min-width:0}
+.staff-card-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.staff-card-role{font-size:11px;color:var(--text2);margin-bottom:8px}
+.staff-card-tags{display:flex;flex-wrap:wrap;gap:4px}
+.staff-card-tags .tag{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:rgba(255,255,255,.06);color:var(--text2)}
+.staff-card-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);text-align:center}
+.staff-card-stat{padding:12px 8px}
+.staff-card-stat .val{font-size:14px;font-weight:800}
+.staff-card-stat .lbl{font-size:10px;color:var(--text3);margin-top:2px}
+.staff-load{padding:0 18px 14px}
+.staff-load-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.staff-load-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--accent));transition:width .5s ease}
+
+/* Staff detail */
+.staff-detail{display:grid;grid-template-columns:320px 1fr;gap:20px}
+.staff-detail-sidebar{display:flex;flex-direction:column;gap:16px}
+.staff-detail-main{display:flex;flex-direction:column;gap:16px}
+
+/* Staff schedule */
+.schedule-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.schedule-day{background:var(--card);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--border);transition:var(--transition)}
+.schedule-day.active{border-color:var(--green)}
+.schedule-day.off{opacity:.4}
+.schedule-day .day-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.schedule-day .time{font-size:12px;font-weight:600}
+.schedule-day .break{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* ============ SERVICES ============ */
+.service-category{margin-bottom:20px}
+.service-category-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-radius:var(--radius-sm) var(--radius-sm) 0 0;border:1px solid var(--border);border-bottom:none;cursor:pointer}
+.service-category-header .cat-icon{font-size:16px}
+.service-category-header .cat-name{font-weight:700;font-size:14px;flex:1}
+.service-category-header .cat-count{font-size:11px;color:var(--text2)}
+.service-category-header .cat-chevron{color:var(--text3);transition:transform .2s}
+.service-category.open .cat-chevron{transform:rotate(180deg)}
+.service-list{border:1px solid var(--border);border-radius:0 0 var(--radius-sm) var(--radius-sm);overflow:hidden}
+.service-item{display:grid;grid-template-columns:1fr 100px 80px 140px 60px;gap:12px;padding:12px 16px;align-items:center;border-bottom:1px solid rgba(42,42,50,.4);font-size:13px;transition:background .15s;cursor:pointer}
+.service-item:last-child{border-bottom:none}
+.service-item:hover{background:rgba(216,149,107,.04)}
+.service-item .svc-name{font-weight:600}
+.service-item .svc-desc{font-size:11px;color:var(--text2);margin-top:2px}
+.service-item .svc-price{font-weight:700;color:var(--accent)}
+.service-item .svc-duration{color:var(--text2);font-size:12px}
+.service-item .svc-masters{display:flex;gap:-6px}
+.service-item .svc-masters .mini-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;margin-left:-6px;border:2px solid var(--card)}
+.service-item .svc-masters .mini-avatar:first-child{margin-left:0}
+.service-item .svc-actions{display:flex;gap:4px;justify-content:flex-end}
+
+/* DRAG HANDLE */
+.drag-handle{width:16px;height:16px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;cursor:grab;opacity:.3;transition:opacity .15s;flex-shrink:0;margin-right:4px}
+.drag-handle:hover{opacity:.7}
+.drag-handle span{display:block;width:10px;height:2px;background:var(--text2);border-radius:1px}
+
+/* ============ APPOINTMENT CREATION FLOW ============ */
+.slot-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.slot{padding:8px;text-align:center;border-radius:var(--radius-xs);border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:600;transition:var(--transition)}
+.slot:hover{border-color:var(--accent);background:var(--accent-bg)}
+.slot.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
+.slot.unavailable{opacity:.3;cursor:not-allowed;pointer-events:none}
+
+/* ============ STATUS LEGEND ============ */
+.legend{display:flex;gap:14px;font-size:11px;color:var(--text2);flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:8px;height:8px;border-radius:2px}
+
+/* TOOLTIP */
+.tooltip{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;z-index:50;box-shadow:var(--shadow);min-width:220px;pointer-events:none;font-size:12px;display:none}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-hover)}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .staff-grid{grid-template-columns:1fr}
+  .staff-detail{grid-template-columns:1fr}
+  .service-item{grid-template-columns:1fr 80px 70px auto 50px;font-size:12px}
+  .cal-day-grid{grid-template-columns:50px repeat(var(--staff-count,5),minmax(100px,1fr));overflow-x:auto}
+  .form-row{grid-template-columns:1fr}
+  .schedule-week{grid-template-columns:repeat(4,1fr)}
+}
+
+/* PROGRESS RING */
+.progress-ring{position:relative;width:60px;height:60px}
+.progress-ring svg{transform:rotate(-90deg)}
+.progress-ring .ring-bg{fill:none;stroke:rgba(255,255,255,.06);stroke-width:5}
+.progress-ring .ring-fill{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.progress-ring .ring-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:800}
+
+/* ANNOTATIONS */
+.annotation{font-size:11px;padding:8px 12px;border-radius:var(--radius-xs);background:rgba(176,136,249,.08);border:1px dashed rgba(176,136,249,.3);color:var(--purple);margin:8px 0;line-height:1.4}
+.annotation::before{content:'💡 ';font-size:12px}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <div class="logo">Beautica Business</div>
+    <div class="tab active" data-tab="calendar">📅 Календарь</div>
+    <div class="tab" data-tab="appointments">📋 Записи</div>
+    <div class="tab" data-tab="services">💇 Услуги</div>
+    <div class="tab" data-tab="staff">👤 Мастера</div>
+    <div class="tab" data-tab="staff-detail">👤 Мастер — детали</div>
+    <div class="tab" data-tab="modals">🔲 Модалки</div>
+    <div class="tab" data-tab="notes">📝 Спеки</div>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- =============== CALENDAR =============== -->
+<div class="section active" id="calendar">
+  <h1>📅 Календарь</h1>
+  <p class="subtitle">Режим «День» — колонки по мастерам. Визуализация длительности услуг, статусов, перерывов.</p>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button class="btn" onclick="switchCalView('day')" id="btn-day" style="background:var(--accent);color:#fff;border-color:var(--accent)">День</button>
+      <button class="btn" onclick="switchCalView('week')" id="btn-week">Неделя</button>
+      <button class="btn" onclick="switchCalView('month')" id="btn-month">Месяц</button>
+    </div>
+    <div class="toolbar-group">
+      <button class="btn">‹</button>
+      <button class="btn" style="min-width:160px;justify-content:center;font-weight:700" id="cal-date-label">Вторник, 15 апреля 2026</button>
+      <button class="btn">›</button>
+    </div>
+    <button class="btn ghost" style="font-size:11px;color:var(--accent)">Сегодня</button>
+    <div class="toolbar-spacer"></div>
+    <button class="btn">Все мастера ▾</button>
+    <button class="btn primary" onclick="showModal('modal-new-appointment')">+ Новая запись</button>
+  </div>
+
+  <!-- DAY VIEW -->
+  <div id="cal-day-view">
+    <div class="cal-container">
+      <div class="cal-grid cal-day-grid" style="--staff-count:5;position:relative">
+        <!-- Header -->
+        <div class="cal-day-header">
+          <div class="time-corner" style="border-right:1px solid var(--border)">Время</div>
+          <div>
+            <div class="cal-staff-col">
+              <div class="avatar" style="background:rgba(216,149,107,.2);color:var(--accent)">АС</div>
+              <div class="name">Анна</div>
+            </div>
+          </div>
+          <div>
+            <div class="cal-staff-col">
+              <div class="avatar" style="background:var(--purple-bg);color:var(--purple)">МВ</div>
+              <div class="name">Мария</div>
+            </div>
+          </div>
+          <div>
+            <div class="cal-staff-col">
+              <div class="avatar" style="background:var(--pink-bg);color:var(--pink)">КН</div>
+              <div class="name">Катя</div>
+            </div>
+          </div>
+          <div>
+            <div class="cal-staff-col">
+              <div class="avatar" style="background:var(--blue-bg);color:var(--blue)">ОП</div>
+              <div class="name">Ольга</div>
+            </div>
+          </div>
+          <div>
+            <div class="cal-staff-col">
+              <div class="avatar" style="background:var(--orange-bg);color:var(--orange)">ЛД</div>
+              <div class="name">Лена</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 09:00 -->
+        <div class="cal-time-row">
+          <div class="cal-time-label">09:00</div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:115px">
+              <div class="ev-service">Стрижка + укладка</div>
+              <div class="ev-client">Ирина Козлова</div>
+              <div class="ev-time">09:00 – 10:00 · 60 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell non-working"></div>
+          <div class="cal-cell">
+            <div class="cal-event pending" style="top:0;height:170px">
+              <div class="ev-service">Маникюр + гель-лак</div>
+              <div class="ev-client">Ольга Смирнова</div>
+              <div class="ev-time">09:00 – 10:30 · 90 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell non-working"></div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:55px">
+              <div class="ev-service">Укладка</div>
+              <div class="ev-client">Нина Петрова</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10:00 -->
+        <div class="cal-time-row">
+          <div class="cal-time-label">10:00</div>
+          <div class="cal-cell">
+            <div class="cal-break" style="top:5px;height:20px">☕ Перерыв 15 мин</div>
+            <div class="cal-event confirmed" style="top:30px;height:110px">
+              <div class="ev-service">Мелирование</div>
+              <div class="ev-client">Алла Новикова</div>
+              <div class="ev-time">10:15 – 12:15 · 120 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:170px">
+              <div class="ev-service">Окрашивание</div>
+              <div class="ev-client">Дарья Иванова</div>
+              <div class="ev-time">10:00 – 12:00 · 120 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:55px">
+              <div class="ev-service">Брови</div>
+              <div class="ev-client">Вика Сергеева</div>
+            </div>
+          </div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:115px">
+              <div class="ev-service">Педикюр</div>
+              <div class="ev-client">Света Кузнецова</div>
+              <div class="ev-time">10:00 – 11:00 · 60 мин</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 11:00 -->
+        <div class="cal-time-row">
+          <div class="cal-time-label">11:00</div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:115px">
+              <div class="ev-service">Педикюр</div>
+              <div class="ev-client">Таня Белова</div>
+              <div class="ev-time">11:00 – 12:00 · 60 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell">
+            <div class="cal-event cancelled" style="top:0;height:55px">
+              <div class="ev-service" style="text-decoration:line-through">Наращивание</div>
+              <div class="ev-client">❌ Отмена клиентом</div>
+            </div>
+          </div>
+          <div class="cal-cell">
+            <div class="cal-event blocked" style="top:0;height:55px">
+              <div class="ev-service">🔒 Закрыто</div>
+              <div class="ev-client">Личное время</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 12:00 -->
+        <div class="cal-time-row">
+          <div class="cal-time-label">12:00</div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="cal-break" style="top:0;height:55px">🍽️ Обед · 12:00–13:00</div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:110px">
+              <div class="ev-service">Наращивание ресниц</div>
+              <div class="ev-client">Юля Тихонова</div>
+              <div class="ev-time">12:00 – 14:00 · 120 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell">
+            <div class="cal-event pending" style="top:0;height:55px">
+              <div class="ev-service">Маникюр</div>
+              <div class="ev-client">⏳ Гость</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 13:00 -->
+        <div class="cal-time-row">
+          <div class="cal-time-label">13:00</div>
+          <div class="cal-cell">
+            <div class="cal-event pending" style="top:0;height:55px">
+              <div class="ev-service">Укладка</div>
+              <div class="ev-client">Лена Попова</div>
+            </div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:110px">
+              <div class="ev-service">Гель-лак + дизайн</div>
+              <div class="ev-client">Марина Козлова</div>
+              <div class="ev-time">13:00 – 14:30 · 90 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:5px;height:55px">
+              <div class="ev-service">Коррекция бровей</div>
+              <div class="ev-client">Аня Морозова</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 14:00 -->
+        <div class="cal-time-row">
+          <div class="cal-time-label">14:00</div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:115px">
+              <div class="ev-service">Стрижка</div>
+              <div class="ev-client">Алина Карпова</div>
+              <div class="ev-time">14:00 – 15:00 · 60 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell">
+            <div class="cal-event confirmed" style="top:0;height:170px">
+              <div class="ev-service">Балаяж</div>
+              <div class="ev-client">Екатерина Волк</div>
+              <div class="ev-time">14:00 – 16:30 · 150 мин</div>
+            </div>
+          </div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell"></div>
+          <div class="cal-cell">
+            <div class="cal-event no-show" style="top:0;height:55px">
+              <div class="ev-service">Педикюр</div>
+              <div class="ev-client">⚠️ Не пришла</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current time indicator -->
+        <div class="cal-now-line" style="top:calc(72px + 5 * 60px + 30px)"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Подтверждена</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Ожидает</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Отмена</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#cc4444"></div>Не пришёл</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--text3)"></div>Завершена</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--text3);border:1px dashed var(--text3)"></div>Заблокировано</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">Клик на пустой слот → создать запись · Drag → перенести · Drag за край → изменить длительность</div>
+    </div>
+
+    <div class="annotation" style="margin-top:16px">
+      <strong>Режим «День»</strong> — основной рабочий вид. Колонки = мастера. Высота блока пропорциональна длительности услуги (60px = 1 час). Перерывы — штриховка. Нерабочее время — диагональная штриховка. Текущее время — красная линия. При клике на событие — модалка с деталями (см. вкладку «Модалки»). При наведении — тултип с ключевой инфой.
+    </div>
+  </div>
+
+  <!-- WEEK VIEW -->
+  <div id="cal-week-view" style="display:none">
+    <div class="cal-container">
+      <div class="cal-grid cal-week-grid">
+        <div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--card)"></div>
+        <div class="cal-week-dayheader"><div class="day-name">Пн</div><div class="day-num">13</div></div>
+        <div class="cal-week-dayheader today"><div class="day-name">Вт</div><div class="day-num">14</div></div>
+        <div class="cal-week-dayheader"><div class="day-name">Ср</div><div class="day-num">15</div></div>
+        <div class="cal-week-dayheader"><div class="day-name">Чт</div><div class="day-num">16</div></div>
+        <div class="cal-week-dayheader"><div class="day-name">Пт</div><div class="day-num">17</div></div>
+        <div class="cal-week-dayheader"><div class="day-name">Сб</div><div class="day-num">18</div></div>
+        <div class="cal-week-dayheader" style="opacity:.5"><div class="day-name">Вс</div><div class="day-num">19</div></div>
+
+        <!-- 09:00 row -->
+        <div class="cal-time-label" style="border-bottom:1px solid rgba(42,42,50,.3)">09:00</div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Стрижка ×2</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Окрашивание ×1</div></div></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"><div class="cal-event pending" style="top:0;height:55px"><div class="ev-service">Маникюр ×3</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Стрижка ×2</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Укладка ×1</div></div></div>
+        <div class="cal-cell non-working"></div>
+
+        <!-- 10:00 row -->
+        <div class="cal-time-label" style="border-bottom:1px solid rgba(42,42,50,.3)">10:00</div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Окрашивание ×1</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Стрижка ×3</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Брови ×2</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Педикюр ×1</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Маникюр ×2</div></div></div>
+        <div class="cal-cell"><div class="cal-event pending" style="top:0;height:55px"><div class="ev-service">Стрижка ×1</div></div></div>
+        <div class="cal-cell non-working"></div>
+
+        <!-- 11-14 abbreviated -->
+        <div class="cal-time-label" style="border-bottom:1px solid rgba(42,42,50,.3)">11:00</div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Маникюр ×2</div></div></div>
+        <div class="cal-cell"><div class="cal-event cancelled" style="top:0;height:55px"><div class="ev-service">❌ Отмена ×1</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Окрашивание ×2</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Стрижка ×2</div></div></div>
+        <div class="cal-cell"><div class="cal-event confirmed" style="top:0;height:55px"><div class="ev-service">Укладка ×3</div></div></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell non-working"></div>
+      </div>
+    </div>
+    <div class="annotation" style="margin-top:12px">
+      <strong>Режим «Неделя»</strong> — обзорный вид. В ячейке показано количество записей по типу. При клике на ячейку — переход в режим «День» на эту дату. Агрегация: сумма записей всех мастеров на этот час. Помечены отмены, пустые слоты.
+    </div>
+  </div>
+</div>
+
+<!-- =============== APPOINTMENTS =============== -->
+<div class="section" id="appointments">
+  <h1>📋 Управление записями</h1>
+  <p class="subtitle">Список всех записей с фильтрами, быстрыми действиями, поиском.</p>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent)">Сегодня</button>
+      <button class="btn">Завтра</button>
+      <button class="btn">Эта неделя</button>
+      <button class="btn">Диапазон ▾</button>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <div class="toolbar-group">
+      <button class="btn">Статус ▾</button>
+      <button class="btn">Мастер ▾</button>
+      <button class="btn">Услуга ▾</button>
+    </div>
+    <input type="text" class="form-input" placeholder="Поиск по имени или телефону..." style="width:220px;padding:7px 12px;font-size:12px">
+    <button class="btn primary" onclick="showModal('modal-new-appointment')">+ Создать запись</button>
+  </div>
+
+  <!-- Quick stats -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px">
+    <div class="card" style="padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800">12</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:2px">Всего</div>
+    </div>
+    <div class="card" style="padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--green)">8</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:2px">Подтверждено</div>
+    </div>
+    <div class="card" style="padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--yellow)">3</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:2px">Ожидают</div>
+    </div>
+    <div class="card" style="padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--red)">1</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:2px">Отмены</div>
+    </div>
+    <div class="card" style="padding:14px 16px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--accent)">36 400 ₽</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:2px">Выручка дня</div>
+    </div>
+  </div>
+
+  <!-- Table header -->
+  <div style="display:grid;grid-template-columns:70px 1fr 150px 100px 80px 130px 100px;gap:10px;padding:8px 16px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:700;border-bottom:1px solid var(--border)">
+    <span>Время</span><span>Клиент</span><span>Услуга</span><span>Мастер</span><span>Цена</span><span>Статус</span><span>Действия</span>
+  </div>
+
+  <!-- Rows -->
+  <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+    <div class="card" style="display:grid;grid-template-columns:70px 1fr 150px 100px 80px 130px 100px;gap:10px;padding:12px 16px;align-items:center;font-size:13px;border-left:3px solid var(--green);cursor:pointer" onclick="showModal('modal-appointment-detail')">
+      <span style="font-weight:700">09:00</span>
+      <div><div style="font-weight:600">Ирина Козлова</div><div style="font-size:11px;color:var(--text2)">+7 999 123-45-67 · 8 визитов</div></div>
+      <span>Стрижка + укладка</span>
+      <div style="display:flex;align-items:center;gap:6px"><div class="client-avatar" style="width:22px;height:22px;font-size:8px;background:rgba(216,149,107,.2);color:var(--accent)">АС</div><span style="font-size:12px">Анна</span></div>
+      <span style="font-weight:600">2 500 ₽</span>
+      <span class="badge badge-green">✓ Подтверждена</span>
+      <div style="display:flex;gap:4px"><button class="btn sm">✏️</button><button class="btn sm">✓</button><button class="btn sm danger">✗</button></div>
+    </div>
+
+    <div class="card" style="display:grid;grid-template-columns:70px 1fr 150px 100px 80px 130px 100px;gap:10px;padding:12px 16px;align-items:center;font-size:13px;border-left:3px solid var(--yellow);cursor:pointer">
+      <span style="font-weight:700">09:00</span>
+      <div><div style="font-weight:600">Ольга Смирнова</div><div style="font-size:11px;color:var(--text2)">+7 903 555-12-34 · 1 визит</div></div>
+      <span>Маникюр + гель-лак</span>
+      <div style="display:flex;align-items:center;gap:6px"><div class="client-avatar" style="width:22px;height:22px;font-size:8px;background:var(--pink-bg);color:var(--pink)">КН</div><span style="font-size:12px">Катя</span></div>
+      <span style="font-weight:600">2 800 ₽</span>
+      <span class="badge badge-yellow">⏳ Ожидает</span>
+      <div style="display:flex;gap:4px"><button class="btn sm primary">Подтвердить</button><button class="btn sm danger">✗</button></div>
+    </div>
+
+    <div class="card" style="display:grid;grid-template-columns:70px 1fr 150px 100px 80px 130px 100px;gap:10px;padding:12px 16px;align-items:center;font-size:13px;border-left:3px solid var(--green);cursor:pointer">
+      <span style="font-weight:700">10:00</span>
+      <div><div style="font-weight:600">Дарья Иванова</div><div style="font-size:11px;color:var(--text2)">+7 915 222-33-44 · 5 визитов</div></div>
+      <span>Окрашивание</span>
+      <div style="display:flex;align-items:center;gap:6px"><div class="client-avatar" style="width:22px;height:22px;font-size:8px;background:var(--purple-bg);color:var(--purple)">МВ</div><span style="font-size:12px">Мария</span></div>
+      <span style="font-weight:600">4 800 ₽</span>
+      <span class="badge badge-green">✓ Подтверждена</span>
+      <div style="display:flex;gap:4px"><button class="btn sm">✏️</button><button class="btn sm">✓</button><button class="btn sm danger">✗</button></div>
+    </div>
+
+    <div class="card" style="display:grid;grid-template-columns:70px 1fr 150px 100px 80px 130px 100px;gap:10px;padding:12px 16px;align-items:center;font-size:13px;border-left:3px solid var(--red);opacity:.6;cursor:pointer">
+      <span style="font-weight:700;text-decoration:line-through">11:00</span>
+      <div><div style="font-weight:600;text-decoration:line-through">Марина Липова</div><div style="font-size:11px;color:var(--text2)">+7 926 344-78-90</div></div>
+      <span style="text-decoration:line-through">Наращивание ресниц</span>
+      <div style="display:flex;align-items:center;gap:6px"><div class="client-avatar" style="width:22px;height:22px;font-size:8px;background:var(--blue-bg);color:var(--blue)">ОП</div><span style="font-size:12px">Ольга</span></div>
+      <span style="color:var(--text3)">—</span>
+      <span class="badge badge-red">❌ Отменена</span>
+      <div style="display:flex;gap:4px"><button class="btn sm">↺ Вернуть</button></div>
+    </div>
+
+    <div class="card" style="display:grid;grid-template-columns:70px 1fr 150px 100px 80px 130px 100px;gap:10px;padding:12px 16px;align-items:center;font-size:13px;border-left:3px solid var(--yellow);cursor:pointer">
+      <span style="font-weight:700">12:00</span>
+      <div><div style="font-weight:600">Гость</div><div style="font-size:11px;color:var(--text2)">+7 977 888-99-00 · Запись без регистрации</div></div>
+      <span>Маникюр</span>
+      <div style="display:flex;align-items:center;gap:6px"><div class="client-avatar" style="width:22px;height:22px;font-size:8px;background:var(--orange-bg);color:var(--orange)">ЛД</div><span style="font-size:12px">Лена</span></div>
+      <span style="font-weight:600">2 200 ₽</span>
+      <span class="badge badge-orange">🚶 Walk-in</span>
+      <div style="display:flex;gap:4px"><button class="btn sm primary">Подтвердить</button><button class="btn sm">✏️</button></div>
+    </div>
+  </div>
+
+  <div class="annotation" style="margin-top:16px">
+    <strong>Список записей</strong> — табличный вид с быстрыми действиями. Двойной клик → модалка редактирования. Цветная полоска слева = статус. Фильтры по дате/статусу/мастеру/услуге. Гостевые записи помечены бейджом «Walk-in». Строка с количеством визитов клиента помогает оценить лояльность.
+  </div>
+</div>
+
+<!-- =============== SERVICES =============== -->
+<div class="section" id="services">
+  <h1>💇 Управление услугами</h1>
+  <p class="subtitle">Категории, цены, длительность, привязка к мастерам. Drag & drop для сортировки.</p>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent)">Все категории</button>
+      <button class="btn">💇 Волосы</button>
+      <button class="btn">💅 Ногти</button>
+      <button class="btn">👁️ Брови/ресницы</button>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <button class="btn">Сортировка ▾</button>
+    <button class="btn primary" onclick="showModal('modal-new-service')">+ Добавить услугу</button>
+  </div>
+
+  <!-- Hair Category -->
+  <div class="service-category open">
+    <div class="service-category-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-icon">💇</span>
+      <span class="cat-name">Волосы</span>
+      <span class="cat-count">6 услуг</span>
+      <span class="badge badge-accent" style="font-size:9px">Самая популярная</span>
+      <span class="cat-chevron">▾</span>
+    </div>
+    <div class="service-list">
+      <div class="service-item">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="drag-handle"><span></span><span></span><span></span></div>
+          <div><div class="svc-name">Женская стрижка</div><div class="svc-desc">Мытьё + укладка включено</div></div>
+        </div>
+        <div class="svc-price">от 2 500 ₽</div>
+        <div class="svc-duration">60 мин</div>
+        <div class="svc-masters">
+          <div class="mini-avatar" style="background:rgba(216,149,107,.2);color:var(--accent)">АС</div>
+          <div class="mini-avatar" style="background:var(--purple-bg);color:var(--purple)">МВ</div>
+        </div>
+        <div class="svc-actions"><button class="btn sm">✏️</button></div>
+      </div>
+      <div class="service-item">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="drag-handle"><span></span><span></span><span></span></div>
+          <div><div class="svc-name">Окрашивание в один тон</div><div class="svc-desc">Корни или полная длина</div></div>
+        </div>
+        <div class="svc-price">от 4 800 ₽</div>
+        <div class="svc-duration">120 мин</div>
+        <div class="svc-masters">
+          <div class="mini-avatar" style="background:var(--purple-bg);color:var(--purple)">МВ</div>
+          <div class="mini-avatar" style="background:rgba(216,149,107,.2);color:var(--accent)">АС</div>
+        </div>
+        <div class="svc-actions"><button class="btn sm">✏️</button></div>
+      </div>
+      <div class="service-item">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="drag-handle"><span></span><span></span><span></span></div>
+          <div><div class="svc-name">Мелирование / Балаяж</div><div class="svc-desc">Техника на выбор</div></div>
+        </div>
+        <div class="svc-price">от 6 500 ₽</div>
+        <div class="svc-duration">150 мин</div>
+        <div class="svc-masters">
+          <div class="mini-avatar" style="background:var(--purple-bg);color:var(--purple)">МВ</div>
+        </div>
+        <div class="svc-actions"><button class="btn sm">✏️</button></div>
+      </div>
+      <div class="service-item">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="drag-handle"><span></span><span></span><span></span></div>
+          <div><div class="svc-name">Укладка</div><div class="svc-desc">Фен или утюжок</div></div>
+        </div>
+        <div class="svc-price">1 500 ₽</div>
+        <div class="svc-duration">30 мин</div>
+        <div class="svc-masters">
+          <div class="mini-avatar" style="background:rgba(216,149,107,.2);color:var(--accent)">АС</div>
+          <div class="mini-avatar" style="background:var(--purple-bg);color:var(--purple)">МВ</div>
+          <div class="mini-avatar" style="background:var(--pink-bg);color:var(--pink)">КН</div>
+        </div>
+        <div class="svc-actions"><button class="btn sm">✏️</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nails Category -->
+  <div class="service-category open">
+    <div class="service-category-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-icon">💅</span>
+      <span class="cat-name">Ногти</span>
+      <span class="cat-count">4 услуги</span>
+      <span class="cat-chevron">▾</span>
+    </div>
+    <div class="service-list">
+      <div class="service-item">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="drag-handle"><span></span><span></span><span></span></div>
+          <div><div class="svc-name">Маникюр + гель-лак</div><div class="svc-desc">Аппаратный</div></div>
+        </div>
+        <div class="svc-price">2 800 ₽</div>
+        <div class="svc-duration">75 мин</div>
+        <div class="svc-masters">
+          <div class="mini-avatar" style="background:var(--pink-bg);color:var(--pink)">КН</div>
+          <div class="mini-avatar" style="background:var(--orange-bg);color:var(--orange)">ЛД</div>
+        </div>
+        <div class="svc-actions"><button class="btn sm">✏️</button></div>
+      </div>
+      <div class="service-item">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="drag-handle"><span></span><span></span><span></span></div>
+          <div><div class="svc-name">Педикюр + покрытие</div><div class="svc-desc">Аппаратный с покрытием</div></div>
+        </div>
+        <div class="svc-price">3 200 ₽</div>
+        <div class="svc-duration">90 мин</div>
+        <div class="svc-masters">
+          <div class="mini-avatar" style="background:var(--pink-bg);color:var(--pink)">КН</div>
+          <div class="mini-avatar" style="background:var(--orange-bg);color:var(--orange)">ЛД</div>
+        </div>
+        <div class="svc-actions"><button class="btn sm">✏️</button></div>
+      </div>
+      <div class="service-item">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="drag-handle"><span></span><span></span><span></span></div>
+          <div><div class="svc-name">Дизайн ногтей</div><div class="svc-desc">1 ноготь · к маникюру</div></div>
+        </div>
+        <div class="svc-price">200 ₽</div>
+        <div class="svc-duration">+10 мин</div>
+        <div class="svc-masters">
+          <div class="mini-avatar" style="background:var(--pink-bg);color:var(--pink)">КН</div>
+        </div>
+        <div class="svc-actions"><button class="btn sm">✏️</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Brows Category -->
+  <div class="service-category">
+    <div class="service-category-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="cat-icon">👁️</span>
+      <span class="cat-name">Брови и ресницы</span>
+      <span class="cat-count">3 услуги</span>
+      <span class="cat-chevron">▾</span>
+    </div>
+    <div class="service-list" style="display:none">
+      <!-- Collapsed -->
+    </div>
+  </div>
+
+  <div class="annotation" style="margin-top:16px">
+    <strong>Услуги</strong> — группировка по категориям (accordion). Каждая услуга: название, описание, цена (точная или «от»), длительность, привязанные мастера (аватарки). Drag-handle слева для сортировки. Кнопка ✏️ → модалка редактирования. Мастера-аватарки кликабельны (фильтр). Категории соответствуют справочнику `service_categories` (slug + parent_slug).
+  </div>
+</div>
+
+<!-- =============== STAFF =============== -->
+<div class="section" id="staff">
+  <h1>👤 Мастера</h1>
+  <p class="subtitle">5 мастеров · Средняя загрузка: 69% · Управление профилями, расписанием, услугами.</p>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent)">Все</button>
+      <button class="btn">Работает сейчас</button>
+      <button class="btn">Выходной</button>
+    </div>
+    <div class="toolbar-spacer"></div>
+    <button class="btn">Сортировка ▾</button>
+    <button class="btn primary" onclick="showModal('modal-new-staff')">+ Добавить мастера</button>
+  </div>
+
+  <div class="staff-grid">
+    <!-- ANNA -->
+    <div class="staff-card" onclick="document.querySelector('[data-tab=staff-detail]').click()">
+      <div class="staff-card-top">
+        <div class="staff-card-avatar" style="background:rgba(216,149,107,.2);color:var(--accent)">АС<div class="online-dot"></div></div>
+        <div class="staff-card-info">
+          <div class="staff-card-name">Анна Соколова</div>
+          <div class="staff-card-role">Стилист-колорист · Старший мастер</div>
+          <div class="staff-card-tags">
+            <span class="tag">Стрижка</span><span class="tag">Окрашивание</span><span class="tag">Мелирование</span><span class="tag">Укладка</span>
+          </div>
+        </div>
+        <span class="badge badge-green">Работает</span>
+      </div>
+      <div class="staff-load">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--text2)">Загрузка этой неделей</span>
+          <span style="font-size:11px;font-weight:700;color:var(--green)">85%</span>
+        </div>
+        <div class="staff-load-bar"><div class="staff-load-fill" style="width:85%"></div></div>
+      </div>
+      <div class="staff-card-stats">
+        <div class="staff-card-stat"><div class="val">4.9 ⭐</div><div class="lbl">Рейтинг</div></div>
+        <div class="staff-card-stat"><div class="val">126</div><div class="lbl">Визитов</div></div>
+        <div class="staff-card-stat"><div class="val" style="color:var(--accent)">58 400 ₽</div><div class="lbl">Выручка/мес</div></div>
+      </div>
+    </div>
+
+    <!-- MARIA -->
+    <div class="staff-card">
+      <div class="staff-card-top">
+        <div class="staff-card-avatar" style="background:var(--purple-bg);color:var(--purple)">МВ<div class="online-dot"></div></div>
+        <div class="staff-card-info">
+          <div class="staff-card-name">Мария Васильева</div>
+          <div class="staff-card-role">Колорист</div>
+          <div class="staff-card-tags">
+            <span class="tag">Окрашивание</span><span class="tag">Мелирование</span><span class="tag">Балаяж</span><span class="tag">Тонирование</span>
+          </div>
+        </div>
+        <span class="badge badge-green">Работает</span>
+      </div>
+      <div class="staff-load">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--text2)">Загрузка этой неделей</span>
+          <span style="font-size:11px;font-weight:700;color:var(--green)">78%</span>
+        </div>
+        <div class="staff-load-bar"><div class="staff-load-fill" style="width:78%"></div></div>
+      </div>
+      <div class="staff-card-stats">
+        <div class="staff-card-stat"><div class="val">4.8 ⭐</div><div class="lbl">Рейтинг</div></div>
+        <div class="staff-card-stat"><div class="val">98</div><div class="lbl">Визитов</div></div>
+        <div class="staff-card-stat"><div class="val" style="color:var(--accent)">47 200 ₽</div><div class="lbl">Выручка/мес</div></div>
+      </div>
+    </div>
+
+    <!-- KATYA -->
+    <div class="staff-card">
+      <div class="staff-card-top">
+        <div class="staff-card-avatar" style="background:var(--pink-bg);color:var(--pink)">КН<div class="online-dot"></div></div>
+        <div class="staff-card-info">
+          <div class="staff-card-name">Катя Никитина</div>
+          <div class="staff-card-role">Nail-мастер</div>
+          <div class="staff-card-tags">
+            <span class="tag">Маникюр</span><span class="tag">Педикюр</span><span class="tag">Гель-лак</span><span class="tag">Дизайн</span>
+          </div>
+        </div>
+        <span class="badge badge-green">Работает</span>
+      </div>
+      <div class="staff-load">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--text2)">Загрузка этой неделей</span>
+          <span style="font-size:11px;font-weight:700;color:var(--yellow)">52%</span>
+        </div>
+        <div class="staff-load-bar"><div class="staff-load-fill" style="width:52%;background:linear-gradient(90deg,var(--yellow),var(--accent))"></div></div>
+      </div>
+      <div class="staff-card-stats">
+        <div class="staff-card-stat"><div class="val">4.7 ⭐</div><div class="lbl">Рейтинг</div></div>
+        <div class="staff-card-stat"><div class="val">84</div><div class="lbl">Визитов</div></div>
+        <div class="staff-card-stat"><div class="val" style="color:var(--accent)">32 800 ₽</div><div class="lbl">Выручка/мес</div></div>
+      </div>
+    </div>
+
+    <!-- OLGA -->
+    <div class="staff-card">
+      <div class="staff-card-top">
+        <div class="staff-card-avatar" style="background:var(--blue-bg);color:var(--blue)">ОП</div>
+        <div class="staff-card-info">
+          <div class="staff-card-name">Ольга Павлова</div>
+          <div class="staff-card-role">Бровист · Лешмейкер</div>
+          <div class="staff-card-tags">
+            <span class="tag">Брови</span><span class="tag">Ресницы</span><span class="tag">Ламинирование</span>
+          </div>
+        </div>
+        <span class="badge badge-gray">Выходной</span>
+      </div>
+      <div class="staff-load">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:var(--text2)">Загрузка этой неделей</span>
+          <span style="font-size:11px;font-weight:700;color:var(--yellow)">45%</span>
+        </div>
+        <div class="staff-load-bar"><div class="staff-load-fill" style="width:45%;background:linear-gradient(90deg,var(--yellow),var(--orange))"></div></div>
+      </div>
+      <div class="staff-card-stats">
+        <div class="staff-card-stat"><div class="val">4.6 ⭐</div><div class="lbl">Рейтинг</div></div>
+        <div class="staff-card-stat"><div class="val">56</div><div class="lbl">Визитов</div></div>
+        <div class="staff-card-stat"><div class="val" style="color:var(--accent)">22 400 ₽</div><div class="lbl">Выручка/мес</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =============== STAFF DETAIL =============== -->
+<div class="section" id="staff-detail">
+  <button class="btn" onclick="document.querySelector('[data-tab=staff]').click()" style="margin-bottom:16px">← Назад к мастерам</button>
+
+  <div class="staff-detail">
+    <div class="staff-detail-sidebar">
+      <!-- Profile Card -->
+      <div class="card" style="padding:24px;text-align:center">
+        <div class="staff-card-avatar" style="width:72px;height:72px;font-size:24px;background:rgba(216,149,107,.2);color:var(--accent);margin:0 auto 12px;position:relative">АС<div class="online-dot" style="width:14px;height:14px;border-width:3px"></div></div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:2px">Анна Соколова</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Стилист-колорист · Старший мастер</div>
+        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">
+          <span class="badge badge-accent">Стрижка</span>
+          <span class="badge badge-purple">Окрашивание</span>
+          <span class="badge badge-blue">Мелирование</span>
+          <span class="badge badge-pink">Укладка</span>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button class="btn sm primary">✏️ Редактировать</button>
+          <button class="btn sm">📅 Расписание</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Статистика за месяц</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><div style="font-size:20px;font-weight:800">126</div><div style="font-size:10px;color:var(--text2)">Визитов</div></div>
+          <div><div style="font-size:20px;font-weight:800;color:var(--accent)">58 400 ₽</div><div style="font-size:10px;color:var(--text2)">Выручка</div></div>
+          <div><div style="font-size:20px;font-weight:800">4.9 ⭐</div><div style="font-size:10px;color:var(--text2)">Рейтинг</div></div>
+          <div><div style="font-size:20px;font-weight:800;color:var(--green)">85%</div><div style="font-size:10px;color:var(--text2)">Загрузка</div></div>
+        </div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Расписание</div>
+        <div class="schedule-week">
+          <div class="schedule-day active"><div class="day-label">Пн</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Вт</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Ср</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Чт</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Пт</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Сб</div><div class="time">10–18</div></div>
+          <div class="schedule-day off"><div class="day-label">Вс</div><div class="time">—</div></div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text2)">🍽️ Обед: 13:00–14:00</div>
+        <div style="margin-top:6px;font-size:11px;color:var(--yellow)">⚠️ 18 апр — отпуск</div>
+      </div>
+    </div>
+
+    <!-- Main area: today's calendar -->
+    <div class="staff-detail-main">
+      <div class="card" style="padding:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700">Записи сегодня · 15 апр</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn sm">‹</button>
+            <button class="btn sm">Сегодня</button>
+            <button class="btn sm">›</button>
+          </div>
+        </div>
+        <!-- Mini calendar for one staff member -->
+        <div style="position:relative;min-height:420px">
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;align-items:flex-start;border-bottom:1px solid rgba(42,42,50,.3);min-height:60px;position:relative">
+              <div style="width:50px;font-size:10px;color:var(--text3);font-weight:600;padding-top:2px;text-align:right;padding-right:8px">09:00</div>
+              <div style="flex:1;position:relative;height:60px">
+                <div class="cal-event confirmed" style="top:0;height:58px;left:0;right:4px;position:absolute">
+                  <div class="ev-service">Стрижка + укладка</div>
+                  <div class="ev-client">Ирина Козлова · +7 999 123-45-67</div>
+                  <div class="ev-time">09:00 – 10:00 · 60 мин · 2 500 ₽</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;border-bottom:1px solid rgba(42,42,50,.3);min-height:60px;position:relative">
+              <div style="width:50px;font-size:10px;color:var(--text3);font-weight:600;padding-top:2px;text-align:right;padding-right:8px">10:00</div>
+              <div style="flex:1;position:relative;height:60px">
+                <div class="cal-break" style="top:0;height:18px;left:0;right:4px;position:absolute">☕ 15 мин</div>
+                <div class="cal-event confirmed" style="top:22px;height:98px;left:0;right:4px;position:absolute">
+                  <div class="ev-service">Мелирование</div>
+                  <div class="ev-client">Алла Новикова · +7 910 333-22-11</div>
+                  <div class="ev-time">10:15 – 12:15 · 120 мин · 6 500 ₽</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;border-bottom:1px solid rgba(42,42,50,.3);min-height:60px">
+              <div style="width:50px;font-size:10px;color:var(--text3);font-weight:600;padding-top:2px;text-align:right;padding-right:8px">11:00</div>
+              <div style="flex:1;height:60px"></div>
+            </div>
+            <div style="display:flex;align-items:flex-start;border-bottom:1px solid rgba(42,42,50,.3);min-height:60px">
+              <div style="width:50px;font-size:10px;color:var(--text3);font-weight:600;padding-top:2px;text-align:right;padding-right:8px">12:00</div>
+              <div style="flex:1;height:60px"></div>
+            </div>
+            <div style="display:flex;align-items:flex-start;border-bottom:1px solid rgba(42,42,50,.3);min-height:60px">
+              <div style="width:50px;font-size:10px;color:var(--text3);font-weight:600;padding-top:2px;text-align:right;padding-right:8px">13:00</div>
+              <div style="flex:1;position:relative;height:60px">
+                <div class="cal-break" style="top:0;height:58px;left:0;right:4px;position:absolute">🍽️ Обед · 13:00–14:00</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;border-bottom:1px solid rgba(42,42,50,.3);min-height:60px">
+              <div style="width:50px;font-size:10px;color:var(--text3);font-weight:600;padding-top:2px;text-align:right;padding-right:8px">14:00</div>
+              <div style="flex:1;position:relative;height:60px">
+                <div class="cal-event confirmed" style="top:0;height:58px;left:0;right:4px;position:absolute">
+                  <div class="ev-service">Стрижка</div>
+                  <div class="ev-client">Алина Карпова</div>
+                  <div class="ev-time">14:00 – 15:00 · 60 мин · 2 500 ₽</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Services for this staff member -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Услуги мастера</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface);border-radius:var(--radius-xs)">
+            <div><span style="font-weight:600;font-size:13px">Женская стрижка</span></div>
+            <div style="display:flex;gap:16px;align-items:center;font-size:12px">
+              <span style="color:var(--text2)">60 мин</span>
+              <span style="font-weight:700;color:var(--accent)">2 500 ₽</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface);border-radius:var(--radius-xs)">
+            <div><span style="font-weight:600;font-size:13px">Окрашивание</span></div>
+            <div style="display:flex;gap:16px;align-items:center;font-size:12px">
+              <span style="color:var(--text2)">120 мин</span>
+              <span style="font-weight:700;color:var(--accent)">4 800 ₽</span>
+              <span class="badge badge-accent" style="font-size:9px">Override: 5 200 ₽</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface);border-radius:var(--radius-xs)">
+            <div><span style="font-weight:600;font-size:13px">Мелирование / Балаяж</span></div>
+            <div style="display:flex;gap:16px;align-items:center;font-size:12px">
+              <span style="color:var(--text2)">150 мин</span>
+              <span style="font-weight:700;color:var(--accent)">6 500 ₽</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface);border-radius:var(--radius-xs)">
+            <div><span style="font-weight:600;font-size:13px">Укладка</span></div>
+            <div style="display:flex;gap:16px;align-items:center;font-size:12px">
+              <span style="color:var(--text2)">30 мин</span>
+              <span style="font-weight:700;color:var(--accent)">1 500 ₽</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =============== MODALS =============== -->
+<div class="section" id="modals">
+  <h1>🔲 Модалки и формы</h1>
+  <p class="subtitle">Превью всех модальных окон для создания/редактирования записей, услуг и мастеров.</p>
+
+  <!-- New Appointment Modal -->
+  <h2>Создание записи</h2>
+  <div class="card" style="max-width:560px;overflow:hidden">
+    <div class="modal-header" style="border-radius:var(--radius) var(--radius) 0 0">
+      <h3 style="margin:0">Новая запись</h3>
+      <button class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Клиент</label>
+        <input class="form-input" placeholder="Поиск по имени или телефону..." value="Ирина Козлова">
+        <div class="form-hint">+7 999 123-45-67 · 8 визитов · Последний: 5 дней назад</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Услуга</label>
+        <select class="form-input">
+          <option>💇 Женская стрижка — 2 500 ₽ · 60 мин</option>
+          <option>🎨 Окрашивание — от 4 800 ₽ · 120 мин</option>
+          <option>💅 Маникюр + гель-лак — 2 800 ₽ · 75 мин</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Мастер</label>
+        <div style="display:flex;gap:8px">
+          <div style="padding:8px 14px;border-radius:var(--radius-xs);border:2px solid var(--accent);background:var(--accent-bg);cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600">
+            <div class="client-avatar" style="width:24px;height:24px;font-size:9px;background:rgba(216,149,107,.2);color:var(--accent)">АС</div>
+            Анна
+          </div>
+          <div style="padding:8px 14px;border-radius:var(--radius-xs);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+            <div class="client-avatar" style="width:24px;height:24px;font-size:9px;background:var(--purple-bg);color:var(--purple)">МВ</div>
+            Мария
+          </div>
+          <div style="padding:8px 14px;border-radius:var(--radius-xs);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);opacity:.4">
+            <div class="client-avatar" style="width:24px;height:24px;font-size:9px;background:var(--pink-bg);color:var(--pink)">КН</div>
+            Катя
+            <span style="font-size:10px">🚫</span>
+          </div>
+        </div>
+        <div class="form-hint">Катя не оказывает эту услугу</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Дата</label>
+          <input class="form-input" type="date" value="2026-04-15">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Время</label>
+          <div class="slot-picker">
+            <div class="slot unavailable">09:00</div>
+            <div class="slot">10:00</div>
+            <div class="slot">11:00</div>
+            <div class="slot">12:00</div>
+            <div class="slot unavailable">13:00</div>
+            <div class="slot selected">14:00</div>
+            <div class="slot">15:00</div>
+            <div class="slot">16:00</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Заметка</label>
+        <input class="form-input" placeholder="Пожелания клиента...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn">Отмена</button>
+      <button class="btn primary">Создать запись</button>
+    </div>
+  </div>
+
+  <!-- New Service Modal -->
+  <h2>Создание / редактирование услуги</h2>
+  <div class="card" style="max-width:560px;overflow:hidden">
+    <div class="modal-header">
+      <h3 style="margin:0">Новая услуга</h3>
+      <button class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Название</label>
+        <input class="form-input" placeholder="Например: Женская стрижка" value="Окрашивание в один тон">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Описание</label>
+        <input class="form-input" placeholder="Краткое описание..." value="Корни или полная длина">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Категория</label>
+        <select class="form-input">
+          <option selected>💇 Волосы → Окрашивание</option>
+          <option>💇 Волосы → Стрижка</option>
+          <option>💅 Ногти → Маникюр</option>
+          <option>👁️ Брови/ресницы → Брови</option>
+        </select>
+        <div class="form-hint">Категория из справочника service_categories (slug: hair-coloring)</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Цена, ₽</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="form-input" type="number" value="4800" style="width:100px">
+            <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="checkbox" checked> «от»
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Длительность, мин</label>
+          <select class="form-input">
+            <option>30</option><option>45</option><option>60</option><option>75</option><option>90</option><option selected>120</option><option>150</option><option>180</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Мастера, оказывающие услугу</label>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border-radius:var(--radius-xs)">
+            <input type="checkbox" checked>
+            <div class="client-avatar" style="width:24px;height:24px;font-size:9px;background:rgba(216,149,107,.2);color:var(--accent)">АС</div>
+            <span style="flex:1;font-size:13px;font-weight:600">Анна</span>
+            <div style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--text2)">
+              <span>Цена:</span><input class="form-input" style="width:80px;padding:4px 8px;font-size:11px" placeholder="базовая">
+              <span>Длит.:</span><input class="form-input" style="width:60px;padding:4px 8px;font-size:11px" placeholder="120">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border-radius:var(--radius-xs)">
+            <input type="checkbox" checked>
+            <div class="client-avatar" style="width:24px;height:24px;font-size:9px;background:var(--purple-bg);color:var(--purple)">МВ</div>
+            <span style="flex:1;font-size:13px;font-weight:600">Мария</span>
+            <div style="display:flex;gap:4px;align-items:center;font-size:11px;color:var(--text2)">
+              <span>Цена:</span><input class="form-input" style="width:80px;padding:4px 8px;font-size:11px" value="5200">
+              <span>Длит.:</span><input class="form-input" style="width:60px;padding:4px 8px;font-size:11px" placeholder="120">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border-radius:var(--radius-xs);opacity:.5">
+            <input type="checkbox">
+            <div class="client-avatar" style="width:24px;height:24px;font-size:9px;background:var(--pink-bg);color:var(--pink)">КН</div>
+            <span style="flex:1;font-size:13px">Катя</span>
+          </div>
+        </div>
+        <div class="form-hint">Каждый мастер может иметь свою цену и длительность (override). Пустое поле = базовое значение.</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Буфер после, мин</label>
+          <select class="form-input"><option selected>0</option><option>5</option><option>10</option><option>15</option></select>
+          <div class="form-hint">Время на уборку / подготовку</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Видимость</label>
+          <div style="display:flex;gap:8px;align-items:center;padding-top:4px">
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="checkbox" checked> Активна
+            </label>
+            <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="checkbox" checked> Онлайн-запись
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn">Отмена</button>
+      <button class="btn primary">Сохранить</button>
+    </div>
+  </div>
+
+  <!-- New Staff Modal -->
+  <h2>Создание мастера</h2>
+  <div class="card" style="max-width:560px;overflow:hidden">
+    <div class="modal-header">
+      <h3 style="margin:0">Новый мастер</h3>
+      <button class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Имя</label>
+          <input class="form-input" placeholder="Имя мастера">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Должность / роль</label>
+          <input class="form-input" placeholder="Например: Стилист, Nail-мастер">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Телефон</label>
+        <input class="form-input" placeholder="+7 XXX XXX-XX-XX">
+        <div class="form-hint">Для привязки к аккаунту Beautica (мастер получит инвайт)</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Специализация (теги)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span class="badge badge-accent" style="cursor:pointer">Стрижка</span>
+          <span class="badge badge-purple" style="cursor:pointer">Окрашивание</span>
+          <span class="badge badge-blue" style="cursor:pointer">Мелирование</span>
+          <span class="badge badge-pink" style="cursor:pointer">Маникюр</span>
+          <span class="badge badge-gray" style="cursor:pointer">+ Добавить</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Цвет в календаре</label>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);cursor:pointer;border:3px solid var(--text)"></div>
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--purple);cursor:pointer;border:3px solid transparent"></div>
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--pink);cursor:pointer;border:3px solid transparent"></div>
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--blue);cursor:pointer;border:3px solid transparent"></div>
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--orange);cursor:pointer;border:3px solid transparent"></div>
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--green);cursor:pointer;border:3px solid transparent"></div>
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--yellow);cursor:pointer;border:3px solid transparent"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Расписание по умолчанию</label>
+        <div class="schedule-week" style="margin-top:4px">
+          <div class="schedule-day active"><div class="day-label">Пн</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Вт</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Ср</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Чт</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Пт</div><div class="time">10–20</div></div>
+          <div class="schedule-day active"><div class="day-label">Сб</div><div class="time">10–18</div></div>
+          <div class="schedule-day off"><div class="day-label">Вс</div><div class="time">—</div></div>
+        </div>
+        <div class="form-hint" style="margin-top:6px">Клик на день → настройка часов. Повторный клик → выходной.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Настройки</label>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked> Виден клиентам при онлайн-записи</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" checked> Получает уведомления о записях</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"> Может управлять своим расписанием</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn">Отмена</button>
+      <button class="btn primary">Добавить мастера</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============== NOTES / SPECS =============== -->
+<div class="section" id="notes">
+  <h1>📝 Спецификация UX-паттернов</h1>
+  <p class="subtitle">Ключевые решения, основанные на анализе Fresha, Booksy, YCLIENTS.</p>
+
+  <h2>Календарь</h2>
+  <div class="card" style="padding:20px;margin-bottom:12px">
+    <h3 style="margin-top:0">Режимы отображения</h3>
+    <p><strong>День (основной):</strong> колонки = мастера. Высота блока пропорциональна длительности (60px = 1 час). Горизонтальный скролл при >6 мастерах. Как у Fresha и YCLIENTS.</p>
+    <p><strong>Неделя:</strong> колонки = дни. Агрегированные ячейки показывают количество записей по типу. Клик → переход в режим «День». Как Booksy/Fresha.</p>
+    <p><strong>Месяц:</strong> мини-индикаторы загруженности по дням (кругу/полоска). Клик → день.</p>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:12px">
+    <h3 style="margin-top:0">Взаимодействия</h3>
+    <p><strong>Клик на пустой слот →</strong> модалка «Новая запись» с предзаполненным мастером и временем.</p>
+    <p><strong>Клик на событие →</strong> модалка деталей записи (клиент, услуга, статус, действия).</p>
+    <p><strong>Drag & drop событие →</strong> перенос в другой слот или к другому мастеру + подтверждение + уведомление клиенту. Как Fresha.</p>
+    <p><strong>Drag за нижний край →</strong> изменение длительности. Как Fresha.</p>
+    <p><strong>Zoom (Fresha-стиль):</strong> слайдер масштаба — больше записей на экране (Small) vs больше деталей (Large).</p>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:12px">
+    <h3 style="margin-top:0">Визуальные элементы</h3>
+    <p><strong>Статусы цветом:</strong> зелёный=подтверждена, жёлтый=ожидает, красный=отмена, тёмно-красный=no-show, серый=завершена.</p>
+    <p><strong>Перерывы:</strong> штриховка диагональная + текст «Обед» / «Перерыв».</p>
+    <p><strong>Нерабочее время:</strong> диагональная штриховка (как в мокапе). Мастер с выходным — вся колонка затенена.</p>
+    <p><strong>Красная линия:</strong> текущее время (обновляется каждую минуту).</p>
+    <p><strong>Цвет мастера:</strong> каждый мастер имеет свой цвет (7 вариантов), используется в аватарках и опционально в теле события.</p>
+  </div>
+
+  <h2>Записи</h2>
+  <div class="card" style="padding:20px;margin-bottom:12px">
+    <h3 style="margin-top:0">Статусы и переходы</h3>
+    <p><code>pending → confirmed → completed</code></p>
+    <p><code>pending/confirmed → cancelled_by_client / cancelled_by_salon</code></p>
+    <p><code>confirmed → no_show</code></p>
+    <p>Быстрые действия в строке: ✓ подтвердить, ✗ отменить, ✓✓ завершить.</p>
+    <p>Walk-in: гостевая запись (имя + телефон, без аккаунта). Помечается оранжевым бейджом.</p>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:12px">
+    <h3 style="margin-top:0">Создание записи</h3>
+    <p>1. Выбор клиента (поиск по имени/телефону, создание нового, или «Гость»)</p>
+    <p>2. Выбор услуги (из списка с ценами и длительностью)</p>
+    <p>3. Выбор мастера (только те, кто оказывает эту услугу; неподходящие — серые)</p>
+    <p>4. Дата + время (показ доступных слотов: рабочие часы − занятые = свободные)</p>
+    <p>5. Заметка (опционально)</p>
+    <p><strong>Важно:</strong> выбор мастера фильтруется по услуге, а слоты — по мастеру + дате. Как у Fresha.</p>
+  </div>
+
+  <h2>Услуги</h2>
+  <div class="card" style="padding:20px;margin-bottom:12px">
+    <h3 style="margin-top:0">Структура</h3>
+    <p>Группировка по категориям (accordion). Категории из справочника <code>service_categories</code> (72 системных slug + будущий кастом на салон).</p>
+    <p>Каждая услуга: название, описание, цена (точная или «от»), длительность, привязанные мастера, буфер после, видимость, онлайн-запись.</p>
+    <p><strong>Override на мастера:</strong> мастер может иметь свою цену и длительность для услуги (таблица <code>staff_services</code>). Как Booksy «service variants».</p>
+    <p><strong>Drag & drop:</strong> сортировка услуг внутри категории. <code>sort_order</code> в БД.</p>
+  </div>
+
+  <h2>Мастера</h2>
+  <div class="card" style="padding:20px;margin-bottom:12px">
+    <h3 style="margin-top:0">Карточка мастера</h3>
+    <p>Список: карточки в сетке. Аватар (инициалы + цвет), имя, роль, специализация (теги), загрузка (прогресс-бар), ключевые метрики (рейтинг, визиты, выручка).</p>
+    <p>Детальная страница: профиль + расписание + мини-календарь на сегодня + список услуг с overrides.</p>
+    <p><strong>Расписание:</strong> по дням недели (opens_at, closes_at). Обед — отдельное поле. Исключения (отпуск, болезнь) — список дат с типом.</p>
+    <p><strong>Цвет:</strong> 7 вариантов для календаря. Выбирается при создании.</p>
+    <p><strong>Онлайн-запись:</strong> toggle «Виден клиентам при онлайн-записи».</p>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- Floating modal for appointment detail -->
+<div class="modal-overlay" id="modal-appointment-detail" onclick="if(event.target===this)hideModal(this.id)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Детали записи</h3>
+      <button class="modal-close" onclick="hideModal('modal-appointment-detail')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+        <div class="client-avatar" style="width:44px;height:44px;font-size:14px;background:rgba(216,149,107,.2);color:var(--accent);border-radius:50%">ИК</div>
+        <div>
+          <div style="font-weight:700;font-size:15px">Ирина Козлова</div>
+          <div style="font-size:12px;color:var(--text2)">+7 999 123-45-67 · 8 визитов · Постоянная</div>
+        </div>
+        <span class="badge badge-green" style="margin-left:auto">Подтверждена</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div><div class="form-label" style="margin-bottom:2px">Услуга</div><div style="font-size:14px;font-weight:600">Стрижка + укладка</div></div>
+        <div><div class="form-label" style="margin-bottom:2px">Мастер</div><div style="font-size:14px;font-weight:600">Анна Соколова</div></div>
+        <div><div class="form-label" style="margin-bottom:2px">Дата и время</div><div style="font-size:14px;font-weight:600">15 апр, 09:00 – 10:00</div></div>
+        <div><div class="form-label" style="margin-bottom:2px">Стоимость</div><div style="font-size:14px;font-weight:600;color:var(--accent)">2 500 ₽</div></div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Заметка клиента</div>
+        <div style="font-size:13px;color:var(--text2);padding:8px 12px;background:var(--card);border-radius:var(--radius-xs)">Хочу чуть короче, чем в прошлый раз</div>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap">
+      <button class="btn" onclick="hideModal('modal-appointment-detail')">Закрыть</button>
+      <div style="flex:1"></div>
+      <button class="btn">✏️ Редактировать</button>
+      <button class="btn" style="background:var(--green-bg);color:var(--green);border-color:transparent">✓ Завершить</button>
+      <button class="btn danger">✗ Отменить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab[data-tab]').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Calendar view switching
+function switchCalView(view){
+  document.getElementById('cal-day-view').style.display=view==='day'?'':'none';
+  document.getElementById('cal-week-view').style.display=view==='week'?'':'none';
+  document.getElementById('btn-day').style.cssText=view==='day'?'background:var(--accent);color:#fff;border-color:var(--accent)':'';
+  document.getElementById('btn-week').style.cssText=view==='week'?'background:var(--accent);color:#fff;border-color:var(--accent)':'';
+  document.getElementById('btn-month').style.cssText=view==='month'?'background:var(--accent);color:#fff;border-color:var(--accent)':'';
+  if(view==='week') document.getElementById('cal-date-label').textContent='13 – 19 апреля 2026';
+  else document.getElementById('cal-date-label').textContent='Вторник, 15 апреля 2026';
+}
+
+// Service category toggle
+document.querySelectorAll('.service-category').forEach(cat=>{
+  const list=cat.querySelector('.service-list');
+  if(list) list.style.display=cat.classList.contains('open')?'':'none';
+  cat.querySelector('.service-category-header').addEventListener('click',()=>{
+    const isOpen=cat.classList.contains('open');
+    if(list) list.style.display=isOpen?'none':'';
+  });
+});
+
+// Modal
+function showModal(id){document.getElementById(id).classList.add('show')}
+function hideModal(id){document.getElementById(id).classList.remove('show')}
+
+// Slot selection
+document.querySelectorAll('.slot:not(.unavailable)').forEach(s=>{
+  s.addEventListener('click',()=>{
+    s.closest('.slot-picker').querySelectorAll('.slot').forEach(x=>x.classList.remove('selected'));
+    s.classList.add('selected');
+  });
+});
+</script>
+</body>
+</html>
