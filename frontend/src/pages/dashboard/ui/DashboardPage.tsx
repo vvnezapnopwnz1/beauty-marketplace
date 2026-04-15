@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Typography, Drawer, IconButton, useMediaQuery } from '@mui/material'
+import { Box, Typography, Drawer, IconButton, Switch, useMediaQuery, useTheme } from '@mui/material'
 import { Route, Routes, useMatch, useNavigate, useSearchParams } from 'react-router-dom'
-import { mocha } from '@pages/dashboard/theme/mocha'
 import { ROUTES } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
+import { useThemeMode } from '@shared/theme'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardCalendar } from './DashboardCalendar'
 import { DashboardAppointments } from './DashboardAppointments'
@@ -62,10 +62,13 @@ function DashboardMainContent({ section }: { section: Section }) {
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const { mode, setMode } = useThemeMode()
   const [searchParams] = useSearchParams()
   const staffMatch = useMatch('/dashboard/staff/:staffId')
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
+  const theme = useTheme()
+  const dashboard = theme.palette.dashboard
 
   const section = useMemo((): Section => {
     if (staffMatch) return 'staff'
@@ -107,15 +110,15 @@ export function DashboardPage() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: mocha.sidebar,
-        borderRight: `1px solid ${mocha.borderSubtle}`,
+        bgcolor: dashboard.sidebar,
+        borderRight: `1px solid ${dashboard.borderSubtle}`,
       }}
     >
-      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${mocha.borderSubtle}`, cursor: 'pointer' }} onClick={() => navigate(ROUTES.HOME)}>
-        <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: mocha.text }}>
-          beauti<Box component="span" sx={{ color: mocha.accent }}>ca</Box>
+      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${dashboard.borderSubtle}`, cursor: 'pointer' }} onClick={() => navigate(ROUTES.HOME)}>
+        <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: dashboard.text }}>
+          beauti<Box component="span" sx={{ color: dashboard.accent }}>ca</Box>
         </Typography>
-        <Typography sx={{ fontSize: 11, color: mocha.muted, mt: 0.5 }}>Панель салона</Typography>
+        <Typography sx={{ fontSize: 11, color: dashboard.muted, mt: 0.5 }}>Панель салона</Typography>
       </Box>
       <Box component="nav" sx={{ flex: 1, py: 1, overflow: 'auto' }}>
         {NAV.map(item => {
@@ -133,14 +136,14 @@ export function DashboardPage() {
                 py: 1,
                 borderRadius: '10px',
                 cursor: 'pointer',
-                color: on ? mocha.onAccent : mocha.muted,
-                bgcolor: on ? mocha.accent : 'transparent',
+                color: on ? dashboard.onAccent : dashboard.muted,
+                bgcolor: on ? dashboard.accent : 'transparent',
                 fontWeight: on ? 600 : 400,
                 fontSize: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                '&:hover': { bgcolor: on ? mocha.accent : mocha.navHover, color: on ? mocha.onAccent : mocha.text },
+                '&:hover': { bgcolor: on ? dashboard.accent : dashboard.navHover, color: on ? dashboard.onAccent : dashboard.text },
               }}
             >
               <span>{item.icon}</span>
@@ -149,8 +152,8 @@ export function DashboardPage() {
           )
         })}
       </Box>
-      <Box sx={{ p: 2, borderTop: `1px solid ${mocha.borderSubtle}` }}>
-        <Typography onClick={() => navigate(ROUTES.HOME)} sx={{ fontSize: 13, color: mocha.muted, cursor: 'pointer' }}>
+      <Box sx={{ p: 2, borderTop: `1px solid ${dashboard.borderSubtle}` }}>
+        <Typography onClick={() => navigate(ROUTES.HOME)} sx={{ fontSize: 13, color: dashboard.muted, cursor: 'pointer' }}>
           ← На сайт
         </Typography>
       </Box>
@@ -158,11 +161,11 @@ export function DashboardPage() {
   )
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: mocha.page, display: 'flex' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: dashboard.page, display: 'flex' }}>
       {!narrow && sidebar}
       {narrow && (
         <>
-          <Drawer anchor="left" open={drawer} onClose={() => setDrawer(false)} PaperProps={{ sx: { bgcolor: mocha.sidebar } }}>
+          <Drawer anchor="left" open={drawer} onClose={() => setDrawer(false)} PaperProps={{ sx: { bgcolor: dashboard.sidebar } }}>
             {sidebar}
           </Drawer>
         </>
@@ -175,16 +178,27 @@ export function DashboardPage() {
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            borderBottom: `1px solid ${mocha.borderSubtle}`,
-            bgcolor: mocha.sidebar,
+            borderBottom: `1px solid ${dashboard.borderSubtle}`,
+            bgcolor: dashboard.sidebar,
           }}
         >
           {narrow && (
-            <IconButton onClick={() => setDrawer(true)} sx={{ color: mocha.text }}>
+            <IconButton onClick={() => setDrawer(true)} sx={{ color: dashboard.text }}>
               ☰
             </IconButton>
           )}
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: mocha.text }}>{headerTitle}</Typography>
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>{headerTitle}</Typography>
+          <Switch
+            size="small"
+            checked={mode === 'dark'}
+            onChange={(_, checked) => setMode(checked ? 'dark' : 'light')}
+            inputProps={{ 'aria-label': 'Toggle dashboard theme' }}
+            sx={{
+              ml: 'auto',
+              '& .MuiSwitch-track': { bgcolor: dashboard.border },
+              '& .MuiSwitch-thumb': { bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark },
+            }}
+          />
         </Box>
         <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflow: 'auto' }}>{content}</Box>
       </Box>

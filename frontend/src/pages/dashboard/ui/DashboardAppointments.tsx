@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
 import {
-  Box,
-  Typography,
   Alert,
+  Box,
   Dialog,
-  DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
-  TextField,
   MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+  type SelectChangeEvent,
 } from '@mui/material'
 import {
   fetchDashboardAppointments,
@@ -23,7 +23,20 @@ import {
   type DashboardServiceRow,
   type DashboardStaffRow,
 } from '@shared/api/dashboardApi'
-import { mocha } from '@pages/dashboard/theme/mocha'
+import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
+import { useDashboardListCardSurface, useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import type { DashboardPalette } from '@shared/theme'
+import {
+  FormField,
+  PanelHeader,
+  FormSection,
+  PanelFooter,
+  PanelBtn,
+  StaffPickGrid,
+  TimeSlotGrid,
+  generateTimeSlots,
+  type StaffPickItem,
+} from '@pages/dashboard/ui/components/formComponents'
 
 // ─── date filter ────────────────────────────────────────────────────────────
 
@@ -66,26 +79,29 @@ function formatTime(iso: string, filter: DateFilter): string {
   return d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function toDatetimeLocalValue(iso: string): string {
-  const d = new Date(iso)
+function todayISO(): string {
+  const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // ─── status config ───────────────────────────────────────────────────────────
 
-const STATUS_CFG: Record<string, { label: string; bg: string; color: string; timeColor: string }> = {
-  pending:            { label: 'Ожидает',      bg: 'rgba(255,217,61,.15)',  color: '#FFD93D', timeColor: '#FFD93D' },
-  confirmed:          { label: 'Подтверждена', bg: 'rgba(107,203,119,.15)', color: '#6BCB77', timeColor: '#D8956B' },
-  completed:          { label: 'Завершена',    bg: 'rgba(78,205,196,.15)',  color: '#4ECDC4', timeColor: '#D8956B' },
-  cancelled_by_salon: { label: 'Отмена',       bg: 'rgba(255,107,107,.15)', color: '#FF6B6B', timeColor: '#FF6B6B' },
-  no_show:            { label: 'Не пришёл',    bg: 'rgba(255,255,255,.07)', color: '#B8A896', timeColor: '#D8956B' },
+function statusCfg(d: DashboardPalette): Record<string, { label: string; bg: string; color: string; timeColor: string }> {
+  return {
+    pending: { label: 'Ожидает', bg: 'rgba(255,217,61,.15)', color: '#FFD93D', timeColor: '#FFD93D' },
+    confirmed: { label: 'Подтверждена', bg: 'rgba(107,203,119,.15)', color: '#6BCB77', timeColor: d.accent },
+    completed: { label: 'Завершена', bg: 'rgba(78,205,196,.15)', color: '#4ECDC4', timeColor: d.accent },
+    cancelled_by_salon: { label: 'Отмена', bg: 'rgba(224,96,96,.15)', color: d.red, timeColor: d.red },
+    no_show: { label: 'Не пришёл', bg: 'rgba(255,255,255,.07)', color: d.mutedDark, timeColor: d.accent },
+  }
 }
 
 // ─── primitives ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status] ?? { label: status, bg: 'rgba(255,255,255,.07)', color: '#B8A896' }
+  const d = useDashboardPalette()
+  const cfg = statusCfg(d)[status] ?? { label: status, bg: 'rgba(255,255,255,.07)', color: d.mutedDark }
   return (
     <Box
       component="span"
@@ -119,6 +135,7 @@ function PillBtn({
   compact?: boolean
   onClick?: () => void
 }) {
+  const d = useDashboardPalette()
   return (
     <Box
       component="button"
@@ -133,19 +150,20 @@ function PillBtn({
         cursor: 'pointer',
         whiteSpace: 'nowrap',
         transition: '.15s',
+        fontFamily: 'inherit',
         bgcolor: danger
-          ? 'rgba(255,107,107,.15)'
+          ? 'rgba(224,96,96,.15)'
           : active
-          ? mocha.accent
-          : mocha.control,
-        color: danger ? mocha.red : active ? '#fff' : mocha.muted,
+          ? d.accent
+          : d.control,
+        color: danger ? d.red : active ? '#fff' : d.mutedDark,
         '&:hover': {
           bgcolor: danger
-            ? 'rgba(255,107,107,.28)'
+            ? 'rgba(224,96,96,.28)'
             : active
-            ? mocha.accentDark
-            : mocha.controlHover,
-          color: danger ? mocha.red : mocha.text,
+            ? d.accentDark
+            : d.controlHover,
+          color: danger ? d.red : d.text,
         },
       }}
     >
@@ -154,35 +172,76 @@ function PillBtn({
   )
 }
 
+function apptSelectSx(d: DashboardPalette) {
+  return {
+    bgcolor: d.input,
+    borderRadius: '10px',
+    fontSize: 13,
+    color: d.text,
+    width: '100%',
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: d.inputBorder, top: 0 },
+    '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: d.borderLight },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: d.borderFocus },
+    '& .MuiSelect-select': { py: '9px', px: '12px' },
+    '& .MuiSvgIcon-root': { color: d.mutedDark },
+  }
+}
+
+function menuItemSx(d: DashboardPalette) {
+  return { fontSize: 13, color: d.text, '&:hover': { bgcolor: d.card } }
+}
+
+// иконка записи
+function ApptIcon() {
+  return (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6BCB77" strokeWidth="1.8">
+      <rect x="3" y="4" width="18" height="18" rx="3"/>
+      <path d="M16 2v4M8 2v4M3 10h18"/>
+    </svg>
+  )
+}
+
 // ─── main component ──────────────────────────────────────────────────────────
 
 const COLS = '80px 1fr 130px 100px 130px minmax(148px, auto)'
 
 export function DashboardAppointments() {
+  const d = useDashboardPalette()
+  const listCard = useDashboardListCardSurface()
+  const { inputBaseSx, textareaSx, panelPaperSmSx, errorAlertSx, selectMenuSx } = useDashboardFormStyles()
   const [items, setItems]           = useState<DashboardAppointment[]>([])
   const [total, setTotal]           = useState(0)
   const [dateFilter, setDateFilter] = useState<DateFilter>('today')
   const [search, setSearch]         = useState('')
   const [err, setErr]               = useState<string | null>(null)
   const [modal, setModal]           = useState(false)
-  const [editAppt, setEditAppt]   = useState<DashboardAppointment | null>(null)
+  const [editAppt, setEditAppt]     = useState<DashboardAppointment | null>(null)
   const [services, setServices]     = useState<DashboardServiceRow[]>([])
   const [staff, setStaff]           = useState<DashboardStaffRow[]>([])
-  const [form, setForm] = useState({
+
+  // ── create form state ──
+  const [createForm, setCreateForm] = useState({
     serviceId: '',
-    staffId: '',
-    startsAt: '',
+    staffIds: [] as string[],
+    date: todayISO(),
+    timeSlot: '',
     guestName: '',
     guestPhone: '',
   })
+
+  // ── edit form state ──
   const [editForm, setEditForm] = useState({
     serviceId: '',
-    staffId: '',
-    startsAt: '',
+    staffIds: [] as string[],
+    date: '',
+    timeSlot: '',
     guestName: '',
     guestPhone: '',
     clientNote: '',
   })
+
+  const slots = useMemo(() => generateTimeSlots(9, 18, 30), [])
 
   const load = useCallback(async () => {
     setErr(null)
@@ -208,7 +267,7 @@ export function DashboardAppointments() {
           const [s, st] = await Promise.all([fetchDashboardServices(), fetchDashboardStaff()])
           setServices(s.filter(x => x.isActive))
           setStaff(staffListItemsToRows(st).filter(x => x.isActive))
-          setForm(f => (f.serviceId ? f : { ...f, serviceId: s[0]?.id ?? '' }))
+          setCreateForm(f => f.serviceId ? f : { ...f, serviceId: s[0]?.id ?? '' })
         } catch { /* ignore */ }
       })()
     }, 0)
@@ -225,13 +284,15 @@ export function DashboardAppointments() {
   }
 
   async function submitCreate() {
+    if (!createForm.timeSlot) { setErr('Выберите время'); return }
     try {
+      const startsAt = new Date(`${createForm.date}T${createForm.timeSlot}:00`).toISOString()
       await createDashboardAppointment({
-        serviceId: form.serviceId,
-        staffId: form.staffId || null,
-        startsAt: new Date(form.startsAt).toISOString(),
-        guestName: form.guestName,
-        guestPhone: form.guestPhone,
+        serviceId: createForm.serviceId,
+        staffId: createForm.staffIds[0] ?? null,
+        startsAt,
+        guestName: createForm.guestName,
+        guestPhone: createForm.guestPhone,
       })
       setModal(false)
       void load()
@@ -243,10 +304,15 @@ export function DashboardAppointments() {
   function openEdit(a: DashboardAppointment) {
     setErr(null)
     setEditAppt(a)
+    const d = new Date(a.startsAt)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`
     setEditForm({
       serviceId: a.serviceId,
-      staffId: a.staffId ?? '',
-      startsAt: toDatetimeLocalValue(a.startsAt),
+      staffIds: a.staffId ? [a.staffId] : [],
+      date: dateStr,
+      timeSlot: timeStr,
       guestName: a.guestName ?? (a.clientUserId ? a.clientLabel : ''),
       guestPhone: a.guestPhone ?? a.clientPhone ?? '',
       clientNote: a.clientNote ?? '',
@@ -259,28 +325,19 @@ export function DashboardAppointments() {
       if (!editAppt.clientUserId) {
         const name = editForm.guestName.trim()
         const phone = editForm.guestPhone.trim()
-        if (!name) {
-          setErr('Укажите имя гостя')
-          return
-        }
-        if (!/^\+7\d{10}$/.test(phone)) {
-          setErr('Телефон в формате +7XXXXXXXXXX')
-          return
-        }
+        if (!name) { setErr('Укажите имя гостя'); return }
+        if (!/^\+7\d{10}$/.test(phone)) { setErr('Телефон в формате +7XXXXXXXXXX'); return }
       }
-      const startsAt = new Date(editForm.startsAt).toISOString()
+      const startsAt = new Date(`${editForm.date}T${editForm.timeSlot}:00`).toISOString()
       await updateDashboardAppointment(editAppt.id, {
         serviceId: editForm.serviceId,
         startsAt,
         clientNote: editForm.clientNote.trim(),
-        ...(editForm.staffId
-          ? { staffId: editForm.staffId }
+        ...(editForm.staffIds[0]
+          ? { staffId: editForm.staffIds[0] }
           : { clearStaffId: true }),
         ...(!editAppt.clientUserId
-          ? {
-              guestName: editForm.guestName.trim(),
-              guestPhone: editForm.guestPhone.trim(),
-            }
+          ? { guestName: editForm.guestName.trim(), guestPhone: editForm.guestPhone.trim() }
           : {}),
       })
       setEditAppt(null)
@@ -302,19 +359,20 @@ export function DashboardAppointments() {
       })
     : items
 
+  const staffPickItems: StaffPickItem[] = staff.map(s => ({
+    id: s.id,
+    displayName: s.displayName,
+  }))
+
   return (
     <Box>
       {err && (
-        <Alert severity="error" sx={{ mb: 2, bgcolor: mocha.errorBg, color: mocha.text }}>
-          {err}
-        </Alert>
+        <Alert severity="error" sx={{ ...errorAlertSx, mb: 2 }}>{err}</Alert>
       )}
 
       {/* ── Header ── */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography sx={{ fontSize: 17, fontWeight: 600, color: mocha.text, m: 0 }}>
-          Записи
-        </Typography>
+        <Typography sx={{ fontSize: 17, fontWeight: 600, color: d.text }}>Записи</Typography>
         <PillBtn active onClick={() => setModal(true)}>+ Создать запись</PillBtn>
       </Box>
 
@@ -333,27 +391,24 @@ export function DashboardAppointments() {
           value={search}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           sx={{
-            px: '12px',
-            py: '6px',
+            px: '12px', py: '6px',
             borderRadius: '6px',
-            border: `1px solid ${mocha.border}`,
-            bgcolor: mocha.page,
-            color: mocha.text,
+            border: `1px solid ${d.border}`,
+            bgcolor: d.page,
+            color: d.text,
             fontSize: 12,
             width: 160,
             outline: 'none',
-            '&::placeholder': { color: mocha.muted },
-            '&:focus': { borderColor: mocha.accent },
+            fontFamily: 'inherit',
+            '&::placeholder': { color: d.muted },
+            '&:focus': { borderColor: d.accent },
           }}
         />
-        <Typography sx={{ color: mocha.muted, fontSize: 12, ml: 0.5 }}>
-          {total}
-        </Typography>
+        <Typography sx={{ color: d.muted, fontSize: 12, ml: 0.5 }}>{total}</Typography>
       </Box>
 
       {/* ── Table ── */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {/* Header row */}
         <Box
           sx={{
             display: 'grid',
@@ -362,10 +417,10 @@ export function DashboardAppointments() {
             px: '14px',
             py: 1,
             fontSize: 11,
-            color: mocha.muted,
+            color: d.muted,
             textTransform: 'uppercase',
             letterSpacing: '.5px',
-            borderBottom: `1px solid ${mocha.borderSubtle}`,
+            borderBottom: `1px solid ${d.borderSubtle}`,
           }}
         >
           <span>Время</span>
@@ -376,18 +431,15 @@ export function DashboardAppointments() {
           <span />
         </Box>
 
-        {/* Empty state */}
         {filtered.length === 0 && (
-          <Box sx={{ py: 5, textAlign: 'center', color: mocha.muted, fontSize: 13 }}>
+          <Box sx={{ py: 5, textAlign: 'center', color: d.muted, fontSize: 13 }}>
             Нет записей
           </Box>
         )}
 
-        {/* Data rows */}
         {filtered.map(a => {
           const isCancelled = a.status === 'cancelled_by_salon'
-          const timeColor = STATUS_CFG[a.status]?.timeColor ?? mocha.accent
-
+          const timeColor = statusCfg(d)[a.status]?.timeColor ?? d.accent
           return (
             <Box
               key={a.id}
@@ -399,57 +451,32 @@ export function DashboardAppointments() {
                 gap: '12px',
                 px: '14px',
                 py: '10px',
-                bgcolor: mocha.card,
+                bgcolor: listCard.bg,
+                border: `1px solid ${listCard.border}`,
+                boxShadow: listCard.shadow,
                 borderRadius: '8px',
                 alignItems: 'center',
                 fontSize: 13,
                 opacity: isCancelled ? 0.6 : 1,
-                transition: 'background .15s',
+                transition: 'background .15s, box-shadow .15s',
                 cursor: 'pointer',
-                '&:hover': { bgcolor: mocha.cardAlt },
+                '&:hover': { bgcolor: listCard.hoverBg },
               }}
             >
-              {/* Time */}
               <Box component="span" sx={{ fontWeight: 600, color: timeColor }}>
                 {formatTime(a.startsAt, dateFilter)}
               </Box>
-
-              {/* Client */}
               <Box>
-                <Box
-                  component="div"
-                  sx={{
-                    fontWeight: 600,
-                    color: mocha.text,
-                    textDecoration: isCancelled ? 'line-through' : 'none',
-                    lineHeight: 1.3,
-                  }}
-                >
+                <Box component="div" sx={{ fontWeight: 600, color: d.text, textDecoration: isCancelled ? 'line-through' : 'none', lineHeight: 1.3 }}>
                   {a.clientLabel}
                 </Box>
                 {a.clientPhone && (
-                  <Box component="div" sx={{ fontSize: 11, color: mocha.muted, mt: 0.25 }}>
-                    {a.clientPhone}
-                  </Box>
+                  <Box component="div" sx={{ fontSize: 11, color: d.muted, mt: 0.25 }}>{a.clientPhone}</Box>
                 )}
               </Box>
-
-              {/* Service */}
-              <Box component="span" sx={{ color: mocha.text }}>
-                {a.serviceName}
-              </Box>
-
-              {/* Staff */}
-              <Box component="span" sx={{ color: mocha.muted }}>
-                {a.staffName ?? '—'}
-              </Box>
-
-              {/* Status */}
-              <Box>
-                <StatusBadge status={a.status} />
-              </Box>
-
-              {/* Actions */}
+              <Box component="span" sx={{ color: d.text }}>{a.serviceName}</Box>
+              <Box component="span" sx={{ color: d.muted }}>{a.staffName ?? '—'}</Box>
+              <Box><StatusBadge status={a.status} /></Box>
               <Box
                 sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}
                 onDoubleClick={e => e.stopPropagation()}
@@ -475,136 +502,244 @@ export function DashboardAppointments() {
         })}
       </Box>
 
-      {/* ── Create dialog ── */}
+      {/* ═══════════════════════════════════
+          ДИАЛОГ: Создать запись
+      ═══════════════════════════════════ */}
       <Dialog
         open={modal}
         onClose={() => setModal(false)}
-        PaperProps={{ sx: { bgcolor: mocha.dialog, color: mocha.text } }}
+        maxWidth={false}
+        scroll="paper"
+        slotProps={{ backdrop: { sx: { bgcolor: d.backdrop, backdropFilter: 'blur(6px)' } } }}
+        PaperProps={{ sx: panelPaperSmSx }}
       >
-        <DialogTitle>Новая запись</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 320, pt: 1 }}>
-          <TextField
-            select
-            label="Услуга"
-            value={form.serviceId}
-            onChange={e => setForm(f => ({ ...f, serviceId: e.target.value }))}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
-          >
-            {services.map(s => (
-              <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Мастер"
-            value={form.staffId}
-            onChange={e => setForm(f => ({ ...f, staffId: e.target.value }))}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
-          >
-            <MenuItem value="">—</MenuItem>
-            {staff.map(s => (
-              <MenuItem key={s.id} value={s.id}>{s.displayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Начало (локальное)"
-            type="datetime-local"
-            value={form.startsAt}
-            onChange={e => setForm(f => ({ ...f, startsAt: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <PanelHeader
+            icon={<ApptIcon />}
+            iconColor="rgba(107,203,119,.12)"
+            title="Новая запись"
+            subtitle="Вручную — без онлайн-бронирования"
+            onClose={() => setModal(false)}
           />
-          <TextField
-            label="Имя"
-            value={form.guestName}
-            onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))}
+
+          <DialogContent sx={{ px: 0, py: 0, overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+
+            {/* СЕКЦИЯ 1: Клиент */}
+            <FormSection num={1} name="Клиент">
+              <Stack spacing={1.5}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <FormField label="Имя" required>
+                    <TextField
+                      value={createForm.guestName}
+                      onChange={e => setCreateForm(f => ({ ...f, guestName: e.target.value }))}
+                      fullWidth
+                      placeholder="Имя клиента"
+                      sx={inputBaseSx}
+                    />
+                  </FormField>
+                  <FormField label="Телефон" required>
+                    <TextField
+                      value={createForm.guestPhone}
+                      onChange={e => setCreateForm(f => ({ ...f, guestPhone: e.target.value }))}
+                      fullWidth
+                      placeholder="+7 916 000-00-00"
+                      sx={inputBaseSx}
+                    />
+                  </FormField>
+                </Stack>
+              </Stack>
+            </FormSection>
+
+            {/* СЕКЦИЯ 2: Услуга и мастер */}
+            <FormSection num={2} name="Услуга и мастер">
+              <Stack spacing={1.5}>
+                <FormField label="Услуга" required>
+                  <Select
+                    value={createForm.serviceId}
+                    onChange={(e: SelectChangeEvent<string>) => setCreateForm(f => ({ ...f, serviceId: e.target.value }))}
+                    displayEmpty
+                    MenuProps={selectMenuSx}
+                    sx={apptSelectSx(d)}
+                  >
+                    <MenuItem value="" disabled sx={menuItemSx(d)}>Выберите услугу…</MenuItem>
+                    {services.map(s => (
+                      <MenuItem key={s.id} value={s.id} sx={menuItemSx(d)}>
+                        {s.name}
+                        {s.durationMinutes ? ` · ${s.durationMinutes} мин` : ''}
+                        {s.priceCents != null ? ` · ${s.priceCents / 100} ₽` : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormField>
+
+                <FormField label="Мастер">
+                  <StaffPickGrid
+                    items={staffPickItems}
+                    selected={createForm.staffIds}
+                    onChange={ids => setCreateForm(f => ({ ...f, staffIds: ids.slice(-1) }))}
+                    allowNone
+                  />
+                </FormField>
+              </Stack>
+            </FormSection>
+
+            {/* СЕКЦИЯ 3: Дата и время */}
+            <FormSection num={3} name="Дата и время" last>
+              <Stack spacing={1.5}>
+                <FormField label="Дата" required>
+                  <TextField
+                    value={createForm.date}
+                    onChange={e => setCreateForm(f => ({ ...f, date: e.target.value, timeSlot: '' }))}
+                    type="date"
+                    sx={inputBaseSx}
+                  />
+                </FormField>
+
+                <FormField label="Время" required hint="Запись создаётся со статусом «Ожидает»">
+                  <TimeSlotGrid
+                    slots={slots}
+                    selected={createForm.timeSlot}
+                    onChange={t => setCreateForm(f => ({ ...f, timeSlot: t }))}
+                  />
+                </FormField>
+              </Stack>
+            </FormSection>
+
+          </DialogContent>
+
+          <PanelFooter
+            note="Запись со статусом «Ожидает»"
+            actions={
+              <>
+                <PanelBtn variant="ghost" onClick={() => setModal(false)}>Отмена</PanelBtn>
+                <PanelBtn variant="success" onClick={() => void submitCreate()}>Создать запись</PanelBtn>
+              </>
+            }
           />
-          <TextField
-            label="Телефон +7…"
-            value={form.guestPhone}
-            onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setModal(false)}>Отмена</Button>
-          <Button
-            variant="contained"
-            sx={{ bgcolor: mocha.accent, color: mocha.onAccent }}
-            onClick={() => void submitCreate()}
-          >
-            Создать
-          </Button>
-        </DialogActions>
+        </Box>
       </Dialog>
 
+      {/* ═══════════════════════════════════
+          ДИАЛОГ: Редактировать запись
+      ═══════════════════════════════════ */}
       <Dialog
         open={editAppt !== null}
         onClose={() => setEditAppt(null)}
-        PaperProps={{ sx: { bgcolor: mocha.dialog, color: mocha.text } }}
+        maxWidth={false}
+        scroll="paper"
+        slotProps={{ backdrop: { sx: { bgcolor: d.backdrop, backdropFilter: 'blur(6px)' } } }}
+        PaperProps={{ sx: panelPaperSmSx }}
       >
-        <DialogTitle>Редактировать запись</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 320, pt: 1 }}>
-          <TextField
-            select
-            label="Услуга"
-            value={editForm.serviceId}
-            onChange={e => setEditForm(f => ({ ...f, serviceId: e.target.value }))}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
-          >
-            {services.map(s => (
-              <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Мастер"
-            value={editForm.staffId}
-            onChange={e => setEditForm(f => ({ ...f, staffId: e.target.value }))}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
-          >
-            <MenuItem value="">—</MenuItem>
-            {staff.map(s => (
-              <MenuItem key={s.id} value={s.id}>{s.displayName}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Начало (локальное)"
-            type="datetime-local"
-            value={editForm.startsAt}
-            onChange={e => setEditForm(f => ({ ...f, startsAt: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <PanelHeader
+            icon={<ApptIcon />}
+            iconColor="rgba(107,203,119,.12)"
+            title="Редактировать запись"
+            subtitle={editAppt ? `#${editAppt.id.slice(0, 8)}` : ''}
+            onClose={() => setEditAppt(null)}
           />
-          <TextField
-            label="Имя"
-            value={editForm.guestName}
-            onChange={e => setEditForm(f => ({ ...f, guestName: e.target.value }))}
-            disabled={!!editAppt?.clientUserId}
-            helperText={editAppt?.clientUserId ? 'Клиент из личного кабинета' : undefined}
+
+          <DialogContent sx={{ px: 0, py: 0, overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+
+            {/* СЕКЦИЯ 1: Клиент */}
+            <FormSection num={1} name="Клиент">
+              <Stack spacing={1.5}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <FormField label="Имя">
+                    <TextField
+                      value={editForm.guestName}
+                      onChange={e => setEditForm(f => ({ ...f, guestName: e.target.value }))}
+                      fullWidth
+                      disabled={!!editAppt?.clientUserId}
+                      sx={inputBaseSx}
+                    />
+                  </FormField>
+                  <FormField label="Телефон" hint={editAppt?.clientUserId ? 'Клиент из личного кабинета' : undefined}>
+                    <TextField
+                      value={editForm.guestPhone}
+                      onChange={e => setEditForm(f => ({ ...f, guestPhone: e.target.value }))}
+                      fullWidth
+                      disabled={!!editAppt?.clientUserId}
+                      sx={inputBaseSx}
+                    />
+                  </FormField>
+                </Stack>
+                <FormField label="Комментарий">
+                  <TextField
+                    value={editForm.clientNote}
+                    onChange={e => setEditForm(f => ({ ...f, clientNote: e.target.value }))}
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    placeholder="Пожелания, особенности…"
+                    sx={textareaSx}
+                  />
+                </FormField>
+              </Stack>
+            </FormSection>
+
+            {/* СЕКЦИЯ 2: Услуга и мастер */}
+            <FormSection num={2} name="Услуга и мастер">
+              <Stack spacing={1.5}>
+                <FormField label="Услуга">
+                  <Select
+                    value={editForm.serviceId}
+                    onChange={(e: SelectChangeEvent<string>) => setEditForm(f => ({ ...f, serviceId: e.target.value }))}
+                    MenuProps={selectMenuSx}
+                    sx={apptSelectSx(d)}
+                  >
+                    {services.map(s => (
+                      <MenuItem key={s.id} value={s.id} sx={menuItemSx(d)}>{s.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormField>
+
+                <FormField label="Мастер">
+                  <StaffPickGrid
+                    items={staffPickItems}
+                    selected={editForm.staffIds}
+                    onChange={ids => setEditForm(f => ({ ...f, staffIds: ids.slice(-1) }))}
+                    allowNone
+                  />
+                </FormField>
+              </Stack>
+            </FormSection>
+
+            {/* СЕКЦИЯ 3: Дата и время */}
+            <FormSection num={3} name="Дата и время" last>
+              <Stack spacing={1.5}>
+                <FormField label="Дата">
+                  <TextField
+                    value={editForm.date}
+                    onChange={e => setEditForm(f => ({ ...f, date: e.target.value, timeSlot: '' }))}
+                    type="date"
+                    sx={inputBaseSx}
+                  />
+                </FormField>
+
+                <FormField label="Время">
+                  <TimeSlotGrid
+                    slots={slots}
+                    selected={editForm.timeSlot}
+                    onChange={t => setEditForm(f => ({ ...f, timeSlot: t }))}
+                  />
+                </FormField>
+              </Stack>
+            </FormSection>
+
+          </DialogContent>
+
+          <PanelFooter
+            actions={
+              <>
+                <PanelBtn variant="ghost" onClick={() => setEditAppt(null)}>Отмена</PanelBtn>
+                <PanelBtn variant="primary" onClick={() => void submitEdit()}>Сохранить</PanelBtn>
+              </>
+            }
           />
-          <TextField
-            label="Телефон +7…"
-            value={editForm.guestPhone}
-            onChange={e => setEditForm(f => ({ ...f, guestPhone: e.target.value }))}
-            disabled={!!editAppt?.clientUserId}
-          />
-          <TextField
-            label="Комментарий"
-            value={editForm.clientNote}
-            onChange={e => setEditForm(f => ({ ...f, clientNote: e.target.value }))}
-            multiline
-            minRows={2}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditAppt(null)}>Отмена</Button>
-          <Button
-            variant="contained"
-            sx={{ bgcolor: mocha.accent, color: mocha.onAccent }}
-            onClick={() => void submitEdit()}
-          >
-            Сохранить
-          </Button>
-        </DialogActions>
+        </Box>
       </Dialog>
+
     </Box>
   )
 }

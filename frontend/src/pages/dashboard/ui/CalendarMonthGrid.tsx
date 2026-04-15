@@ -1,13 +1,20 @@
 import { useMemo } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, useTheme } from '@mui/material'
 import type { DashboardAppointment } from '@shared/api/dashboardApi'
-import { mocha } from '@pages/dashboard/theme/mocha'
-import { appointmentStatusVariant, toLocalYMD, type CalendarEventVariant } from '../lib/calendarGridUtils'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import type { DashboardPalette } from '@shared/theme'
+import {
+  appointmentStatusVariant,
+  calendarEventLightTextColors,
+  toLocalYMD,
+  type CalendarEventVariant,
+} from '../lib/calendarGridUtils'
 
 function LoadBar({ count }: { count: number }) {
+  const d = useDashboardPalette()
   if (count === 0) return null
   const widthPct = count >= 8 ? 100 : count >= 4 ? 66 : 33
-  const color = count >= 8 ? mocha.accent : count >= 4 ? mocha.yellow : mocha.green
+  const color = count >= 8 ? d.accent : count >= 4 ? d.yellow : d.green
   return (
     <Box
       sx={{
@@ -26,11 +33,21 @@ function LoadBar({ count }: { count: number }) {
 
 const WD = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
 
-const VARIANT_SX: Record<CalendarEventVariant, object> = {
-  confirmed: { bgcolor: 'rgba(107,203,119,.12)', color: '#8fdf9a', borderLeft: '2px solid #6bcb77' },
-  pending: { bgcolor: 'rgba(255,217,61,.1)', color: '#ffe566', borderLeft: '2px solid #ffd93d' },
-  booked: { bgcolor: 'rgba(216,149,107,.14)', color: mocha.accent, borderLeft: `2px solid ${mocha.accent}` },
-  blocked: { bgcolor: 'rgba(255,107,107,.08)', color: '#ff8a8a', borderLeft: '2px solid #ff6b6b' },
+function monthEventVariantSx(d: DashboardPalette): Record<CalendarEventVariant, object> {
+  return {
+    confirmed: {
+      bgcolor: 'rgba(107,203,119,.12)',
+      color: '#8fdf9a',
+      borderLeft: '2px solid #6bcb77',
+    },
+    pending: { bgcolor: 'rgba(255,217,61,.1)', color: '#ffe566', borderLeft: '2px solid #ffd93d' },
+    booked: {
+      bgcolor: 'rgba(216,149,107,.14)',
+      color: d.accent,
+      borderLeft: `2px solid ${d.accent}`,
+    },
+    blocked: { bgcolor: 'rgba(255,107,107,.08)', color: '#ff8a8a', borderLeft: '2px solid #ff6b6b' },
+  }
 }
 
 function bucketByYmd(items: DashboardAppointment[]): Map<string, DashboardAppointment[]> {
@@ -56,22 +73,26 @@ type Props = {
 }
 
 export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEventClick }: Props) {
+  const theme = useTheme()
+  const d = useDashboardPalette()
+  const isLight = theme.palette.mode === 'light'
   const bucket = useMemo(() => bucketByYmd(items), [items])
+  const VARIANT_SX = useMemo(() => monthEventVariantSx(d), [d])
 
   return (
-    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${mocha.grid}` }}>
+    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
       <Box
         sx={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
           gap: '1px',
-          bgcolor: mocha.grid,
+          bgcolor: d.grid,
           minWidth: { xs: 320, sm: 560 },
         }}
       >
         {WD.map(w => (
-          <Box key={w} sx={{ bgcolor: mocha.gridHeader, py: 1, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 600, color: mocha.muted }}>{w}</Typography>
+          <Box key={w} sx={{ bgcolor: d.gridHeader, py: 1, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 600, color: d.mutedDark }}>{w}</Typography>
           </Box>
         ))}
         {matrixDays.map(day => {
@@ -84,10 +105,11 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
             <Box
               key={ymd}
               onClick={() => {
-                if (inM) onPickDay(new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0, 0, 0))
+                if (inM)
+                  onPickDay(new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0, 0, 0))
               }}
               sx={{
-                bgcolor: inM ? mocha.cell : mocha.cellAlt,
+                bgcolor: inM ? d.cell : d.cellAlt,
                 minHeight: { xs: 88, sm: 104 },
                 p: 0.5,
                 cursor: inM ? 'pointer' : 'default',
@@ -98,7 +120,7 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
                 sx={{
                   fontSize: 12,
                   fontWeight: 600,
-                  color: inM ? mocha.text : mocha.muted,
+                  color: inM ? d.text : d.mutedDark,
                   mb: 0,
                 }}
               >
@@ -107,7 +129,10 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
               <LoadBar count={inM ? list.length : 0} />
               {show.map(a => {
                 const v = appointmentStatusVariant(a.status)
-                const t = new Date(a.startsAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+                const t = new Date(a.startsAt).toLocaleTimeString('ru-RU', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
                 return (
                   <Box
                     key={a.id}
@@ -126,6 +151,7 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       ...VARIANT_SX[v],
+                      ...(isLight ? { color: calendarEventLightTextColors(v, d).service } : {}),
                       '&:hover': { filter: 'brightness(1.08)' },
                     }}
                     title={`${t} ${a.serviceName} · ${a.clientLabel}`}
@@ -135,7 +161,7 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
                 )
               })}
               {more > 0 && (
-                <Typography sx={{ fontSize: 9, color: mocha.muted, pl: 0.25 }}>+{more}</Typography>
+                <Typography sx={{ fontSize: 9, color: d.mutedDark, pl: 0.25 }}>+{more}</Typography>
               )}
             </Box>
           )

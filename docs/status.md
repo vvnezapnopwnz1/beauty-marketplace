@@ -1,6 +1,13 @@
 # Статус разработки — Beauty Marketplace
 
-> Дата: 2026-04-13 | Версия: pre-MVP (v0.1)
+> Дата: 2026-04-16 | Версия: pre-MVP (v0.1)
+
+### Последние изменения (2026-04-16)
+
+- **Тема и кабинет:** семантическая палитра дашборда вынесена в `theme.palette.dashboard` (`frontend/src/shared/theme/dashboardPalette.ts`, `getDashboardPalette`), типы расширены через `mui-augmentation.d.ts`. Компоненты дашборда переведены на `useDashboardPalette()` / `useDashboardListCardSurface()` вместо статического `mocha.ts` где это затронуто; общие стили форм — `formStyles.ts`, переиспользуемые блоки — `ui/components/formComponents.tsx`.
+- **Главная (поиск):** блок Hero на `SearchPage` использует **светлый** градиент (cream → blush) в **светлой** теме и прежний тёмный Warm Mocha-градиент в **тёмной**; текст и бейдж берутся из брендовых `COLORS` (`ink` / `inkSoft` / `accent`). `SearchBar` переключает «таблетку» поиска: светлая пилюля в light, тёмная — в dark.
+- **Календарь дашборда:** в светлой теме подписи событий на таймлайне получают читаемые цвета через `calendarEventLightTextColors` в `calendarGridUtils.ts`; исправлено затенение переменной палитры параметром `day` в `CalendarWeekGrid` (колбэк `map` не должен называться `d`, если снаружи уже есть `d` — палитра).
+- **Документация:** синхронизированы `docs/status.md`, `docs/architecture.md`; в `backend/internal/requestid/context.go` добавлен пакетный комментарий к заголовкам корреляции.
 
 ---
 
@@ -262,7 +269,7 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 
 - **React + Vite** (dev server: localhost:5173/5174)
 - **Redux Toolkit** — `searchSlice` (категория, сортировка, чипы фильтров), `authSlice`, `locationSlice` (город, геолокация устройства)
-- **Material-UI** — UI-компоненты, кастомная тема (цвета: ink, accent, sage, blush, cream)
+- **Material-UI** — UI-компоненты, кастомная тема (бренд: ink, accent, sage, blush, cream; для `/dashboard` — `palette.dashboard` и хук `useDashboardPalette`)
 - **react-hook-form + yup** — формы с валидацией
 - **react-i18next** — i18n (ru_RU)
 - **framer-motion** — анимации

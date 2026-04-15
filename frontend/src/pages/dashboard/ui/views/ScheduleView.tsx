@@ -12,7 +12,8 @@ import {
   type StaffWorkingHourRow,
   type WorkingHourRow,
 } from '@shared/api/dashboardApi'
-import { mocha } from '@pages/dashboard/theme/mocha'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import { ToggleSwitch } from '@pages/dashboard/ui/components/formComponents'
 
 const FULL_DAYS = [
   'Понедельник',
@@ -24,22 +25,6 @@ const FULL_DAYS = [
   'Воскресенье',
 ]
 const WSG_DOW = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
-
-const BG = mocha.page
-const CARD = mocha.card
-const SURFACE = mocha.dialog
-const INPUT_BG = mocha.input
-const ACCENT = mocha.accent
-const ACCENT2 = mocha.accentDark
-const TEXT = mocha.text
-const MUTED = mocha.muted
-const GREEN = mocha.green
-const RED = mocha.red
-const YELLOW = mocha.yellow
-const BLUE = mocha.blue
-const PURPLE = mocha.purple
-
-const SWATCHES = [ACCENT, PURPLE, BLUE, GREEN, mocha.pink, YELLOW, RED] as const
 
 type LocalSalonDay = {
   day: number
@@ -140,53 +125,9 @@ function compactTimeRange(opens: string, closes: string): string {
   return `${o}–${c}`
 }
 
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <Box
-      component="label"
-      sx={{
-        position: 'relative',
-        width: 36,
-        height: 20,
-        display: 'inline-block',
-        flexShrink: 0,
-        cursor: 'pointer',
-      }}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={e => onChange(e.target.checked)}
-        style={{ display: 'none' }}
-      />
-      <Box
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '20px',
-          bgcolor: checked ? 'rgba(107,203,119,.3)' : mocha.control,
-          transition: '0.2s',
-          pointerEvents: 'none',
-        }}
-      />
-      <Box
-        sx={{
-          position: 'absolute',
-          width: 14,
-          height: 14,
-          borderRadius: '50%',
-          bgcolor: checked ? GREEN : '#888',
-          top: 3,
-          left: checked ? 19 : 3,
-          transition: '0.2s',
-          pointerEvents: 'none',
-        }}
-      />
-    </Box>
-  )
-}
 
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const d = useDashboardPalette()
   return (
     <Box
       component="input"
@@ -194,42 +135,50 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
       value={value}
       onChange={e => onChange(e.target.value)}
       sx={{
-        background: INPUT_BG,
-        border: `1px solid ${mocha.inputBorder}`,
+        background: d.input,
+        border: `1px solid ${d.inputBorder}`,
         borderRadius: '6px',
         py: '5px',
         px: '10px',
-        color: TEXT,
+        color: d.text,
         fontSize: 12,
         width: 86,
         textAlign: 'center',
         fontFamily: 'inherit',
         outline: 'none',
         boxSizing: 'border-box',
-        '&:focus': { borderColor: ACCENT },
+        '&:focus': { borderColor: d.accent },
       }}
     />
   )
 }
 
-const mockBtn = {
-  py: '5px',
-  px: '30px',
-  borderRadius: '6px',
-  fontSize: 12,
-  bgcolor: mocha.control,
-  border: 'none',
-  color: MUTED,
-  cursor: 'pointer',
-  fontWeight: 500,
-  transition: '0.15s',
-  textTransform: 'none' as const,
-  minWidth: 'auto',
-  lineHeight: 1.4,
-  '&:hover': { bgcolor: mocha.controlHover, color: TEXT },
-}
-
 export function ScheduleView() {
+  const d = useDashboardPalette()
+  const SWATCHES = useMemo(
+    () => [d.accent, d.purple, d.blue, d.green, d.pink, d.yellow, d.red] as const,
+    [d],
+  )
+  const mockBtn = useMemo(
+    () =>
+      ({
+        py: '5px',
+        px: '30px',
+        borderRadius: '6px',
+        fontSize: 12,
+        bgcolor: d.control,
+        border: 'none',
+        color: d.mutedDark,
+        cursor: 'pointer',
+        fontWeight: 500,
+        transition: '0.15s',
+        textTransform: 'none' as const,
+        minWidth: 'auto',
+        lineHeight: 1.4,
+        '&:hover': { bgcolor: d.controlHover, color: d.text },
+      }) as const,
+    [d],
+  )
   const [activeTab, setActiveTab] = useState<'salon' | string>('salon')
   const [staff, setStaff] = useState<DashboardStaffListItem[]>([])
   const [staffId, setStaffId] = useState<string>('')
@@ -437,20 +386,20 @@ export function ScheduleView() {
   const staffSwatchIdx = staff.length
     ? staff.findIndex(s => s.staff.id === staffId) % SWATCHES.length
     : 0
-  const avatarBg = `${SWATCHES[staffSwatchIdx] ?? ACCENT}33`
-  const avatarFg = SWATCHES[staffSwatchIdx] ?? ACCENT
+  const avatarBg = `${SWATCHES[staffSwatchIdx] ?? d.accent}33`
+  const avatarFg = SWATCHES[staffSwatchIdx] ?? d.accent
 
   return (
-    <Box sx={{ color: TEXT, bgcolor: BG, mt: 0 }}>
+    <Box sx={{ color: d.text, bgcolor: d.page, mt: 0 }}>
       {err && (
-        <Alert severity="error" sx={{ mb: 2, bgcolor: mocha.errorBg, color: TEXT }}>
+        <Alert severity="error" sx={{ mb: 2, bgcolor: d.errorBg, color: d.text }}>
           {err}
         </Alert>
       )}
       {msg && (
         <Alert
           severity="success"
-          sx={{ mb: 2, bgcolor: SURFACE, color: TEXT }}
+          sx={{ mb: 2, bgcolor: d.dialog, color: d.text }}
           onClose={() => setMsg(null)}
         >
           {msg}
@@ -463,7 +412,7 @@ export function ScheduleView() {
           display: 'flex',
           gap: '6px',
           mb: 2.5,
-          borderBottom: `1px solid ${mocha.grid}`,
+          borderBottom: `1px solid ${d.grid}`,
           pb: 1.5,
           flexWrap: 'wrap',
           alignItems: 'center',
@@ -482,11 +431,11 @@ export function ScheduleView() {
             cursor: 'pointer',
             border: 'none',
             bgcolor: activeTab === 'salon' ? 'rgba(216,149,107,.15)' : 'transparent',
-            color: activeTab === 'salon' ? ACCENT : MUTED,
+            color: activeTab === 'salon' ? d.accent : d.mutedDark,
             transition: '0.2s',
             '&:hover': {
-              color: TEXT,
-              bgcolor: activeTab === 'salon' ? 'rgba(216,149,107,.15)' : mocha.grid,
+              color: d.text,
+              bgcolor: activeTab === 'salon' ? 'rgba(216,149,107,.15)' : d.grid,
             },
           }}
         >
@@ -513,10 +462,10 @@ export function ScheduleView() {
                 cursor: 'pointer',
                 border: 'none',
                 bgcolor: on ? 'rgba(216,149,107,.15)' : 'transparent',
-                color: on ? ACCENT : MUTED,
+                color: on ? d.accent : d.mutedDark,
                 transition: '0.2s',
                 whiteSpace: 'nowrap',
-                '&:hover': { color: TEXT, bgcolor: on ? 'rgba(216,149,107,.15)' : mocha.grid },
+                '&:hover': { color: d.text, bgcolor: on ? 'rgba(216,149,107,.15)' : d.grid },
               }}
             >
               {shortStaffLabel(s.staff.displayName)}
@@ -536,7 +485,7 @@ export function ScheduleView() {
           >
             <Box>
               <Typography sx={{ fontSize: 14, fontWeight: 600 }}>Рабочие часы салона</Typography>
-              <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.5 }}>
+              <Typography sx={{ fontSize: 12, color: d.mutedDark, mt: 0.5 }}>
                 Базовые часы. Мастера могут иметь свои отличные от этих часы.
               </Typography>
             </Box>
@@ -545,10 +494,10 @@ export function ScheduleView() {
               onClick={() => void saveSalon()}
               sx={{
                 ...mockBtn,
-                bgcolor: ACCENT,
-                color: mocha.onAccent,
+                bgcolor: d.accent,
+                color: d.onAccent,
                 fontWeight: 600,
-                '&:hover': { bgcolor: ACCENT2, color: mocha.onAccent },
+                '&:hover': { bgcolor: d.accentDark, color: d.onAccent },
               }}
             >
               Сохранить
@@ -556,7 +505,7 @@ export function ScheduleView() {
           </Stack>
 
           <Box
-            sx={{ bgcolor: CARD, borderRadius: '10px', p: 2, border: `1px solid ${mocha.grid}` }}
+            sx={{ bgcolor: d.card, borderRadius: '10px', p: 2, border: `1px solid ${d.grid}` }}
           >
             {salonLocal.map((l, i) => (
               <Box
@@ -566,12 +515,12 @@ export function ScheduleView() {
                   alignItems: 'center',
                   gap: '10px',
                   py: 1.25,
-                  borderBottom: i < FULL_DAYS.length - 1 ? `1px solid ${mocha.input}` : 'none',
+                  borderBottom: i < FULL_DAYS.length - 1 ? `1px solid ${d.input}` : 'none',
                   flexWrap: 'wrap',
                 }}
               >
                 <Typography
-                  sx={{ fontSize: 13, color: TEXT, width: 90, flexShrink: 0, fontWeight: 500 }}
+                  sx={{ fontSize: 13, color: d.text, width: 90, flexShrink: 0, fontWeight: 500 }}
                 >
                   {FULL_DAYS[i]}
                 </Typography>
@@ -589,14 +538,14 @@ export function ScheduleView() {
                         setSalonLocal(p => p.map(x => (x.day === l.day ? { ...x, opens: v } : x)))
                       }
                     />
-                    <Typography sx={{ color: MUTED, fontSize: 12 }}>—</Typography>
+                    <Typography sx={{ color: d.mutedDark, fontSize: 12 }}>—</Typography>
                     <TimeInput
                       value={l.closes}
                       onChange={v =>
                         setSalonLocal(p => p.map(x => (x.day === l.day ? { ...x, closes: v } : x)))
                       }
                     />
-                    <Typography sx={{ fontSize: 12, color: MUTED, ml: 1 }}>Обед:</Typography>
+                    <Typography sx={{ fontSize: 12, color: d.mutedDark, ml: 1 }}>Обед:</Typography>
                     <TimeInput
                       value={l.breakStart}
                       onChange={v =>
@@ -605,7 +554,7 @@ export function ScheduleView() {
                         )
                       }
                     />
-                    <Typography sx={{ color: MUTED, fontSize: 12 }}>—</Typography>
+                    <Typography sx={{ color: d.mutedDark, fontSize: 12 }}>—</Typography>
                     <TimeInput
                       value={l.breakEnd}
                       onChange={v =>
@@ -616,7 +565,7 @@ export function ScheduleView() {
                     />
                   </>
                 ) : (
-                  <Typography sx={{ fontSize: 12, color: RED, ml: 0.5 }}>Выходной</Typography>
+                  <Typography sx={{ fontSize: 12, color: d.red, ml: 0.5 }}>Выходной</Typography>
                 )}
               </Box>
             ))}
@@ -637,7 +586,7 @@ export function ScheduleView() {
                     bgcolor: 'rgba(255,107,107,.1)',
                     border: '1px solid rgba(255,107,107,.2)',
                     fontSize: 12,
-                    color: RED,
+                    color: d.red,
                   }}
                 >
                   {formatOverrideChip(o)}
@@ -649,7 +598,7 @@ export function ScheduleView() {
                       ml: 1,
                       border: 'none',
                       background: 'none',
-                      color: MUTED,
+                      color: d.mutedDark,
                       cursor: 'pointer',
                       fontSize: 11,
                     }}
@@ -670,11 +619,11 @@ export function ScheduleView() {
                     value={newOv.onDate}
                     onChange={e => setNewOv(v => ({ ...v, onDate: e.target.value }))}
                     sx={{
-                      background: INPUT_BG,
-                      border: `1px solid ${mocha.inputBorder}`,
+                      background: d.input,
+                      border: `1px solid ${d.inputBorder}`,
                       borderRadius: 1,
                       p: 1,
-                      color: TEXT,
+                      color: d.text,
                       fontSize: 12,
                     }}
                   />
@@ -691,9 +640,9 @@ export function ScheduleView() {
                     onClick={addOverride}
                     sx={{
                       ...mockBtn,
-                      bgcolor: ACCENT,
-                      color: mocha.onAccent,
-                      '&:hover': { bgcolor: ACCENT2 },
+                      bgcolor: d.accent,
+                      color: d.onAccent,
+                      '&:hover': { bgcolor: d.accentDark },
                     }}
                   >
                     OK
@@ -710,7 +659,7 @@ export function ScheduleView() {
             <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}>
               Длительность слота записи
             </Typography>
-            <Typography sx={{ fontSize: 12, color: MUTED, mb: 1.25 }}>
+            <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 1.25 }}>
               Минимальный интервал между записями на одного мастера
             </Typography>
             <Stack direction="row" gap={1}>
@@ -721,12 +670,12 @@ export function ScheduleView() {
                   onClick={() => setSlotMin(m)}
                   sx={{
                     ...mockBtn,
-                    bgcolor: slotMin === m ? ACCENT : mocha.control,
-                    color: slotMin === m ? mocha.onAccent : MUTED,
+                    bgcolor: slotMin === m ? d.accent : d.control,
+                    color: slotMin === m ? d.onAccent : d.mutedDark,
                     fontWeight: slotMin === m ? 600 : 500,
                     '&:hover': {
-                      bgcolor: slotMin === m ? ACCENT2 : mocha.controlHover,
-                      color: mocha.onAccent,
+                      bgcolor: slotMin === m ? d.accentDark : d.controlHover,
+                      color: d.onAccent,
                     },
                   }}
                 >
@@ -763,7 +712,7 @@ export function ScheduleView() {
               <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
                 {selectedStaff.staff.displayName} — Индивидуальное расписание
               </Typography>
-              <Typography sx={{ fontSize: 12, color: MUTED }}>
+              <Typography sx={{ fontSize: 12, color: d.mutedDark }}>
                 Отличия от базового расписания салона выделены
               </Typography>
             </Box>
@@ -775,10 +724,10 @@ export function ScheduleView() {
               onClick={() => void saveStaff()}
               sx={{
                 ...mockBtn,
-                bgcolor: ACCENT,
-                color: mocha.onAccent,
+                bgcolor: d.accent,
+                color: d.onAccent,
                 fontWeight: 600,
-                '&:hover': { bgcolor: ACCENT2, color: mocha.onAccent },
+                '&:hover': { bgcolor: d.accentDark, color: d.onAccent },
               }}
             >
               Сохранить
@@ -786,7 +735,7 @@ export function ScheduleView() {
           </Stack>
 
           <Box
-            sx={{ bgcolor: CARD, borderRadius: '10px', p: 2, border: `1px solid ${mocha.grid}` }}
+            sx={{ bgcolor: d.card, borderRadius: '10px', p: 2, border: `1px solid ${d.grid}` }}
           >
             {staffLocal.map((l, i) => {
               const s = salonByDay.get(l.day)
@@ -799,12 +748,12 @@ export function ScheduleView() {
                     alignItems: 'center',
                     gap: '10px',
                     py: 1.25,
-                    borderBottom: i < FULL_DAYS.length - 1 ? `1px solid ${mocha.input}` : 'none',
+                    borderBottom: i < FULL_DAYS.length - 1 ? `1px solid ${d.input}` : 'none',
                     flexWrap: 'wrap',
                   }}
                 >
                   <Typography
-                    sx={{ fontSize: 13, color: TEXT, width: 90, flexShrink: 0, fontWeight: 500 }}
+                    sx={{ fontSize: 13, color: d.text, width: 90, flexShrink: 0, fontWeight: 500 }}
                   >
                     {FULL_DAYS[i]}
                   </Typography>
@@ -822,7 +771,7 @@ export function ScheduleView() {
                           setStaffLocal(p => p.map(x => (x.day === l.day ? { ...x, opens: v } : x)))
                         }
                       />
-                      <Typography sx={{ color: MUTED, fontSize: 12 }}>—</Typography>
+                      <Typography sx={{ color: d.mutedDark, fontSize: 12 }}>—</Typography>
                       <TimeInput
                         value={l.closes}
                         onChange={v =>
@@ -832,13 +781,13 @@ export function ScheduleView() {
                         }
                       />
                       {showDiff && (
-                        <Typography sx={{ fontSize: 11, color: YELLOW, ml: 1 }} component="span">
+                        <Typography sx={{ fontSize: 11, color: d.yellow, ml: 1 }} component="span">
                           ≠ салон
                         </Typography>
                       )}
                     </>
                   ) : (
-                    <Typography sx={{ fontSize: 12, color: RED, ml: 0.5 }}>Выходной</Typography>
+                    <Typography sx={{ fontSize: 12, color: d.red, ml: 0.5 }}>Выходной</Typography>
                   )}
                 </Box>
               )
@@ -860,7 +809,7 @@ export function ScheduleView() {
                     bgcolor: 'rgba(78,205,196,.1)',
                     border: '1px solid rgba(78,205,196,.2)',
                     fontSize: 12,
-                    color: BLUE,
+                    color: d.blue,
                   }}
                 >
                   {formatAbsenceChip(a)}
@@ -872,7 +821,7 @@ export function ScheduleView() {
                       ml: 1,
                       border: 'none',
                       background: 'none',
-                      color: MUTED,
+                      color: d.mutedDark,
                       cursor: 'pointer',
                       fontSize: 11,
                     }}
@@ -893,11 +842,11 @@ export function ScheduleView() {
                     value={newAbs.startsOn}
                     onChange={e => setNewAbs(v => ({ ...v, startsOn: e.target.value }))}
                     sx={{
-                      background: INPUT_BG,
-                      border: `1px solid ${mocha.inputBorder}`,
+                      background: d.input,
+                      border: `1px solid ${d.inputBorder}`,
                       borderRadius: 1,
                       p: 1,
-                      color: TEXT,
+                      color: d.text,
                       fontSize: 12,
                     }}
                   />
@@ -907,11 +856,11 @@ export function ScheduleView() {
                     value={newAbs.endsOn}
                     onChange={e => setNewAbs(v => ({ ...v, endsOn: e.target.value }))}
                     sx={{
-                      background: INPUT_BG,
-                      border: `1px solid ${mocha.inputBorder}`,
+                      background: d.input,
+                      border: `1px solid ${d.inputBorder}`,
                       borderRadius: 1,
                       p: 1,
-                      color: TEXT,
+                      color: d.text,
                       fontSize: 12,
                     }}
                   />
@@ -921,11 +870,11 @@ export function ScheduleView() {
                     onChange={e => setNewAbs(v => ({ ...v, kind: e.target.value }))}
                     placeholder="vacation / sick"
                     sx={{
-                      background: INPUT_BG,
-                      border: `1px solid ${mocha.inputBorder}`,
+                      background: d.input,
+                      border: `1px solid ${d.inputBorder}`,
                       borderRadius: 1,
                       p: 1,
-                      color: TEXT,
+                      color: d.text,
                       fontSize: 12,
                       width: 120,
                     }}
@@ -933,7 +882,7 @@ export function ScheduleView() {
                   <Button
                     type="button"
                     onClick={addAbsence}
-                    sx={{ ...mockBtn, bgcolor: ACCENT, color: mocha.onAccent }}
+                    sx={{ ...mockBtn, bgcolor: d.accent, color: d.onAccent }}
                   >
                     OK
                   </Button>
@@ -955,20 +904,20 @@ export function ScheduleView() {
                 display: 'grid',
                 gridTemplateColumns: '100px repeat(7, 1fr)',
                 gap: '1px',
-                bgcolor: mocha.grid,
+                bgcolor: d.grid,
                 borderRadius: '10px',
                 overflow: 'hidden',
               }}
             >
               <Box
                 sx={{
-                  bgcolor: SURFACE,
+                  bgcolor: d.dialog,
                   py: 1.25,
                   px: 1,
                   fontSize: 11,
                   fontWeight: 600,
                   textAlign: 'center',
-                  color: MUTED,
+                  color: d.mutedDark,
                 }}
               >
                 Мастер
@@ -982,13 +931,13 @@ export function ScheduleView() {
                   <Box
                     key={d}
                     sx={{
-                      bgcolor: SURFACE,
+                      bgcolor: d.dialog,
                       py: 1.25,
                       px: 1,
                       fontSize: 11,
                       fontWeight: 600,
                       textAlign: 'center',
-                      color: isToday ? ACCENT : MUTED,
+                      color: isToday ? d.accent : d.mutedDark,
                     }}
                   >
                     {d} {cell.getDate()}
@@ -998,12 +947,12 @@ export function ScheduleView() {
 
               <Box
                 sx={{
-                  bgcolor: mocha.timeColumn,
+                  bgcolor: d.timeColumn,
                   py: 1.25,
                   px: 1.5,
                   fontSize: 11,
                   fontWeight: 600,
-                  color: ACCENT,
+                  color: d.accent,
                   display: 'flex',
                   alignItems: 'center',
                 }}
@@ -1019,7 +968,7 @@ export function ScheduleView() {
                   <Box
                     key={l.day}
                     sx={{
-                      bgcolor: CARD,
+                      bgcolor: d.card,
                       p: 1,
                       minHeight: 56,
                       display: 'flex',
@@ -1038,7 +987,7 @@ export function ScheduleView() {
                           py: 0.5,
                           px: 1,
                           fontSize: 10,
-                          color: RED,
+                          color: d.red,
                           textAlign: 'center',
                           width: '100%',
                         }}
@@ -1054,7 +1003,7 @@ export function ScheduleView() {
                           py: 0.5,
                           px: 1,
                           fontSize: 10,
-                          color: GREEN,
+                          color: d.green,
                           textAlign: 'center',
                           width: '100%',
                         }}
@@ -1071,7 +1020,7 @@ export function ScheduleView() {
       )}
 
       {!isSalon && !staff.length && (
-        <Typography sx={{ color: MUTED, fontSize: 13 }}>
+        <Typography sx={{ color: d.mutedDark, fontSize: 13 }}>
           Добавьте мастеров в разделе «Мастера».
         </Typography>
       )}

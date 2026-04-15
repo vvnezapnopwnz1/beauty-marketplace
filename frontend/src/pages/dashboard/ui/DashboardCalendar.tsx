@@ -48,12 +48,14 @@ import {
   toLocalYMD,
   type StaffScheduleInfo,
 } from '../lib/calendarGridUtils'
-import { mocha } from '@pages/dashboard/theme/mocha'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import type { DashboardPalette } from '@shared/theme'
 import { CalendarDayStaffGrid, type StaffColumn } from './CalendarDayStaffGrid'
 import { CalendarMonthGrid } from './CalendarMonthGrid'
 import { CalendarWeekGrid } from './CalendarWeekGrid'
 
 function LegendSwatch({ color, label }: { color: string; label: string }) {
+  const d = useDashboardPalette()
   return (
     <Box
       component="span"
@@ -62,7 +64,7 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
         alignItems: 'center',
         gap: 0.5,
         fontSize: 11,
-        color: mocha.muted,
+        color: d.mutedDark,
       }}
     >
       <Box component="span" sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: color }} />
@@ -91,13 +93,13 @@ function statusLabel(status: string): string {
   return status
 }
 
-function statusColor(status: string): string {
+function statusColor(status: string, d: DashboardPalette): string {
   const s = status.toLowerCase()
-  if (s === 'confirmed') return mocha.green
-  if (s === 'pending') return mocha.yellow
-  if (s === 'completed') return mocha.blue
-  if (s.includes('cancel') || s === 'no_show') return mocha.red
-  return mocha.accent
+  if (s === 'confirmed') return d.green
+  if (s === 'pending') return d.yellow
+  if (s === 'completed') return d.blue
+  if (s.includes('cancel') || s === 'no_show') return d.red
+  return d.accent
 }
 
 function formatDuration(startsAt: string, endsAt: string): string {
@@ -109,6 +111,7 @@ function formatDuration(startsAt: string, endsAt: string): string {
 }
 
 export function DashboardCalendar() {
+  const d = useDashboardPalette()
   const narrow = useMediaQuery('(max-width:600px)')
   const timeColWidth = narrow ? 40 : 56
 
@@ -295,10 +298,10 @@ export function DashboardCalendar() {
     fontSize: 12,
     borderRadius: '6px',
     textTransform: 'none' as const,
-    bgcolor: mocha.control,
-    color: mocha.muted,
+    bgcolor: d.control,
+    color: d.muted,
     border: 'none',
-    '&:hover': { bgcolor: mocha.controlHover, color: mocha.text },
+    '&:hover': { bgcolor: d.controlHover, color: d.text },
   }
 
   // Detail dialog: find staff color for avatar
@@ -310,7 +313,7 @@ export function DashboardCalendar() {
   return (
     <Box>
       {err && (
-        <Alert severity="error" sx={{ mb: 2, bgcolor: mocha.errorBg, color: mocha.text }}>
+        <Alert severity="error" sx={{ mb: 2, bgcolor: d.errorBg, color: d.text }}>
           {err}
         </Alert>
       )}
@@ -319,7 +322,7 @@ export function DashboardCalendar() {
         sx={{
           fontFamily: "'Fraunces', serif",
           fontSize: { xs: 18, sm: 22 },
-          color: mocha.text,
+          color: d.text,
           mb: 1,
         }}
       >
@@ -364,8 +367,8 @@ export function DashboardCalendar() {
                 px: 1.25,
               },
               '& .Mui-selected': {
-                bgcolor: `${mocha.accent} !important`,
-                color: `${mocha.onAccent} !important`,
+                bgcolor: `${d.accent} !important`,
+                color: `${d.onAccent} !important`,
               },
             }}
           >
@@ -387,9 +390,9 @@ export function DashboardCalendar() {
             size="small"
             sx={{
               ...mockBtnSx,
-              bgcolor: mocha.accent,
-              color: mocha.onAccent,
-              '&:hover': { bgcolor: '#e4a882', color: mocha.onAccent },
+              bgcolor: d.accent,
+              color: d.onAccent,
+              '&:hover': { bgcolor: '#e4a882', color: d.onAccent },
             }}
             onClick={() => setAnchor(new Date())}
           >
@@ -411,10 +414,10 @@ export function DashboardCalendar() {
             onChange={e => setFilterStaffId(e.target.value)}
             sx={{
               minWidth: { xs: 140, sm: 160 },
-              '& .MuiInputBase-root': { color: mocha.text },
-              '& label': { color: mocha.muted },
+              '& .MuiInputBase-root': { color: d.text },
+              '& label': { color: d.muted },
             }}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
+            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: d.card } } } }}
           >
             <MenuItem value="">Все</MenuItem>
             {staff
@@ -433,10 +436,10 @@ export function DashboardCalendar() {
             onChange={e => setFilterServiceId(e.target.value)}
             sx={{
               minWidth: { xs: 140, sm: 180 },
-              '& .MuiInputBase-root': { color: mocha.text },
-              '& label': { color: mocha.muted },
+              '& .MuiInputBase-root': { color: d.text },
+              '& label': { color: d.muted },
             }}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
+            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: d.card } } } }}
           >
             <MenuItem value="">Все</MenuItem>
             {services.map(s => (
@@ -486,11 +489,11 @@ export function DashboardCalendar() {
       <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mt: 1 }}>
         <LegendSwatch color="#6bcb77" label="Подтверждена" />
         <LegendSwatch color="#ffd93d" label="Ожидает" />
-        <LegendSwatch color={mocha.accent} label="Прочее" />
+        <LegendSwatch color={d.accent} label="Прочее" />
         <LegendSwatch color="#ff6b6b" label="Отмена / no-show" />
       </Stack>
 
-      <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: mocha.muted }}>
+      <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: d.muted }}>
         {mode === 'month'
           ? 'Клик по дню — перейти в режим «День». Клик по записи — карточка.'
           : mode === 'week'
@@ -502,7 +505,7 @@ export function DashboardCalendar() {
       <Dialog
         open={!!detail}
         onClose={() => setDetail(null)}
-        PaperProps={{ sx: { bgcolor: mocha.dialog, color: mocha.text, minWidth: 320 } }}
+        PaperProps={{ sx: { bgcolor: d.dialog, color: d.text, minWidth: 320 } }}
       >
         {detail && (
           <>
@@ -516,8 +519,8 @@ export function DashboardCalendar() {
                     borderRadius: '50%',
                     bgcolor: detailStaffColor
                       ? `${detailStaffColor}25`
-                      : `${mocha.accent}20`,
-                    border: `2px solid ${detailStaffColor ?? mocha.accent}40`,
+                      : `${d.accent}20`,
+                    border: `2px solid ${detailStaffColor ?? d.accent}40`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -528,18 +531,18 @@ export function DashboardCalendar() {
                     sx={{
                       fontSize: 14,
                       fontWeight: 700,
-                      color: detailStaffColor ?? mocha.accent,
+                      color: detailStaffColor ?? d.accent,
                     }}
                   >
                     {getInitials(detail.clientLabel)}
                   </Typography>
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600, color: mocha.text, lineHeight: 1.3 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 600, color: d.text, lineHeight: 1.3 }}>
                     {detail.clientLabel}
                   </Typography>
                   {detail.clientPhone && (
-                    <Typography sx={{ fontSize: 12, color: mocha.muted, lineHeight: 1.3 }}>
+                    <Typography sx={{ fontSize: 12, color: d.muted, lineHeight: 1.3 }}>
                       {detail.clientPhone}
                     </Typography>
                   )}
@@ -548,9 +551,9 @@ export function DashboardCalendar() {
                   label={statusLabel(detail.status)}
                   size="small"
                   sx={{
-                    bgcolor: `${statusColor(detail.status)}20`,
-                    color: statusColor(detail.status),
-                    border: `1px solid ${statusColor(detail.status)}40`,
+                    bgcolor: `${statusColor(detail.status, d)}20`,
+                    color: statusColor(detail.status, d),
+                    border: `1px solid ${statusColor(detail.status, d)}40`,
                     fontSize: 11,
                     height: 22,
                     flexShrink: 0,
@@ -559,19 +562,19 @@ export function DashboardCalendar() {
               </Stack>
             </DialogTitle>
 
-            <Divider sx={{ borderColor: mocha.border }} />
+            <Divider sx={{ borderColor: d.border }} />
 
             <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, pt: 1.5 }}>
               {/* Service */}
               <Stack direction="row" justifyContent="space-between" gap={1}>
                 <Box>
-                  <Typography sx={{ fontSize: 10, color: mocha.muted, mb: 0.25 }}>Услуга</Typography>
-                  <Typography sx={{ fontSize: 13, color: mocha.text }}>{detail.serviceName}</Typography>
+                  <Typography sx={{ fontSize: 10, color: d.muted, mb: 0.25 }}>Услуга</Typography>
+                  <Typography sx={{ fontSize: 13, color: d.text }}>{detail.serviceName}</Typography>
                 </Box>
                 {detail.staffName && (
                   <Box sx={{ textAlign: 'right' }}>
-                    <Typography sx={{ fontSize: 10, color: mocha.muted, mb: 0.25 }}>Мастер</Typography>
-                    <Typography sx={{ fontSize: 13, color: mocha.text }}>{detail.staffName}</Typography>
+                    <Typography sx={{ fontSize: 10, color: d.muted, mb: 0.25 }}>Мастер</Typography>
+                    <Typography sx={{ fontSize: 13, color: d.text }}>{detail.staffName}</Typography>
                   </Box>
                 )}
               </Stack>
@@ -579,8 +582,8 @@ export function DashboardCalendar() {
               {/* Date & time */}
               <Stack direction="row" justifyContent="space-between" gap={1}>
                 <Box>
-                  <Typography sx={{ fontSize: 10, color: mocha.muted, mb: 0.25 }}>Дата и время</Typography>
-                  <Typography sx={{ fontSize: 13, color: mocha.text }}>
+                  <Typography sx={{ fontSize: 10, color: d.muted, mb: 0.25 }}>Дата и время</Typography>
+                  <Typography sx={{ fontSize: 13, color: d.text }}>
                     {new Date(detail.startsAt).toLocaleDateString('ru-RU', {
                       day: 'numeric',
                       month: 'short',
@@ -597,10 +600,10 @@ export function DashboardCalendar() {
                   </Typography>
                 </Box>
                 <Box sx={{ textAlign: 'right' }}>
-                  <Typography sx={{ fontSize: 10, color: mocha.muted, mb: 0.25 }}>
+                  <Typography sx={{ fontSize: 10, color: d.muted, mb: 0.25 }}>
                     Длительность
                   </Typography>
-                  <Typography sx={{ fontSize: 13, color: mocha.text }}>
+                  <Typography sx={{ fontSize: 13, color: d.text }}>
                     {formatDuration(detail.startsAt, detail.endsAt)}
                   </Typography>
                 </Box>
@@ -611,13 +614,13 @@ export function DashboardCalendar() {
                 <Box
                   sx={{
                     p: 1,
-                    bgcolor: `${mocha.accent}0d`,
+                    bgcolor: `${d.accent}0d`,
                     borderRadius: 1,
-                    border: `1px solid ${mocha.accent}20`,
+                    border: `1px solid ${d.accent}20`,
                   }}
                 >
-                  <Typography sx={{ fontSize: 10, color: mocha.muted, mb: 0.25 }}>Заметка</Typography>
-                  <Typography sx={{ fontSize: 12, color: mocha.text }}>{detail.clientNote}</Typography>
+                  <Typography sx={{ fontSize: 10, color: d.muted, mb: 0.25 }}>Заметка</Typography>
+                  <Typography sx={{ fontSize: 12, color: d.text }}>{detail.clientNote}</Typography>
                 </Box>
               )}
 
@@ -627,14 +630,14 @@ export function DashboardCalendar() {
                   <Button
                     size="small"
                     variant="contained"
-                    sx={{ bgcolor: mocha.green, color: '#0a1f0d', '&:hover': { bgcolor: '#5ab365' } }}
+                    sx={{ bgcolor: d.green, color: '#0a1f0d', '&:hover': { bgcolor: '#5ab365' } }}
                     onClick={() => void setApptStatus(detail.id, 'confirmed')}
                   >
                     Подтвердить
                   </Button>
                   <Button
                     size="small"
-                    sx={{ color: mocha.red, borderColor: `${mocha.red}50` }}
+                    sx={{ color: d.red, borderColor: `${d.red}50` }}
                     variant="outlined"
                     onClick={() => void setApptStatus(detail.id, 'cancelled_by_salon')}
                   >
@@ -647,7 +650,7 @@ export function DashboardCalendar() {
                   <Button
                     size="small"
                     variant="contained"
-                    sx={{ bgcolor: mocha.accent, color: mocha.onAccent, '&:hover': { bgcolor: '#e4a882' } }}
+                    sx={{ bgcolor: d.accent, color: d.onAccent, '&:hover': { bgcolor: '#e4a882' } }}
                     onClick={() => void setApptStatus(detail.id, 'completed')}
                   >
                     Завершить
@@ -655,7 +658,7 @@ export function DashboardCalendar() {
                   <Button
                     size="small"
                     variant="outlined"
-                    sx={{ color: mocha.muted, borderColor: `${mocha.muted}40` }}
+                    sx={{ color: d.muted, borderColor: `${d.muted}40` }}
                     onClick={() => void setApptStatus(detail.id, 'no_show')}
                   >
                     No-show
@@ -663,7 +666,7 @@ export function DashboardCalendar() {
                   <Button
                     size="small"
                     variant="outlined"
-                    sx={{ color: mocha.red, borderColor: `${mocha.red}50` }}
+                    sx={{ color: d.red, borderColor: `${d.red}50` }}
                     onClick={() => void setApptStatus(detail.id, 'cancelled_by_salon')}
                   >
                     Отменить
@@ -673,7 +676,7 @@ export function DashboardCalendar() {
             </DialogContent>
 
             <DialogActions sx={{ pt: 0 }}>
-              <Button onClick={() => setDetail(null)} sx={{ color: mocha.muted }}>
+              <Button onClick={() => setDetail(null)} sx={{ color: d.muted }}>
                 Закрыть
               </Button>
             </DialogActions>
@@ -685,7 +688,7 @@ export function DashboardCalendar() {
       <Dialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        PaperProps={{ sx: { bgcolor: mocha.dialog, color: mocha.text } }}
+        PaperProps={{ sx: { bgcolor: d.dialog, color: d.text } }}
       >
         <DialogTitle>Новая запись</DialogTitle>
         <DialogContent
@@ -696,10 +699,10 @@ export function DashboardCalendar() {
             label="Услуга"
             value={form.serviceId}
             onChange={e => setForm(f => ({ ...f, serviceId: e.target.value }))}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
+            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: d.card } } } }}
             sx={{
-              '& .MuiInputBase-root': { color: mocha.text },
-              '& label': { color: mocha.muted },
+              '& .MuiInputBase-root': { color: d.text },
+              '& label': { color: d.muted },
             }}
           >
             {services.map(s => (
@@ -713,10 +716,10 @@ export function DashboardCalendar() {
             label="Мастер"
             value={form.staffId}
             onChange={e => setForm(f => ({ ...f, staffId: e.target.value }))}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: mocha.card } } } }}
+            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: d.card } } } }}
             sx={{
-              '& .MuiInputBase-root': { color: mocha.text },
-              '& label': { color: mocha.muted },
+              '& .MuiInputBase-root': { color: d.text },
+              '& label': { color: d.muted },
             }}
           >
             <MenuItem value="">—</MenuItem>
@@ -735,8 +738,8 @@ export function DashboardCalendar() {
             onChange={e => setForm(f => ({ ...f, startsAt: e.target.value }))}
             InputLabelProps={{ shrink: true }}
             sx={{
-              '& .MuiInputBase-root': { color: mocha.text },
-              '& label': { color: mocha.muted },
+              '& .MuiInputBase-root': { color: d.text },
+              '& label': { color: d.muted },
             }}
           />
           <TextField
@@ -744,8 +747,8 @@ export function DashboardCalendar() {
             value={form.guestName}
             onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))}
             sx={{
-              '& .MuiInputBase-root': { color: mocha.text },
-              '& label': { color: mocha.muted },
+              '& .MuiInputBase-root': { color: d.text },
+              '& label': { color: d.muted },
             }}
           />
           <TextField
@@ -753,18 +756,18 @@ export function DashboardCalendar() {
             value={form.guestPhone}
             onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
             sx={{
-              '& .MuiInputBase-root': { color: mocha.text },
-              '& label': { color: mocha.muted },
+              '& .MuiInputBase-root': { color: d.text },
+              '& label': { color: d.muted },
             }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)} sx={{ color: mocha.muted }}>
+          <Button onClick={() => setCreateOpen(false)} sx={{ color: d.muted }}>
             Отмена
           </Button>
           <Button
             variant="contained"
-            sx={{ bgcolor: mocha.accent, color: mocha.onAccent }}
+            sx={{ bgcolor: d.accent, color: d.onAccent }}
             onClick={() => void submitCreate()}
           >
             Создать

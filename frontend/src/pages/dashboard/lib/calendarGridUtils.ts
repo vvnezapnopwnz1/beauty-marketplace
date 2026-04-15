@@ -1,4 +1,5 @@
 import type { DashboardAppointment } from '@shared/api/dashboardApi'
+import type { DashboardPalette } from '@shared/theme'
 
 export const CALENDAR_HOUR_START = 8
 export const CALENDAR_HOUR_END = 21
@@ -279,6 +280,27 @@ export function appointmentStatusVariant(status: string): CalendarEventVariant {
   if (s === 'pending') return 'pending'
   if (s.includes('cancel') || s === 'no_show') return 'blocked'
   return 'booked'
+}
+
+/**
+ * Цвета подписи «услуга / гость» в карточке события при светлой теме —
+ * разные оттенки по статусу (как различимые цвета в тёмной теме).
+ * confirmed — зелёный, pending — синий, booked — акцент (терракот), blocked — красный.
+ */
+export function calendarEventLightTextColors(
+  variant: CalendarEventVariant,
+  d: DashboardPalette,
+): { service: string; guest: string } {
+  switch (variant) {
+    case 'confirmed':
+      return { service: '#1b5e2a', guest: '#2e7d32' }
+    case 'pending':
+      return { service: '#0d47a1', guest: '#1565c0' }
+    case 'booked':
+      return { service: d.accentDark, guest: d.accent }
+    case 'blocked':
+      return { service: '#b71c1c', guest: '#c62828' }
+  }
 }
 
 function aptLocalYMD(a: DashboardAppointment): string {

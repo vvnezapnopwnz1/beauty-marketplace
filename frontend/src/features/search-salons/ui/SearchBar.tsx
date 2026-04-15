@@ -2,19 +2,20 @@ import { Box, InputBase, Button } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import { setQuery, selectSearchQuery } from '../model/searchSlice'
+import { useBrandColors, useThemeMode } from '@shared/theme'
 
-// Dark pill palette — matches the Warm Mocha hero
-const S = {
-  bg:          '#3A3028',
-  border:      '#4A423A',
+/** Dark hero — Warm Mocha pill */
+const DARK_PILL = {
+  bg: '#3A3028',
+  border: '#4A423A',
   focusBorder: '#D8956B',
   focusShadow: 'rgba(216,149,107,0.12)',
-  text:        '#F0EAE3',
+  text: '#F0EAE3',
   placeholder: '#8C8076',
-  iconColor:   '#8C8076',
-  btnBg:       '#D8956B',
-  btnText:     '#1a0e09',
-}
+  iconColor: '#8C8076',
+  btnBg: '#D8956B',
+  btnText: '#1a0e09',
+} as const
 
 interface SearchBarProps {
   onSearch?: () => void
@@ -24,6 +25,22 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const query = useAppSelector(selectSearchQuery)
+  const { mode } = useThemeMode()
+  const c = useBrandColors()
+  const S =
+    mode === 'light'
+      ? {
+          bg: c.white,
+          border: c.borderLight,
+          focusBorder: c.accent,
+          focusShadow: 'rgba(196,112,63,0.15)',
+          text: c.ink,
+          placeholder: c.inkSoft,
+          iconColor: c.inkSoft,
+          btnBg: c.accent,
+          btnText: c.onAccent,
+        }
+      : DARK_PILL
 
   return (
     <Box

@@ -7,14 +7,9 @@ import {
   type DashboardStaffListItem,
 } from '@shared/api/dashboardApi'
 import { computeLiveStaffStatus } from '../../lib/staffScheduleDisplay'
-import { mocha } from '@pages/dashboard/theme/mocha'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import type { DashboardPalette } from '@shared/theme'
 import { StaffFormModal } from '../modals/StaffFormModal'
-
-const ACCENT = mocha.accent
-const TEXT = mocha.text
-const MUTED = mocha.muted
-const GREEN = mocha.green
-const YELLOW = mocha.yellow
 
 function initials(name: string): string {
   const p = name.trim().split(/\s+/)
@@ -22,13 +17,14 @@ function initials(name: string): string {
   return name.slice(0, 2).toUpperCase() || '?'
 }
 
-function loadBarColor(pct: number): string {
-  if (pct >= 70) return GREEN
-  if (pct >= 50) return ACCENT
-  return mocha.red
+function loadBarColor(pct: number, d: DashboardPalette): string {
+  if (pct >= 70) return d.green
+  if (pct >= 50) return d.accent
+  return d.red
 }
 
 export function StaffListView() {
+  const d = useDashboardPalette()
   const navigate = useNavigate()
   const [rows, setRows] = useState<DashboardStaffListItem[]>([])
   const [statusByStaff, setStatusByStaff] = useState<Record<string, 'working' | 'break' | 'off'>>(
@@ -65,9 +61,9 @@ export function StaffListView() {
   }, [load])
 
   function statusLabel(s: 'working' | 'break' | 'off'): { text: string; color: string } {
-    if (s === 'working') return { text: 'Работает', color: GREEN }
-    if (s === 'break') return { text: 'Обед', color: YELLOW }
-    return { text: 'Выходной', color: MUTED }
+    if (s === 'working') return { text: 'Работает', color: d.green }
+    if (s === 'break') return { text: 'Обед', color: d.yellow }
+    return { text: 'Выходной', color: d.mutedDark }
   }
 
   return (
@@ -78,15 +74,15 @@ export function StaffListView() {
         </Alert>
       )}
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography sx={{ color: MUTED, fontSize: 13 }}>{rows.length} мастеров</Typography>
-        <Button sx={{ bgcolor: ACCENT, color: mocha.onAccent }} onClick={() => setModalOpen(true)}>
+        <Typography sx={{ color: d.mutedDark, fontSize: 13 }}>{rows.length} мастеров</Typography>
+        <Button sx={{ bgcolor: d.accent, color: d.onAccent }} onClick={() => setModalOpen(true)}>
           + Добавить мастера
         </Button>
       </Stack>
       <Grid container spacing={2}>
         {rows.map(item => {
           const s = item.staff
-          const col = s.color || ACCENT
+          const col = s.color || d.accent
           const st = statusByStaff[s.id] ?? 'off'
           const sl = statusLabel(st)
           const pct = Math.round(item.loadPercentWeek)
@@ -99,20 +95,20 @@ export function StaffListView() {
                   // height: 338,
                   minWidth: 0,
                   borderRadius: 2,
-                  border: `1px solid ${mocha.borderSubtle}`,
-                  bgcolor: mocha.card,
+                  border: `1px solid ${d.borderSubtle}`,
+                  bgcolor: d.card,
                   overflow: 'hidden',
                   cursor: 'pointer',
                   transition: '0.2s',
                   display: 'flex',
                   flexDirection: 'column',
-                  '&:hover': { borderColor: ACCENT, transform: 'translateY(-2px)' },
+                  '&:hover': { borderColor: d.accent, transform: 'translateY(-2px)' },
                 }}
               >
                 <Stack
                   direction="row"
                   spacing={1.5}
-                  sx={{ p: 2, borderBottom: `1px solid ${mocha.borderSubtle}` }}
+                  sx={{ p: 2, borderBottom: `1px solid ${d.borderSubtle}` }}
                   alignItems="center"
                 >
                   <Box sx={{ position: 'relative' }}>
@@ -141,17 +137,17 @@ export function StaffListView() {
                           width: 12,
                           height: 12,
                           borderRadius: '50%',
-                          bgcolor: GREEN,
-                          border: `2px solid ${mocha.card}`,
+                          bgcolor: d.green,
+                          border: `2px solid ${d.card}`,
                         }}
                       />
                     )}
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ color: TEXT, fontWeight: 600, fontSize: 14 }} noWrap>
+                    <Typography sx={{ color: d.text, fontWeight: 600, fontSize: 14 }} noWrap>
                       {s.displayName}
                     </Typography>
-                    <Typography sx={{ color: MUTED, fontSize: 12 }} noWrap>
+                    <Typography sx={{ color: d.mutedDark, fontSize: 12 }} noWrap>
                       {[s.role, s.level].filter(Boolean).join(' · ') || '—'}
                     </Typography>
                   </Box>
@@ -164,7 +160,7 @@ export function StaffListView() {
                     sx={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: MUTED,
+                      color: d.mutedDark,
                       textTransform: 'uppercase',
                       mb: 1,
                     }}
@@ -182,7 +178,7 @@ export function StaffListView() {
                     }}
                   >
                     {item.connectedServices.length === 0 ? (
-                      <Typography sx={{ fontSize: 12, color: MUTED }}>—</Typography>
+                      <Typography sx={{ fontSize: 12, color: d.mutedDark }}>—</Typography>
                     ) : (
                       item.connectedServices.map(sv => (
                         <Box
@@ -193,9 +189,9 @@ export function StaffListView() {
                             py: 0.25,
                             borderRadius: '6px',
                             fontSize: 11,
-                            bgcolor: mocha.input,
-                            color: MUTED,
-                            border: `1px solid ${mocha.inputBorder}`,
+                            bgcolor: d.input,
+                            color: d.mutedDark,
+                            border: `1px solid ${d.inputBorder}`,
                           }}
                         >
                           {sv.name}
@@ -205,8 +201,8 @@ export function StaffListView() {
                   </Box>
                   <Box sx={{ mt: 1.5 }}>
                     <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                      <Typography sx={{ fontSize: 11, color: MUTED }}>Загрузка недели</Typography>
-                      <Typography sx={{ fontSize: 11, fontWeight: 600, color: loadBarColor(pct) }}>
+                      <Typography sx={{ fontSize: 11, color: d.mutedDark }}>Загрузка недели</Typography>
+                      <Typography sx={{ fontSize: 11, fontWeight: 600, color: loadBarColor(pct, d) }}>
                         {pct}%
                       </Typography>
                     </Stack>
@@ -216,8 +212,8 @@ export function StaffListView() {
                       sx={{
                         height: 4,
                         borderRadius: 1,
-                        bgcolor: mocha.grid,
-                        '& .MuiLinearProgress-bar': { bgcolor: loadBarColor(pct) },
+                        bgcolor: d.grid,
+                        '& .MuiLinearProgress-bar': { bgcolor: loadBarColor(pct, d) },
                       }}
                     />
                   </Box>
@@ -225,32 +221,32 @@ export function StaffListView() {
                 <Stack
                   direction="row"
                   spacing={2}
-                  sx={{ p: 2, borderTop: `1px solid ${mocha.borderSubtle}`, mt: 'auto' }}
+                  sx={{ p: 2, borderTop: `1px solid ${d.borderSubtle}`, mt: 'auto' }}
                   justifyContent="space-around"
                 >
                   <Box sx={{ textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: TEXT }}>
+                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: d.text }}>
                       {item.ratingAvg != null ? `${item.ratingAvg.toFixed(1)} ★` : '—'}
                     </Typography>
-                    <Typography sx={{ fontSize: 10, color: MUTED, textTransform: 'uppercase' }}>
+                    <Typography sx={{ fontSize: 10, color: d.mutedDark, textTransform: 'uppercase' }}>
                       Рейтинг
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: TEXT }}>
+                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: d.text }}>
                       {item.completedVisits}
                     </Typography>
-                    <Typography sx={{ fontSize: 10, color: MUTED, textTransform: 'uppercase' }}>
+                    <Typography sx={{ fontSize: 10, color: d.mutedDark, textTransform: 'uppercase' }}>
                       Визитов
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: TEXT }}>
+                    <Typography sx={{ fontSize: 15, fontWeight: 700, color: d.text }}>
                       {item.revenueMonthCents > 0
                         ? `${(item.revenueMonthCents / 100).toLocaleString('ru-RU')} ₽`
                         : '—'}
                     </Typography>
-                    <Typography sx={{ fontSize: 10, color: MUTED, textTransform: 'uppercase' }}>
+                    <Typography sx={{ fontSize: 10, color: d.mutedDark, textTransform: 'uppercase' }}>
                       Выручка/мес
                     </Typography>
                   </Box>

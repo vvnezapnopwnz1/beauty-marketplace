@@ -1,12 +1,13 @@
 import { createTheme } from '@mui/material/styles'
 import type { BrandColors } from './palettes'
+import type { DashboardPalette } from './dashboardPalette'
 
 export type ThemeMode = 'light' | 'dark'
 
 const FRAUNCES = "'Fraunces', serif"
 const DM_SANS = "'DM Sans', system-ui, sans-serif"
 
-export function createAppTheme(mode: ThemeMode, c: BrandColors) {
+export function createAppTheme(mode: ThemeMode, c: BrandColors, dashboard: DashboardPalette) {
   const isDark = mode === 'dark'
   const cardHoverShadow = isDark
     ? '0 2px 16px rgba(216,149,107,0.12)'
@@ -36,6 +37,7 @@ export function createAppTheme(mode: ThemeMode, c: BrandColors) {
         disabled: c.inkFaint,
       },
       divider: c.border,
+      dashboard,
     },
     shape: { borderRadius: 16 },
     typography: {

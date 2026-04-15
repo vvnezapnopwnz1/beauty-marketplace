@@ -1,3 +1,11 @@
+// Package requestid stores request-scoped identifiers in [context.Context] for logging and tracing.
+//
+// HTTP headers (see accessors below):
+//   - X-Request-ID — server-generated id per incoming request;
+//   - X-Client-Request-ID — optional id from the SPA for end-to-end correlation;
+//   - X-Client-Action — optional short label (e.g. analytics / search client action).
+//
+// The frontend sends the client headers on public API calls such as unified search (see docs/architecture.md).
 package requestid
 
 import "context"

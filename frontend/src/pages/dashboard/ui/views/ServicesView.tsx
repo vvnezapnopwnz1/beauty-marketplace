@@ -7,13 +7,9 @@ import {
   type DashboardServiceCategoriesResponse,
   type DashboardServiceRow,
 } from '@shared/api/dashboardApi'
-import { mocha } from '@pages/dashboard/theme/mocha'
+import { useDashboardListCardSurface, useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { ServiceFormModal } from '../modals/ServiceFormModal'
 import { useTranslation } from 'react-i18next'
-
-const ACCENT = mocha.accent
-const TEXT = mocha.text
-const MUTED = mocha.muted
 
 /** Stable tab value: slug-based or legacy free-text category. */
 function tabKeyForRow(r: DashboardServiceRow): string | null {
@@ -25,6 +21,8 @@ function tabKeyForRow(r: DashboardServiceRow): string | null {
 }
 
 export function ServicesView() {
+  const d = useDashboardPalette()
+  const listCard = useDashboardListCardSurface()
   const { t } = useTranslation()
   const [rows, setRows] = useState<DashboardServiceRow[]>([])
   const [catCatalog, setCatCatalog] = useState<DashboardServiceCategoriesResponse | null>(null)
@@ -106,12 +104,17 @@ export function ServicesView() {
           {err}
         </Alert>
       )}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
-        <Typography sx={{ color: MUTED, fontSize: 13 }}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}
+      >
+        <Typography sx={{ color: d.mutedDark, fontSize: 13 }}>
           {t('dashboard.services.countOf', { filtered: filtered.length, total: rows.length })}
         </Typography>
         <Button
-          sx={{ bgcolor: ACCENT, color: mocha.onAccent }}
+          sx={{ bgcolor: d.accent, color: d.onAccent }}
           onClick={() => {
             setEdit(null)
             setModalOpen(true)
@@ -126,7 +129,12 @@ export function ServicesView() {
         onChange={(_, v) => setCatTab(v)}
         variant="scrollable"
         scrollButtons="auto"
-        sx={{ mb: 2, minHeight: 40, '& .MuiTab-root': { color: MUTED, minHeight: 40 }, '& .Mui-selected': { color: ACCENT } }}
+        sx={{
+          mb: 2,
+          minHeight: 40,
+          '& .MuiTab-root': { color: d.mutedDark, minHeight: 40 },
+          '& .Mui-selected': { color: d.accent },
+        }}
       >
         {categories.map(c => (
           <Tab key={c} value={c} label={tabLabel(c)} />
@@ -145,15 +153,18 @@ export function ServicesView() {
                 justifyContent: 'space-between',
                 gap: 2,
                 p: 2,
-                bgcolor: mocha.card,
+                bgcolor: listCard.bg,
                 borderRadius: 2,
-                border: `1px solid ${mocha.borderSubtle}`,
+                border: `1px solid ${listCard.border}`,
+                boxShadow: listCard.shadow,
                 flexWrap: 'wrap',
+                transition: 'box-shadow .15s, background .15s',
+                '&:hover': { bgcolor: listCard.hoverBg },
               }}
             >
               <Box sx={{ flex: 1, minWidth: 200 }}>
-                <Typography sx={{ color: TEXT, fontWeight: 600 }}>{r.name}</Typography>
-                <Typography sx={{ color: MUTED, fontSize: 13 }}>
+                <Typography sx={{ color: d.text, fontWeight: 600 }}>{r.name}</Typography>
+                <Typography sx={{ color: d.mutedDark, fontSize: 13 }}>
                   {r.durationMinutes} {t('dashboard.services.minutes')} ·{' '}
                   {r.priceCents != null
                     ? `${(r.priceCents / 100).toFixed(0)} ₽`
@@ -161,7 +172,11 @@ export function ServicesView() {
                   · {r.isActive ? t('dashboard.services.active') : t('dashboard.services.inactive')}
                 </Typography>
                 {r.description && (
-                  <Typography sx={{ color: MUTED, fontSize: 12, mt: 0.5 }} noWrap title={r.description}>
+                  <Typography
+                    sx={{ color: d.mutedDark, fontSize: 12, mt: 0.5 }}
+                    noWrap
+                    title={r.description}
+                  >
                     {r.description}
                   </Typography>
                 )}
@@ -170,16 +185,35 @@ export function ServicesView() {
                     <Chip
                       size="small"
                       label={catLabel}
-                      sx={{ bgcolor: mocha.input, color: MUTED, border: `1px solid ${mocha.inputBorder}` }}
+                      sx={{
+                        bgcolor: d.input,
+                        color: d.mutedDark,
+                        border: `1px solid ${d.inputBorder}`,
+                      }}
                     />
                   )}
                   {(r.staffNames ?? []).slice(0, 8).map(n => (
-                    <Chip key={n} size="small" label={n} sx={{ bgcolor: 'rgba(216,149,107,0.12)', color: ACCENT, border: '1px solid rgba(216,149,107,0.3)' }} />
+                    <Chip
+                      key={n}
+                      size="small"
+                      label={n}
+                      sx={{
+                        bgcolor: 'rgba(216,149,107,0.12)',
+                        color: d.accent,
+                        border: '1px solid rgba(216,149,107,0.3)',
+                      }}
+                    />
                   ))}
                 </Stack>
               </Box>
               <Stack direction="row" spacing={1}>
-                <Button size="small" onClick={() => { setEdit(r); setModalOpen(true) }}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setEdit(r)
+                    setModalOpen(true)
+                  }}
+                >
                   {t('dashboard.services.edit')}
                 </Button>
                 <Button
@@ -201,7 +235,10 @@ export function ServicesView() {
       <ServiceFormModal
         open={modalOpen}
         service={edit}
-        onClose={() => { setModalOpen(false); setEdit(null) }}
+        onClose={() => {
+          setModalOpen(false)
+          setEdit(null)
+        }}
         onSaved={() => {
           setModalOpen(false)
           setEdit(null)

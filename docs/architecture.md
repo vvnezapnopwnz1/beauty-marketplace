@@ -246,6 +246,11 @@
 
 ## 2. Бэкенд (Go)
 
+### Request ID и корреляция с фронтом
+
+- Пакет `backend/internal/requestid` хранит в контексте значения заголовков `X-Request-ID`, `X-Client-Request-ID`, `X-Client-Action` (см. комментарии в [`context.go`](../backend/internal/requestid/context.go)).
+- Публичные запросы с главной (unified search, places) передают клиентские заголовки из фронтенда — см. использование в `searchApi.ts` / `placesApi.ts` (§3).
+
 ### Точка входа и DI-контейнер
 
 - Entry point: `backend/cmd/api/main.go`
@@ -468,10 +473,16 @@ Store: `frontend/src/app/store.ts`
 - `GET /api/v1/search` params: `lat`, `lon`, `category`, optional `region_id`, `page`, `page_size`
 - headers: `X-Client-Request-ID`, `X-Client-Action`
 
+### Тема: маркетплейс и кабинет
+
+- **Бренд (глобально):** `ThemeModeProvider` + `createAppTheme` (`frontend/src/shared/theme/createAppTheme.ts`) — режимы `light` / `dark`, палитры `COLORS_LIGHT` / `COLORS_DARK` (`palettes.ts`).
+- **Дашборд:** расширение MUI — `theme.palette.dashboard` (`dashboardPalette.ts`, `getDashboardPalette`), доступ в UI через `useDashboardPalette()`; списки/карточки могут использовать `useDashboardListCardSurface()` для согласованных фона и тени в светлой теме.
+- **Главная:** `SearchPage` — фон Hero зависит от режима: в светлой теме светлый градиент (cream / blush), в тёмной — прежний тёмный линейный градиент; `SearchBar` подстраивает стиль поля поиска под тот же контраст.
+
 ### Страницы и ключевые компоненты
 
 Страницы:
-- `SearchPage` (`frontend/src/pages/search/ui/SearchPage.tsx`): общий поиск (`/api/v1/search` + fallback `/api/v1/places/search`), карточки, infinite scroll, карта.
+- `SearchPage` (`frontend/src/pages/search/ui/SearchPage.tsx`): общий поиск (`/api/v1/search` + fallback `/api/v1/places/search`), карточки, infinite scroll, карта; Hero и строка поиска учитывают светлую/тёмную тему (см. выше).
 - `SalonPage` (`frontend/src/pages/salon/ui/SalonPage.tsx`): детали салона/места, вкладки и гостевая запись.
 - `LoginPage` (`frontend/src/pages/login/ui/LoginPage.tsx`): phone/OTP flow.
 - `DashboardPage` (`frontend/src/pages/dashboard/ui/DashboardPage.tsx`): dashboard на mock данных.

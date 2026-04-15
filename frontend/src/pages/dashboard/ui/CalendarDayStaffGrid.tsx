@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Box, Typography } from '@mui/material'
+import { useEffect, useMemo, useState } from 'react'
+import { Box, Typography, useTheme } from '@mui/material'
 import type { DashboardAppointment } from '@shared/api/dashboardApi'
-import { mocha } from '@pages/dashboard/theme/mocha'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import type { DashboardPalette } from '@shared/theme'
 import {
   appointmentStatusVariant,
   breakBlockLayout,
+  calendarEventLightTextColors,
   CALENDAR_DAY_COMBINED_COLUMN,
   CALENDAR_HOUR_END,
   CALENDAR_HOUR_HEIGHT_PX,
@@ -23,27 +25,29 @@ import {
   type StaffScheduleInfo,
 } from '../lib/calendarGridUtils'
 
-const VARIANT_SX: Record<CalendarEventVariant, object> = {
-  confirmed: {
-    bgcolor: 'rgba(107,203,119,.15)',
-    color: '#8fdf9a',
-    borderLeft: '3px solid #6bcb77',
-  },
-  pending: {
-    bgcolor: 'rgba(255,217,61,.12)',
-    color: '#ffe566',
-    borderLeft: '3px solid #ffd93d',
-  },
-  booked: {
-    bgcolor: 'rgba(216,149,107,.18)',
-    color: mocha.accent,
-    borderLeft: `3px solid ${mocha.accent}`,
-  },
-  blocked: {
-    bgcolor: 'rgba(255,107,107,.1)',
-    color: '#ff8a8a',
-    borderLeft: '3px solid #ff6b6b',
-  },
+function eventVariantSx(d: DashboardPalette): Record<CalendarEventVariant, object> {
+  return {
+    confirmed: {
+      bgcolor: 'rgba(107,203,119,.15)',
+      color: '#8fdf9a',
+      borderLeft: '3px solid #6bcb77',
+    },
+    pending: {
+      bgcolor: 'rgba(255,217,61,.12)',
+      color: '#ffe566',
+      borderLeft: '3px solid #ffd93d',
+    },
+    booked: {
+      bgcolor: 'rgba(216,149,107,.18)',
+      color: d.accent,
+      borderLeft: `3px solid ${d.accent}`,
+    },
+    blocked: {
+      bgcolor: 'rgba(255,107,107,.1)',
+      color: '#ff8a8a',
+      borderLeft: '3px solid #ff6b6b',
+    },
+  }
 }
 
 const HATCH_OVERLAY = `repeating-linear-gradient(
@@ -72,6 +76,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 function NowLine({ day }: { day: Date }) {
+  const d = useDashboardPalette()
   const [top, setTop] = useState<number | null>(() => nowLineTopPx(day, CALENDAR_PX_PER_MINUTE))
   useEffect(() => {
     const update = () => setTop(nowLineTopPx(day, CALENDAR_PX_PER_MINUTE))
@@ -98,7 +103,7 @@ function NowLine({ day }: { day: Date }) {
           width: 8,
           height: 8,
           borderRadius: '50%',
-          bgcolor: mocha.red,
+          bgcolor: d.red,
         }}
       />
       <Box
@@ -108,7 +113,7 @@ function NowLine({ day }: { day: Date }) {
           right: 0,
           top: -1,
           height: 2,
-          bgcolor: mocha.red,
+          bgcolor: d.red,
         }}
       />
     </Box>
@@ -132,7 +137,11 @@ function TimelineEventBlock({
   staffColor?: string | null
   onClick: () => void
 }) {
+  const theme = useTheme()
+  const d = useDashboardPalette()
+  const VARIANT_SX = useMemo(() => eventVariantSx(d), [d])
   const v = appointmentStatusVariant(apt.status)
+  const lightLabels = theme.palette.mode === 'light' ? calendarEventLightTextColors(v, d) : null
   const variantSx = { ...VARIANT_SX[v] } as Record<string, unknown>
   if (staffColor) variantSx['borderLeft'] = `3px solid ${staffColor}`
 
@@ -169,7 +178,7 @@ function TimelineEventBlock({
           fontSize: 9,
           fontWeight: 700,
           lineHeight: 1.2,
-          color: 'inherit',
+          color: lightLabels ? lightLabels.service : 'inherit',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -181,8 +190,8 @@ function TimelineEventBlock({
         sx={{
           fontSize: 9,
           lineHeight: 1.15,
-          color: 'inherit',
-          opacity: 0.9,
+          color: lightLabels ? lightLabels.guest : 'inherit',
+          opacity: lightLabels ? 1 : 0.9,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -194,7 +203,7 @@ function TimelineEventBlock({
         <Typography
           sx={{
             fontSize: 8,
-            color: mocha.muted,
+            color: d.mutedDark,
             mt: 0.2,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -229,6 +238,7 @@ export function CalendarDayStaffGrid({
   onEmptyClick,
   staffSchedules,
 }: Props) {
+  const d = useDashboardPalette()
   const ymd = toLocalYMD(day)
   const timelineH = calendarTimelineTotalHeightPx()
   const hours = hourRange()
@@ -237,32 +247,32 @@ export function CalendarDayStaffGrid({
   const gridEndMins = (CALENDAR_HOUR_END + 1) * 60
 
   return (
-    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${mocha.grid}` }}>
+    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
       <Box
         sx={{
           display: 'grid',
           gridTemplateColumns: template,
           gridTemplateRows: `auto ${timelineH}px`,
           gap: '1px',
-          bgcolor: mocha.grid,
+          bgcolor: d.grid,
           minWidth: { xs: Math.max(400, 120 + staffColumns.length * 100), sm: 560 },
         }}
       >
         {/* Time column header */}
-        <Box sx={{ bgcolor: mocha.gridHeader, p: 1, minHeight: 44 }} />
+        <Box sx={{ bgcolor: d.gridHeader, p: 1, minHeight: 44 }} />
 
         {/* Staff column headers with avatars */}
         {staffColumns.map(c => {
           const isSpecial =
             c.id === CALENDAR_DAY_COMBINED_COLUMN || c.id === CALENDAR_UNASSIGNED_STAFF_KEY
-          const avatarColor = c.color && !isSpecial ? c.color : mocha.muted
+          const avatarColor = c.color && !isSpecial ? c.color : d.mutedDark
           const avatarBg =
             c.color && !isSpecial ? hexToRgba(c.color, 0.2) : 'rgba(184,168,150,0.12)'
           return (
             <Box
               key={c.id}
               sx={{
-                bgcolor: mocha.gridHeader,
+                bgcolor: d.gridHeader,
                 p: 1,
                 display: 'flex',
                 flexDirection: 'column',
@@ -296,7 +306,7 @@ export function CalendarDayStaffGrid({
                 sx={{
                   fontSize: 10,
                   fontWeight: 600,
-                  color: mocha.text,
+                  color: d.text,
                   lineHeight: 1.2,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -313,7 +323,7 @@ export function CalendarDayStaffGrid({
         {/* Time column body */}
         <Box
           sx={{
-            bgcolor: mocha.timeColumn,
+            bgcolor: d.timeColumn,
             position: 'relative',
             height: timelineH,
             flexShrink: 0,
@@ -331,7 +341,7 @@ export function CalendarDayStaffGrid({
                 pl: 0.5,
                 pr: 0.25,
                 fontSize: 10,
-                color: mocha.muted,
+                color: d.mutedDark,
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'center',
@@ -376,14 +386,18 @@ export function CalendarDayStaffGrid({
           // Break block
           const brk =
             schedule && !schedule.isOff
-              ? breakBlockLayout(schedule.breakStartsAt, schedule.breakEndsAt, CALENDAR_PX_PER_MINUTE)
+              ? breakBlockLayout(
+                  schedule.breakStartsAt,
+                  schedule.breakEndsAt,
+                  CALENDAR_PX_PER_MINUTE,
+                )
               : null
 
           return (
             <Box
               key={`${col.id}-${ymd}`}
               sx={{
-                bgcolor: schedule?.isOff ? mocha.cellAlt : mocha.cell,
+                bgcolor: schedule?.isOff ? d.cellAlt : d.cell,
                 position: 'relative',
                 height: timelineH,
                 cursor: 'pointer',
@@ -406,7 +420,7 @@ export function CalendarDayStaffGrid({
                     right: 0,
                     top: (h - CALENDAR_HOUR_START) * CALENDAR_HOUR_HEIGHT_PX,
                     height: CALENDAR_HOUR_HEIGHT_PX,
-                    borderTop: `1px solid ${mocha.grid}`,
+                    borderTop: `1px solid ${d.grid}`,
                     pointerEvents: 'none',
                   }}
                 />
@@ -481,7 +495,7 @@ export function CalendarDayStaffGrid({
                     pointerEvents: 'none',
                   }}
                 >
-                  <Typography sx={{ fontSize: 10, color: mocha.muted }}>☕ Перерыв</Typography>
+                  <Typography sx={{ fontSize: 10, color: d.mutedDark }}>☕ Перерыв</Typography>
                 </Box>
               )}
 

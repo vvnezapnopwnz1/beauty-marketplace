@@ -3,7 +3,7 @@ import { AppBar, Toolbar, Typography, Button, Box, Stack, Switch } from '@mui/ma
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@shared/config/routes'
-import { useThemeMode } from '@shared/theme'
+import { useBrandColors, useThemeMode } from '@shared/theme'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import {
   openCityPicker,
@@ -16,23 +16,11 @@ import {
 } from '@features/location/model/locationSlice'
 import { reverseGeocode } from '@shared/api/geoApi'
 
-// Warm Mocha palette — fixed regardless of theme
-const M = {
-  bg:         '#2B241F',
-  border:     'rgba(255,255,255,0.08)',
-  logo:       '#F0EAE3',
-  accent:     '#D8956B',
-  onAccent:   '#1a0e09',
-  link:       '#8C8076',
-  linkHover:  '#F0EAE3',
-  pillBg:     '#3A3028',
-  loginText:  '#F0EAE3',
-}
-
 export function NavBar() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { mode, setMode } = useThemeMode()
+  const colors = useBrandColors()
   const dispatch = useAppDispatch()
   const city = useAppSelector(selectActiveCity)
   const device = useAppSelector(selectDeviceLocation)
@@ -95,8 +83,8 @@ export function NavBar() {
       position="sticky"
       elevation={0}
       sx={{
-        bgcolor: M.bg,
-        borderBottom: `1px solid ${M.border}`,
+        bgcolor: colors.white,
+        borderBottom: `1px solid ${colors.border}`,
         height: 58,
         justifyContent: 'center',
       }}
@@ -110,14 +98,14 @@ export function NavBar() {
             fontSize: 18,
             fontWeight: 600,
             letterSpacing: '-0.5px',
-            color: M.logo,
+            color: colors.ink,
             cursor: 'pointer',
             flexShrink: 0,
             mr: 4,
           }}
           onClick={() => navigate(ROUTES.HOME)}
         >
-          beauti<Box component="span" sx={{ color: M.accent }}>ca</Box>
+          beauti<Box component="span" sx={{ color: colors.accent }}>ca</Box>
         </Typography>
 
         {/* Nav links */}
@@ -138,11 +126,11 @@ export function NavBar() {
               onClick={onClick}
               sx={{
                 fontSize: 13,
-                color: M.link,
+                color: colors.inkSoft,
                 cursor: onClick ? 'pointer' : 'default',
                 fontWeight: 400,
                 transition: 'color 0.15s',
-                '&:hover': { color: M.linkHover },
+                '&:hover': { color: colors.ink },
               }}
             >
               {label}
@@ -160,8 +148,8 @@ export function NavBar() {
             onChange={(_, checked) => setMode(checked ? 'dark' : 'light')}
             inputProps={{ 'aria-label': t('theme.darkMode') }}
             sx={{
-              '& .MuiSwitch-track': { bgcolor: M.pillBg },
-              '& .MuiSwitch-thumb': { bgcolor: mode === 'dark' ? M.accent : M.link },
+              '& .MuiSwitch-track': { bgcolor: colors.border },
+              '& .MuiSwitch-thumb': { bgcolor: mode === 'dark' ? colors.accent : colors.inkSoft },
             }}
           />
 
@@ -171,8 +159,8 @@ export function NavBar() {
             sx={{
               fontSize: 12,
               fontWeight: 400,
-              color: M.link,
-              bgcolor: M.pillBg,
+              color: colors.inkSoft,
+              bgcolor: colors.border,
               borderRadius: 100,
               px: '14px',
               py: '7px',
@@ -184,7 +172,7 @@ export function NavBar() {
               textOverflow: 'ellipsis',
               display: 'block',
               lineHeight: 1.4,
-              '&:hover': { bgcolor: '#4A423A', color: M.linkHover },
+              '&:hover': { bgcolor: colors.borderLight, color: colors.ink },
             }}
           >
             📍 {locationText}
@@ -197,12 +185,12 @@ export function NavBar() {
             sx={{
               fontSize: 13,
               fontWeight: 500,
-              color: M.loginText,
+              color: colors.ink,
               px: 1.5,
               py: 1,
               borderRadius: 100,
               textTransform: 'none',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.07)' },
+              '&:hover': { bgcolor: colors.hoverOverlay },
             }}
           >
             {t('nav.login')}
@@ -215,15 +203,15 @@ export function NavBar() {
             sx={{
               fontSize: 13,
               fontWeight: 600,
-              bgcolor: M.accent,
-              color: M.onAccent,
+              bgcolor: colors.accent,
+              color: colors.onAccent,
               px: '20px',
               py: '8px',
               borderRadius: 100,
               textTransform: 'none',
               boxShadow: 'none',
               display: { xs: 'none', sm: 'flex' },
-              '&:hover': { bgcolor: M.accent, filter: 'brightness(1.08)', boxShadow: 'none' },
+              '&:hover': { bgcolor: colors.accent, filter: 'brightness(1.08)', boxShadow: 'none' },
             }}
           >
             {t('nav.signUp')}

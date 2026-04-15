@@ -32,7 +32,7 @@ import { MapSidebar, pickCardGradientKey, pickMapEmoji, type MapSidebarPin } fro
 import { PromoBanner } from './PromoBanner'
 import { MapToggleButton } from './MapToggleButton'
 import { assignFeaturedVariants } from '../lib/calcFeaturedScore'
-import { useBrandColors } from '@shared/theme'
+import { useBrandColors, useThemeMode } from '@shared/theme'
 
 /** Скелетон под первый батч: featured-vertical + 4 normal (чётные батчи в assignFeaturedVariants). */
 const SEARCH_LOADING_SKELETON_VARIANTS: SearchResultCardVariant[] = [
@@ -81,6 +81,8 @@ type ViewMode = 'list' | 'map'
 export function SearchPage() {
   const { t } = useTranslation()
   const COLORS = useBrandColors()
+  const { mode } = useThemeMode()
+  const isLightHero = mode === 'light'
   const dispatch = useAppDispatch()
   const isBentoDesktop = useMediaQuery('(min-width:768px)')
 
@@ -452,8 +454,12 @@ export function SearchPage() {
 
       <Box
         sx={{
-          background: 'linear-gradient(180deg, #35271E 0%, #2B241F 100%)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          background: isLightHero
+            ? `linear-gradient(180deg, ${COLORS.cream} 0%, ${COLORS.blushLight} 100%)`
+            : 'linear-gradient(180deg, #35271E 0%, #2B241F 100%)',
+          borderBottom: isLightHero
+            ? `1px solid ${COLORS.border}`
+            : '1px solid rgba(255,255,255,0.06)',
           py: { xs: '32px', sm: '40px' },
           px: 3,
           textAlign: 'center',
@@ -467,9 +473,11 @@ export function SearchPage() {
             gap: '6px',
             fontSize: 11,
             fontWeight: 600,
-            color: '#D8956B',
-            bgcolor: 'rgba(216,149,107,0.15)',
-            border: '1px solid rgba(216,149,107,0.3)',
+            color: COLORS.accent,
+            bgcolor: COLORS.blushLight,
+            border: isLightHero
+              ? `1px solid ${COLORS.border}`
+              : '1px solid rgba(216,149,107,0.3)',
             px: '14px',
             py: '6px',
             borderRadius: 100,
@@ -490,14 +498,14 @@ export function SearchPage() {
             fontWeight: 600,
             lineHeight: 1.1,
             letterSpacing: { xs: '-0.5px', sm: '-1px' },
-            color: '#F0EAE3',
+            color: COLORS.ink,
             mb: { xs: '8px', sm: '8px' },
             maxWidth: 700,
             mx: 'auto',
           }}
         >
           {t('hero.h1')}{' '}
-          <Box component="em" sx={{ fontStyle: 'italic', color: '#D8956B' }}>
+          <Box component="em" sx={{ fontStyle: 'italic', color: COLORS.accent }}>
             {t('hero.h1accent')}
           </Box>
         </Typography>
@@ -506,7 +514,7 @@ export function SearchPage() {
         <Typography
           sx={{
             fontSize: { xs: 14, sm: 15 },
-            color: '#B8A896',
+            color: COLORS.inkSoft,
             mb: { xs: '20px', sm: '28px' },
             fontWeight: 400,
             maxWidth: 480,

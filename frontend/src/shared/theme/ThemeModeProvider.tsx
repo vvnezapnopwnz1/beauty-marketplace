@@ -9,6 +9,7 @@ import {
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles'
 import { COLORS_DARK, COLORS_LIGHT, type BrandColors } from './palettes'
 import { createAppTheme, type ThemeMode } from './createAppTheme'
+import { getDashboardPalette } from './dashboardPalette'
 
 const STORAGE_KEY = 'beautica-theme'
 
@@ -45,7 +46,8 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
   }, [mode, setMode])
 
   const colors = mode === 'dark' ? COLORS_DARK : COLORS_LIGHT
-  const muiTheme = useMemo(() => createAppTheme(mode, colors), [mode, colors])
+  const dashboard = useMemo(() => getDashboardPalette(mode), [mode])
+  const muiTheme = useMemo(() => createAppTheme(mode, colors, dashboard), [mode, colors, dashboard])
 
   const value = useMemo<ThemeModeContextValue>(
     () => ({ mode, setMode, toggleMode, colors }),
