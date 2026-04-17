@@ -22,6 +22,12 @@ type SalonFilter struct {
 type SalonService interface {
 	GetAllSalons(ctx context.Context, f SalonFilter) ([]model.SalonDTO, error)
 	GetSalonByID(ctx context.Context, id uuid.UUID) (*model.SalonDTO, error)
+	FindIDByExternal(ctx context.Context, source, externalID string) (*FindByExternalResult, error)
+}
+
+type FindByExternalResult struct {
+	SalonID       uuid.UUID `json:"salonId"`
+	OnlineBooking bool      `json:"onlineBooking"`
 }
 
 type salonService struct {
@@ -48,6 +54,11 @@ func (s *salonService) mapToDTO(salon model.Salon, services []model.ServiceLine)
 		AvailableToday: true,
 		OnlineBooking:  salon.OnlineBookingEnabled,
 		PhotoURL:       nil,
+		Photos:         []string{},
+		Description:    "",
+		PhonePublic:    "",
+		Timezone:       salon.Timezone,
+		WorkingHours:   []model.WorkingHourDTO{},
 		Badge:          nil,
 		CardGradient:   "bg1",
 		Emoji:          "💅",
@@ -78,6 +89,13 @@ func (s *salonService) mapToDTO(salon model.Salon, services []model.ServiceLine)
 	}
 	if salon.PhotoURL != nil {
 		dto.PhotoURL = salon.PhotoURL
+		dto.Photos = []string{*salon.PhotoURL}
+	}
+	if salon.Description != nil {
+		dto.Description = *salon.Description
+	}
+	if salon.PhonePublic != nil {
+		dto.PhonePublic = *salon.PhonePublic
 	}
 	if salon.Badge != nil {
 		dto.Badge = salon.Badge
@@ -177,5 +195,23 @@ func (s *salonService) GetSalonByID(ctx context.Context, id uuid.UUID) (*model.S
 	}
 
 	dto := s.mapToDTO(*salon, services)
+	workingHours, err := s.repo.GetWorkingHours(ctx, salon.ID)
+	if err == nil {
+		dto.WorkingHours = workingHours
+	}
 	return &dto, nil
+}
+
+func (s *salonService) FindIDByExternal(ctx context.Context, source, externalID string) (*FindByExternalResult, error) {
+	salon, err := s.repo.FindByExternalID(ctx, source, externalID)
+	if err != nil {
+		return nil, err
+	}
+	if salon == nil {
+		return nil, nil
+	}
+	return &FindByExternalResult{
+		SalonID:       salon.ID,
+		OnlineBooking: salon.OnlineBookingEnabled,
+	}, nil
 }

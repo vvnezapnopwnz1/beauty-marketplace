@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -83,11 +84,48 @@ func (SalonMember) TableName() string {
 	return "salon_members"
 }
 
-// Staff maps to staff.
-type Staff struct {
+// MasterProfile is an independent master profile.
+// Lives outside any salon context.
+// UserID nullable: NULL = "shadow" profile created by a salon.
+type MasterProfile struct {
+	ID                uuid.UUID      `gorm:"type:uuid;primaryKey"`
+	UserID            *uuid.UUID     `gorm:"type:uuid"`
+	DisplayName       string         `gorm:"column:display_name;not null"`
+	AvatarURL         *string        `gorm:"column:avatar_url"`
+	Bio               *string        `gorm:"column:bio"`
+	Specializations   pq.StringArray `gorm:"type:text[];column:specializations;not null;default:'{}'"`
+	YearsExperience   *int           `gorm:"column:years_experience"`
+	PhoneE164         *string        `gorm:"column:phone_e164"`
+	CachedRating      *float64       `gorm:"column:cached_rating"`
+	CachedReviewCount int            `gorm:"column:cached_review_count;not null;default:0"`
+	IsActive          bool           `gorm:"column:is_active;not null;default:true"`
+	CreatedAt         time.Time      `gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt         time.Time      `gorm:"column:updated_at;not null;autoUpdateTime"`
+}
+
+// MasterService is a master's personal service catalog entry.
+// Not tied to any salon.
+type MasterService struct {
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
+	MasterID        uuid.UUID `gorm:"type:uuid;not null;column:master_id"`
+	CategorySlug    *string   `gorm:"column:category_slug"`
+	Name            string    `gorm:"column:name;not null"`
+	Description     *string   `gorm:"column:description"`
+	PriceCents      *int      `gorm:"column:price_cents"`
+	DurationMinutes int       `gorm:"column:duration_minutes;not null"`
+	IsActive        bool      `gorm:"column:is_active;not null;default:true"`
+	SortOrder       int       `gorm:"column:sort_order;not null;default:0"`
+	CreatedAt       time.Time `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+// SalonMaster is a master's membership in a salon (formerly Staff).
+// Rows are never deleted when a master leaves: is_active=false + left_at=now().
+type SalonMaster struct {
 	ID                    uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
 	SalonID               uuid.UUID  `gorm:"type:uuid;not null;column:salon_id" json:"salonId"`
+	MasterID              *uuid.UUID `gorm:"type:uuid;column:master_id"`
 	DisplayName           string     `gorm:"column:display_name;not null" json:"displayName"`
+	DisplayNameOverride   *string    `gorm:"column:display_name_override"`
 	Role                  *string    `gorm:"column:role" json:"role,omitempty"`
 	Level                 *string    `gorm:"column:level" json:"level,omitempty"`
 	Bio                   *string    `gorm:"column:bio" json:"bio,omitempty"`
@@ -96,17 +134,17 @@ type Staff struct {
 	Email                 *string    `gorm:"column:email" json:"email,omitempty"`
 	Color                 *string    `gorm:"column:color" json:"color,omitempty"`
 	JoinedAt              *time.Time `gorm:"column:joined_at;type:date" json:"joinedAt,omitempty"`
+	LeftAt                *time.Time `gorm:"column:left_at"`
 	DashboardAccess       bool       `gorm:"column:dashboard_access;not null;default:false" json:"dashboardAccess"`
 	TelegramNotifications bool       `gorm:"column:telegram_notifications;not null;default:true" json:"telegramNotifications"`
 	IsActive              bool       `gorm:"column:is_active;not null;default:true" json:"isActive"`
+	Status                string     `gorm:"type:salon_master_status;column:status;not null;default:active" json:"status"`
 	CreatedAt             time.Time  `gorm:"column:created_at;not null;autoCreateTime" json:"createdAt"`
 }
 
-func (Staff) TableName() string {
-	return "staff"
-}
+func (SalonMaster) TableName() string { return "salon_masters" }
 
-func (s *Staff) BeforeCreate(tx *gorm.DB) error {
+func (s *SalonMaster) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == uuid.Nil {
 		s.ID = uuid.New()
 	}
@@ -177,10 +215,10 @@ func (WorkingHour) TableName() string {
 	return "working_hours"
 }
 
-// StaffWorkingHour maps to staff_working_hours (per-staff schedule).
-type StaffWorkingHour struct {
+// SalonMasterHour maps to salon_master_hours (per-master schedule).
+type SalonMasterHour struct {
 	ID            uuid.UUID `gorm:"type:uuid;primaryKey"`
-	StaffID       uuid.UUID `gorm:"type:uuid;not null;column:staff_id"`
+	SalonMasterID uuid.UUID `gorm:"type:uuid;not null;column:staff_id"`
 	DayOfWeek     int16     `gorm:"column:day_of_week;not null"`
 	OpensAt       string    `gorm:"column:opens_at;type:time;not null"`
 	ClosesAt      string    `gorm:"column:closes_at;type:time;not null"`
@@ -189,26 +227,24 @@ type StaffWorkingHour struct {
 	BreakEndsAt   *string   `gorm:"column:break_ends_at;type:time"`
 }
 
-func (s *StaffWorkingHour) BeforeCreate(tx *gorm.DB) error {
+func (s *SalonMasterHour) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == uuid.Nil {
 		s.ID = uuid.New()
 	}
 	return nil
 }
 
-func (StaffWorkingHour) TableName() string {
-	return "staff_working_hours"
+func (SalonMasterHour) TableName() string { return "salon_master_hours" }
+
+// SalonMasterService maps to salon_master_services (many-to-many link).
+type SalonMasterService struct {
+	SalonMasterID           uuid.UUID `gorm:"type:uuid;primaryKey;column:staff_id"`
+	ServiceID               uuid.UUID `gorm:"type:uuid;primaryKey;column:service_id"`
+	PriceOverrideCents      *int      `gorm:"column:price_override_cents"`
+	DurationOverrideMinutes *int      `gorm:"column:duration_override_minutes"`
 }
 
-// StaffService maps to staff_services (many-to-many link).
-type StaffService struct {
-	StaffID   uuid.UUID `gorm:"type:uuid;primaryKey;column:staff_id"`
-	ServiceID uuid.UUID `gorm:"type:uuid;primaryKey;column:service_id"`
-}
-
-func (StaffService) TableName() string {
-	return "staff_services"
-}
+func (SalonMasterService) TableName() string { return "salon_master_services" }
 
 // SalonDateOverride maps to salon_date_overrides.
 type SalonDateOverride struct {
@@ -230,25 +266,23 @@ func (SalonDateOverride) TableName() string {
 	return "salon_date_overrides"
 }
 
-// StaffAbsence maps to staff_absences.
-type StaffAbsence struct {
-	ID       uuid.UUID `gorm:"type:uuid;primaryKey"`
-	StaffID  uuid.UUID `gorm:"type:uuid;not null;column:staff_id"`
-	StartsOn time.Time `gorm:"column:starts_on;type:date;not null"`
-	EndsOn   time.Time `gorm:"column:ends_on;type:date;not null"`
-	Kind     string    `gorm:"column:kind;not null;default:vacation"`
+// SalonMasterAbsence maps to salon_master_absences.
+type SalonMasterAbsence struct {
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
+	SalonMasterID   uuid.UUID `gorm:"type:uuid;not null;column:staff_id"`
+	StartsOn        time.Time `gorm:"column:starts_on;type:date;not null"`
+	EndsOn          time.Time `gorm:"column:ends_on;type:date;not null"`
+	Kind            string    `gorm:"column:kind;not null;default:vacation"`
 }
 
-func (a *StaffAbsence) BeforeCreate(tx *gorm.DB) error {
+func (a *SalonMasterAbsence) BeforeCreate(tx *gorm.DB) error {
 	if a.ID == uuid.Nil {
 		a.ID = uuid.New()
 	}
 	return nil
 }
 
-func (StaffAbsence) TableName() string {
-	return "staff_absences"
-}
+func (SalonMasterAbsence) TableName() string { return "salon_master_absences" }
 
 // SalonSubscription maps to salon_subscriptions.
 type SalonSubscription struct {
@@ -280,7 +314,7 @@ type Appointment struct {
 	ClientUserID   *uuid.UUID `gorm:"type:uuid;column:client_user_id"`
 	GuestName      *string    `gorm:"column:guest_name"`
 	GuestPhoneE164 *string    `gorm:"column:guest_phone_e164"`
-	StaffID        *uuid.UUID `gorm:"type:uuid;column:staff_id"`
+	SalonMasterID  *uuid.UUID `gorm:"type:uuid;column:salon_master_id" json:"salonMasterId"`
 	ServiceID      uuid.UUID  `gorm:"type:uuid;not null;column:service_id"`
 	StartsAt       time.Time  `gorm:"column:starts_at;not null"`
 	EndsAt         time.Time  `gorm:"column:ends_at;not null"`

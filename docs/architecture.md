@@ -47,6 +47,8 @@
         auth_controller.go
         geo_controller.go
         health_controller.go
+        master_controller.go
+        master_dashboard_controller.go
         places_controller.go
         salon_controller.go
         search_controller.go
@@ -59,6 +61,8 @@
           appointment_repository.go
           auth_repository.go
           health_repository.go
+          master_public_repository.go
+          master_dashboard_repository.go
           postgres.go
           salon_mapper.go
           salon_repository.go
@@ -78,6 +82,8 @@
         appointment.go
         auth.go
         health.go
+        master_public.go
+        master_dashboard.go
         salon.go
       requestid/
         context.go
@@ -87,6 +93,8 @@
         geo.go
         geo_service.go
         health.go
+        master_public.go
+        master_dashboard.go
         places.go
         salon.go
         search.go
@@ -209,6 +217,9 @@
         salon/
           ui/
             SalonPage.tsx
+        master/
+          ui/
+            MasterPage.tsx
         search/
           lib/
             calcFeaturedScore.ts
@@ -264,6 +275,9 @@
     - `persistence.NewHealthRepository`
     - `persistence.NewSalonRepository`
     - `persistence.NewAppointmentRepository`
+    - `persistence.NewDashboardRepository`
+    - `persistence.NewMasterPublicRepository`
+    - `persistence.NewMasterDashboardRepository`
     - `persistence.NewAuthRepository` as `repository.AuthRepository`
     - `twogis.NewCatalogAdapter` as `service.PlacesProvider`
     - `provideJWTManager` -> `auth.NewJWTManager`
@@ -273,6 +287,9 @@
     - `service.NewHealthService`
     - `service.NewSalonService`
     - `service.NewBookingService`
+    - `service.NewDashboardService`
+    - `service.NewMasterPublicService`
+    - `service.NewMasterDashboardService`
     - `service.NewAuthService`
     - `controller.NewHealthController`
     - `controller.NewSalonController`
@@ -280,6 +297,9 @@
     - `controller.NewSearchController`
     - `controller.NewGeoController`
     - `controller.NewAuthController`
+    - `controller.NewDashboardController`
+    - `controller.NewMasterController`
+    - `controller.NewMasterDashboardController`
     - `controller.NewHTTPServer`
   - `fx.Invoke(func(*http.Server){})` для материализации сервера.
 
@@ -290,18 +310,21 @@
 - `GET /health` -> `HealthController.Health`
 - `GET /api/v1/salons` -> `SalonController.ListSalons`
 - `GET /api/v1/salons/{id}` -> `SalonController.getSalonByID` (через `SalonController.SalonRoutes`)
+- `GET /api/v1/salons/{id}/masters` -> `SalonController.listPublicSalonMasters` (публично; активные `salon_masters` + `master_profiles` + услуги, см. `service/master_public.go`)
 - `POST /api/v1/salons/{id}/bookings` -> `SalonController.createGuestBooking` (через `SalonController.SalonRoutes`)
+- `GET /api/v1/masters/{masterProfileId}` -> `MasterController.MasterRoutes` → `MasterPublicService.GetMasterProfilePublic`
 - `GET /api/v1/places/search` -> `PlacesController.SearchPlaces`
 - `GET /api/v1/places/item/{id}` -> `PlacesController.GetPlaceByID`
 - `GET /api/v1/search` -> `SearchController.Search`
 - `GET|POST|PATCH|PUT|DELETE /api/v1/dashboard/...` -> `auth.RequireAuth` + `DashboardController.DashboardRoutes` (записи, услуги, мастера, расписание, статистика, профиль салона)
+- `GET|POST|PUT /api/v1/master-dashboard/...` -> `auth.RequireAuth` + `MasterDashboardController.MasterDashboardRoutes` (кабинет мастера: профиль, инвайты, салоны, записи; без привязанного `master_profiles.user_id` — 403)
 - `GET /api/v1/geo/region` -> `GeoController.ResolveRegion`
 - `GET /api/v1/geo/cities` -> `GeoController.SearchCities`
 - `GET /api/v1/geo/reverse` -> `GeoController.ReverseGeocode`
 - `POST /api/auth/otp/request` -> `AuthController.RequestOTP` (`withCORS`)
 - `POST /api/auth/otp/verify` -> `AuthController.VerifyOTP` (`withCORS`)
 - `POST /api/auth/refresh` -> `AuthController.Refresh` (`withCORS`)
-- `GET /api/auth/me` -> `auth.RequireAuth(jwtMgr, AuthController.Me)` (`withCORS`)
+- `GET /api/auth/me` -> `auth.RequireAuth(jwtMgr, AuthController.Me)` (`withCORS`; в JSON поле `masterProfileId`, если у пользователя есть активный `master_profiles` с `user_id`)
 - `POST /api/auth/logout` -> `auth.RequireAuth(jwtMgr, AuthController.Logout)` (`withCORS`)
 
 ### Модели/сущности с полями
@@ -360,6 +383,8 @@
 - Repository interfaces:
   - `AuthRepository` (`backend/internal/repository/auth.go`)
   - `SalonRepository` (`backend/internal/repository/salon.go`)
+  - `MasterPublicRepository` (`backend/internal/repository/master_public.go`) — публичные списки мастеров салона и профиль мастера
+  - `MasterDashboardRepository` (`backend/internal/repository/master_dashboard.go`) — claiming по телефону, кабинет мастера (профиль, инвайты, записи по `master_id`)
   - `AppointmentRepository` (`backend/internal/repository/appointment.go`)
   - `HealthRepository` (`backend/internal/repository/health.go`)
 - `OTPSender`:
@@ -374,12 +399,12 @@
 - `salons`: `id`, `name_override`, `address_override`, `timezone`, `description`, `phone_public`, `online_booking_enabled`, `category_id`, `business_type`, `lat`, `lng`, `address`, `district`, `photo_url`, `badge`, `card_gradient`, `emoji`, `cached_rating`, `cached_review_count`, `created_at`
 - `salon_external_ids`: `salon_id`, `source`, `external_id`, `meta`, `synced_at`
 - `salon_members`: `salon_id`, `user_id`, `role`
-- `staff`: `id`, `salon_id`, `display_name`, `is_active`, `created_at`
+- `salon_masters` (ранее `staff`): `id`, `salon_id`, `master_id` → `master_profiles`, `display_name`, `color`, `status` (`active`/`pending`/`inactive`), `is_active`, и др.; `master_profiles`: независимый профиль мастера (`bio`, `specializations`, `phone_e164`, …)
 - `services`: `id`, `salon_id`, `name`, `duration_minutes`, `price_cents`, `is_active`, `sort_order`, `category`, `category_slug`, `description`
 - `service_categories`: системный справочник категорий услуг (см. миграция `000010`)
 - `working_hours`: `id`, `salon_id`, `day_of_week`, `opens_at`, `closes_at`, `valid_from`, `valid_to`
 - `salon_subscriptions`: `id`, `salon_id`, `plan`, `status`, `current_period_end`, `external_payment_ref`, `payment_provider`, `created_at`
-- `appointments`: `id`, `salon_id`, `client_user_id`, `guest_name`, `guest_phone_e164`, `staff_id`, `service_id`, `starts_at`, `ends_at`, `status`, `client_note`, `created_at`, `updated_at`
+- `appointments`: `id`, `salon_id`, `client_user_id`, `guest_name`, `guest_phone_e164`, `salon_master_id`, `service_id`, `starts_at`, `ends_at`, `status`, `client_note`, `created_at`, `updated_at`
 - `user_telegram_identities`: `user_id`, `telegram_user_id`, `telegram_chat_id`, `linked_at`
 - `reviews`: `id`, `appointment_id`, `rating`, `body`, `response_text`, `created_at`
 - `waitlist_entries`: `id`, `user_id`, `salon_id`, `service_id`, `desired_from`, `desired_to`, `status`, `created_at`
@@ -414,6 +439,7 @@
 - `/place/:externalId` -> `SalonPage`: детальная страница места (через загрузку place + маппинг в формат salon)
 - `/login` -> `LoginPage`: авторизация phone/OTP
 - `/dashboard` -> `DashboardPage`: кабинет салона (частично заглушки)
+- `/master-dashboard` -> `MasterDashboardPage`: кабинет мастера (JWT + `masterProfileId` в сессии; иначе редирект на `/`)
 
 ### Redux store: slices, actions, thunks
 
@@ -448,9 +474,16 @@ Store: `frontend/src/app/store.ts`
 - `POST /api/auth/otp/request` body `{ phone }`
 - `POST /api/auth/otp/verify` body `{ phone, code }`
 - `POST /api/auth/refresh` body `{ refreshToken }`
-- `GET /api/auth/me` (Bearer token)
+- `GET /api/auth/me` (Bearer token; ответ включает `masterProfileId` при наличии профиля мастера)
 - `POST /api/auth/logout` (Bearer token)
 - base: `import.meta.env.VITE_API_URL ?? ''`
+
+`frontend/src/shared/api/masterDashboardApi.ts`:
+- `GET|PUT /api/v1/master-dashboard/profile`
+- `GET /api/v1/master-dashboard/invites`, `POST .../invites/:id/accept|decline`
+- `GET /api/v1/master-dashboard/salons`
+- `GET /api/v1/master-dashboard/appointments` (query `from`, `to`, `status` — даты `YYYY-MM-DD`)
+- base через `publicApiUrl`
 
 `frontend/src/shared/api/geoApi.ts`:
 - `GET /api/v1/geo/region?lat=&lon=`
@@ -466,6 +499,9 @@ Store: `frontend/src/app/store.ts`
 `frontend/src/shared/api/salonApi.ts`:
 - `GET /v1/salons` params optional: `lat`, `lon`, `category`, `online_only`
 - `GET /v1/salons/:salonId`
+- `GET /v1/salons/by-external?source=2gis&id=...` — lookup связанного платформенного салона для внешнего place id
+- `GET /v1/salons/:salonId/masters` — публичный список мастеров салона
+- `GET /v1/masters/:masterProfileId` — публичный профиль мастера и салоны
 - `POST /v1/salons/:salonId/bookings` body `{ serviceId, name, phone, note? }`
 - base: `import.meta.env.VITE_API_BASE ?? ''` (в `.env` это `/api`, итоговые URL: `/api/v1/...`)
 
@@ -483,12 +519,19 @@ Store: `frontend/src/app/store.ts`
 
 Страницы:
 - `SearchPage` (`frontend/src/pages/search/ui/SearchPage.tsx`): общий поиск (`/api/v1/search` + fallback `/api/v1/places/search`), карточки, infinite scroll, карта; Hero и строка поиска учитывают светлую/тёмную тему (см. выше).
-- `SalonPage` (`frontend/src/pages/salon/ui/SalonPage.tsx`): детали салона/места, вкладки и гостевая запись.
+- `SalonPage` (`frontend/src/pages/salon/ui/SalonPage.tsx`): детали салона/места, вкладки и гостевая запись; вкладка «Мастера» — данные с `GET /v1/salons/:id/masters` для UUID-салона.
+- `SalonPage` работает в dual-mode:
+  - `salon` режим (`/salon/:id`) — услуги/мастера/онлайн-запись;
+  - `place` режим (`/place/:externalId`) — данные 2GIS, CTA «Позвонить»;
+  - при открытии `/place/:externalId` выполняется lookup `/v1/salons/by-external`; если внешний id уже связан, происходит `replace`-redirect на `/salon/:id`.
+- `MasterPage` (`frontend/src/pages/master/ui/MasterPage.tsx`): публичный профиль мастера (`/master/:masterProfileId`), `GET /v1/masters/:id`.
 - `LoginPage` (`frontend/src/pages/login/ui/LoginPage.tsx`): phone/OTP flow.
 - `DashboardPage` (`frontend/src/pages/dashboard/ui/DashboardPage.tsx`): dashboard на mock данных.
+- `MasterDashboardPage` (`frontend/src/pages/master-dashboard/ui/MasterDashboardPage.tsx`): кабинет мастера, палитра `useDashboardPalette()`.
+- `AuthBootstrap` (`frontend/src/app/AuthBootstrap.tsx`): при наличии токена вызывает `loadMe()` для заполнения Redux (в т.ч. `masterProfileId`).
 
 Ключевые UI/feature-компоненты:
-- `NavBar`: навигация, локация, вход/кабинет.
+- `NavBar`: навигация, локация; для авторизованных — ссылки «Кабинет салона» (роль `salon_owner`), «Кабинет мастера» (есть `masterProfileId`), «Выйти»; иначе вход / регистрация в кабинет.
 - `SearchBar`, `CategoryFilter`, `FilterRow`: управление фильтрами поиска.
 - `SearchResultCard`, `SearchResultCardSkeleton`, `PlaceCard`, `SalonCard`: карточки выдачи.
 - **SearchPage layout**: в режиме списка — две колонки в контейнере `maxWidth` (~1180px): слева счётчик + bento-сетка, справа узкая колонка с `PromoBanner` (sticky на desktop); в режиме карты — полная ширина контента, без промо-колонки.
@@ -525,7 +568,7 @@ Store: `frontend/src/app/store.ts`
 - `000005_guest_appointments.down.sql`: откат гостевых изменений
 - `000006_external_ids.up.sql`: нормализация внешних id в `salon_external_ids`, перенос данных из `salons.external_source/external_id`
 - `000006_external_ids.down.sql`: обратная денормализация в `salons.external_source/external_id`
-- Далее: `000007`–`000008` (графики staff/salon), `000009` (расширение dashboard: staff, services, слоты, перерывы), `000010` (`service_categories`, `salon_type`, `services.category_slug`), `000011` и др. — см. `backend/migrations/`.
+- Далее: `000007`–`000008` (графики staff/salon), `000009` (расширение dashboard: staff, services, слоты, перерывы), `000010` (`service_categories`, `salon_type`, `services.category_slug`), `000011` и др.; `000012` (`master_profiles`, переименование `staff` → `salon_masters`, `salon_master_services` с оверрайдами); `000013` (`salon_master_status`) — см. `backend/migrations/`.
 
 ### Ключевые индексы и constraints
 
@@ -544,7 +587,7 @@ Store: `frontend/src/app/store.ts`
   - `day_of_week BETWEEN 0 AND 6`
   - `duration_minutes > 0`
   - `rating BETWEEN 1 AND 5`
-- FK-связи по всем основным таблицам (`salons`, `users`, `services`, `staff`, `appointments`, `reviews`, `waitlist_entries`, `refresh_tokens`, `salon_external_ids`).
+- FK-связи по всем основным таблицам (`salons`, `users`, `services`, `salon_masters`, `appointments`, `reviews`, `waitlist_entries`, `refresh_tokens`, `salon_external_ids`).
 
 ## 5. Конфигурация и инфраструктура
 
@@ -586,6 +629,8 @@ Store: `frontend/src/app/store.ts`
   - frontend: `cd frontend && npm install && npm run dev`
 - `frontend/package.json` scripts:
   - `dev`, `build`, `lint`, `preview`
+- `Makefile`:
+  - `seed-salon-page-dev` — импорт тестового SQL `backend/migrations/dev_seed_salon_place.sql` (через локальный `psql` или fallback в `docker compose exec postgres`)
 
 ## 6. Как работает поиск
 
@@ -602,16 +647,16 @@ Store: `frontend/src/app/store.ts`
 - **Регистрация в DI** (`backend/internal/app/app.go`): `persistence.NewDashboardRepository`, `service.NewDashboardService`, `controller.NewDashboardController`.
 - **Точка входа HTTP:** префикс `/api/v1/dashboard` (см. `DashboardController.DashboardRoutes` в [`dashboard_controller.go`](backend/internal/controller/dashboard_controller.go)); перед этим `auth.RequireAuth` и проверка членства в салоне.
 - **Логика:** [`service/dashboard.go`](backend/internal/service/dashboard.go); **персистенция:** [`dashboard_repository.go`](backend/internal/infrastructure/persistence/dashboard_repository.go); интерфейс [`repository/dashboard.go`](backend/internal/repository/dashboard.go).
-- **Данные:** таблица `service_categories` (системный каталог slug), поля `services.category_slug`, `salons.salon_type`, `salons.slot_duration_minutes`, `staff_services`, расширения staff/schedule — см. миграции `000009`–`000011` и [`docs/service-categories.md`](service-categories.md).
+- **Данные:** таблица `service_categories` (системный каталог slug), поля `services.category_slug`, `salons.salon_type`, `salons.slot_duration_minutes`, `salon_master_services` (связь мастер–услуга и оверрайды), `master_profiles`, расширения `salon_masters`/schedule — см. миграции `000009`–`000013` и [`docs/service-categories.md`](service-categories.md).
 
 **Типовые группы эндпоинтов (не исчерпывающе):**
 
 | Область | Методы и путь (под `/api/v1/dashboard`) |
 |--------|----------------------------------------|
 | Записи | `GET /appointments`, `POST /appointments`, `PUT /appointments/{id}`, `PATCH /appointments/{id}/status` |
-| Услуги | `GET/POST/PUT/DELETE /services`, связи staff–service |
+| Услуги | `GET/POST/PUT/DELETE /services`, связи мастер–услуга (`salon_master_services`) |
 | Категории услуг | `GET /service-categories` (в т.ч. режим полного списка для валидации) |
-| Мастера, расписание, профиль | отдельные пути `/staff`, `/schedule`, `/profile`, bundle-роуты по необходимости |
+| Мастера, расписание, профиль | **`/salon-masters`** (основной путь; deprecated **`/staff`** — те же хендлеры), `PUT .../salon-masters/:id/services`, **`GET /masters/lookup`**, **`POST /master-invites`**, `/schedule`, `/salon/profile`, bundle-роуты по необходимости |
 | Статистика | `GET /stats` |
 
 ### Фронтенд
@@ -619,8 +664,9 @@ Store: `frontend/src/app/store.ts`
 - **Клиент API:** [`frontend/src/shared/api/dashboardApi.ts`](frontend/src/shared/api/dashboardApi.ts) — все вызовы кабинета.
 - **Корневой экран:** [`DashboardPage.tsx`](frontend/src/pages/dashboard/ui/DashboardPage.tsx) — секции через `?section=`: overview, calendar, appointments, services, staff, schedule, profile; вложенный маршрут `/dashboard/staff/:staffId` для карточки мастера.
 - **Услуги и категории:** [`views/ServicesView.tsx`](frontend/src/pages/dashboard/ui/views/ServicesView.tsx), [`modals/ServiceFormModal.tsx`](frontend/src/pages/dashboard/ui/modals/ServiceFormModal.tsx), [`lib/salonTypeOptions.ts`](frontend/src/pages/dashboard/lib/salonTypeOptions.ts).
-- **Записи:** [`DashboardAppointments.tsx`](frontend/src/pages/dashboard/ui/DashboardAppointments.tsx) — список, создание, редактирование (в т.ч. двойной щелчок по строке).
-- **Календарь:** [`DashboardCalendar.tsx`](frontend/src/pages/dashboard/ui/DashboardCalendar.tsx); сетки день/неделя/месяц — [`CalendarDayStaffGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarDayStaffGrid.tsx), [`CalendarWeekGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarWeekGrid.tsx), [`CalendarMonthGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarMonthGrid.tsx); расчёт позиций и длительности — [`lib/calendarGridUtils.ts`](frontend/src/pages/dashboard/lib/calendarGridUtils.ts) (таймлайн по локальному времени, `startsAt`/`endsAt`, пересечения событий в колонке).
+- **Записи:** [`DashboardAppointments.tsx`](frontend/src/pages/dashboard/ui/DashboardAppointments.tsx) — список, создание записи (модалка), просмотр/редактирование существующей — общий правый [`AppointmentDrawer.tsx`](frontend/src/pages/dashboard/ui/drawers/AppointmentDrawer.tsx) (клик по строке).
+- **Карточка мастера:** [`StaffDetailView.tsx`](frontend/src/pages/dashboard/ui/views/StaffDetailView.tsx) по `/dashboard/staff/:staffId` — шапка (статус, bio, специализации), таблица услуг с оверрайдами, недельное расписание, ближайшие записи; [`ScheduleDrawer.tsx`](frontend/src/pages/dashboard/ui/drawers/ScheduleDrawer.tsx) для `PUT .../salon-masters/:id/schedule` (поля дня, перерыв — `type="time"`); тот же `AppointmentDrawer` по клику на запись. Редактирование мастера и услуг — существующий [`StaffFormModal.tsx`](frontend/src/pages/dashboard/ui/modals/StaffFormModal.tsx).
+- **Календарь:** [`DashboardCalendar.tsx`](frontend/src/pages/dashboard/ui/DashboardCalendar.tsx); сетки день/неделя/месяц — [`CalendarDayStaffGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarDayStaffGrid.tsx), [`CalendarWeekGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarWeekGrid.tsx), [`CalendarMonthGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarMonthGrid.tsx); расчёт позиций и длительности — [`lib/calendarGridUtils.ts`](frontend/src/pages/dashboard/lib/calendarGridUtils.ts) (таймлайн по локальному времени, `startsAt`/`endsAt`, пересечения событий в колонке). Реализовано: NowLine (красная линия текущего времени), штриховка нерабочих часов/выходных из `staff_working_hours`, блоки перерывов, аватарки мастеров с цветом, 3-строчные блоки событий, клик по дню недели → режим «День», индикаторы загруженности в месяце, расширенная модалка деталей записи.
 
 Подробнее для постановки задач агенту см. **`docs/status.md` §7**.
 

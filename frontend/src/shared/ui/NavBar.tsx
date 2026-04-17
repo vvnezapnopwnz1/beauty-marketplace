@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@shared/config/routes'
 import { useBrandColors, useThemeMode } from '@shared/theme'
 import { useAppDispatch, useAppSelector } from '@app/store'
+import { logout, selectIsAuthenticated, selectUser } from '@features/auth-by-phone/model/authSlice'
 import {
   openCityPicker,
   selectActiveCity,
@@ -23,6 +24,8 @@ export function NavBar() {
   const colors = useBrandColors()
   const dispatch = useAppDispatch()
   const city = useAppSelector(selectActiveCity)
+  const authed = useAppSelector(selectIsAuthenticated)
+  const user = useAppSelector(selectUser)
   const device = useAppSelector(selectDeviceLocation)
   const addressLine = useAppSelector(selectAddressLine)
   const addressLevel = useAppSelector(selectAddressLevel)
@@ -178,44 +181,102 @@ export function NavBar() {
             📍 {locationText}
           </Button>
 
-          {/* Login */}
-          <Button
-            variant="text"
-            onClick={() => navigate(ROUTES.LOGIN)}
-            sx={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: colors.ink,
-              px: 1.5,
-              py: 1,
-              borderRadius: 100,
-              textTransform: 'none',
-              '&:hover': { bgcolor: colors.hoverOverlay },
-            }}
-          >
-            {t('nav.login')}
-          </Button>
+          {authed && user ? (
+            <>
+              {user.role === 'salon_owner' && (
+                <Button
+                  variant="text"
+                  onClick={() => navigate(ROUTES.DASHBOARD)}
+                  sx={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: colors.ink,
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 100,
+                    textTransform: 'none',
+                    display: 'inline-flex',
+                    '&:hover': { bgcolor: colors.hoverOverlay },
+                  }}
+                >
+                  Кабинет салона
+                </Button>
+              )}
+              {user.masterProfileId && (
+                <Button
+                  variant="text"
+                  onClick={() => navigate(ROUTES.MASTER_DASHBOARD)}
+                  sx={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: colors.ink,
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 100,
+                    textTransform: 'none',
+                    '&:hover': { bgcolor: colors.hoverOverlay },
+                  }}
+                >
+                  Кабинет мастера
+                </Button>
+              )}
+              <Button
+                variant="text"
+                onClick={() => void dispatch(logout())}
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: colors.inkSoft,
+                  px: 1,
+                  py: 0.75,
+                  borderRadius: 100,
+                  textTransform: 'none',
+                  '&:hover': { bgcolor: colors.hoverOverlay },
+                }}
+              >
+                Выйти
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="text"
+                onClick={() => navigate(ROUTES.LOGIN)}
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: colors.ink,
+                  px: 1.5,
+                  py: 1,
+                  borderRadius: 100,
+                  textTransform: 'none',
+                  '&:hover': { bgcolor: colors.hoverOverlay },
+                }}
+              >
+                {t('nav.login')}
+              </Button>
 
-          {/* Sign up */}
-          <Button
-            variant="contained"
-            onClick={() => navigate(ROUTES.DASHBOARD)}
-            sx={{
-              fontSize: 13,
-              fontWeight: 600,
-              bgcolor: colors.accent,
-              color: colors.onAccent,
-              px: '20px',
-              py: '8px',
-              borderRadius: 100,
-              textTransform: 'none',
-              boxShadow: 'none',
-              display: { xs: 'none', sm: 'flex' },
-              '&:hover': { bgcolor: colors.accent, filter: 'brightness(1.08)', boxShadow: 'none' },
-            }}
-          >
-            {t('nav.signUp')}
-          </Button>
+              <Button
+                variant="contained"
+                onClick={() => navigate(ROUTES.DASHBOARD)}
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  bgcolor: colors.accent,
+                  color: colors.onAccent,
+                  px: '20px',
+                  py: '8px',
+                  borderRadius: 100,
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  display: { xs: 'none', sm: 'flex' },
+                  '&:hover': { bgcolor: colors.accent, filter: 'brightness(1.08)', boxShadow: 'none' },
+                }}
+              >
+                {t('nav.signUp')}
+              </Button>
+            </>
+          )}
         </Stack>
       </Toolbar>
     </AppBar>

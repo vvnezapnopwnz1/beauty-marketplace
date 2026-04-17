@@ -146,7 +146,7 @@ export function DashboardCalendar() {
 
   const hasUnassignedOnDay = useMemo(() => {
     const ymd = toLocalYMD(dayStart)
-    return items.some(a => toLocalYMD(new Date(a.startsAt)) === ymd && !a.staffId?.trim())
+    return items.some(a => toLocalYMD(new Date(a.startsAt)) === ymd && !a.salonMasterId?.trim())
   }, [items, dayStart])
 
   const monthMatrix = useMemo(() => monthMatrixDates(anchor), [anchor])
@@ -269,7 +269,7 @@ export function DashboardCalendar() {
     try {
       await createDashboardAppointment({
         serviceId: form.serviceId,
-        staffId: form.staffId || null,
+        salonMasterId: form.staffId || null,
         startsAt: new Date(form.startsAt).toISOString(),
         guestName: form.guestName,
         guestPhone: form.guestPhone,
@@ -306,8 +306,8 @@ export function DashboardCalendar() {
 
   // Detail dialog: find staff color for avatar
   const detailStaffColor = useMemo(() => {
-    if (!detail?.staffId) return null
-    return staffListItems.find(i => i.staff.id === detail.staffId)?.staff.color ?? null
+    if (!detail?.salonMasterId) return null
+    return staffListItems.find(i => i.staff.id === detail.salonMasterId)?.staff.color ?? null
   }, [detail, staffListItems])
 
   return (

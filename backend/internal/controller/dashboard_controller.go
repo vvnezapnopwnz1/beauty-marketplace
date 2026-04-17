@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/auth"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"github.com/yourusername/beauty-marketplace/internal/service"
 	"go.uber.org/zap"
@@ -76,8 +75,20 @@ func (h *DashboardController) DashboardRoutes(w http.ResponseWriter, r *http.Req
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	case "services":
 		h.handleServices(w, r, salonID, parts)
-	case "staff":
-		h.handleStaff(w, r, salonID, parts)
+	case "staff", "salon-masters":
+		h.handleSalonMasters(w, r, salonID, parts)
+	case "masters":
+		if len(parts) >= 2 && parts[1] == "lookup" && r.Method == http.MethodGet {
+			h.lookupMasterByPhone(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	case "master-invites":
+		if len(parts) == 1 && r.Method == http.MethodPost {
+			h.createMasterInvite(w, r, salonID)
+			return
+		}
+		http.NotFound(w, r)
 	case "schedule":
 		if len(parts) == 1 {
 			if r.Method == http.MethodGet {
@@ -173,9 +184,16 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 		}
 	}
 	f.Status = q.Get("status")
-	if v := q.Get("staff_id"); v != "" {
+	if v := q.Get("salon_master_id"); v != "" {
 		if sid, err := uuid.Parse(v); err == nil {
 			f.StaffID = &sid
+		}
+	}
+	if f.StaffID == nil {
+		if v := q.Get("staff_id"); v != "" {
+			if sid, err := uuid.Parse(v); err == nil {
+				f.StaffID = &sid
+			}
 		}
 	}
 	if v := q.Get("service_id"); v != "" {
@@ -200,20 +218,20 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 		return
 	}
 	type rowDTO struct {
-		ID             uuid.UUID  `json:"id"`
-		StartsAt       time.Time  `json:"startsAt"`
-		EndsAt         time.Time  `json:"endsAt"`
-		Status         string     `json:"status"`
-		ServiceName    string     `json:"serviceName"`
-		StaffName      *string    `json:"staffName,omitempty"`
-		ClientLabel    string     `json:"clientLabel"`
-		ClientPhone    *string    `json:"clientPhone,omitempty"`
-		GuestName      *string    `json:"guestName,omitempty"`
-		GuestPhone     *string    `json:"guestPhone,omitempty"`
-		ClientUserID   *uuid.UUID `json:"clientUserId,omitempty"`
-		ServiceID      uuid.UUID  `json:"serviceId"`
-		StaffID        *uuid.UUID `json:"staffId,omitempty"`
-		ClientNote     *string    `json:"clientNote,omitempty"`
+		ID              uuid.UUID  `json:"id"`
+		StartsAt        time.Time  `json:"startsAt"`
+		EndsAt          time.Time  `json:"endsAt"`
+		Status          string     `json:"status"`
+		ServiceName     string     `json:"serviceName"`
+		StaffName       *string    `json:"staffName,omitempty"`
+		ClientLabel     string     `json:"clientLabel"`
+		ClientPhone     *string    `json:"clientPhone,omitempty"`
+		GuestName       *string    `json:"guestName,omitempty"`
+		GuestPhone      *string    `json:"guestPhone,omitempty"`
+		ClientUserID    *uuid.UUID `json:"clientUserId,omitempty"`
+		ServiceID       uuid.UUID  `json:"serviceId"`
+		SalonMasterID   *uuid.UUID `json:"salonMasterId,omitempty"`
+		ClientNote      *string    `json:"clientNote,omitempty"`
 	}
 	out := make([]rowDTO, len(rows))
 	for i, row := range rows {
@@ -222,7 +240,7 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 			ID: a.ID, StartsAt: a.StartsAt, EndsAt: a.EndsAt, Status: a.Status,
 			ServiceName: row.ServiceName, StaffName: row.StaffName, ClientLabel: row.ClientLabel,
 			ClientPhone: row.ClientPhone, GuestName: a.GuestName, GuestPhone: a.GuestPhoneE164,
-			ClientUserID: a.ClientUserID, ServiceID: a.ServiceID, StaffID: a.StaffID, ClientNote: a.ClientNote,
+			ClientUserID: a.ClientUserID, ServiceID: a.ServiceID, SalonMasterID: a.SalonMasterID, ClientNote: a.ClientNote,
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -230,13 +248,14 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 }
 
 type createApptBody struct {
-	ServiceID      uuid.UUID  `json:"serviceId"`
-	StaffID        *uuid.UUID `json:"staffId"`
-	StartsAt       string     `json:"startsAt"`
-	GuestName      string     `json:"guestName"`
-	GuestPhone     string     `json:"guestPhone"`
-	ClientNote     string     `json:"clientNote,omitempty"`
-	ClientUserID   *uuid.UUID `json:"clientUserId,omitempty"`
+	ServiceID     uuid.UUID  `json:"serviceId"`
+	SalonMasterID *uuid.UUID `json:"salonMasterId"`
+	StaffID       *uuid.UUID `json:"staffId"` // deprecated; prefer salonMasterId
+	StartsAt      string     `json:"startsAt"`
+	GuestName     string     `json:"guestName"`
+	GuestPhone    string     `json:"guestPhone"`
+	ClientNote    string     `json:"clientNote,omitempty"`
+	ClientUserID  *uuid.UUID `json:"clientUserId,omitempty"`
 }
 
 func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
@@ -250,9 +269,13 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 		jsonError(w, "startsAt must be RFC3339", http.StatusBadRequest)
 		return
 	}
+	staffRef := body.SalonMasterID
+	if staffRef == nil {
+		staffRef = body.StaffID
+	}
 	ap, err := h.svc.CreateManualAppointment(r.Context(), salonID, service.ManualAppointmentInput{
 		ServiceID:      body.ServiceID,
-		StaffID:        body.StaffID,
+		StaffID:        staffRef,
 		StartsAt:       st,
 		GuestName:      body.GuestName,
 		GuestPhone:     body.GuestPhone,
@@ -264,22 +287,22 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 		return
 	}
 	type apOut struct {
-		ID             uuid.UUID  `json:"id"`
-		SalonID        uuid.UUID  `json:"salonId"`
-		ServiceID      uuid.UUID  `json:"serviceId"`
-		StaffID        *uuid.UUID `json:"staffId,omitempty"`
-		StartsAt       time.Time  `json:"startsAt"`
-		EndsAt         time.Time  `json:"endsAt"`
-		Status         string     `json:"status"`
-		GuestName      *string    `json:"guestName,omitempty"`
-		GuestPhoneE164 *string    `json:"guestPhone,omitempty"`
-		ClientUserID   *uuid.UUID `json:"clientUserId,omitempty"`
-		ClientNote     *string    `json:"clientNote,omitempty"`
+		ID              uuid.UUID  `json:"id"`
+		SalonID         uuid.UUID  `json:"salonId"`
+		ServiceID       uuid.UUID  `json:"serviceId"`
+		SalonMasterID   *uuid.UUID `json:"salonMasterId,omitempty"`
+		StartsAt        time.Time  `json:"startsAt"`
+		EndsAt          time.Time  `json:"endsAt"`
+		Status          string     `json:"status"`
+		GuestName       *string    `json:"guestName,omitempty"`
+		GuestPhoneE164  *string    `json:"guestPhone,omitempty"`
+		ClientUserID    *uuid.UUID `json:"clientUserId,omitempty"`
+		ClientNote      *string    `json:"clientNote,omitempty"`
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(apOut{
-		ID: ap.ID, SalonID: ap.SalonID, ServiceID: ap.ServiceID, StaffID: ap.StaffID,
+		ID: ap.ID, SalonID: ap.SalonID, ServiceID: ap.ServiceID, SalonMasterID: ap.SalonMasterID,
 		StartsAt: ap.StartsAt, EndsAt: ap.EndsAt, Status: ap.Status,
 		GuestName: ap.GuestName, GuestPhoneE164: ap.GuestPhoneE164, ClientUserID: ap.ClientUserID, ClientNote: ap.ClientNote,
 	})
@@ -308,14 +331,16 @@ func (h *DashboardController) patchAppointmentStatus(w http.ResponseWriter, r *h
 }
 
 type putApptBody struct {
-	StartsAt       *string    `json:"startsAt"`
-	EndsAt         *string    `json:"endsAt"`
-	StaffID        *uuid.UUID `json:"staffId"`
-	ClearStaffID   *bool      `json:"clearStaffId"`
-	ServiceID      *uuid.UUID `json:"serviceId"`
-	ClientNote     *string    `json:"clientNote"`
-	GuestName      *string    `json:"guestName"`
-	GuestPhone     *string    `json:"guestPhone"`
+	StartsAt           *string    `json:"startsAt"`
+	EndsAt             *string    `json:"endsAt"`
+	SalonMasterID      *uuid.UUID `json:"salonMasterId"`
+	StaffID            *uuid.UUID `json:"staffId"` // deprecated
+	ClearSalonMasterID *bool      `json:"clearSalonMasterId"`
+	ClearStaffID       *bool      `json:"clearStaffId"` // deprecated
+	ServiceID          *uuid.UUID `json:"serviceId"`
+	ClientNote         *string    `json:"clientNote"`
+	GuestName          *string    `json:"guestName"`
+	GuestPhone         *string    `json:"guestPhone"`
 }
 
 func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Request, salonID, id uuid.UUID) {
@@ -341,10 +366,16 @@ func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Requ
 		}
 		in.EndsAt = &t
 	}
-	if body.ClearStaffID != nil && *body.ClearStaffID {
+	clear := (body.ClearSalonMasterID != nil && *body.ClearSalonMasterID) ||
+		(body.ClearStaffID != nil && *body.ClearStaffID)
+	if clear {
 		in.ClearStaffID = true
 	} else {
-		in.StaffID = body.StaffID
+		if body.SalonMasterID != nil {
+			in.StaffID = body.SalonMasterID
+		} else {
+			in.StaffID = body.StaffID
+		}
 	}
 	in.ServiceID = body.ServiceID
 	in.ClientNote = body.ClientNote
@@ -508,7 +539,7 @@ func (h *DashboardController) handleServices(w http.ResponseWriter, r *http.Requ
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
-func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request, salonID uuid.UUID, parts []string) {
+func (h *DashboardController) handleSalonMasters(w http.ResponseWriter, r *http.Request, salonID uuid.UUID, parts []string) {
 	if len(parts) == 1 {
 		if r.Method == http.MethodGet {
 			list, err := h.svc.ListStaffDashboard(r.Context(), salonID)
@@ -532,13 +563,15 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 				jsonError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			_, svcIDs, gerr := h.svc.GetStaff(r.Context(), salonID, st.ID)
-			if gerr != nil {
-				h.log.Error("get staff after create", zap.Error(gerr))
+			det, err := h.svc.GetSalonMasterDashboardDetail(r.Context(), salonID, st.ID)
+			if err != nil || det == nil {
+				h.log.Error("get salon master after create", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(staffDetailJSON(st, svcIDs))
+			_ = json.NewEncoder(w).Encode(det)
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -547,6 +580,29 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 	id, err := uuid.Parse(parts[1])
 	if err != nil {
 		jsonError(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	if len(parts) == 3 && parts[2] == "services" && r.Method == http.MethodPut {
+		var rows []service.SalonMasterServiceAssignmentInput
+		if err := json.NewDecoder(r.Body).Decode(&rows); err != nil {
+			jsonError(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		if err := h.svc.ReplaceSalonMasterServices(r.Context(), salonID, id, rows); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				jsonError(w, "not found", http.StatusNotFound)
+				return
+			}
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		det, err := h.svc.GetSalonMasterDashboardDetail(r.Context(), salonID, id)
+		if err != nil || det == nil {
+			jsonError(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(det)
 		return
 	}
 	if len(parts) == 3 && parts[2] == "schedule" {
@@ -617,16 +673,16 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 			return
 		}
 		type rowDTO struct {
-			ID             uuid.UUID  `json:"id"`
-			StartsAt       time.Time  `json:"startsAt"`
-			EndsAt         time.Time  `json:"endsAt"`
-			Status         string     `json:"status"`
-			ServiceName    string     `json:"serviceName"`
-			StaffName      *string    `json:"staffName,omitempty"`
-			ClientLabel    string     `json:"clientLabel"`
-			ClientPhone    *string    `json:"clientPhone,omitempty"`
-			ServiceID      uuid.UUID  `json:"serviceId"`
-			StaffID        *uuid.UUID `json:"staffId,omitempty"`
+			ID            uuid.UUID  `json:"id"`
+			StartsAt      time.Time  `json:"startsAt"`
+			EndsAt        time.Time  `json:"endsAt"`
+			Status        string     `json:"status"`
+			ServiceName   string     `json:"serviceName"`
+			StaffName     *string    `json:"staffName,omitempty"`
+			ClientLabel   string     `json:"clientLabel"`
+			ClientPhone   *string    `json:"clientPhone,omitempty"`
+			ServiceID     uuid.UUID  `json:"serviceId"`
+			SalonMasterID *uuid.UUID `json:"salonMasterId,omitempty"`
 		}
 		out := make([]rowDTO, len(rows))
 		for i, x := range rows {
@@ -634,7 +690,7 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 				ID: x.Appointment.ID, StartsAt: x.Appointment.StartsAt, EndsAt: x.Appointment.EndsAt,
 				Status: x.Appointment.Status, ServiceName: x.ServiceName, StaffName: x.StaffName,
 				ClientLabel: x.ClientLabel, ClientPhone: x.ClientPhone, ServiceID: x.Appointment.ServiceID,
-				StaffID: x.Appointment.StaffID,
+				SalonMasterID: x.Appointment.SalonMasterID,
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -656,17 +712,17 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if len(parts) == 2 && r.Method == http.MethodGet {
-		st, svcIDs, err := h.svc.GetStaff(r.Context(), salonID, id)
+		det, err := h.svc.GetSalonMasterDashboardDetail(r.Context(), salonID, id)
 		if err != nil {
 			jsonError(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		if st == nil {
+		if det == nil {
 			jsonError(w, "not found", http.StatusNotFound)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(staffDetailJSON(st, svcIDs))
+		_ = json.NewEncoder(w).Encode(det)
 		return
 	}
 	if len(parts) == 2 && r.Method == http.MethodPut {
@@ -675,7 +731,7 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 			jsonError(w, "invalid json", http.StatusBadRequest)
 			return
 		}
-		st, err := h.svc.UpdateStaff(r.Context(), salonID, id, in)
+		_, err := h.svc.UpdateStaff(r.Context(), salonID, id, in)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				jsonError(w, "not found", http.StatusNotFound)
@@ -684,13 +740,13 @@ func (h *DashboardController) handleStaff(w http.ResponseWriter, r *http.Request
 			jsonError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		_, svcIDs, err := h.svc.GetStaff(r.Context(), salonID, id)
-		if err != nil {
+		det, err := h.svc.GetSalonMasterDashboardDetail(r.Context(), salonID, id)
+		if err != nil || det == nil {
 			jsonError(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(staffDetailJSON(st, svcIDs))
+		_ = json.NewEncoder(w).Encode(det)
 		return
 	}
 	if len(parts) == 2 && r.Method == http.MethodDelete {
@@ -870,39 +926,67 @@ func (h *DashboardController) putSalonProfile(w http.ResponseWriter, r *http.Req
 	})
 }
 
-func staffDetailJSON(st *model.Staff, serviceIDs []uuid.UUID) map[string]any {
-	if serviceIDs == nil {
-		serviceIDs = []uuid.UUID{}
+func (h *DashboardController) lookupMasterByPhone(w http.ResponseWriter, r *http.Request) {
+	phone := strings.TrimSpace(r.URL.Query().Get("phone"))
+	mp, found, err := h.svc.LookupMasterByPhone(r.Context(), phone)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	var joined any
-	if st.JoinedAt != nil {
-		joined = st.JoinedAt.Format("2006-01-02")
+	w.Header().Set("Content-Type", "application/json")
+	if !found || mp == nil {
+		_ = json.NewEncoder(w).Encode(map[string]any{"found": false})
+		return
 	}
-	return map[string]any{
-		"id":                    st.ID,
-		"salonId":               st.SalonID,
-		"displayName":           st.DisplayName,
-		"role":                  st.Role,
-		"level":                 st.Level,
-		"bio":                   st.Bio,
-		"phone":                 st.Phone,
-		"telegramUsername":      st.TelegramUsername,
-		"email":                 st.Email,
-		"color":                 st.Color,
-		"joinedAt":              joined,
-		"dashboardAccess":       st.DashboardAccess,
-		"telegramNotifications": st.TelegramNotifications,
-		"isActive":              st.IsActive,
-		"createdAt":             st.CreatedAt,
-		"serviceIds":            serviceIDs,
+	type profOut struct {
+		ID              uuid.UUID `json:"id"`
+		DisplayName     string    `json:"displayName"`
+		Bio             *string   `json:"bio"`
+		Specializations []string  `json:"specializations"`
+		AvatarURL       *string   `json:"avatarUrl"`
+		YearsExperience *int      `json:"yearsExperience"`
+		PhoneE164       *string   `json:"phoneE164"`
 	}
+	specs := make([]string, len(mp.Specializations))
+	copy(specs, []string(mp.Specializations))
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"found": true,
+		"profile": profOut{
+			ID: mp.ID, DisplayName: mp.DisplayName, Bio: mp.Bio,
+			Specializations: specs, AvatarURL: mp.AvatarURL,
+			YearsExperience: mp.YearsExperience, PhoneE164: mp.PhoneE164,
+		},
+	})
+}
+
+func (h *DashboardController) createMasterInvite(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	var body struct {
+		MasterProfileID uuid.UUID `json:"masterProfileId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.MasterProfileID == uuid.Nil {
+		jsonError(w, "masterProfileId required", http.StatusBadRequest)
+		return
+	}
+	st, err := h.svc.CreateMasterInvite(r.Context(), salonID, body.MasterProfileID)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	det, err := h.svc.GetSalonMasterDashboardDetail(r.Context(), salonID, st.ID)
+	if err != nil || det == nil {
+		jsonError(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(det)
 }
 
 func staffScheduleBundleJSON(b *service.StaffScheduleBundle) map[string]any {
 	rows := make([]map[string]any, len(b.Rows))
 	for i, wh := range b.Rows {
 		m := map[string]any{
-			"id": wh.ID, "staffId": wh.StaffID, "dayOfWeek": wh.DayOfWeek,
+			"id": wh.ID, "staffId": wh.SalonMasterID, "dayOfWeek": wh.DayOfWeek,
 			"opensAt": wh.OpensAt, "closesAt": wh.ClosesAt, "isDayOff": wh.IsDayOff,
 		}
 		if wh.BreakStartsAt != nil {

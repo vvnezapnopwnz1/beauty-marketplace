@@ -1,4 +1,4 @@
-import type { Salon, CardGradient, SalonContactRow } from '@entities/salon'
+import type { CardGradient, SalonContactRow, SalonView, WorkingHourRow } from '@entities/salon'
 import { CARD_GRADIENTS } from '@entities/salon'
 import type { PlaceDetail } from '@shared/api/placesApi'
 
@@ -40,43 +40,69 @@ function displaySiteValue(url: string): string {
   }
 }
 
-function contactRowsFromPlace(d: PlaceDetail, address: string): SalonContactRow[] {
+function contactRowsFromPlace(d: PlaceDetail): SalonContactRow[] {
   const contacts = d.contacts ?? []
-  const phone = contacts.find(c => c.type === 'phone')?.value
-  const site = contacts.find(c => c.type === 'website' || /^https?:\/\//i.test(c.value.trim()))?.value
-  return [
-    { icon: '📍', label: 'Адрес', value: address || '—' },
-    { icon: '📞', label: 'Телефон', value: phone?.trim() || '—' },
-    { icon: '🌐', label: 'Сайт', value: site?.trim() ? displaySiteValue(site.trim()) : '—' },
-    { icon: '📸', label: 'Instagram', value: '—' },
-  ]
+  return contacts
+    .filter(c => ['phone', 'email', 'website'].includes(c.type))
+    .map(c => ({
+      type: c.type as 'phone' | 'email' | 'website',
+      value: c.type === 'website' ? displaySiteValue(c.value.trim()) : c.value.trim(),
+      label: c.label,
+    }))
 }
 
 /**
  * Maps 2GIS-backed place detail to the shared Salon card model.
  * Platform fields (services, online booking, distance) stay empty/disabled.
  */
-export function placeDetailToSalon(d: PlaceDetail): Salon {
+function scheduleFromPlace(d: PlaceDetail): { workingHours?: WorkingHourRow[]; schedule247?: boolean } {
+  if (d.schedule247) return { schedule247: true, workingHours: undefined }
+  const days = d.weeklySchedule ?? []
+  const workingHours: WorkingHourRow[] = days.slice(0, 7).map((day, index) => {
+    const first = day.workingHours?.[0]
+    if (!first) {
+      return {
+        dayOfWeek: index,
+        opensAt: '',
+        closesAt: '',
+        isClosed: true,
+      }
+    }
+    return {
+      dayOfWeek: index,
+      opensAt: first.from.slice(0, 5),
+      closesAt: first.to.slice(0, 5),
+      isClosed: false,
+    }
+  })
+  return { workingHours, schedule247: false }
+}
+
+export function placeDetailToSalon(d: PlaceDetail): SalonView {
   const addr = d.fullAddressName || d.address || ''
   const rating = d.rating ?? 0
   const reviewCount = d.reviewCount ?? 0
   const photos = d.photoUrls ?? []
+  const schedule = scheduleFromPlace(d)
   return {
-    id: placeSalonId(d.externalId),
+    mode: 'place',
+    externalId: d.externalId,
     name: d.name,
-    category: 'hair',
-    businessType: 'venue',
     rating,
     reviewCount,
-    distanceKm: 0,
     address: addr,
     district: d.rubricNames?.[0] ?? '',
-    services: [],
-    availableToday: false,
-    onlineBooking: false,
-    photoUrl: photos[0]?.trim() || null,
+    photos: photos.filter(Boolean),
+    description: d.description,
     cardGradient: pickGradient(d.name),
     emoji: pickEmoji(d.name),
-    contactRows: contactRowsFromPlace(d, addr),
+    services: [],
+    workingHours: schedule.workingHours,
+    schedule247: schedule.schedule247,
+    scheduleComment: d.scheduleComment,
+    contactRows: contactRowsFromPlace(d),
+    canBookOnline: false,
+    hasOwner: false,
+    timezone: 'Europe/Moscow',
   }
 }

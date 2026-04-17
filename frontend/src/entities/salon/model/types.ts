@@ -25,9 +25,42 @@ export interface Service {
 
 /** Optional rows for «Контакты» on the profile (e.g. 2GIS-derived) */
 export interface SalonContactRow {
-  icon: string
-  label: string
+  type: 'phone' | 'email' | 'website' | 'vk' | 'instagram'
   value: string
+  label?: string
+}
+
+export interface WorkingHourRow {
+  dayOfWeek: number
+  opensAt: string
+  closesAt: string
+  isClosed: boolean
+  breakStartsAt?: string
+  breakEndsAt?: string
+}
+
+export interface SalonView {
+  mode: 'salon' | 'place'
+  salonId?: string
+  externalId?: string
+  name: string
+  address: string
+  district?: string
+  rating?: number
+  reviewCount?: number
+  photos: string[]
+  description?: string
+  badge?: string
+  cardGradient?: string
+  emoji?: string
+  services: Service[]
+  workingHours?: WorkingHourRow[]
+  schedule247?: boolean
+  scheduleComment?: string
+  contactRows: SalonContactRow[]
+  canBookOnline: boolean
+  hasOwner: boolean
+  timezone?: string
 }
 
 export interface Salon {

@@ -13,14 +13,15 @@ import (
 
 // SalonController handles salon HTTP API.
 type SalonController struct {
-	svc     service.SalonService
-	booking service.BookingService
-	log     *zap.Logger
+	svc          service.SalonService
+	booking      service.BookingService
+	masterPublic service.MasterPublicService
+	log          *zap.Logger
 }
 
 // NewSalonController constructs SalonController.
-func NewSalonController(svc service.SalonService, booking service.BookingService, log *zap.Logger) *SalonController {
-	return &SalonController{svc: svc, booking: booking, log: log}
+func NewSalonController(svc service.SalonService, booking service.BookingService, masterPublic service.MasterPublicService, log *zap.Logger) *SalonController {
+	return &SalonController{svc: svc, booking: booking, masterPublic: masterPublic, log: log}
 }
 
 // ListSalons handles GET /api/v1/salons?lat=&lon=&category=&online_only=true
@@ -60,7 +61,11 @@ func (h *SalonController) ListSalons(w http.ResponseWriter, r *http.Request) {
 // SalonRoutes handles GET /api/v1/salons/{id} and POST /api/v1/salons/{id}/bookings
 func (h *SalonController) SalonRoutes(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) < 5 || parts[0] != "api" || parts[1] != "v1" || parts[2] != "salons" {
+	if len(parts) == 4 && parts[0] == "api" && parts[1] == "v1" && parts[2] == "salons" && parts[3] == "by-external" && r.Method == http.MethodGet {
+		h.getSalonByExternal(w, r)
+		return
+	}
+	if len(parts) < 4 || parts[0] != "api" || parts[1] != "v1" || parts[2] != "salons" {
 		http.NotFound(w, r)
 		return
 	}
@@ -70,15 +75,30 @@ func (h *SalonController) SalonRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(parts) == 5 && r.Method == http.MethodGet {
+	if len(parts) == 4 && r.Method == http.MethodGet {
 		h.getSalonByID(w, r, salonID)
 		return
 	}
-	if len(parts) == 6 && parts[4] == "bookings" && r.Method == http.MethodPost {
+	if len(parts) == 5 && parts[4] == "bookings" && r.Method == http.MethodPost {
 		h.createGuestBooking(w, r, salonID)
 		return
 	}
+	if len(parts) == 5 && parts[4] == "masters" && r.Method == http.MethodGet {
+		h.listPublicSalonMasters(w, r, salonID)
+		return
+	}
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+}
+
+func (h *SalonController) listPublicSalonMasters(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	list, err := h.masterPublic.ListSalonMastersPublic(r.Context(), salonID)
+	if err != nil {
+		h.log.Error("list public salon masters", zap.Error(err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(list)
 }
 
 func (h *SalonController) getSalonByID(w http.ResponseWriter, r *http.Request, id uuid.UUID) {
@@ -95,6 +115,27 @@ func (h *SalonController) getSalonByID(w http.ResponseWriter, r *http.Request, i
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(salon)
+}
+
+func (h *SalonController) getSalonByExternal(w http.ResponseWriter, r *http.Request) {
+	source := strings.TrimSpace(r.URL.Query().Get("source"))
+	externalID := strings.TrimSpace(r.URL.Query().Get("id"))
+	if source == "" || externalID == "" {
+		http.Error(w, "source and id are required", http.StatusBadRequest)
+		return
+	}
+	result, err := h.svc.FindIDByExternal(r.Context(), source, externalID)
+	if err != nil {
+		h.log.Error("failed to find salon by external id", zap.Error(err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if result == nil {
+		http.Error(w, "salon not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 type guestBookingBody struct {

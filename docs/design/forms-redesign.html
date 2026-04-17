@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forms Redesign — Beauty Marketplace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:            #171310;
+  --surface:       #1F1B17;
+  --card:          #252119;
+  --card-2:        #2B2720;
+  --border:        #38322C;
+  --border-focus:  #7A6655;
+  --accent:        #C8855A;
+  --accent-dim:    rgba(200,133,90,.15);
+  --accent-hover:  #DC9A6E;
+  --text:          #EDE7DF;
+  --text-2:        #A89280;
+  --text-3:        #6C5E52;
+  --success:       #6BCB77;
+  --error:         #E06060;
+  --warning:       #E8B84A;
+  --purple:        #A47DC8;
+  --teal:          #4ECDC4;
+  --shadow:        0 20px 60px rgba(0,0,0,.5);
+}
+
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  padding: 48px 24px 80px;
+}
+
+/* ── PAGE LAYOUT ── */
+.page-title {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.page-title h1 {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-2);
+  letter-spacing: .02em;
+}
+.page-title span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 6px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.forms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  gap: 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.form-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.form-label-top {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 14px;
+}
+
+/* ── PANEL / CARD ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* ── PANEL HEADER ── */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.panel-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.panel-icon svg { color: var(--accent); }
+.panel-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.panel-subtitle { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(200,133,90,.12);
+  color: var(--accent);
+  border: 1px solid rgba(200,133,90,.2);
+}
+
+/* ── FORM BODY ── */
+.form-body {
+  padding: 0;
+}
+
+/* ── SECTION ── */
+.form-section {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.form-section:last-of-type {
+  border-bottom: none;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.section-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.section-name {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+/* ── FIELD GRID ── */
+.field-row { display: grid; gap: 12px; margin-bottom: 12px; }
+.field-row:last-child { margin-bottom: 0; }
+.col-2 { grid-template-columns: 1fr 1fr; }
+.col-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ── INPUT FIELD ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.field label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: .04em;
+}
+.field label span { color: var(--accent); margin-left: 2px; }
+
+.input-wrap { position: relative; }
+.input-wrap input,
+.input-wrap select,
+.input-wrap textarea {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.input-wrap input::placeholder,
+.input-wrap textarea::placeholder {
+  color: var(--text-3);
+}
+.input-wrap input:focus,
+.input-wrap select:focus,
+.input-wrap textarea:focus {
+  border-color: var(--border-focus);
+  background: #272219;
+  box-shadow: 0 0 0 3px rgba(200,133,90,.08);
+}
+.input-wrap select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236C5E52' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.input-wrap textarea { resize: none; }
+.input-icon-right {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+/* hint text below field */
+.field-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+
+/* ── AVATAR COMPOSER ── */
+.avatar-composer {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background: var(--card-2);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.avatar-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: .02em;
+}
+.avatar-controls { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.avatar-label { font-size: 11px; color: var(--text-3); font-weight: 500; }
+.color-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform .12s, border-color .12s;
+}
+.swatch:hover { transform: scale(1.15); }
+.swatch.active { border-color: rgba(255,255,255,.5); transform: scale(1.1); }
+
+/* ── CHIP MULTI-SELECT ── */
+.chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-2);
+  transition: all .12s;
+  user-select: none;
+}
+.chip:hover { border-color: var(--border-focus); color: var(--text); }
+.chip.selected {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── LEVEL SELECTOR ── */
+.level-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.level-opt {
+  padding: 8px 6px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-2);
+  transition: all .12s;
+  user-select: none;
+}
+.level-opt:hover { border-color: var(--border-focus); color: var(--text); }
+.level-opt.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.level-opt .lv-name { display: block; }
+.level-opt .lv-hint { font-size: 10px; color: inherit; opacity: .7; display: block; margin-top: 1px; }
+
+/* ── TOGGLE ROW ── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+.toggle-row:first-child { padding-top: 0; }
+.toggle-info .tl-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.toggle-info .tl-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+/* Custom toggle */
+.toggle {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background .2s;
+  border: 1px solid var(--border);
+}
+.toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  left: 3px; top: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .2s;
+}
+.toggle input:checked + .toggle-track::after { transform: translateX(16px); }
+
+/* ── CATEGORY DROPDOWN fancy ── */
+.category-wrap { position: relative; }
+.category-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .15s;
+  font-size: 13px;
+  color: var(--text);
+}
+.category-display:hover { border-color: var(--border-focus); }
+.cat-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--purple);
+}
+.cat-arrow { margin-left: auto; color: var(--text-3); }
+
+/* ── PRICE ROW ── */
+.price-row { display: flex; gap: 10px; align-items: flex-end; }
+.price-main { flex: 1; }
+.price-unit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+/* ── DURATION STEPPER ── */
+.duration-row { display: flex; align-items: center; gap: 0; }
+.dur-btn {
+  width: 36px; height: 36px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  user-select: none;
+}
+.dur-btn:first-child { border-radius: 10px 0 0 10px; border-right: none; }
+.dur-btn:last-child  { border-radius: 0 10px 10px 0; border-left: none; }
+.dur-btn:hover { background: var(--card); color: var(--text); }
+.dur-val {
+  flex: 1;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── FORM FOOTER ── */
+.panel-footer {
+  padding: 16px 24px;
+  background: rgba(0,0,0,.15);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.footer-note { font-size: 11px; color: var(--text-3); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all .15s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--card); color: var(--text); border-color: var(--border-focus); }
+.btn-danger {
+  background: transparent;
+  color: var(--error);
+  border: 1px solid rgba(224,96,96,.3);
+}
+.btn-danger:hover { background: rgba(224,96,96,.08); }
+
+.footer-actions { display: flex; gap: 8px; }
+
+/* ── APPOINTMENT SPECIFICS ── */
+.time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.time-slot {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-align: center;
+  cursor: pointer;
+  transition: all .12s;
+}
+.time-slot:hover { border-color: var(--border-focus); color: var(--text); }
+.time-slot.taken {
+  opacity: .35;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.time-slot.selected {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.client-type-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.ct-opt {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-2);
+  transition: all .12s;
+}
+.ct-opt.active {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* ── STAFF MINI-CARD (для выбора мастера в записи) ── */
+.staff-pick { display: flex; gap: 8px; flex-wrap: wrap; }
+.staff-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  transition: all .12s;
+}
+.staff-card:hover { border-color: var(--border-focus); }
+.staff-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+.staff-av {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+}
+.staff-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.staff-role { font-size: 10px; color: var(--text-3); }
+
+/* ── STATUS PILL ── */
+.status-row { display: flex; gap: 8px; }
+.status-pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .12s;
+}
+.sp-pending  { border-color: var(--warning); color: var(--warning); background: rgba(232,184,74,.08); }
+.sp-confirm  { border-color: var(--success); color: var(--success); background: rgba(107,203,119,.08); }
+.sp-cancel   { border-color: var(--error);   color: var(--error);   background: rgba(224,96,96,.08); }
+
+/* ── DIVIDER ── */
+.divider { height: 1px; background: var(--border); margin: 0; }
+
+/* ── PROFILE SECTION ── */
+.profile-header-zone {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.salon-logo-box {
+  width: 72px; height: 72px;
+  border-radius: 16px;
+  background: var(--card-2);
+  border: 1px dashed var(--border-focus);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer; flex-shrink: 0;
+  transition: border-color .15s, background .15s;
+}
+.salon-logo-box:hover { background: var(--card); border-style: solid; }
+.logo-label { font-size: 10px; color: var(--text-3); text-align: center; line-height: 1.3; }
+.salon-meta { flex: 1; }
+.salon-name-input { margin-bottom: 8px; }
+
+/* ── MISC ── */
+.tag-with-remove {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 7px; border: 1px solid var(--border);
+  background: var(--card); font-size: 12px; color: var(--text-2);
+}
+.tag-x {
+  width: 14px; height: 14px; border-radius: 4px;
+  background: rgba(255,255,255,.05); display: flex;
+  align-items: center; justify-content: center;
+  font-size: 10px; cursor: pointer; color: var(--text-3);
+}
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>Dashboard · Redesign форм</h1>
+  <span>Beauty Marketplace — концепт</span>
+</div>
+
+<div class="forms-grid">
+
+<!-- ═══════════════════════════════════
+     ФОРМА 1: СОЗДАНИЕ МАСТЕРА
+══════════════════════════════════════ -->
+<div class="form-block">
+  <p class="form-label-top">Форма создания мастера</p>
+  <div class="panel">
+
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <div class="panel-icon">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="panel-title">Новый мастер</div>
+          <div class="panel-subtitle">Добавление в команду салона</div>
+        </div>
+      </div>
+      <span class="badge">Черновик</span>
+    </div>
+
+    <div class="form-body">
+
+      <!-- СЕКЦИЯ 1: Внешний вид -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">1</span>
+          <span class="section-name">Внешний вид</span>
+        </div>
+
+        <div class="avatar-composer">
+          <div class="avatar-preview" style="background:#4ECDC4; color:#0f2623;">АС</div>
+          <div class="avatar-controls">
+            <div class="avatar-label">Цвет аватара</div>
+            <div class="color-swatches">
+              <div class="swatch active" style="background:#4ECDC4;"></div>
+              <div class="swatch" style="background:#B088F9;"></div>
+              <div class="swatch" style="background:#D8956B;"></div>
+              <div class="swatch" style="background:#6BCB77;"></div>
+              <div class="swatch" style="background:#FF8FAB;"></div>
+              <div class="swatch" style="background:#FFD93D;"></div>
+              <div class="swatch" style="background:#7EC8E3;"></div>
+            </div>
+            <div class="field-hint">Аватар генерируется из инициалов</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- СЕКЦИЯ 2: Основное -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">2</span>
+          <span class="section-name">Основное</span>
+        </div>
+
+        <div class="field-row col-2">
+          <div class="field">
+            <label>Имя <span>*</span></label>
+            <div class="input-wrap">
+              <input type="text" placeholder="Анна" value="Анна">
+            </div>
+          </div>
+          <div class="field">
+            <label>Фамилия</label>
+            <div class="input-wrap">
+              <input type="text" placeholder="Соколова" value="Соколова">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Специализация</label>
+            <div class="input-wrap">
+              <input type="text" placeholder="Стилист-колорист, мастер по маникюру…">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Уровень</label>
+            <div class="level-selector">
+              <div class="level-opt">
+                <span class="lv-name">Стажёр</span>
+                <span class="lv-hint">trainee</span>
+              </div>
+              <div class="level-opt active">
+                <span class="lv-name">Мастер</span>
+                <span class="lv-hint">master</span>
+              </div>
+              <div class="level-opt">
+                <span class="lv-name">Старший</span>
+                <span class="lv-hint">senior</span>
+              </div>
+              <div class="level-opt">
+                <span class="lv-name">Топ</span>
+                <span class="lv-hint">top</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>О мастере</label>
+            <div class="input-wrap">
+              <textarea rows="2" placeholder="Кратко для клиентов — опыт, специализация, подход…"></textarea>
+            </div>
+            <span class="field-hint">Видно клиентам на странице салона</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- СЕКЦИЯ 3: Контакты -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">3</span>
+          <span class="section-name">Контакты</span>
+        </div>
+
+        <div class="field-row col-2">
+          <div class="field">
+            <label>Телефон</label>
+            <div class="input-wrap">
+              <input type="text" placeholder="+7 916 000-00-00">
+            </div>
+          </div>
+          <div class="field">
+            <label>Telegram</label>
+            <div class="input-wrap">
+              <input type="text" placeholder="@username">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row col-2">
+          <div class="field">
+            <label>Email</label>
+            <div class="input-wrap">
+              <input type="email" placeholder="anna@example.com">
+            </div>
+          </div>
+          <div class="field">
+            <label>В команде с</label>
+            <div class="input-wrap">
+              <input type="date" value="2024-03-01">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- СЕКЦИЯ 4: Услуги -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">4</span>
+          <span class="section-name">Оказываемые услуги</span>
+        </div>
+
+        <div class="chip-group">
+          <div class="chip selected">Стрижка женская</div>
+          <div class="chip selected">Окрашивание</div>
+          <div class="chip">Укладка</div>
+          <div class="chip">Маникюр</div>
+          <div class="chip">Педикюр</div>
+          <div class="chip selected">Ламинирование</div>
+          <div class="chip">Брови</div>
+          <div class="chip">Наращивание</div>
+        </div>
+      </div>
+
+      <!-- СЕКЦИЯ 5: Доступ и уведомления -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">5</span>
+          <span class="section-name">Доступ и уведомления</span>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl-name">Показывать клиентам</div>
+            <div class="tl-desc">Мастер виден на странице салона</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl-name">Доступ к расписанию</div>
+            <div class="tl-desc">Может просматривать свои записи</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl-name">Уведомления в Telegram</div>
+            <div class="tl-desc">Сообщения о новых записях</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="panel-footer">
+      <span class="footer-note">Поля со * обязательны</span>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">Отмена</button>
+        <button class="btn btn-primary">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          Сохранить
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════
+     ФОРМА 2: СОЗДАНИЕ УСЛУГИ
+══════════════════════════════════════ -->
+<div class="form-block">
+  <p class="form-label-top">Форма создания услуги</p>
+  <div class="panel">
+
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <div class="panel-icon">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="panel-title">Новая услуга</div>
+          <div class="panel-subtitle">Прайс и настройки бронирования</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-body">
+
+      <!-- СЕКЦИЯ 1: Информация -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">1</span>
+          <span class="section-name">Информация</span>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Название услуги <span>*</span></label>
+            <div class="input-wrap">
+              <input type="text" placeholder="Стрижка женская" value="Стрижка + укладка">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Категория <span>*</span></label>
+            <div class="category-wrap">
+              <div class="category-display">
+                <div class="cat-dot" style="background: var(--purple);"></div>
+                Волосы · Стрижки
+                <svg class="cat-arrow" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Описание</label>
+            <div class="input-wrap">
+              <textarea rows="2" placeholder="Что входит в услугу, особенности, рекомендации…"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- СЕКЦИЯ 2: Стоимость и время -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">2</span>
+          <span class="section-name">Стоимость и длительность</span>
+        </div>
+
+        <div class="field-row col-2">
+          <div class="field">
+            <label>Цена</label>
+            <div class="price-row">
+              <div class="price-main">
+                <div class="input-wrap">
+                  <input type="text" placeholder="2 500" value="2 500">
+                </div>
+              </div>
+              <div class="price-unit">₽</div>
+            </div>
+            <span class="field-hint">Оставьте пустым — цена по запросу</span>
+          </div>
+
+          <div class="field">
+            <label>Длительность <span>*</span></label>
+            <div class="duration-row">
+              <div class="dur-btn">−</div>
+              <div class="dur-val">60 мин</div>
+              <div class="dur-btn">+</div>
+            </div>
+            <span class="field-hint">Шаг 5 минут (5–480)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- СЕКЦИЯ 3: Кто оказывает -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">3</span>
+          <span class="section-name">Мастера</span>
+        </div>
+
+        <div class="staff-pick">
+          <div class="staff-card selected">
+            <div class="staff-av" style="background:#4ECDC4; color:#0f2623;">АС</div>
+            <div>
+              <div class="staff-name">Анна С.</div>
+              <div class="staff-role">Стилист</div>
+            </div>
+          </div>
+          <div class="staff-card selected">
+            <div class="staff-av" style="background:#B088F9; color:#1a0f33;">МК</div>
+            <div>
+              <div class="staff-name">Мария К.</div>
+              <div class="staff-role">Колорист</div>
+            </div>
+          </div>
+          <div class="staff-card">
+            <div class="staff-av" style="background:#D8956B; color:#2b1a0e;">ОП</div>
+            <div>
+              <div class="staff-name">Ольга П.</div>
+              <div class="staff-role">Мастер</div>
+            </div>
+          </div>
+          <div class="staff-card">
+            <div class="staff-av" style="background:#6BCB77; color:#0f2611;">ИВ</div>
+            <div>
+              <div class="staff-name">Ирина В.</div>
+              <div class="staff-role">Топ-мастер</div>
+            </div>
+          </div>
+        </div>
+        <div class="field-hint" style="margin-top: 8px;">Услугу оказывают выделенные мастера</div>
+      </div>
+
+    </div>
+
+    <div class="panel-footer">
+      <button class="btn btn-danger">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+        Удалить
+      </button>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">Отмена</button>
+        <button class="btn btn-primary">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          Сохранить
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════
+     ФОРМА 3: СОЗДАНИЕ ЗАПИСИ
+══════════════════════════════════════ -->
+<div class="form-block">
+  <p class="form-label-top">Форма создания записи</p>
+  <div class="panel">
+
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <div class="panel-icon" style="background: rgba(107,203,119,.12);">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6BCB77" stroke-width="1.8">
+            <rect x="3" y="4" width="18" height="18" rx="3"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+        </div>
+        <div>
+          <div class="panel-title">Новая запись</div>
+          <div class="panel-subtitle">Вручную — без онлайн-бронирования</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-body">
+
+      <!-- Тип клиента -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">1</span>
+          <span class="section-name">Клиент</span>
+        </div>
+
+        <div class="client-type-toggle" style="margin-bottom: 14px;">
+          <div class="ct-opt active">Гость</div>
+          <div class="ct-opt">Зарегистрирован</div>
+        </div>
+
+        <div class="field-row col-2">
+          <div class="field">
+            <label>Имя <span>*</span></label>
+            <div class="input-wrap">
+              <input type="text" placeholder="Имя клиента">
+            </div>
+          </div>
+          <div class="field">
+            <label>Телефон <span>*</span></label>
+            <div class="input-wrap">
+              <input type="text" placeholder="+7 916 000-00-00">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Комментарий</label>
+            <div class="input-wrap">
+              <textarea rows="2" placeholder="Пожелания, особенности, заметки…"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Услуга и мастер -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">2</span>
+          <span class="section-name">Услуга и мастер</span>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Услуга <span>*</span></label>
+            <div class="input-wrap">
+              <select>
+                <option value="">Выберите услугу…</option>
+                <option value="1" selected>Стрижка + укладка · 60 мин · 2 500 ₽</option>
+                <option value="2">Окрашивание корней · 90 мин · 4 000 ₽</option>
+                <option value="3">Маникюр классический · 60 мин · 1 800 ₽</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label style="margin-bottom: 6px; display: block;">Мастер</label>
+          <div class="staff-pick">
+            <div class="staff-card">
+              <div style="font-size: 11px; color: var(--text-3); font-style: italic; padding: 2px 0;">Любой свободный</div>
+            </div>
+            <div class="staff-card selected">
+              <div class="staff-av" style="background:#4ECDC4; color:#0f2623;">АС</div>
+              <div>
+                <div class="staff-name">Анна С.</div>
+              </div>
+            </div>
+            <div class="staff-card">
+              <div class="staff-av" style="background:#B088F9; color:#1a0f33;">МК</div>
+              <div>
+                <div class="staff-name">Мария К.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Дата и время -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">3</span>
+          <span class="section-name">Дата и время</span>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Дата <span>*</span></label>
+            <div class="input-wrap">
+              <input type="date" value="2026-04-15">
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 4px;">
+          <label style="margin-bottom: 6px; display: block;">Время <span style="color: var(--accent); margin-left: 2px;">*</span></label>
+          <div class="time-grid">
+            <div class="time-slot taken">09:00</div>
+            <div class="time-slot">09:30</div>
+            <div class="time-slot">10:00</div>
+            <div class="time-slot selected">10:30</div>
+            <div class="time-slot">11:00</div>
+            <div class="time-slot">11:30</div>
+            <div class="time-slot taken">12:00</div>
+            <div class="time-slot">12:30</div>
+          </div>
+          <div class="field-hint" style="margin-top: 6px;">Слоты с учётом длительности услуги (60 мин)</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="panel-footer">
+      <span class="footer-note">Запись создаётся со статусом «Ожидает»</span>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">Отмена</button>
+        <button class="btn btn-primary" style="background: #5a9e63;">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          Создать запись
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════
+     ФОРМА 4: ПРОФИЛЬ САЛОНА
+══════════════════════════════════════ -->
+<div class="form-block">
+  <p class="form-label-top">Профиль салона</p>
+  <div class="panel">
+
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <div class="panel-icon" style="background: rgba(164,125,200,.12);">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="var(--purple)" stroke-width="1.8">
+            <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5Z"/>
+            <path d="M9 21V12h6v9"/>
+          </svg>
+        </div>
+        <div>
+          <div class="panel-title">Профиль салона</div>
+          <div class="panel-subtitle">Публичная страница и настройки</div>
+        </div>
+      </div>
+      <span class="badge" style="border-color: rgba(107,203,119,.3); background: rgba(107,203,119,.08); color: var(--success);">Опубликован</span>
+    </div>
+
+    <div class="form-body">
+
+      <!-- Основная информация -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">1</span>
+          <span class="section-name">Основное</span>
+        </div>
+
+        <div class="profile-header-zone">
+          <div class="salon-logo-box">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--text-3)" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span class="logo-label">Загрузить<br>логотип</span>
+          </div>
+          <div class="salon-meta" style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+            <div class="field salon-name-input">
+              <label>Название</label>
+              <div class="input-wrap">
+                <input type="text" value="Beauty Studio Аура">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row col-2">
+          <div class="field">
+            <label>Тип заведения</label>
+            <div class="input-wrap">
+              <select>
+                <option>Салон красоты</option>
+                <option>Барбершоп</option>
+                <option>Студия ногтей</option>
+                <option>Частный мастер</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Формат</label>
+            <div class="input-wrap">
+              <select>
+                <option>Студия / заведение</option>
+                <option>Индивидуальный мастер</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>О салоне</label>
+            <div class="input-wrap">
+              <textarea rows="3" placeholder="Расскажите о вашем салоне — атмосфера, специализация, особенности…"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Адрес и контакты -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">2</span>
+          <span class="section-name">Адрес и контакты</span>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Адрес</label>
+            <div class="input-wrap">
+              <input type="text" placeholder="Москва, ул. Арбат, 15" value="Москва, ул. Тверская, 28">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-row col-2">
+          <div class="field">
+            <label>Телефон</label>
+            <div class="input-wrap">
+              <input type="text" placeholder="+7 495 000-00-00" value="+7 495 123-45-67">
+            </div>
+          </div>
+          <div class="field">
+            <label>Часовой пояс</label>
+            <div class="input-wrap">
+              <select>
+                <option>Europe/Moscow (UTC+3)</option>
+                <option>Asia/Yekaterinburg (UTC+5)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Настройки -->
+      <div class="form-section">
+        <div class="section-heading">
+          <span class="section-num">3</span>
+          <span class="section-name">Настройки бронирования</span>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl-name">Онлайн-бронирование</div>
+            <div class="tl-desc">Клиенты могут записаться с сайта</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="tl-name">Гостевая запись</div>
+            <div class="tl-desc">Без регистрации — только имя и телефон</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="panel-footer">
+      <span class="footer-note">Изменения сохраняются и видны сразу</span>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">Отмена</button>
+        <button class="btn btn-primary">Сохранить изменения</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /forms-grid -->
+</body>
+</html>

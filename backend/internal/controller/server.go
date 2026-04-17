@@ -30,6 +30,8 @@ func NewHTTPServer(
 	gh *GeoController,
 	ac *AuthController,
 	dh *DashboardController,
+	mh *MasterController,
+	md *MasterDashboardController,
 ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", hh.Health)
@@ -37,6 +39,7 @@ func NewHTTPServer(
 	// Public API
 	mux.HandleFunc("/api/v1/salons", sh.ListSalons)
 	mux.HandleFunc("/api/v1/salons/", sh.SalonRoutes)
+	mux.HandleFunc("/api/v1/masters/", mh.MasterRoutes)
 	mux.HandleFunc("/api/v1/places/search", ph.SearchPlaces)
 	mux.HandleFunc("GET /api/v1/places/item/{id}", ph.GetPlaceByID)
 	mux.HandleFunc("GET /api/v1/search", sch.Search)
@@ -54,6 +57,7 @@ func NewHTTPServer(
 	mux.HandleFunc("/api/auth/logout", withCORS(auth.RequireAuth(jwtMgr, ac.Logout)))
 
 	mux.HandleFunc("/api/v1/dashboard/", withCORS(auth.RequireAuth(jwtMgr, dh.DashboardRoutes)))
+	mux.HandleFunc("/api/v1/master-dashboard/", withCORS(auth.RequireAuth(jwtMgr, md.MasterDashboardRoutes)))
 
 	// Admin-only example
 	// mux.HandleFunc("/api/admin/...", withCORS(auth.RequireRole(jwtMgr, adminHandler, "admin")))

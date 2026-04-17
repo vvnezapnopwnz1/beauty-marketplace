@@ -197,7 +197,7 @@ export function filterAppointmentsForStaffColumn(
   return items.filter(a => {
     if (!aptOverlapsLocalDay(a, day)) return false
     if (staffColumnId === combinedColumnId) return true
-    const sid = a.staffId?.trim() ? a.staffId : unassignedKey
+    const sid = a.salonMasterId?.trim() ? a.salonMasterId : unassignedKey
     return sid === staffColumnId
   })
 }
@@ -342,7 +342,7 @@ export function bucketAppointmentsByStaffHour(
     if (aptLocalYMD(a) !== dayYmd) continue
     const hour = aptLocalHour(a)
     if (hour < CALENDAR_HOUR_START || hour > CALENDAR_HOUR_END) continue
-    const sid = a.staffId?.trim() ? a.staffId : UNASSIGNED
+    const sid = a.salonMasterId?.trim() ? a.salonMasterId : UNASSIGNED
     const key = `${sid}_${hour}`
     const list = map.get(key) ?? []
     list.push(a)

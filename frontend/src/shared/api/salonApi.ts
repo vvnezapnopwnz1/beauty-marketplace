@@ -21,9 +21,23 @@ export interface ApiSalon {
   availableToday: boolean
   onlineBooking: boolean
   photoUrl: string | null
+  photos: string[]
+  description: string
+  phonePublic: string
+  timezone: string
+  workingHours: WorkingHourDTO[]
   badge?: string
   cardGradient: string
   emoji: string
+}
+
+export interface WorkingHourDTO {
+  dayOfWeek: number
+  opensAt: string
+  closesAt: string
+  isClosed: boolean
+  breakStartsAt?: string
+  breakEndsAt?: string
 }
 
 export interface SalonListParams {
@@ -52,6 +66,85 @@ export interface GuestBookingResponse {
 
 export async function fetchSalonById(salonId: string): Promise<ApiSalon> {
   const res = await fetch(`${API}/v1/salons/${salonId}`, { cache: 'no-store' })
+  if (!res.ok) {
+    if (res.status === 404) throw new Error('not_found')
+    throw new Error(`http_${res.status}`)
+  }
+  return res.json()
+}
+
+export async function fetchSalonByExternal(
+  source: string,
+  externalId: string,
+): Promise<{ salonId: string; onlineBooking: boolean } | null> {
+  const qs = new URLSearchParams({ source, id: externalId })
+  const res = await fetch(`${API}/v1/salons/by-external?${qs}`, { cache: 'no-store' })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`http_${res.status}`)
+  return res.json()
+}
+
+export interface SalonMasterProfilePublic {
+  id: string
+  bio: string | null
+  specializations: string[]
+  avatarUrl: string | null
+  yearsExperience: number | null
+  cachedRating: number | null
+  cachedReviewCount: number
+}
+
+export interface SalonMasterServicePublic {
+  serviceId: string
+  serviceName: string
+  durationMinutes: number
+  priceCents: number
+  priceOverrideCents: number | null
+  effectivePriceCents: number
+}
+
+export interface SalonMasterPublic {
+  id: string
+  displayName: string
+  color?: string | null
+  masterProfile?: SalonMasterProfilePublic | null
+  services: SalonMasterServicePublic[]
+}
+
+export async function fetchSalonMasters(salonId: string): Promise<SalonMasterPublic[]> {
+  const res = await fetch(`${API}/v1/salons/${salonId}/masters`, { cache: 'no-store' })
+  if (!res.ok) {
+    if (res.status === 404) throw new Error('not_found')
+    throw new Error(`http_${res.status}`)
+  }
+  return res.json()
+}
+
+export interface MasterSalonCardPublic {
+  salonMasterId: string
+  salonId: string
+  salonName: string
+  salonAddress: string
+  displayNameInSalon: string
+  services: string[]
+  joinedAt?: string | null
+}
+
+export interface MasterProfilePublic {
+  id: string
+  displayName: string
+  bio?: string | null
+  specializations: string[]
+  avatarUrl: string | null
+  yearsExperience?: number | null
+  cachedRating?: number | null
+  cachedReviewCount: number
+  headerCalendarColor?: string | null
+  salons: MasterSalonCardPublic[]
+}
+
+export async function fetchMasterProfile(masterProfileId: string): Promise<MasterProfilePublic> {
+  const res = await fetch(`${API}/v1/masters/${masterProfileId}`, { cache: 'no-store' })
   if (!res.ok) {
     if (res.status === 404) throw new Error('not_found')
     throw new Error(`http_${res.status}`)

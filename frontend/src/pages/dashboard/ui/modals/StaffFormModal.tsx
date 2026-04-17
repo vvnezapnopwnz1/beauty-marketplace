@@ -3,20 +3,28 @@ import { useEffect } from 'react'
 import {
   Alert,
   Box,
+  Button,
   Dialog,
   DialogContent,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
   Stack,
   TextField,
+  Typography,
 } from '@mui/material'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import {
   STAFF_COLOR_SWATCHES,
+  SPECIALIZATION_PRESETS,
   createDashboardStaff,
+  createMasterInvite,
   deleteDashboardStaff,
   fetchDashboardServices,
   fetchStaffDetail,
+  lookupMasterByPhone,
   updateDashboardStaffFull,
   type DashboardServiceRow,
   type StaffFormPayload,
@@ -62,7 +70,15 @@ const schema = yup.object({
   lastName: yup.string().default(''),
   role: yup.string().optional(),
   level: yup.string().optional(),
-  bio: yup.string().optional(),
+  bio: yup.string().max(300, 'Не более 300 символов').optional(),
+  specializations: yup.array().of(yup.string().required()).default(() => []),
+  yearsExperience: yup
+    .number()
+    .transform((v, orig) => (orig === '' || orig == null ? undefined : v))
+    .min(0, 'Минимум 0')
+    .max(60, 'Максимум 60')
+    .optional()
+    .nullable(),
   phone: yup.string().optional(),
   telegramUsername: yup.string().optional(),
   email: yup
@@ -100,6 +116,18 @@ export function StaffFormModal(props: {
   const { inputBaseSx, textareaSx, panelPaperSx, errorAlertSx } = useDashboardFormStyles()
   const [services, setServices] = React.useState<DashboardServiceRow[]>([])
   const [saveErr, setSaveErr] = React.useState<string | null>(null)
+  const [createMode, setCreateMode] = React.useState<'new' | 'invite'>('new')
+  const [invitePhone, setInvitePhone] = React.useState('')
+  const [inviteLookupLoading, setInviteLookupLoading] = React.useState(false)
+  const [inviteProfile, setInviteProfile] = React.useState<{
+    id: string
+    displayName: string
+    bio?: string | null
+    specializations: string[]
+  } | null>(null)
+  const [inviteNotFound, setInviteNotFound] = React.useState(false)
+  /** Per selected service: optional override price (RUB) and duration (min). */
+  const [svcOverrides, setSvcOverrides] = React.useState<Record<string, { priceRub: string; durMin: string }>>({})
 
   const {
     control,
@@ -116,6 +144,8 @@ export function StaffFormModal(props: {
       telegramNotifications: true,
       isActive: true,
       serviceIds: [],
+      specializations: [],
+      yearsExperience: undefined as number | undefined,
       color: STAFF_COLOR_SWATCHES[0],
       level: 'master',
     },
@@ -140,20 +170,37 @@ export function StaffFormModal(props: {
     void (async () => {
       setSaveErr(null)
       if (!staffId) {
+        setCreateMode('new')
+        setInvitePhone('')
+        setInviteProfile(null)
+        setInviteNotFound(false)
+        setSvcOverrides({})
         reset({
           firstName: '', lastName: '', role: '', level: 'master',
           bio: '', phone: '', telegramUsername: '', email: '', joinedAt: '',
           dashboardAccess: false, telegramNotifications: true, isActive: true,
-          serviceIds: [], color: STAFF_COLOR_SWATCHES[0],
+          serviceIds: [], specializations: [], yearsExperience: undefined,
+          color: STAFF_COLOR_SWATCHES[0],
         })
         return
       }
       try {
         const st = await fetchStaffDetail(staffId)
         const { firstName: fn, lastName: ln } = splitDisplayName(st.displayName)
+        const profBio = st.masterProfile?.bio ?? st.bio ?? ''
+        const specs = st.masterProfile?.specializations ?? []
+        const ov: Record<string, { priceRub: string; durMin: string }> = {}
+        for (const row of st.services ?? []) {
+          ov[row.serviceId] = {
+            priceRub:
+              row.priceOverrideCents != null ? String(Math.round(row.priceOverrideCents / 100)) : '',
+            durMin: row.durationOverrideMinutes != null ? String(row.durationOverrideMinutes) : '',
+          }
+        }
+        setSvcOverrides(ov)
         reset({
           firstName: fn, lastName: ln,
-          role: st.role ?? '', level: st.level ?? 'master', bio: st.bio ?? '',
+          role: st.role ?? '', level: st.level ?? 'master', bio: profBio,
           phone: st.phone ?? '', telegramUsername: st.telegramUsername ?? '',
           email: st.email ?? '',
           joinedAt: typeof st.joinedAt === 'string' ? st.joinedAt.slice(0, 10) : '',
@@ -161,15 +208,37 @@ export function StaffFormModal(props: {
           telegramNotifications: st.telegramNotifications,
           isActive: st.isActive,
           serviceIds: st.serviceIds ?? [],
+          specializations: specs,
+          yearsExperience: st.masterProfile?.yearsExperience ?? undefined,
           color: st.color ?? STAFF_COLOR_SWATCHES[0],
         })
       } catch { /* ignore */ }
     })()
   }, [open, staffId, reset])
 
+  function rubToCents(s: string): number | null {
+    const t = s.trim().replace(',', '.')
+    if (!t) return null
+    const n = Number(t)
+    if (!Number.isFinite(n) || n < 0) return null
+    return Math.round(n * 100)
+  }
+
+  function parseDur(s: string): number | null {
+    const t = s.trim()
+    if (!t) return null
+    const n = parseInt(t, 10)
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+
   async function onSubmit(v: FormVals) {
     setSaveErr(null)
     const displayName = `${v.firstName.trim()} ${(v.lastName ?? '').trim()}`.trim()
+    const serviceAssignments = v.serviceIds.map(id => ({
+      serviceId: id,
+      priceOverrideCents: rubToCents(svcOverrides[id]?.priceRub ?? ''),
+      durationOverrideMinutes: parseDur(svcOverrides[id]?.durMin ?? ''),
+    }))
     const body: StaffFormPayload = {
       displayName,
       role: v.role || null,
@@ -184,6 +253,9 @@ export function StaffFormModal(props: {
       telegramNotifications: v.telegramNotifications,
       isActive: v.isActive,
       serviceIds: v.serviceIds,
+      specializations: v.specializations ?? [],
+      yearsExperience: v.yearsExperience ?? null,
+      serviceAssignments,
     }
     try {
       if (!staffId) {
@@ -212,6 +284,42 @@ export function StaffFormModal(props: {
 
   const isEdit = Boolean(staffId)
 
+  async function onInviteLookup() {
+    setSaveErr(null)
+    setInviteProfile(null)
+    setInviteNotFound(false)
+    setInviteLookupLoading(true)
+    try {
+      const res = await lookupMasterByPhone(invitePhone)
+      if (!res.found || !res.profile) {
+        setInviteNotFound(true)
+        return
+      }
+      setInviteProfile({
+        id: res.profile.id,
+        displayName: res.profile.displayName,
+        bio: res.profile.bio,
+        specializations: res.profile.specializations ?? [],
+      })
+    } catch (e) {
+      setSaveErr(e instanceof Error ? e.message : 'Ошибка поиска')
+    } finally {
+      setInviteLookupLoading(false)
+    }
+  }
+
+  async function onInviteSend() {
+    if (!inviteProfile) return
+    setSaveErr(null)
+    try {
+      await createMasterInvite(inviteProfile.id)
+      onSaved()
+      onClose()
+    } catch (e) {
+      setSaveErr(e instanceof Error ? e.message : 'Ошибка приглашения')
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -229,7 +337,7 @@ export function StaffFormModal(props: {
 
         <PanelHeader
           icon={<StaffIcon />}
-          title={isEdit ? 'Редактировать мастера' : 'Новый мастер'}
+          title={isEdit ? 'Редактировать мастера' : 'Мастер'}
           subtitle={isEdit ? 'Изменить данные мастера' : 'Добавление в команду салона'}
           onClose={onClose}
         />
@@ -242,6 +350,61 @@ export function StaffFormModal(props: {
             </Box>
           )}
 
+          {!isEdit && (
+            <Box sx={{ px: 3, pt: 2, pb: 1 }}>
+              <RadioGroup
+                row
+                value={createMode}
+                onChange={(_, v) => {
+                  setCreateMode(v as 'new' | 'invite')
+                  setInviteProfile(null)
+                  setInviteNotFound(false)
+                }}
+              >
+                <FormControlLabel value="new" control={<Radio size="small" />} label="Новый мастер" />
+                <FormControlLabel value="invite" control={<Radio size="small" />} label="Пригласить по телефону" />
+              </RadioGroup>
+            </Box>
+          )}
+
+          {!isEdit && createMode === 'invite' && (
+            <Box sx={{ px: 3, pt: 1, pb: 2 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: d.mutedDark, mb: 1, letterSpacing: '.04em' }}>
+                Приглашение
+              </Typography>
+              <Stack spacing={1.5}>
+                <TextField
+                  label="Телефон (E.164)"
+                  placeholder="+79161234567"
+                  value={invitePhone}
+                  onChange={e => setInvitePhone(e.target.value)}
+                  sx={inputBaseSx}
+                />
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button variant="contained" disabled={inviteLookupLoading} onClick={() => void onInviteLookup()}>
+                    Найти
+                  </Button>
+                  {inviteNotFound && (
+                    <Typography sx={{ fontSize: 13, color: d.mutedDark }}>Профиль не найден</Typography>
+                  )}
+                </Stack>
+                {inviteProfile && (
+                  <Box sx={{ p: 2, borderRadius: 2, border: `1px solid ${d.border}`, bgcolor: d.card2 }}>
+                    <Typography sx={{ fontWeight: 600 }}>{inviteProfile.displayName}</Typography>
+                    {inviteProfile.bio && (
+                      <Typography sx={{ fontSize: 13, color: d.mutedDark, mt: 0.5 }}>{inviteProfile.bio}</Typography>
+                    )}
+                    <Button sx={{ mt: 1 }} variant="contained" onClick={() => void onInviteSend()}>
+                      Пригласить в салон
+                    </Button>
+                  </Box>
+                )}
+              </Stack>
+            </Box>
+          )}
+
+          {(!isEdit && createMode === 'invite') ? null : (
+            <>
           {/* СЕКЦИЯ 1: Внешний вид */}
           <FormSection num={1} name="Внешний вид">
             <Box
@@ -365,15 +528,50 @@ export function StaffFormModal(props: {
                 name="bio"
                 control={control}
                 render={({ field }) => (
-                  <FormField label="О мастере" hint="Видно клиентам на странице салона">
+                  <FormField label="О мастере (профиль)" hint="До 300 символов; в публичном профиле мастера">
                     <TextField
                       {...field}
                       value={field.value ?? ''}
                       fullWidth
                       multiline
                       minRows={2}
-                      placeholder="Опыт, специализация, подход…"
+                      inputProps={{ maxLength: 300 }}
+                      placeholder="Опыт, подход…"
                       sx={textareaSx}
+                    />
+                  </FormField>
+                )}
+              />
+              <Controller
+                name="specializations"
+                control={control}
+                render={({ field }) => (
+                  <FormField label="Специализации (профиль)">
+                    <ChipMultiSelect
+                      items={SPECIALIZATION_PRESETS.map(p => ({ id: p.value, label: p.label }))}
+                      selected={field.value}
+                      onChange={field.onChange}
+                      getLabel={item => String((item as { label: string }).label)}
+                      getId={item => item.id}
+                    />
+                  </FormField>
+                )}
+              />
+              <Controller
+                name="yearsExperience"
+                control={control}
+                render={({ field }) => (
+                  <FormField label="Стаж (лет)" hint="Необязательно">
+                    <TextField
+                      type="number"
+                      value={field.value ?? ''}
+                      onChange={e => {
+                        const v = e.target.value
+                        field.onChange(v === '' ? undefined : Number(v))
+                      }}
+                      fullWidth
+                      inputProps={{ min: 0, max: 60 }}
+                      sx={inputBaseSx}
                     />
                   </FormField>
                 )}
@@ -460,13 +658,78 @@ export function StaffFormModal(props: {
               name="serviceIds"
               control={control}
               render={({ field }) => (
-                <ChipMultiSelect
-                  items={services}
-                  selected={field.value}
-                  onChange={field.onChange}
-                  getLabel={item => (item as DashboardServiceRow).name}
-                  getId={item => item.id}
-                />
+                <>
+                  <ChipMultiSelect
+                    items={services}
+                    selected={field.value}
+                    onChange={ids => {
+                      field.onChange(ids)
+                      setSvcOverrides(prev => {
+                        const next = { ...prev }
+                        for (const id of ids) {
+                          if (!next[id]) next[id] = { priceRub: '', durMin: '' }
+                        }
+                        for (const k of Object.keys(next)) {
+                          if (!ids.includes(k)) delete next[k]
+                        }
+                        return next
+                      })
+                    }}
+                    getLabel={item => (item as DashboardServiceRow).name}
+                    getId={item => item.id}
+                  />
+                  <Stack spacing={1} sx={{ mt: 2 }}>
+                    {field.value.map((sid: string) => {
+                      const svc = services.find(s => s.id === sid)
+                      const lab = svc?.name ?? sid
+                      const basePrice =
+                        svc?.priceCents != null ? `${(svc.priceCents / 100).toLocaleString('ru-RU')} ₽` : '—'
+                      const baseDur = svc ? `${svc.durationMinutes} мин` : '—'
+                      const ov = svcOverrides[sid] ?? { priceRub: '', durMin: '' }
+                      return (
+                        <Box
+                          key={sid}
+                          sx={{
+                            display: 'grid',
+                            gridTemplateColumns: { xs: '1fr', sm: '1fr 120px 120px' },
+                            gap: 1,
+                            alignItems: 'center',
+                            p: 1.5,
+                            borderRadius: 1,
+                            border: `1px solid ${d.borderSubtle}`,
+                          }}
+                        >
+                          <Box>
+                            <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{lab}</Typography>
+                            <Typography sx={{ fontSize: 11, color: d.mutedDark }}>
+                              Салон: {basePrice} · {baseDur}
+                            </Typography>
+                          </Box>
+                          <TextField
+                            size="small"
+                            label="Цена, ₽"
+                            placeholder="по салону"
+                            value={ov.priceRub}
+                            onChange={e =>
+                              setSvcOverrides(p => ({ ...p, [sid]: { ...ov, priceRub: e.target.value } }))
+                            }
+                            sx={inputBaseSx}
+                          />
+                          <TextField
+                            size="small"
+                            label="Мин"
+                            placeholder="по салону"
+                            value={ov.durMin}
+                            onChange={e =>
+                              setSvcOverrides(p => ({ ...p, [sid]: { ...ov, durMin: e.target.value } }))
+                            }
+                            sx={inputBaseSx}
+                          />
+                        </Box>
+                      )
+                    })}
+                  </Stack>
+                </>
               )}
             />
           </FormSection>
@@ -512,11 +775,13 @@ export function StaffFormModal(props: {
               )}
             />
           </FormSection>
+            </>
+          )}
 
         </DialogContent>
 
         <PanelFooter
-          note="Поля со * обязательны"
+          note={!isEdit && createMode === 'invite' ? 'Найдите мастера по телефону или выберите «Новый мастер»' : 'Поля со * обязательны'}
           dangerAction={
             isEdit ? (
               <PanelBtn variant="danger" onClick={() => void handleDelete()}>
@@ -525,10 +790,14 @@ export function StaffFormModal(props: {
             ) : undefined
           }
           actions={
+            !isEdit && createMode === 'invite' ? (
+              <PanelBtn variant="ghost" onClick={onClose}>Закрыть</PanelBtn>
+            ) : (
             <>
               <PanelBtn variant="ghost" onClick={onClose}>Отмена</PanelBtn>
               <PanelBtn variant="primary" type="submit">Сохранить</PanelBtn>
             </>
+            )
           }
         />
 

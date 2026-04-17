@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — варианты палитр</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: #EDEAE6; padding: 40px 24px; }
+  h1 { text-align: center; font-size: 17px; font-weight: 600; color: #2A2420; margin-bottom: 8px; letter-spacing: -.02em; }
+  .subtitle { text-align: center; font-size: 12px; color: #7A6B60; margin-bottom: 36px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1500px; margin: 0 auto; }
+
+  .card { border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.06); }
+  .preview { padding: 18px; }
+  .meta { padding: 12px 16px 14px; border-top: 1px solid rgba(0,0,0,.07); }
+  .name { font-size: 13px; font-weight: 600; }
+  .desc { font-size: 11px; margin-top: 3px; line-height: 1.45; }
+  .swatches { display: flex; gap: 5px; margin-top: 10px; }
+  .sw { width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(0,0,0,.1); position: relative; }
+  .sw span { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 9px; white-space: nowrap; color: #7A6B60; }
+  .swatches-wrap { display: flex; gap: 5px; margin-top: 10px; padding-bottom: 20px; }
+
+  /* Mini form preview */
+  .panel { border-radius: 12px; padding: 14px; border: 1px solid; }
+  .sec-label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+  .sec-num { width: 15px; height: 15px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; flex-shrink: 0; }
+  .field-label { font-size: 10px; font-weight: 500; margin-bottom: 4px; }
+  .input { width: 100%; border-radius: 8px; border: 1px solid; padding: 6px 9px; font-size: 11px; font-family: inherit; outline: none; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .row > * { flex: 1; }
+  .mb8 { margin-bottom: 8px; }
+  .btn { border-radius: 8px; padding: 7px 0; font-size: 11px; font-weight: 700; border: none; cursor: pointer; width: 100%; margin-top: 4px; letter-spacing: .01em; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid; }
+  .toggle-title { font-size: 11px; font-weight: 600; }
+  .toggle-sub { font-size: 10px; margin-top: 1px; }
+  .toggle-track { width: 28px; height: 16px; border-radius: 8px; position: relative; flex-shrink: 0; }
+  .toggle-thumb { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 6px; background: #fff; }
+
+  .hex-tag { font-size: 9px; font-family: monospace; border-radius: 4px; padding: 1px 5px; }
+</style>
+</head>
+<body>
+
+<h1>Варианты палитр для Dashboard</h1>
+<p class="subtitle">6 вариантов — от светлых до средних тонов. Текущая (Warm Mocha Dark) в конце для сравнения.</p>
+
+<div class="grid">
+
+  <!-- ──────────── 1. CREAM STUDIO ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#FEFCFA;">
+      <div class="panel" style="background:#F5F1EC; border-color:#E3DDD5;">
+        <div class="sec-label" style="color:#9A8B7E;">
+          <span class="sec-num" style="background:rgba(200,120,80,.12); color:#C87850;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#6A5B52;">Имя</div>
+            <input class="input" value="Анна" style="background:#FEFCFA; border-color:#D8D0C6; color:#2A2420;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#6A5B52;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#FEFCFA; border-color:#D8D0C6; color:#2A2420;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#6A5B52;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#FEFCFA; border-color:#D8D0C6; color:#2A2420;" readonly>
+        </div>
+        <div style="border-top:1px solid #E3DDD5; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#E3DDD5;">
+            <div>
+              <div class="toggle-title" style="color:#2A2420;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#9A8B7E;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#C87850;">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn" style="background:#C87850; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#FEFCFA;">
+      <div class="name" style="color:#2A2420;">Cream Studio ☁️</div>
+      <div class="desc" style="color:#7A6B62;">Молочно-белый с тёплыми акцентами. Максимально чистый, Editorial-стиль. Популярен в luxury SaaS 2025–26.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#FEFCFA;" title="#FEFCFA — bg"></div>
+        <div class="sw" style="background:#F5F1EC;" title="surface"></div>
+        <div class="sw" style="background:#E3DDD5;" title="border"></div>
+        <div class="sw" style="background:#2A2420;" title="text"></div>
+        <div class="sw" style="background:#C87850;" title="accent"></div>
+        <div class="sw" style="background:#9A8B7E;" title="muted"></div>
+      </div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:-10px;">
+        <span class="hex-tag" style="background:#F5F1EC; color:#6A5B52;">#FEFCFA</span>
+        <span class="hex-tag" style="background:#F5F1EC; color:#6A5B52;">#F5F1EC</span>
+        <span class="hex-tag" style="background:#E3DDD5; color:#6A5B52;">#E3DDD5</span>
+        <span class="hex-tag" style="background:#2A2420; color:#F5F1EC;">#2A2420</span>
+        <span class="hex-tag" style="background:#C87850; color:#fff;">#C87850</span>
+        <span class="hex-tag" style="background:#F0EBE3; color:#6A5B52;">#9A8B7E</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 2. BLUSH LINEN ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#FBF8F9;">
+      <div class="panel" style="background:#F4EDF1; border-color:#E0D3DA;">
+        <div class="sec-label" style="color:#937882;">
+          <span class="sec-num" style="background:rgba(196,112,138,.13); color:#C4708A;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#6A5060;">Имя</div>
+            <input class="input" value="Анна" style="background:#FBF8F9; border-color:#D9CDD6; color:#281E24;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#6A5060;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#FBF8F9; border-color:#D9CDD6; color:#281E24;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#6A5060;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#FBF8F9; border-color:#D9CDD6; color:#281E24;" readonly>
+        </div>
+        <div style="border-top:1px solid #E0D3DA; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#E0D3DA;">
+            <div>
+              <div class="toggle-title" style="color:#281E24;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#937882;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#C4708A;">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn" style="background:#C4708A; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#FBF8F9;">
+      <div class="name" style="color:#281E24;">Blush Linen 🌸</div>
+      <div class="desc" style="color:#7A6070;">Пудровый розовый нейтраль. Beauty-направленный без пошлости. Очень модно для beauty & wellness SaaS.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#FBF8F9;" title="bg"></div>
+        <div class="sw" style="background:#F4EDF1;" title="surface"></div>
+        <div class="sw" style="background:#E0D3DA;" title="border"></div>
+        <div class="sw" style="background:#281E24;" title="text"></div>
+        <div class="sw" style="background:#C4708A;" title="accent"></div>
+        <div class="sw" style="background:#937882;" title="muted"></div>
+      </div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:-10px;">
+        <span class="hex-tag" style="background:#F4EDF1; color:#6A5060;">#FBF8F9</span>
+        <span class="hex-tag" style="background:#F4EDF1; color:#6A5060;">#F4EDF1</span>
+        <span class="hex-tag" style="background:#E0D3DA; color:#6A5060;">#E0D3DA</span>
+        <span class="hex-tag" style="background:#281E24; color:#F4EDF1;">#281E24</span>
+        <span class="hex-tag" style="background:#C4708A; color:#fff;">#C4708A</span>
+        <span class="hex-tag" style="background:#F4EDF1; color:#6A5060;">#937882</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 3. SAND DUNE ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#FAF7F2;">
+      <div class="panel" style="background:#F1E9DE; border-color:#DDD0BF;">
+        <div class="sec-label" style="color:#8A7860;">
+          <span class="sec-num" style="background:rgba(185,120,48,.12); color:#B97830;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#6A5840;">Имя</div>
+            <input class="input" value="Анна" style="background:#FAF7F2; border-color:#D5C8B5; color:#2B2218;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#6A5840;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#FAF7F2; border-color:#D5C8B5; color:#2B2218;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#6A5840;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#FAF7F2; border-color:#D5C8B5; color:#2B2218;" readonly>
+        </div>
+        <div style="border-top:1px solid #DDD0BF; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#DDD0BF;">
+            <div>
+              <div class="toggle-title" style="color:#2B2218;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#8A7860;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#B97830;">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn" style="background:#B97830; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#FAF7F2;">
+      <div class="name" style="color:#2B2218;">Sand Dune 🏜️</div>
+      <div class="desc" style="color:#7A6B50;">Тёплый песочно-янтарный. Земляной luxury — для spa, массаж, уход. Ощущение натуральности и premium.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#FAF7F2;" title="bg"></div>
+        <div class="sw" style="background:#F1E9DE;" title="surface"></div>
+        <div class="sw" style="background:#DDD0BF;" title="border"></div>
+        <div class="sw" style="background:#2B2218;" title="text"></div>
+        <div class="sw" style="background:#B97830;" title="accent"></div>
+        <div class="sw" style="background:#8A7860;" title="muted"></div>
+      </div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:-10px;">
+        <span class="hex-tag" style="background:#F1E9DE; color:#6A5840;">#FAF7F2</span>
+        <span class="hex-tag" style="background:#F1E9DE; color:#6A5840;">#F1E9DE</span>
+        <span class="hex-tag" style="background:#DDD0BF; color:#6A5840;">#DDD0BF</span>
+        <span class="hex-tag" style="background:#2B2218; color:#F1E9DE;">#2B2218</span>
+        <span class="hex-tag" style="background:#B97830; color:#fff;">#B97830</span>
+        <span class="hex-tag" style="background:#F1E9DE; color:#6A5840;">#8A7860</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 4. FOG MAUVE ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#F9F7FB;">
+      <div class="panel" style="background:#F1EDF7; border-color:#DDD5EC;">
+        <div class="sec-label" style="color:#857898;">
+          <span class="sec-num" style="background:rgba(130,90,185,.12); color:#825AB9;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#5A4E72;">Имя</div>
+            <input class="input" value="Анна" style="background:#F9F7FB; border-color:#D0C8E2; color:#25202E;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#5A4E72;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#F9F7FB; border-color:#D0C8E2; color:#25202E;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#5A4E72;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#F9F7FB; border-color:#D0C8E2; color:#25202E;" readonly>
+        </div>
+        <div style="border-top:1px solid #DDD5EC; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#DDD5EC;">
+            <div>
+              <div class="toggle-title" style="color:#25202E;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#857898;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#825AB9;">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn" style="background:#825AB9; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#F9F7FB;">
+      <div class="name" style="color:#25202E;">Fog Mauve 💜</div>
+      <div class="desc" style="color:#6A6080;">Туманный лавандово-маво. Самый неочевидный выбор, поэтому самый запоминающийся. Премиум без банальности.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#F9F7FB;" title="bg"></div>
+        <div class="sw" style="background:#F1EDF7;" title="surface"></div>
+        <div class="sw" style="background:#DDD5EC;" title="border"></div>
+        <div class="sw" style="background:#25202E;" title="text"></div>
+        <div class="sw" style="background:#825AB9;" title="accent"></div>
+        <div class="sw" style="background:#857898;" title="muted"></div>
+      </div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:-10px;">
+        <span class="hex-tag" style="background:#F1EDF7; color:#5A4E72;">#F9F7FB</span>
+        <span class="hex-tag" style="background:#F1EDF7; color:#5A4E72;">#F1EDF7</span>
+        <span class="hex-tag" style="background:#DDD5EC; color:#5A4E72;">#DDD5EC</span>
+        <span class="hex-tag" style="background:#25202E; color:#F1EDF7;">#25202E</span>
+        <span class="hex-tag" style="background:#825AB9; color:#fff;">#825AB9</span>
+        <span class="hex-tag" style="background:#F1EDF7; color:#5A4E72;">#857898</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 5. WARM CONCRETE ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#F5F2ED;">
+      <div class="panel" style="background:#EAE4DC; border-color:#D4CCBF;">
+        <div class="sec-label" style="color:#857870;">
+          <span class="sec-num" style="background:rgba(185,110,68,.12); color:#B96E44;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#6A5A50;">Имя</div>
+            <input class="input" value="Анна" style="background:#F5F2ED; border-color:#CFC7BC; color:#26211C;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#6A5A50;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#F5F2ED; border-color:#CFC7BC; color:#26211C;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#6A5A50;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#F5F2ED; border-color:#CFC7BC; color:#26211C;" readonly>
+        </div>
+        <div style="border-top:1px solid #D4CCBF; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#D4CCBF;">
+            <div>
+              <div class="toggle-title" style="color:#26211C;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#857870;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#B96E44;">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn" style="background:#B96E44; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#F5F2ED;">
+      <div class="name" style="color:#26211C;">Warm Concrete 🪨</div>
+      <div class="desc" style="color:#6A5A50;">Тёплый серо-бежевый средний тон. Не белый и не тёмный. Нейтральный профессионализм с характером.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#F5F2ED;" title="bg"></div>
+        <div class="sw" style="background:#EAE4DC;" title="surface"></div>
+        <div class="sw" style="background:#D4CCBF;" title="border"></div>
+        <div class="sw" style="background:#26211C;" title="text"></div>
+        <div class="sw" style="background:#B96E44;" title="accent"></div>
+        <div class="sw" style="background:#857870;" title="muted"></div>
+      </div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:-10px;">
+        <span class="hex-tag" style="background:#EAE4DC; color:#6A5A50;">#F5F2ED</span>
+        <span class="hex-tag" style="background:#EAE4DC; color:#6A5A50;">#EAE4DC</span>
+        <span class="hex-tag" style="background:#D4CCBF; color:#6A5A50;">#D4CCBF</span>
+        <span class="hex-tag" style="background:#26211C; color:#EAE4DC;">#26211C</span>
+        <span class="hex-tag" style="background:#B96E44; color:#fff;">#B96E44</span>
+        <span class="hex-tag" style="background:#EAE4DC; color:#6A5A50;">#857870</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 6. STEEL ROSE (medium-dark, hybrid) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#2E2630;">
+      <div class="panel" style="background:#382F3A; border-color:#504458;">
+        <div class="sec-label" style="color:#9A8BA0;">
+          <span class="sec-num" style="background:rgba(220,140,160,.12); color:#DC8CA0;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#B0A0B8;">Имя</div>
+            <input class="input" value="Анна" style="background:#2E2630; border-color:#4A3E52; color:#EDE8F0;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#B0A0B8;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#2E2630; border-color:#4A3E52; color:#EDE8F0;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#B0A0B8;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#2E2630; border-color:#4A3E52; color:#EDE8F0;" readonly>
+        </div>
+        <div style="border-top:1px solid #504458; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#504458;">
+            <div>
+              <div class="toggle-title" style="color:#EDE8F0;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#9A8BA0;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#DC8CA0;">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn" style="background:#DC8CA0; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#2E2630;">
+      <div class="name" style="color:#EDE8F0;">Steel Rose 🌃</div>
+      <div class="desc" style="color:#9A8BA0;">Тёмный сливово-пурпурный — альтернатива тёмному коричневому. Glamour-атмосфера с розовым акцентом.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#2E2630;" title="bg"></div>
+        <div class="sw" style="background:#382F3A;" title="surface"></div>
+        <div class="sw" style="background:#504458;" title="border"></div>
+        <div class="sw" style="background:#EDE8F0;" title="text"></div>
+        <div class="sw" style="background:#DC8CA0;" title="accent"></div>
+        <div class="sw" style="background:#9A8BA0;" title="muted"></div>
+      </div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:-10px;">
+        <span class="hex-tag" style="background:#382F3A; color:#B0A0B8;">#2E2630</span>
+        <span class="hex-tag" style="background:#382F3A; color:#B0A0B8;">#382F3A</span>
+        <span class="hex-tag" style="background:#504458; color:#B0A0B8;">#504458</span>
+        <span class="hex-tag" style="background:#382F3A; color:#EDE8F0;">#EDE8F0</span>
+        <span class="hex-tag" style="background:#DC8CA0; color:#fff;">#DC8CA0</span>
+        <span class="hex-tag" style="background:#382F3A; color:#9A8BA0;">#9A8BA0</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Comparison note -->
+<div style="max-width:1500px; margin:28px auto 0; padding:16px 20px; background:rgba(255,255,255,.5); border-radius:12px; border:1px solid rgba(0,0,0,.08);">
+  <div style="font-size:12px; font-weight:600; color:#2A2420; margin-bottom:8px;">Рекомендации по выбору</div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; font-size:11px; color:#6A5A50; line-height:1.5;">
+    <div><b style="color:#2A2420;">Cream Studio</b> — если хочешь максимальную чистоту и профессионализм без акцента на пол</div>
+    <div><b style="color:#2A2420;">Blush Linen</b> — если аудитория преимущественно женщины, beauty-first бренд</div>
+    <div><b style="color:#2A2420;">Sand Dune</b> — если акцент на SPA/wellness/натуральный уход</div>
+    <div><b style="color:#2A2420;">Fog Mauve</b> — если хочешь выделиться и запомниться (нестандартно)</div>
+    <div><b style="color:#2A2420;">Warm Concrete</b> — если хочешь нейтральный средний тон без экстремального светлого/тёмного</div>
+    <div><b style="color:#2A2420;">Steel Rose</b> — если тёмная тема нужна, но без коричневого (пурпурный glamour)</div>
+  </div>
+</div>
+
+</body>
+</html>

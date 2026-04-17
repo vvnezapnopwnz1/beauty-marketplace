@@ -47,22 +47,36 @@ type ServiceDTO struct {
 	PriceCents      int       `json:"priceCents"`
 }
 
+type WorkingHourDTO struct {
+	DayOfWeek     int     `json:"dayOfWeek"`
+	OpensAt       string  `json:"opensAt"`
+	ClosesAt      string  `json:"closesAt"`
+	IsClosed      bool    `json:"isClosed"`
+	BreakStartsAt *string `json:"breakStartsAt,omitempty"`
+	BreakEndsAt   *string `json:"breakEndsAt,omitempty"`
+}
+
 // SalonDTO represents a salon as expected by the frontend.
 type SalonDTO struct {
-	ID             uuid.UUID    `json:"id"`
-	Name           string       `json:"name"`
-	Category       string       `json:"category"`
-	BusinessType   string       `json:"businessType"`
-	Rating         float64      `json:"rating"`
-	ReviewCount    int          `json:"reviewCount"`
-	DistanceKm     float64      `json:"distanceKm"`
-	Address        string       `json:"address"`
-	District       string       `json:"district"`
-	Services       []ServiceDTO `json:"services"`
-	AvailableToday bool         `json:"availableToday"`
-	OnlineBooking  bool         `json:"onlineBooking"`
-	PhotoURL       *string      `json:"photoUrl"`
-	Badge          *string      `json:"badge,omitempty"`
-	CardGradient   string       `json:"cardGradient"`
-	Emoji          string       `json:"emoji"`
+	ID             uuid.UUID        `json:"id"`
+	Name           string           `json:"name"`
+	Category       string           `json:"category"`
+	BusinessType   string           `json:"businessType"`
+	Rating         float64          `json:"rating"`
+	ReviewCount    int              `json:"reviewCount"`
+	DistanceKm     float64          `json:"distanceKm"`
+	Address        string           `json:"address"`
+	District       string           `json:"district"`
+	Services       []ServiceDTO     `json:"services"`
+	AvailableToday bool             `json:"availableToday"`
+	OnlineBooking  bool             `json:"onlineBooking"`
+	PhotoURL       *string          `json:"photoUrl"`
+	Photos         []string         `json:"photos"`
+	Description    string           `json:"description"`
+	PhonePublic    string           `json:"phonePublic"`
+	Timezone       string           `json:"timezone"`
+	WorkingHours   []WorkingHourDTO `json:"workingHours"`
+	Badge          *string          `json:"badge,omitempty"`
+	CardGradient   string           `json:"cardGradient"`
+	Emoji          string           `json:"emoji"`
 }

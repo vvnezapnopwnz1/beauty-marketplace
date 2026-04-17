@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — палитры #2 (тренды beauty 2026)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: #E8E5E0; padding: 40px 24px; }
+  h1 { text-align: center; font-size: 17px; font-weight: 600; color: #2A2420; margin-bottom: 8px; letter-spacing: -.02em; }
+  .subtitle { text-align: center; font-size: 12px; color: #6A5A50; margin-bottom: 36px; max-width: 640px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+  .trends-tag { display: inline-block; font-size: 10px; font-weight: 600; background: #2A2420; color: #F0EBE3; padding: 2px 8px; border-radius: 10px; letter-spacing: .05em; margin-top: 6px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1500px; margin: 0 auto; }
+
+  .card { border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.1), 0 1px 4px rgba(0,0,0,.06); }
+  .preview { padding: 18px; }
+  .meta { padding: 12px 16px 14px; border-top: 1px solid rgba(0,0,0,.07); }
+  .name { font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .tag-mode { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; letter-spacing: .05em; }
+  .desc { font-size: 11px; margin-top: 4px; line-height: 1.45; }
+  .swatches-wrap { display: flex; gap: 5px; margin-top: 10px; margin-bottom: 10px; }
+  .sw { width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(0,0,0,.12); }
+  .hex-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .hex-tag { font-size: 9px; font-family: ui-monospace, monospace; border-radius: 4px; padding: 1px 5px; }
+
+  .panel { border-radius: 12px; padding: 14px; border: 1px solid; }
+  .sec-label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+  .sec-num { width: 15px; height: 15px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+  .field-label { font-size: 10px; font-weight: 500; margin-bottom: 4px; }
+  .input { width: 100%; border-radius: 8px; border: 1px solid; padding: 6px 9px; font-size: 11px; font-family: inherit; outline: none; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .row > * { flex: 1; }
+  .mb8 { margin-bottom: 8px; }
+  .btn { border-radius: 8px; padding: 7px 0; font-size: 11px; font-weight: 700; border: none; cursor: pointer; width: 100%; margin-top: 4px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid; }
+  .toggle-title { font-size: 11px; font-weight: 600; }
+  .toggle-sub { font-size: 10px; margin-top: 1px; }
+  .toggle-track { width: 28px; height: 16px; border-radius: 8px; position: relative; flex-shrink: 0; }
+  .toggle-thumb { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 6px; background: #fff; }
+</style>
+</head>
+<body>
+
+<h1>Палитры #2 — тренды beauty-индустрии 2026</h1>
+<p class="subtitle">8 вариантов, чередуются тёмные и светлые. Основаны на трендах: butter yellow, strawberry latte, cherry red, obsidian gold, quiet luxury, sunset peach, royal violet.<br><span class="trends-tag">2026 TRENDS</span></p>
+
+<div class="grid">
+
+  <!-- ──────────── 1. MIDNIGHT BORDEAUX (DARK) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#1E1418;">
+      <div class="panel" style="background:#2A1C22; border-color:#3E2B33;">
+        <div class="sec-label" style="color:#8F6E78;">
+          <span class="sec-num" style="background:rgba(200,74,95,.15); color:#C84A5F;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#A78894;">Имя</div>
+            <input class="input" value="Анна" style="background:#1E1418; border-color:#4A333C; color:#F2E8EC;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#A78894;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#1E1418; border-color:#4A333C; color:#F2E8EC;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#A78894;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#1E1418; border-color:#4A333C; color:#F2E8EC;" readonly>
+        </div>
+        <div style="border-top:1px solid #3E2B33; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#3E2B33;">
+            <div>
+              <div class="toggle-title" style="color:#F2E8EC;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#8F6E78;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#C84A5F;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#C84A5F; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#1E1418;">
+      <div class="name" style="color:#F2E8EC;">
+        <span>Midnight Bordeaux 🍷</span>
+        <span class="tag-mode" style="background:#3E2B33; color:#C84A5F;">DARK</span>
+      </div>
+      <div class="desc" style="color:#8F6E78;">Глубокий винный. Cherry-red вернулся как главный тренд beauty-2026. Драматично и premium.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#1E1418;"></div><div class="sw" style="background:#2A1C22;"></div><div class="sw" style="background:#3E2B33;"></div><div class="sw" style="background:#F2E8EC;"></div><div class="sw" style="background:#C84A5F;"></div><div class="sw" style="background:#8F6E78;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#2A1C22; color:#A78894;">#1E1418</span>
+        <span class="hex-tag" style="background:#2A1C22; color:#A78894;">#2A1C22</span>
+        <span class="hex-tag" style="background:#3E2B33; color:#A78894;">#3E2B33</span>
+        <span class="hex-tag" style="background:#2A1C22; color:#F2E8EC;">#F2E8EC</span>
+        <span class="hex-tag" style="background:#C84A5F; color:#fff;">#C84A5F</span>
+        <span class="hex-tag" style="background:#2A1C22; color:#8F6E78;">#8F6E78</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 2. BUTTER CREAM (LIGHT) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#FDF9EE;">
+      <div class="panel" style="background:#F6EFD8; border-color:#E5DAB8;">
+        <div class="sec-label" style="color:#8F7F54;">
+          <span class="sec-num" style="background:rgba(212,169,74,.16); color:#B08A28;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#6A5B30;">Имя</div>
+            <input class="input" value="Анна" style="background:#FDF9EE; border-color:#DED0A0; color:#2A2418;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#6A5B30;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#FDF9EE; border-color:#DED0A0; color:#2A2418;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#6A5B30;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#FDF9EE; border-color:#DED0A0; color:#2A2418;" readonly>
+        </div>
+        <div style="border-top:1px solid #E5DAB8; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#E5DAB8;">
+            <div>
+              <div class="toggle-title" style="color:#2A2418;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#8F7F54;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#B08A28;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#B08A28; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#FDF9EE;">
+      <div class="name" style="color:#2A2418;">
+        <span>Butter Cream 🧈</span>
+        <span class="tag-mode" style="background:#E5DAB8; color:#8F7F54;">LIGHT</span>
+      </div>
+      <div class="desc" style="color:#7A6B40;">Сливочно-жёлтый. Butter yellow — главный "it-колор" бьюти 2026, после успеха Chanel и Bottega.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#FDF9EE;"></div><div class="sw" style="background:#F6EFD8;"></div><div class="sw" style="background:#E5DAB8;"></div><div class="sw" style="background:#2A2418;"></div><div class="sw" style="background:#B08A28;"></div><div class="sw" style="background:#8F7F54;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#F6EFD8; color:#6A5B30;">#FDF9EE</span>
+        <span class="hex-tag" style="background:#F6EFD8; color:#6A5B30;">#F6EFD8</span>
+        <span class="hex-tag" style="background:#E5DAB8; color:#6A5B30;">#E5DAB8</span>
+        <span class="hex-tag" style="background:#2A2418; color:#F6EFD8;">#2A2418</span>
+        <span class="hex-tag" style="background:#B08A28; color:#fff;">#B08A28</span>
+        <span class="hex-tag" style="background:#F6EFD8; color:#8F7F54;">#8F7F54</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 3. DEEP EMERALD (DARK) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#0F1E17;">
+      <div class="panel" style="background:#182C23; border-color:#2A3F34;">
+        <div class="sec-label" style="color:#7A9085;">
+          <span class="sec-num" style="background:rgba(95,168,122,.15); color:#5FA87A;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#95ADA2;">Имя</div>
+            <input class="input" value="Анна" style="background:#0F1E17; border-color:#32473C; color:#E8F0EA;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#95ADA2;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#0F1E17; border-color:#32473C; color:#E8F0EA;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#95ADA2;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#0F1E17; border-color:#32473C; color:#E8F0EA;" readonly>
+        </div>
+        <div style="border-top:1px solid #2A3F34; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#2A3F34;">
+            <div>
+              <div class="toggle-title" style="color:#E8F0EA;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#7A9085;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#5FA87A;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#5FA87A; color:#0F1E17; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#0F1E17;">
+      <div class="name" style="color:#E8F0EA;">
+        <span>Deep Emerald 🌲</span>
+        <span class="tag-mode" style="background:#2A3F34; color:#5FA87A;">DARK</span>
+      </div>
+      <div class="desc" style="color:#7A9085;">Глубокий изумрудный — wellness-premium. Не пыльный sage, а насыщенный, уверенный и дорогой.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#0F1E17;"></div><div class="sw" style="background:#182C23;"></div><div class="sw" style="background:#2A3F34;"></div><div class="sw" style="background:#E8F0EA;"></div><div class="sw" style="background:#5FA87A;"></div><div class="sw" style="background:#7A9085;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#182C23; color:#95ADA2;">#0F1E17</span>
+        <span class="hex-tag" style="background:#182C23; color:#95ADA2;">#182C23</span>
+        <span class="hex-tag" style="background:#2A3F34; color:#95ADA2;">#2A3F34</span>
+        <span class="hex-tag" style="background:#182C23; color:#E8F0EA;">#E8F0EA</span>
+        <span class="hex-tag" style="background:#5FA87A; color:#0F1E17;">#5FA87A</span>
+        <span class="hex-tag" style="background:#182C23; color:#7A9085;">#7A9085</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 4. PEACH SORBET (LIGHT) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#FDF5F0;">
+      <div class="panel" style="background:#F8E8DE; border-color:#ECD5C5;">
+        <div class="sec-label" style="color:#9A7868;">
+          <span class="sec-num" style="background:rgba(230,136,96,.15); color:#E68860;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#6E5040;">Имя</div>
+            <input class="input" value="Анна" style="background:#FDF5F0; border-color:#E2C7B5; color:#2B1F18;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#6E5040;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#FDF5F0; border-color:#E2C7B5; color:#2B1F18;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#6E5040;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#FDF5F0; border-color:#E2C7B5; color:#2B1F18;" readonly>
+        </div>
+        <div style="border-top:1px solid #ECD5C5; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#ECD5C5;">
+            <div>
+              <div class="toggle-title" style="color:#2B1F18;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#9A7868;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#E68860;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#E68860; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#FDF5F0;">
+      <div class="name" style="color:#2B1F18;">
+        <span>Peach Sorbet 🍑</span>
+        <span class="tag-mode" style="background:#ECD5C5; color:#9A7868;">LIGHT</span>
+      </div>
+      <div class="desc" style="color:#7E5E48;">Персиковый закат. Sunset peach — мягкий, женственный, но не розовый. Тренд 2026 в makeup и packaging.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#FDF5F0;"></div><div class="sw" style="background:#F8E8DE;"></div><div class="sw" style="background:#ECD5C5;"></div><div class="sw" style="background:#2B1F18;"></div><div class="sw" style="background:#E68860;"></div><div class="sw" style="background:#9A7868;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#F8E8DE; color:#6E5040;">#FDF5F0</span>
+        <span class="hex-tag" style="background:#F8E8DE; color:#6E5040;">#F8E8DE</span>
+        <span class="hex-tag" style="background:#ECD5C5; color:#6E5040;">#ECD5C5</span>
+        <span class="hex-tag" style="background:#2B1F18; color:#F8E8DE;">#2B1F18</span>
+        <span class="hex-tag" style="background:#E68860; color:#fff;">#E68860</span>
+        <span class="hex-tag" style="background:#F8E8DE; color:#9A7868;">#9A7868</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 5. OBSIDIAN GOLD (DARK) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#0D0D0D;">
+      <div class="panel" style="background:#1A1A1A; border-color:#2E2A24;">
+        <div class="sec-label" style="color:#7A7468;">
+          <span class="sec-num" style="background:rgba(212,175,107,.15); color:#D4AF6B;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#9A9284;">Имя</div>
+            <input class="input" value="Анна" style="background:#0D0D0D; border-color:#36322C; color:#F0EADC;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#9A9284;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#0D0D0D; border-color:#36322C; color:#F0EADC;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#9A9284;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#0D0D0D; border-color:#36322C; color:#F0EADC;" readonly>
+        </div>
+        <div style="border-top:1px solid #2E2A24; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#2E2A24;">
+            <div>
+              <div class="toggle-title" style="color:#F0EADC;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#7A7468;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#D4AF6B;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#D4AF6B; color:#0D0D0D; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#0D0D0D;">
+      <div class="name" style="color:#F0EADC;">
+        <span>Obsidian Gold ⚫</span>
+        <span class="tag-mode" style="background:#2E2A24; color:#D4AF6B;">DARK</span>
+      </div>
+      <div class="desc" style="color:#7A7468;">Чёрный с золотом. Максимальный luxury — Dior, Saint Laurent codes. Для премиум-сегмента, beauty-editorial.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#0D0D0D;"></div><div class="sw" style="background:#1A1A1A;"></div><div class="sw" style="background:#2E2A24;"></div><div class="sw" style="background:#F0EADC;"></div><div class="sw" style="background:#D4AF6B;"></div><div class="sw" style="background:#7A7468;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#1A1A1A; color:#9A9284;">#0D0D0D</span>
+        <span class="hex-tag" style="background:#1A1A1A; color:#9A9284;">#1A1A1A</span>
+        <span class="hex-tag" style="background:#2E2A24; color:#9A9284;">#2E2A24</span>
+        <span class="hex-tag" style="background:#1A1A1A; color:#F0EADC;">#F0EADC</span>
+        <span class="hex-tag" style="background:#D4AF6B; color:#0D0D0D;">#D4AF6B</span>
+        <span class="hex-tag" style="background:#1A1A1A; color:#7A7468;">#7A7468</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 6. STRAWBERRY LATTE (LIGHT) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#FAF2EE;">
+      <div class="panel" style="background:#F0E0D8; border-color:#DCC5BA;">
+        <div class="sec-label" style="color:#8C6E5E;">
+          <span class="sec-num" style="background:rgba(182,110,94,.15); color:#B66E5E;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#6C4E3E;">Имя</div>
+            <input class="input" value="Анна" style="background:#FAF2EE; border-color:#D2B8A8; color:#2B1E1A;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#6C4E3E;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#FAF2EE; border-color:#D2B8A8; color:#2B1E1A;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#6C4E3E;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#FAF2EE; border-color:#D2B8A8; color:#2B1E1A;" readonly>
+        </div>
+        <div style="border-top:1px solid #DCC5BA; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#DCC5BA;">
+            <div>
+              <div class="toggle-title" style="color:#2B1E1A;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#8C6E5E;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#B66E5E;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#B66E5E; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#FAF2EE;">
+      <div class="name" style="color:#2B1E1A;">
+        <span>Strawberry Latte 🍓</span>
+        <span class="tag-mode" style="background:#DCC5BA; color:#8C6E5E;">LIGHT</span>
+      </div>
+      <div class="desc" style="color:#7A5A48;">Клубника с молоком. Розово-коричневый — вирусный тренд TikTok beauty и Pinterest 2025–26. Тёплый, gourmand.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#FAF2EE;"></div><div class="sw" style="background:#F0E0D8;"></div><div class="sw" style="background:#DCC5BA;"></div><div class="sw" style="background:#2B1E1A;"></div><div class="sw" style="background:#B66E5E;"></div><div class="sw" style="background:#8C6E5E;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#F0E0D8; color:#6C4E3E;">#FAF2EE</span>
+        <span class="hex-tag" style="background:#F0E0D8; color:#6C4E3E;">#F0E0D8</span>
+        <span class="hex-tag" style="background:#DCC5BA; color:#6C4E3E;">#DCC5BA</span>
+        <span class="hex-tag" style="background:#2B1E1A; color:#F0E0D8;">#2B1E1A</span>
+        <span class="hex-tag" style="background:#B66E5E; color:#fff;">#B66E5E</span>
+        <span class="hex-tag" style="background:#F0E0D8; color:#8C6E5E;">#8C6E5E</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 7. ROYAL VIOLET (DARK) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#1A1224;">
+      <div class="panel" style="background:#251832; border-color:#3C2A4D;">
+        <div class="sec-label" style="color:#8E7A9A;">
+          <span class="sec-num" style="background:rgba(165,118,216,.15); color:#A576D8;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#A890BA;">Имя</div>
+            <input class="input" value="Анна" style="background:#1A1224; border-color:#463458; color:#EFE6F2;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#A890BA;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#1A1224; border-color:#463458; color:#EFE6F2;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#A890BA;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#1A1224; border-color:#463458; color:#EFE6F2;" readonly>
+        </div>
+        <div style="border-top:1px solid #3C2A4D; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#3C2A4D;">
+            <div>
+              <div class="toggle-title" style="color:#EFE6F2;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#8E7A9A;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#A576D8;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#A576D8; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#1A1224;">
+      <div class="name" style="color:#EFE6F2;">
+        <span>Royal Violet 👑</span>
+        <span class="tag-mode" style="background:#3C2A4D; color:#A576D8;">DARK</span>
+      </div>
+      <div class="desc" style="color:#8E7A9A;">Королевский фиолет. Насыщенный, а не пыльный mauve. Digital luxury — тренд beauty-tech и парфюмерных брендов.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#1A1224;"></div><div class="sw" style="background:#251832;"></div><div class="sw" style="background:#3C2A4D;"></div><div class="sw" style="background:#EFE6F2;"></div><div class="sw" style="background:#A576D8;"></div><div class="sw" style="background:#8E7A9A;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#251832; color:#A890BA;">#1A1224</span>
+        <span class="hex-tag" style="background:#251832; color:#A890BA;">#251832</span>
+        <span class="hex-tag" style="background:#3C2A4D; color:#A890BA;">#3C2A4D</span>
+        <span class="hex-tag" style="background:#251832; color:#EFE6F2;">#EFE6F2</span>
+        <span class="hex-tag" style="background:#A576D8; color:#fff;">#A576D8</span>
+        <span class="hex-tag" style="background:#251832; color:#8E7A9A;">#8E7A9A</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────── 8. OAT MILK (LIGHT) ──────────── -->
+  <div class="card">
+    <div class="preview" style="background:#F5F0E8;">
+      <div class="panel" style="background:#EBE3D5; border-color:#D5CAB5;">
+        <div class="sec-label" style="color:#867760;">
+          <span class="sec-num" style="background:rgba(184,122,86,.14); color:#B87A56;">1</span>
+          ОСНОВНОЕ
+        </div>
+        <div class="row mb8">
+          <div>
+            <div class="field-label" style="color:#665840;">Имя</div>
+            <input class="input" value="Анна" style="background:#F5F0E8; border-color:#CABDA2; color:#2A2218;" readonly>
+          </div>
+          <div>
+            <div class="field-label" style="color:#665840;">Фамилия</div>
+            <input class="input" value="Соколова" style="background:#F5F0E8; border-color:#CABDA2; color:#2A2218;" readonly>
+          </div>
+        </div>
+        <div class="mb8">
+          <div class="field-label" style="color:#665840;">Специализация</div>
+          <input class="input" value="Стилист-колорист" style="background:#F5F0E8; border-color:#CABDA2; color:#2A2218;" readonly>
+        </div>
+        <div style="border-top:1px solid #D5CAB5; padding-top:10px; margin-top:4px;">
+          <div class="toggle-row" style="border-color:#D5CAB5;">
+            <div>
+              <div class="toggle-title" style="color:#2A2218;">Показывать клиентам</div>
+              <div class="toggle-sub" style="color:#867760;">Виден на странице салона</div>
+            </div>
+            <div class="toggle-track" style="background:#B87A56;"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+        <button class="btn" style="background:#B87A56; color:#fff; margin-top:10px;">Сохранить изменения</button>
+      </div>
+    </div>
+    <div class="meta" style="background:#F5F0E8;">
+      <div class="name" style="color:#2A2218;">
+        <span>Oat Milk 🥛</span>
+        <span class="tag-mode" style="background:#D5CAB5; color:#867760;">LIGHT</span>
+      </div>
+      <div class="desc" style="color:#756040;">Овсяное молоко — quiet luxury 2026. Тёплый овсяно-кремовый. Анти-белый, анти-серый. The Row-эстетика.</div>
+      <div class="swatches-wrap">
+        <div class="sw" style="background:#F5F0E8;"></div><div class="sw" style="background:#EBE3D5;"></div><div class="sw" style="background:#D5CAB5;"></div><div class="sw" style="background:#2A2218;"></div><div class="sw" style="background:#B87A56;"></div><div class="sw" style="background:#867760;"></div>
+      </div>
+      <div class="hex-row">
+        <span class="hex-tag" style="background:#EBE3D5; color:#665840;">#F5F0E8</span>
+        <span class="hex-tag" style="background:#EBE3D5; color:#665840;">#EBE3D5</span>
+        <span class="hex-tag" style="background:#D5CAB5; color:#665840;">#D5CAB5</span>
+        <span class="hex-tag" style="background:#2A2218; color:#EBE3D5;">#2A2218</span>
+        <span class="hex-tag" style="background:#B87A56; color:#fff;">#B87A56</span>
+        <span class="hex-tag" style="background:#EBE3D5; color:#867760;">#867760</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Trend context -->
+<div style="max-width:1500px; margin:28px auto 0; padding:18px 22px; background:rgba(255,255,255,.55); border-radius:12px; border:1px solid rgba(0,0,0,.08);">
+  <div style="font-size:12px; font-weight:600; color:#2A2420; margin-bottom:10px;">Контекст трендов beauty 2026</div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; font-size:11px; color:#5A4A40; line-height:1.55;">
+    <div><b style="color:#2A2420;">🍷 Midnight Bordeaux</b> — cherry red вернулся: Hermès, Valentino, nail-тренд «oxblood»</div>
+    <div><b style="color:#2A2420;">🧈 Butter Cream</b> — butter yellow — главный hue сезона SS'26 (Vogue, WGSN)</div>
+    <div><b style="color:#2A2420;">🌲 Deep Emerald</b> — wellness-premium, биофилия, spa-позиционирование</div>
+    <div><b style="color:#2A2420;">🍑 Peach Sorbet</b> — sunset peach — мягкая женственность без клише pink</div>
+    <div><b style="color:#2A2420;">⚫ Obsidian Gold</b> — codes luxury maison: чёрный + золото, Dior/SL</div>
+    <div><b style="color:#2A2420;">🍓 Strawberry Latte</b> — вирусный тренд TikTok/Pinterest, gourmand-палитра</div>
+    <div><b style="color:#2A2420;">👑 Royal Violet</b> — насыщенный digital-luxury, парфюмерные бренды</div>
+    <div><b style="color:#2A2420;">🥛 Oat Milk</b> — quiet luxury, The Row эстетика, анти-тренд для сегмента minimal</div>
+  </div>
+</div>
+
+</body>
+</html>

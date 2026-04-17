@@ -12,6 +12,8 @@ export interface UserInfo {
   phone: string
   displayName: string | null
   role: string
+  /** Present when this user owns a master_profiles row (after claiming or registration). */
+  masterProfileId?: string | null
 }
 
 export interface VerifyOTPResponse {

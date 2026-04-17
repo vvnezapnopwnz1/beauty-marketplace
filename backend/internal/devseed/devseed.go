@@ -9,24 +9,28 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 const (
-	demoOwnerPhone = "+79001000001"
-	demoSalonID    = "00000000-0000-4000-8000-00000000d001"
+	demoOwnerPhone  = "+79001000001"
+	demoSalonID     = "11111111-1111-1111-1111-111111111111"
+	redirectSalonID = "22222222-2222-2222-2222-222222222222"
+	demoExternalID  = "141373143068690"
 )
 
 var demoSalonUUID = uuid.MustParse(demoSalonID)
+var redirectSalonUUID = uuid.MustParse(redirectSalonID)
 
 type svcSeed struct {
-	name     string
-	slug     string
-	nameRu   string
-	dur      int
-	price    int64
+	name   string
+	slug   string
+	nameRu string
+	dur    int
+	price  int64
 }
 
 // Run deletes the demo salon (and cascaded rows), demo users, then inserts a fresh dataset.
@@ -35,6 +39,18 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 
 	if err := db.WithContext(ctx).Exec("DELETE FROM salons WHERE id = ?", demoSalonUUID).Error; err != nil {
 		return fmt.Errorf("delete demo salon: %w", err)
+	}
+	if err := db.WithContext(ctx).Exec("DELETE FROM salons WHERE id = ?", redirectSalonUUID).Error; err != nil {
+		return fmt.Errorf("delete redirect salon: %w", err)
+	}
+	if err := db.WithContext(ctx).Exec(
+		`DELETE FROM appointments
+		 WHERE client_user_id IN (
+		   SELECT id FROM users WHERE phone_e164 = ? OR phone_e164 LIKE '+79001002%%'
+		 )`,
+		demoOwnerPhone,
+	).Error; err != nil {
+		return fmt.Errorf("delete demo appointments by users: %w", err)
 	}
 	if err := db.WithContext(ctx).Exec(
 		"DELETE FROM users WHERE phone_e164 = ? OR phone_e164 LIKE '+79001002%%'",
@@ -80,6 +96,14 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 	if err := db.WithContext(ctx).Create(&salon).Error; err != nil {
 		return fmt.Errorf("create salon: %w", err)
 	}
+	external := model.SalonExternalID{
+		SalonID:    demoSalonUUID,
+		Source:     "2gis",
+		ExternalID: demoExternalID,
+	}
+	if err := db.WithContext(ctx).Create(&external).Error; err != nil {
+		return fmt.Errorf("create salon_external_ids: %w", err)
+	}
 
 	member := model.SalonMember{
 		SalonID: demoSalonUUID,
@@ -88,6 +112,23 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 	}
 	if err := db.WithContext(ctx).Create(&member).Error; err != nil {
 		return fmt.Errorf("create salon_member: %w", err)
+	}
+
+	redirectSalonName := "Барбершоп Brothers"
+	redirectAddr := "ул. Арбат, 35"
+	redirectCategory := "barber"
+	redirectBusinessType := "venue"
+	redirect := model.Salon{
+		ID:                   redirectSalonUUID,
+		NameOverride:         &redirectSalonName,
+		Timezone:             "Europe/Moscow",
+		Address:              &redirectAddr,
+		CategoryID:           &redirectCategory,
+		BusinessType:         &redirectBusinessType,
+		OnlineBookingEnabled: false,
+	}
+	if err := db.WithContext(ctx).Create(&redirect).Error; err != nil {
+		return fmt.Errorf("create redirect salon: %w", err)
 	}
 
 	// Slug + name_ru match system rows in service_categories (migration 000010).
@@ -155,9 +196,33 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 	for i, sp := range staffSpecs {
 		id := uuid.New()
 		staffIDs[i] = id
-		st := model.Staff{
+		masterID := uuid.New()
+		bio := fmt.Sprintf("Опыт работы %d+ лет. Запись через дашборд — демо.", 3+i)
+		specs := pq.StringArray([]string{})
+		if i%3 == 0 {
+			specs = pq.StringArray([]string{"haircut", "colorist"})
+		} else if i%3 == 1 {
+			specs = pq.StringArray([]string{"nail_master"})
+		} else {
+			specs = pq.StringArray([]string{"stylist"})
+		}
+		years := 3 + i
+		mp := model.MasterProfile{
+			ID:                masterID,
+			DisplayName:       sp.name,
+			Bio:               &bio,
+			Specializations:   specs,
+			YearsExperience:   &years,
+			CachedReviewCount: 0,
+			IsActive:          true,
+		}
+		if err := db.WithContext(ctx).Create(&mp).Error; err != nil {
+			return fmt.Errorf("create master_profile: %w", err)
+		}
+		st := model.SalonMaster{
 			ID:                    id,
 			SalonID:               demoSalonUUID,
+			MasterID:              &masterID,
 			DisplayName:           sp.name,
 			Role:                  &sp.role,
 			Level:                 &sp.level,
@@ -165,9 +230,8 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 			DashboardAccess:       i%2 == 0,
 			TelegramNotifications: true,
 			IsActive:              true,
+			Status:                "active",
 		}
-		bio := fmt.Sprintf("Опыт работы %d+ лет. Запись через дашборд — демо.", 3+i)
-		st.Bio = &bio
 		if err := db.WithContext(ctx).Create(&st).Error; err != nil {
 			return fmt.Errorf("create staff: %w", err)
 		}
@@ -179,7 +243,7 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 			picked[serviceIDs[si]] = struct{}{}
 		}
 		for svcID := range picked {
-			link := model.StaffService{StaffID: id, ServiceID: svcID}
+			link := model.SalonMasterService{SalonMasterID: id, ServiceID: svcID}
 			if err := db.WithContext(ctx).Create(&link).Error; err != nil {
 				return fmt.Errorf("staff_services: %w", err)
 			}
@@ -215,13 +279,13 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 			if d == 5 && !dayOff {
 				closes = "18:00:00"
 			}
-			swh := model.StaffWorkingHour{
-				ID:        uuid.New(),
-				StaffID:   sid,
-				DayOfWeek: int16(d),
-				OpensAt:   opens,
-				ClosesAt:  closes,
-				IsDayOff:  dayOff,
+			swh := model.SalonMasterHour{
+				ID:            uuid.New(),
+				SalonMasterID: sid,
+				DayOfWeek:     int16(d),
+				OpensAt:       opens,
+				ClosesAt:      closes,
+				IsDayOff:      dayOff,
 			}
 			if err := db.WithContext(ctx).Create(&swh).Error; err != nil {
 				return fmt.Errorf("staff_working_hours: %w", err)
@@ -274,13 +338,13 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 		st := pickWeighted(rng, statuses, weights)
 
 		ap := model.Appointment{
-			ID:        uuid.New(),
-			SalonID:   demoSalonUUID,
-			ServiceID: svcID,
-			StaffID:   &stID,
-			StartsAt:  startLocal.UTC(),
-			EndsAt:    endLocal.UTC(),
-			Status:    st,
+			ID:            uuid.New(),
+			SalonID:       demoSalonUUID,
+			ServiceID:     svcID,
+			SalonMasterID: &stID,
+			StartsAt:      startLocal.UTC(),
+			EndsAt:        endLocal.UTC(),
+			Status:        st,
 		}
 
 		if rng.Intn(10) < 6 {
@@ -300,6 +364,7 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 
 	log.Info("DEV_DEMO_SEED: demo data ready",
 		zap.String("login_phone", demoOwnerPhone),
+		zap.String("linked_external_id", demoExternalID),
 		zap.Int("services", len(services)),
 		zap.Int("staff", len(staffSpecs)),
 		zap.Int("clients", nClients),

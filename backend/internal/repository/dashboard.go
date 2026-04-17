@@ -14,11 +14,29 @@ type SalonMembership struct {
 	Role    string
 }
 
-// StaffServiceLine is one staff–service link with service name for dashboard lists.
+// StaffServiceLine is one master–service link with service name for dashboard lists.
 type StaffServiceLine struct {
-	StaffID     uuid.UUID `gorm:"column:staff_id" db:"staff_id"`
-	ServiceID   uuid.UUID `gorm:"column:service_id" db:"service_id"`
-	ServiceName string    `gorm:"column:service_name" db:"service_name"`
+	SalonMasterID uuid.UUID `gorm:"column:staff_id" db:"staff_id"`
+	ServiceID     uuid.UUID `gorm:"column:service_id" db:"service_id"`
+	ServiceName   string    `gorm:"column:service_name" db:"service_name"`
+}
+
+// SalonMasterServiceAssignment is one row for PUT .../salon-masters/:id/services.
+type SalonMasterServiceAssignment struct {
+	ServiceID               uuid.UUID
+	PriceOverrideCents      *int
+	DurationOverrideMinutes *int
+}
+
+// SalonMasterServiceDetail is a linked salon service with optional overrides.
+type SalonMasterServiceDetail struct {
+	SalonMasterID           uuid.UUID `gorm:"column:salon_master_id"`
+	ServiceID               uuid.UUID `gorm:"column:service_id"`
+	ServiceName             string    `gorm:"column:service_name"`
+	SalonPriceCents         *int64    `gorm:"column:salon_price_cents"`
+	SalonDurationMinutes    int       `gorm:"column:salon_duration_minutes"`
+	PriceOverrideCents      *int      `gorm:"column:price_override_cents"`
+	DurationOverrideMinutes *int      `gorm:"column:duration_override_minutes"`
 }
 
 // AppointmentListFilter filters dashboard appointment list.
@@ -60,14 +78,17 @@ type DashboardRepository interface {
 	SoftDeleteService(ctx context.Context, salonID, serviceID uuid.UUID) error
 	GetService(ctx context.Context, salonID, serviceID uuid.UUID) (*model.SalonService, error)
 
-	ListStaff(ctx context.Context, salonID uuid.UUID) ([]model.Staff, error)
-	CreateStaff(ctx context.Context, s *model.Staff) error
-	UpdateStaff(ctx context.Context, s *model.Staff) error
+	ListStaff(ctx context.Context, salonID uuid.UUID) ([]model.SalonMaster, error)
+	CreateStaff(ctx context.Context, s *model.SalonMaster) error
+	UpdateStaff(ctx context.Context, s *model.SalonMaster) error
 	SoftDeleteStaff(ctx context.Context, salonID, staffID uuid.UUID) error
-	GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.Staff, error)
+	GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.SalonMaster, error)
 
 	ListStaffServiceIDs(ctx context.Context, salonID, staffID uuid.UUID) ([]uuid.UUID, error)
 	ReplaceStaffServices(ctx context.Context, salonID, staffID uuid.UUID, serviceIDs []uuid.UUID) error
+	ReplaceSalonMasterServiceAssignments(ctx context.Context, salonID, salonMasterID uuid.UUID, rows []SalonMasterServiceAssignment) error
+	ListSalonMasterServiceDetails(ctx context.Context, salonID, salonMasterID uuid.UUID) ([]SalonMasterServiceDetail, error)
+	ListSalonMasterServiceDetailsForSalon(ctx context.Context, salonID uuid.UUID) ([]SalonMasterServiceDetail, error)
 	ReplaceServiceStaff(ctx context.Context, salonID, serviceID uuid.UUID, staffIDs []uuid.UUID) error
 	ServiceStaffNamesMap(ctx context.Context, salonID uuid.UUID) (map[uuid.UUID][]string, error)
 	StaffServiceLines(ctx context.Context, salonID uuid.UUID) ([]StaffServiceLine, error)
@@ -79,16 +100,23 @@ type DashboardRepository interface {
 	ListSalonDateOverrides(ctx context.Context, salonID uuid.UUID) ([]model.SalonDateOverride, error)
 	ReplaceSalonDateOverrides(ctx context.Context, salonID uuid.UUID, rows []model.SalonDateOverride) error
 
-	ListStaffAbsences(ctx context.Context, salonID, staffID uuid.UUID) ([]model.StaffAbsence, error)
-	ReplaceStaffAbsences(ctx context.Context, salonID, staffID uuid.UUID, rows []model.StaffAbsence) error
+	ListStaffAbsences(ctx context.Context, salonID, staffID uuid.UUID) ([]model.SalonMasterAbsence, error)
+	ReplaceStaffAbsences(ctx context.Context, salonID, staffID uuid.UUID, rows []model.SalonMasterAbsence) error
 
 	UpdateSalonSlotDuration(ctx context.Context, salonID uuid.UUID, minutes int) error
 
 	ListWorkingHours(ctx context.Context, salonID uuid.UUID) ([]model.WorkingHour, error)
 	ReplaceWorkingHours(ctx context.Context, salonID uuid.UUID, rows []model.WorkingHour) error
 
-	ListStaffWorkingHours(ctx context.Context, staffID, salonID uuid.UUID) ([]model.StaffWorkingHour, error)
-	ReplaceStaffWorkingHours(ctx context.Context, staffID, salonID uuid.UUID, rows []model.StaffWorkingHour) error
+	ListStaffWorkingHours(ctx context.Context, staffID, salonID uuid.UUID) ([]model.SalonMasterHour, error)
+	ReplaceStaffWorkingHours(ctx context.Context, staffID, salonID uuid.UUID, rows []model.SalonMasterHour) error
+
+	// MasterProfile operations
+	GetMasterProfile(ctx context.Context, masterID uuid.UUID) (*model.MasterProfile, error)
+	GetMasterProfileBySalonMaster(ctx context.Context, salonMasterID uuid.UUID) (*model.MasterProfile, error)
+	GetMasterProfileByPhoneE164(ctx context.Context, phoneE164 string) (*model.MasterProfile, error)
+	CreateMasterProfile(ctx context.Context, p *model.MasterProfile) error
+	UpdateMasterProfile(ctx context.Context, p *model.MasterProfile) error
 
 	UpdateSalonProfile(ctx context.Context, salon *model.Salon) error
 	FindSalonModel(ctx context.Context, salonID uuid.UUID) (*model.Salon, error)

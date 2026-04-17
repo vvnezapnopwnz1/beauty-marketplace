@@ -26,6 +26,7 @@ const (
 
 type AuthService struct {
 	repo         repository.AuthRepository
+	masterDash   repository.MasterDashboardRepository
 	jwt          *auth.JWTManager
 	logger       *zap.Logger
 	devOTPBypass bool
@@ -34,6 +35,7 @@ type AuthService struct {
 
 func NewAuthService(
 	repo repository.AuthRepository,
+	masterDash repository.MasterDashboardRepository,
 	jwt *auth.JWTManager,
 	logger *zap.Logger,
 	cfg *config.Config,
@@ -41,6 +43,7 @@ func NewAuthService(
 	magic := "1234"
 	return &AuthService{
 		repo:         repo,
+		masterDash:   masterDash,
 		jwt:          jwt,
 		logger:       logger,
 		devOTPBypass: cfg.DevOTPBypass,
@@ -83,10 +86,11 @@ type VerifyOTPResult struct {
 }
 
 type UserInfo struct {
-	ID          uuid.UUID `json:"id"`
-	Phone       string    `json:"phone"`
-	DisplayName *string   `json:"displayName"`
-	Role        string    `json:"role"`
+	ID              uuid.UUID  `json:"id"`
+	Phone           string     `json:"phone"`
+	DisplayName     *string    `json:"displayName"`
+	Role            string     `json:"role"`
+	MasterProfileID *uuid.UUID `json:"masterProfileId,omitempty"`
 }
 
 func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*VerifyOTPResult, error) {
@@ -117,18 +121,23 @@ func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*Verif
 		return nil, err
 	}
 
+	s.tryClaimShadowMasterProfile(ctx, user)
+
 	tokenPair, err := s.issueTokenPair(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 
+	masterProfID := s.lookupMasterProfileID(ctx, user.ID)
+
 	return &VerifyOTPResult{
 		TokenPair: *tokenPair,
 		User: UserInfo{
-			ID:          user.ID,
-			Phone:       user.PhoneE164,
-			DisplayName: user.DisplayName,
-			Role:        user.GlobalRole,
+			ID:              user.ID,
+			Phone:           user.PhoneE164,
+			DisplayName:     user.DisplayName,
+			Role:            user.GlobalRole,
+			MasterProfileID: masterProfID,
 		},
 		IsNew: isNew,
 	}, nil
@@ -166,10 +175,11 @@ func (s *AuthService) GetMe(ctx context.Context, userID uuid.UUID) (*UserInfo, e
 		return nil, fmt.Errorf("find user: %w", err)
 	}
 	return &UserInfo{
-		ID:          user.ID,
-		Phone:       user.PhoneE164,
-		DisplayName: user.DisplayName,
-		Role:        user.GlobalRole,
+		ID:              user.ID,
+		Phone:           user.PhoneE164,
+		DisplayName:     user.DisplayName,
+		Role:            user.GlobalRole,
+		MasterProfileID: s.lookupMasterProfileID(ctx, user.ID),
 	}, nil
 }
 
@@ -229,6 +239,29 @@ func (s *AuthService) issueTokenPairByID(ctx context.Context, userID uuid.UUID) 
 		return nil, fmt.Errorf("find user by id: %w", err)
 	}
 	return s.issueTokenPair(ctx, user)
+}
+
+func (s *AuthService) tryClaimShadowMasterProfile(ctx context.Context, user *model.User) {
+	shadowID, err := s.masterDash.FindShadowMasterProfileIDByPhone(ctx, user.PhoneE164)
+	if err != nil {
+		s.logger.Warn("shadow master profile lookup", zap.Error(err), zap.String("phone", user.PhoneE164))
+		return
+	}
+	if shadowID == nil {
+		return
+	}
+	if err := s.masterDash.ClaimMasterProfile(ctx, *shadowID, user.ID, user.PhoneE164); err != nil {
+		s.logger.Warn("claim master profile", zap.Error(err), zap.String("profile_id", shadowID.String()))
+	}
+}
+
+func (s *AuthService) lookupMasterProfileID(ctx context.Context, userID uuid.UUID) *uuid.UUID {
+	id, err := s.masterDash.FindMasterProfileIDByUserID(ctx, userID)
+	if err != nil {
+		s.logger.Warn("master profile id by user", zap.Error(err), zap.String("user_id", userID.String()))
+		return nil
+	}
+	return id
 }
 
 func generateOTP(length int) (string, error) {

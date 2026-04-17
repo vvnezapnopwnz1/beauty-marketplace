@@ -28,7 +28,8 @@ export interface DashboardAppointment {
   guestPhone?: string | null
   clientUserId?: string | null
   serviceId: string
-  staffId?: string | null
+  /** Assigned master in this salon (appointments.salon_master_id). */
+  salonMasterId?: string | null
   clientNote?: string | null
 }
 
@@ -77,6 +78,25 @@ export interface DashboardStaffRow {
   createdAt: string
 }
 
+export interface MasterProfileDTO {
+  id: string
+  bio?: string | null
+  specializations: string[]
+  avatarUrl?: string | null
+  yearsExperience?: number | null
+  /** When true, salon cannot edit profile fields (master owns the profile). */
+  ownedByUser: boolean
+}
+
+export interface SalonMasterServiceRow {
+  serviceId: string
+  serviceName: string
+  salonPriceCents?: number | null
+  salonDurationMinutes: number
+  priceOverrideCents?: number | null
+  durationOverrideMinutes?: number | null
+}
+
 /** Full staff row from API (detail / create response). */
 export interface DashboardStaffFull {
   id: string
@@ -93,8 +113,48 @@ export interface DashboardStaffFull {
   dashboardAccess: boolean
   telegramNotifications: boolean
   isActive: boolean
+  status?: string
   createdAt: string
   serviceIds?: string[]
+  masterProfile?: MasterProfileDTO | null
+  services?: SalonMasterServiceRow[]
+}
+
+/** Raw list row from GET /salon-masters (before normalizing to DashboardStaffListItem). */
+export interface SalonMasterListApiRow {
+  id: string
+  salonId: string
+  displayName: string
+  color?: string | null
+  isActive: boolean
+  status: string
+  role?: string | null
+  level?: string | null
+  joinedAt?: string | null
+  dashboardAccess: boolean
+  telegramNotifications: boolean
+  masterProfile?: MasterProfileDTO | null
+  services: SalonMasterServiceRow[]
+  loadPercentWeek: number
+  ratingAvg: number | null
+  reviewCount: number
+  completedVisits: number
+  revenueMonthCents: number
+}
+
+export const SPECIALIZATION_PRESETS = [
+  { value: 'colorist', label: 'Колорист' },
+  { value: 'nail_master', label: 'Мастер маникюра' },
+  { value: 'stylist', label: 'Стилист' },
+  { value: 'browist', label: 'Бровист' },
+  { value: 'massage', label: 'Массажист' },
+  { value: 'barber', label: 'Барбер' },
+  { value: 'haircut', label: 'Стрижки' },
+] as const
+
+export function specializationLabel(slug: string): string {
+  const p = SPECIALIZATION_PRESETS.find(x => x.value === slug)
+  return p?.label ?? slug
 }
 
 export const STAFF_COLOR_SWATCHES = [
@@ -176,6 +236,12 @@ export interface StaffScheduleBundleResponse {
   absences: StaffAbsenceRow[]
 }
 
+export type StaffServiceAssignmentPayload = {
+  serviceId: string
+  priceOverrideCents?: number | null
+  durationOverrideMinutes?: number | null
+}
+
 export type StaffFormPayload = {
   displayName: string
   role?: string | null
@@ -190,6 +256,9 @@ export type StaffFormPayload = {
   telegramNotifications: boolean
   isActive: boolean
   serviceIds: string[]
+  specializations: string[]
+  yearsExperience?: number | null
+  serviceAssignments?: StaffServiceAssignmentPayload[]
 }
 
 export interface SalonProfile {
@@ -210,6 +279,33 @@ export interface SalonProfile {
   timezone: string
   cachedRating?: number | null
   cachedReviewCount?: number | null
+}
+
+const salonMastersPath = () => `${base()}/salon-masters`
+
+function rowToStaffFull(r: SalonMasterListApiRow): DashboardStaffFull {
+  const mpBio = r.masterProfile?.bio
+  return {
+    id: r.id,
+    salonId: r.salonId,
+    displayName: r.displayName,
+    role: r.role ?? undefined,
+    level: r.level ?? undefined,
+    bio: mpBio ?? undefined,
+    phone: undefined,
+    telegramUsername: undefined,
+    email: undefined,
+    color: r.color ?? undefined,
+    joinedAt: r.joinedAt ?? undefined,
+    dashboardAccess: r.dashboardAccess,
+    telegramNotifications: r.telegramNotifications,
+    isActive: r.isActive,
+    status: r.status,
+    createdAt: '',
+    serviceIds: r.services.map(s => s.serviceId),
+    masterProfile: r.masterProfile ?? null,
+    services: r.services,
+  }
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -245,7 +341,7 @@ export async function fetchDashboardAppointments(params: {
   if (params.from) q.set('from', params.from)
   if (params.to) q.set('to', params.to)
   if (params.status) q.set('status', params.status)
-  if (params.staffId) q.set('staff_id', params.staffId)
+  if (params.staffId) q.set('salon_master_id', params.staffId)
   if (params.serviceId) q.set('service_id', params.serviceId)
   if (params.page) q.set('page', String(params.page))
   if (params.pageSize) q.set('page_size', String(params.pageSize))
@@ -268,7 +364,7 @@ export async function patchAppointmentStatus(id: string, status: string): Promis
 
 export async function createDashboardAppointment(body: {
   serviceId: string
-  staffId?: string | null
+  salonMasterId?: string | null
   startsAt: string
   guestName: string
   guestPhone: string
@@ -279,7 +375,7 @@ export async function createDashboardAppointment(body: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       serviceId: body.serviceId,
-      staffId: body.staffId ?? undefined,
+      salonMasterId: body.salonMasterId ?? undefined,
       startsAt: body.startsAt,
       guestName: body.guestName,
       guestPhone: body.guestPhone,
@@ -299,8 +395,8 @@ export async function updateDashboardAppointment(
     startsAt?: string
     endsAt?: string
     serviceId?: string
-    staffId?: string
-    clearStaffId?: boolean
+    salonMasterId?: string
+    clearSalonMasterId?: boolean
     clientNote?: string
     guestName?: string | null
     guestPhone?: string | null
@@ -310,8 +406,8 @@ export async function updateDashboardAppointment(
   if (body.startsAt !== undefined) payload.startsAt = body.startsAt
   if (body.endsAt !== undefined) payload.endsAt = body.endsAt
   if (body.serviceId !== undefined) payload.serviceId = body.serviceId
-  if (body.staffId !== undefined) payload.staffId = body.staffId
-  if (body.clearStaffId === true) payload.clearStaffId = true
+  if (body.salonMasterId !== undefined) payload.salonMasterId = body.salonMasterId
+  if (body.clearSalonMasterId === true) payload.clearSalonMasterId = true
   if (body.clientNote !== undefined) payload.clientNote = body.clientNote
   if (body.guestName !== undefined) payload.guestName = body.guestName
   if (body.guestPhone !== undefined) payload.guestPhone = body.guestPhone
@@ -416,68 +512,76 @@ export function staffListItemsToRows(items: DashboardStaffListItem[]): Dashboard
 }
 
 export async function fetchDashboardStaff(): Promise<DashboardStaffListItem[]> {
-  const res = await authFetch(`${base()}/staff`)
-  return parseJson<DashboardStaffListItem[]>(res)
+  const res = await authFetch(salonMastersPath())
+  const raw = await parseJson<SalonMasterListApiRow[]>(res)
+  return raw.map(row => ({
+    staff: rowToStaffFull(row),
+    connectedServices: row.services.map(s => ({ id: s.serviceId, name: s.serviceName })),
+    loadPercentWeek: row.loadPercentWeek,
+    ratingAvg: row.ratingAvg,
+    reviewCount: row.reviewCount,
+    completedVisits: row.completedVisits,
+    revenueMonthCents: row.revenueMonthCents,
+  }))
 }
 
 export async function fetchStaffDetail(staffId: string): Promise<DashboardStaffFull> {
-  const res = await authFetch(`${base()}/staff/${staffId}`)
+  const res = await authFetch(`${salonMastersPath()}/${staffId}`)
   return parseJson<DashboardStaffFull>(res)
 }
 
 export async function fetchStaffMetrics(staffId: string, period = 'month'): Promise<StaffMetrics> {
-  const res = await authFetch(`${base()}/staff/${staffId}/metrics?period=${encodeURIComponent(period)}`)
+  const res = await authFetch(
+    `${salonMastersPath()}/${staffId}/metrics?period=${encodeURIComponent(period)}`,
+  )
   return parseJson<StaffMetrics>(res)
 }
 
+function staffPayloadJson(body: StaffFormPayload) {
+  const assignments =
+    body.serviceAssignments && body.serviceAssignments.length > 0
+      ? body.serviceAssignments
+      : body.serviceIds.map(serviceId => ({ serviceId, priceOverrideCents: null, durationOverrideMinutes: null }))
+  return {
+    displayName: body.displayName,
+    role: body.role,
+    level: body.level,
+    bio: body.bio,
+    phone: body.phone,
+    telegramUsername: body.telegramUsername,
+    email: body.email,
+    color: body.color,
+    joinedAt: body.joinedAt,
+    dashboardAccess: body.dashboardAccess,
+    telegramNotifications: body.telegramNotifications,
+    isActive: body.isActive,
+    serviceIds: body.serviceIds,
+    specializations: body.specializations,
+    yearsExperience: body.yearsExperience ?? undefined,
+    serviceAssignments: assignments,
+  }
+}
+
 export async function createDashboardStaff(body: StaffFormPayload): Promise<DashboardStaffFull> {
-  const res = await authFetch(`${base()}/staff`, {
+  const res = await authFetch(salonMastersPath(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      displayName: body.displayName,
-      role: body.role,
-      level: body.level,
-      bio: body.bio,
-      phone: body.phone,
-      telegramUsername: body.telegramUsername,
-      email: body.email,
-      color: body.color,
-      joinedAt: body.joinedAt,
-      dashboardAccess: body.dashboardAccess,
-      telegramNotifications: body.telegramNotifications,
-      isActive: body.isActive,
-      serviceIds: body.serviceIds,
-    }),
+    body: JSON.stringify(staffPayloadJson(body)),
   })
   return parseJson<DashboardStaffFull>(res)
 }
 
 export async function updateDashboardStaffFull(id: string, body: StaffFormPayload): Promise<DashboardStaffFull> {
-  const res = await authFetch(`${base()}/staff/${id}`, {
+  const res = await authFetch(`${salonMastersPath()}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      displayName: body.displayName,
-      role: body.role,
-      level: body.level,
-      bio: body.bio,
-      phone: body.phone,
-      telegramUsername: body.telegramUsername,
-      email: body.email,
-      color: body.color,
-      joinedAt: body.joinedAt,
-      dashboardAccess: body.dashboardAccess,
-      telegramNotifications: body.telegramNotifications,
-      isActive: body.isActive,
-      serviceIds: body.serviceIds,
-    }),
+    body: JSON.stringify(staffPayloadJson(body)),
   })
   return parseJson<DashboardStaffFull>(res)
 }
 
 export async function deleteDashboardStaff(id: string): Promise<void> {
-  const res = await authFetch(`${base()}/staff/${id}`, { method: 'DELETE' })
+  const res = await authFetch(`${salonMastersPath()}/${id}`, { method: 'DELETE' })
   if (!res.ok) {
     const t = await res.text()
     throw new Error(t || `HTTP ${res.status}`)
@@ -553,7 +657,7 @@ export async function putSalonScheduleBundle(payload: {
 }
 
 export async function fetchStaffSchedule(staffId: string): Promise<StaffScheduleBundleResponse> {
-  const res = await authFetch(`${base()}/staff/${staffId}/schedule`)
+  const res = await authFetch(`${salonMastersPath()}/${staffId}/schedule`)
   if (!res.ok) {
     const t = await res.text()
     throw new Error(t || `HTTP ${res.status}`)
@@ -569,7 +673,7 @@ export async function putStaffSchedule(
   staffId: string,
   rows: { dayOfWeek: number; opensAt: string; closesAt: string; isDayOff: boolean }[],
 ): Promise<void> {
-  const res = await authFetch(`${base()}/staff/${staffId}/schedule`, {
+  const res = await authFetch(`${salonMastersPath()}/${staffId}/schedule`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(rows),
@@ -594,7 +698,7 @@ export async function putStaffScheduleBundle(
     absences?: { startsOn: string; endsOn: string; kind: string }[]
   },
 ): Promise<void> {
-  const res = await authFetch(`${base()}/staff/${staffId}/schedule`, {
+  const res = await authFetch(`${salonMastersPath()}/${staffId}/schedule`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -620,4 +724,42 @@ export async function putSalonProfile(partial: Partial<SalonProfile>): Promise<S
     body: JSON.stringify(partial),
   })
   return parseJson<SalonProfile>(res)
+}
+
+export async function lookupMasterByPhone(phone: string): Promise<{
+  found: boolean
+  profile?: {
+    id: string
+    displayName: string
+    bio?: string | null
+    specializations: string[]
+    avatarUrl?: string | null
+    yearsExperience?: number | null
+    phoneE164?: string | null
+  }
+}> {
+  const q = new URLSearchParams({ phone })
+  const res = await authFetch(`${base()}/masters/lookup?${q}`)
+  return parseJson(res)
+}
+
+export async function createMasterInvite(masterProfileId: string): Promise<DashboardStaffFull> {
+  const res = await authFetch(`${base()}/master-invites`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ masterProfileId }),
+  })
+  return parseJson<DashboardStaffFull>(res)
+}
+
+export async function updateSalonMasterServices(
+  salonMasterId: string,
+  rows: { serviceId: string; priceOverrideCents?: number | null; durationOverrideMinutes?: number | null }[],
+): Promise<DashboardStaffFull> {
+  const res = await authFetch(`${salonMastersPath()}/${salonMasterId}/services`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rows),
+  })
+  return parseJson<DashboardStaffFull>(res)
 }

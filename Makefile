@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local db-migrate
+.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local db-migrate seed-salon-page-dev
 
 up:
 	@docker compose up -d --build
@@ -16,6 +16,17 @@ rebuild:
 # DSN как у бэкенда: `DATABASE_DSN='...' make db-migrate`
 db-migrate:
 	@migrate -path backend/migrations -database "$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" up
+
+# Точечный seed для проверки SalonPage dual-mode сценариев:
+# - /salon/11111111-1111-1111-1111-111111111111
+# - /place/141373143068690 (redirect -> /salon/22222222-2222-2222-2222-222222222222)
+seed-salon-page-dev:
+	@if command -v psql >/dev/null 2>&1; then \
+		psql "$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" -f backend/migrations/dev_seed_salon_place.sql; \
+	else \
+		echo "psql not found locally, using docker compose exec postgres..."; \
+		docker compose exec -T postgres psql -U beauty -d beauty < backend/migrations/dev_seed_salon_place.sql; \
+	fi
 
 # Бэкенд на хосте (без Docker). Важно: cwd = backend/, иначе godotenv не найдёт ../.env с ключами.
 # БД: подними postgres отдельно, напр. `docker compose up -d postgres` → localhost:5433.

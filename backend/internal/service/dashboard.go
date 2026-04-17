@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"github.com/yourusername/beauty-marketplace/internal/servicecategory"
@@ -30,12 +32,17 @@ type DashboardService interface {
 	UpdateService(ctx context.Context, salonID, serviceID uuid.UUID, in ServiceInput) (*model.SalonService, error)
 	DeleteService(ctx context.Context, salonID, serviceID uuid.UUID) error
 
-	ListStaff(ctx context.Context, salonID uuid.UUID) ([]model.Staff, error)
-	ListStaffDashboard(ctx context.Context, salonID uuid.UUID) ([]StaffListRow, error)
-	GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.Staff, []uuid.UUID, error)
-	CreateStaff(ctx context.Context, salonID uuid.UUID, in StaffInput) (*model.Staff, error)
-	UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, in StaffInput) (*model.Staff, error)
+	ListStaff(ctx context.Context, salonID uuid.UUID) ([]model.SalonMaster, error)
+	ListStaffDashboard(ctx context.Context, salonID uuid.UUID) ([]SalonMasterDashboardListItem, error)
+	GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.SalonMaster, []uuid.UUID, error)
+	GetSalonMasterDashboardDetail(ctx context.Context, salonID, salonMasterID uuid.UUID) (*SalonMasterDashboardDetail, error)
+	CreateStaff(ctx context.Context, salonID uuid.UUID, in StaffInput) (*model.SalonMaster, error)
+	UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, in StaffInput) (*model.SalonMaster, error)
 	DeleteStaff(ctx context.Context, salonID, staffID uuid.UUID) error
+
+	LookupMasterByPhone(ctx context.Context, phoneE164 string) (*model.MasterProfile, bool, error)
+	CreateMasterInvite(ctx context.Context, salonID, masterProfileID uuid.UUID) (*model.SalonMaster, error)
+	ReplaceSalonMasterServices(ctx context.Context, salonID, salonMasterID uuid.UUID, rows []SalonMasterServiceAssignmentInput) error
 
 	StaffMetrics(ctx context.Context, salonID, staffID uuid.UUID, period string) (*StaffMetricsDTO, error)
 
@@ -44,7 +51,7 @@ type DashboardService interface {
 	PutSchedule(ctx context.Context, salonID uuid.UUID, rows []WorkingHourInput) error
 	PutSalonScheduleBundle(ctx context.Context, salonID uuid.UUID, in SalonSchedulePayload) error
 
-	GetStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID) ([]model.StaffWorkingHour, error)
+	GetStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID) ([]model.SalonMasterHour, error)
 	GetStaffScheduleBundle(ctx context.Context, salonID, staffID uuid.UUID) (*StaffScheduleBundle, error)
 	PutStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID, rows []StaffWorkingHourInput) error
 	PutStaffScheduleBundle(ctx context.Context, salonID, staffID uuid.UUID, in StaffSchedulePayload) error
@@ -141,23 +148,81 @@ type StaffInput struct {
 	TelegramNotifications bool        `json:"telegramNotifications"`
 	IsActive              bool        `json:"isActive"`
 	ServiceIDs            []uuid.UUID `json:"serviceIds"`
+	Specializations       []string    `json:"specializations"`
+	YearsExperience       *int        `json:"yearsExperience"`
+	ServiceAssignments    []SalonMasterServiceAssignmentInput `json:"serviceAssignments,omitempty"`
 }
 
-// StaffListRow is one master card on the dashboard list.
-type StaffListRow struct {
-	Staff             model.Staff `json:"staff"`
-	ConnectedServices []ServiceTag `json:"connectedServices"`
-	LoadPercentWeek   float64     `json:"loadPercentWeek"`
-	RatingAvg         *float64    `json:"ratingAvg"`
-	ReviewCount       int64       `json:"reviewCount"`
-	CompletedVisits   int64       `json:"completedVisits"`
-	RevenueMonthCents int64       `json:"revenueMonthCents"`
+// SalonMasterServiceAssignmentInput is one service line with optional overrides (create/update staff or PUT services).
+type SalonMasterServiceAssignmentInput struct {
+	ServiceID               uuid.UUID `json:"serviceId"`
+	PriceOverrideCents      *int64    `json:"priceOverrideCents"`
+	DurationOverrideMinutes *int      `json:"durationOverrideMinutes"`
 }
 
-// ServiceTag is a linked service label for staff cards.
-type ServiceTag struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+// MasterProfileLite is nested master_profiles JSON for dashboard salon-masters.
+type MasterProfileLite struct {
+	ID                uuid.UUID `json:"id"`
+	Bio               *string   `json:"bio"`
+	Specializations   []string  `json:"specializations"`
+	AvatarURL         *string   `json:"avatarUrl"`
+	YearsExperience   *int      `json:"yearsExperience"`
+	OwnedByUser       bool      `json:"ownedByUser"`
+}
+
+// SalonMasterServiceOut is one linked salon service with optional overrides.
+type SalonMasterServiceOut struct {
+	ServiceID               uuid.UUID `json:"serviceId"`
+	ServiceName             string    `json:"serviceName"`
+	SalonPriceCents         *int64    `json:"salonPriceCents"`
+	SalonDurationMinutes    int       `json:"salonDurationMinutes"`
+	PriceOverrideCents      *int64    `json:"priceOverrideCents"`
+	DurationOverrideMinutes *int      `json:"durationOverrideMinutes"`
+}
+
+// SalonMasterDashboardDetail is GET/PUT /salon-masters/:id JSON body.
+type SalonMasterDashboardDetail struct {
+	ID                    uuid.UUID               `json:"id"`
+	SalonID               uuid.UUID               `json:"salonId"`
+	DisplayName           string                  `json:"displayName"`
+	Color                 *string                 `json:"color,omitempty"`
+	IsActive              bool                    `json:"isActive"`
+	Status                string                  `json:"status"`
+	Role                  *string                 `json:"role,omitempty"`
+	Level                 *string                 `json:"level,omitempty"`
+	Bio                   *string                 `json:"bio,omitempty"`
+	Phone                 *string                 `json:"phone,omitempty"`
+	TelegramUsername      *string                 `json:"telegramUsername,omitempty"`
+	Email                 *string                 `json:"email,omitempty"`
+	JoinedAt              *time.Time              `json:"joinedAt,omitempty"`
+	DashboardAccess       bool                    `json:"dashboardAccess"`
+	TelegramNotifications bool                    `json:"telegramNotifications"`
+	CreatedAt             time.Time               `json:"createdAt"`
+	MasterProfile         *MasterProfileLite      `json:"masterProfile,omitempty"`
+	Services              []SalonMasterServiceOut `json:"services"`
+	ServiceIds            []uuid.UUID             `json:"serviceIds"` //nolint:tagliatelle // API contract
+}
+
+// SalonMasterDashboardListItem is GET /salon-masters list row.
+type SalonMasterDashboardListItem struct {
+	ID                    uuid.UUID               `json:"id"`
+	SalonID               uuid.UUID               `json:"salonId"`
+	DisplayName           string                  `json:"displayName"`
+	Color                 *string                 `json:"color,omitempty"`
+	IsActive              bool                    `json:"isActive"`
+	Status                string                  `json:"status"`
+	Role                  *string                 `json:"role,omitempty"`
+	Level                 *string                 `json:"level,omitempty"`
+	JoinedAt              *time.Time              `json:"joinedAt,omitempty"`
+	DashboardAccess       bool                    `json:"dashboardAccess"`
+	TelegramNotifications bool                    `json:"telegramNotifications"`
+	MasterProfile         *MasterProfileLite      `json:"masterProfile,omitempty"`
+	Services              []SalonMasterServiceOut `json:"services"`
+	LoadPercentWeek       float64                 `json:"loadPercentWeek"`
+	RatingAvg             *float64                `json:"ratingAvg"`
+	ReviewCount           int64                   `json:"reviewCount"`
+	CompletedVisits       int64                   `json:"completedVisits"`
+	RevenueMonthCents     int64                   `json:"revenueMonthCents"`
 }
 
 // StaffMetricsDTO is GET /staff/:id/metrics.
@@ -179,8 +244,8 @@ type SalonScheduleBundle struct {
 
 // StaffScheduleBundle is GET /staff/:id/schedule full payload.
 type StaffScheduleBundle struct {
-	Rows     []model.StaffWorkingHour `json:"rows"`
-	Absences []model.StaffAbsence     `json:"absences"`
+	Rows     []model.SalonMasterHour `json:"rows"`
+	Absences []model.SalonMasterAbsence     `json:"absences"`
 }
 
 // DateOverrideInput is one salon calendar exception.
@@ -255,6 +320,41 @@ func NewDashboardService(dash repository.DashboardRepository) DashboardService {
 
 var phoneDashRe = regexp.MustCompile(`^\+7\d{10}$`)
 
+func normalizePhoneE164Ptr(phone *string) *string {
+	if phone == nil {
+		return nil
+	}
+	p := strings.TrimSpace(*phone)
+	if p == "" {
+		return nil
+	}
+	p = strings.ReplaceAll(p, " ", "")
+	p = strings.ReplaceAll(p, "-", "")
+	if strings.HasPrefix(p, "8") && len(p) == 11 {
+		p = "+7" + p[1:]
+	}
+	if phoneDashRe.MatchString(p) {
+		return &p
+	}
+	return nil
+}
+
+func masterProfileLiteFrom(mp *model.MasterProfile) *MasterProfileLite {
+	if mp == nil {
+		return nil
+	}
+	specs := make([]string, len(mp.Specializations))
+	copy(specs, []string(mp.Specializations))
+	return &MasterProfileLite{
+		ID:                mp.ID,
+		Bio:               mp.Bio,
+		Specializations:   specs,
+		AvatarURL:         mp.AvatarURL,
+		YearsExperience:   mp.YearsExperience,
+		OwnedByUser:       mp.UserID != nil,
+	}
+}
+
 func (s *dashboardService) Membership(ctx context.Context, userID uuid.UUID) (*repository.SalonMembership, error) {
 	return s.dash.FindMembershipForUser(ctx, userID)
 }
@@ -293,7 +393,7 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 	ap := &model.Appointment{
 		SalonID:        salonID,
 		ServiceID:      svc.ID,
-		StaffID:        in.StaffID,
+		SalonMasterID:  in.StaffID,
 		ClientUserID:   in.ClientUserID,
 		GuestName:      &name,
 		GuestPhoneE164: &phone,
@@ -355,7 +455,7 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 		a.ServiceID = *in.ServiceID
 	}
 	if in.ClearStaffID {
-		a.StaffID = nil
+		a.SalonMasterID = nil
 	} else if in.StaffID != nil {
 		if *in.StaffID != uuid.Nil {
 			st, err := s.dash.GetStaff(ctx, salonID, *in.StaffID)
@@ -366,7 +466,7 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 				return fmt.Errorf("staff not found")
 			}
 		}
-		a.StaffID = in.StaffID
+		a.SalonMasterID = in.StaffID
 	}
 	if in.StartsAt != nil {
 		a.StartsAt = in.StartsAt.UTC()
@@ -582,21 +682,45 @@ func (s *dashboardService) DeleteService(ctx context.Context, salonID, serviceID
 	return err
 }
 
-func (s *dashboardService) ListStaff(ctx context.Context, salonID uuid.UUID) ([]model.Staff, error) {
+func (s *dashboardService) ListStaff(ctx context.Context, salonID uuid.UUID) ([]model.SalonMaster, error) {
 	return s.dash.ListStaff(ctx, salonID)
 }
 
-func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, in StaffInput) (*model.Staff, error) {
+func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, in StaffInput) (*model.SalonMaster, error) {
 	n := trimSpace(in.DisplayName)
 	if n == "" {
 		return nil, fmt.Errorf("display name is required")
 	}
-	st := &model.Staff{
+	specs := pq.StringArray(in.Specializations)
+	if specs == nil {
+		specs = pq.StringArray{}
+	}
+	var bioPtr *string
+	if in.Bio != nil && trimSpace(*in.Bio) != "" {
+		b := trimSpace(*in.Bio)
+		bioPtr = &b
+	}
+	mp := &model.MasterProfile{
+		DisplayName:     n,
+		Bio:             bioPtr,
+		Specializations: specs,
+		YearsExperience: in.YearsExperience,
+		PhoneE164:       normalizePhoneE164Ptr(in.Phone),
+	}
+	if err := s.dash.CreateMasterProfile(ctx, mp); err != nil {
+		return nil, err
+	}
+	mid := mp.ID
+	status := "active"
+	if !in.IsActive {
+		status = "inactive"
+	}
+	st := &model.SalonMaster{
 		SalonID:               salonID,
+		MasterID:              &mid,
 		DisplayName:           n,
 		Role:                  in.Role,
 		Level:                 in.Level,
-		Bio:                   in.Bio,
 		Phone:                 in.Phone,
 		TelegramUsername:      in.TelegramUsername,
 		Email:                 in.Email,
@@ -604,6 +728,7 @@ func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, i
 		DashboardAccess:       in.DashboardAccess,
 		TelegramNotifications: in.TelegramNotifications,
 		IsActive:              in.IsActive,
+		Status:                status,
 	}
 	if in.JoinedAt != nil && trimSpace(*in.JoinedAt) != "" {
 		t, err := time.Parse("2006-01-02", trimSpace(*in.JoinedAt))
@@ -614,15 +739,13 @@ func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, i
 	if err := s.dash.CreateStaff(ctx, st); err != nil {
 		return nil, err
 	}
-	if len(in.ServiceIDs) > 0 {
-		if err := s.dash.ReplaceStaffServices(ctx, salonID, st.ID, dedupeUUIDs(in.ServiceIDs)); err != nil {
-			return nil, err
-		}
+	if err := s.applyStaffServiceAssignments(ctx, salonID, st.ID, in); err != nil {
+		return nil, err
 	}
 	return st, nil
 }
 
-func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, in StaffInput) (*model.Staff, error) {
+func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, in StaffInput) (*model.SalonMaster, error) {
 	st, err := s.dash.GetStaff(ctx, salonID, staffID)
 	if err != nil {
 		return nil, err
@@ -652,19 +775,86 @@ func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uui
 	}
 	st.DashboardAccess = in.DashboardAccess
 	st.TelegramNotifications = in.TelegramNotifications
-	st.IsActive = in.IsActive
+	if st.Status == "pending" {
+		st.IsActive = false
+	} else {
+		st.IsActive = in.IsActive
+		if in.IsActive {
+			st.Status = "active"
+		} else {
+			st.Status = "inactive"
+		}
+	}
 	if err := s.dash.UpdateStaff(ctx, st); err != nil {
 		return nil, err
 	}
-	if in.ServiceIDs != nil {
-		if err := s.dash.ReplaceStaffServices(ctx, salonID, staffID, dedupeUUIDs(in.ServiceIDs)); err != nil {
+	if st.MasterID != nil {
+		mp, err := s.dash.GetMasterProfile(ctx, *st.MasterID)
+		if err != nil {
+			return nil, err
+		}
+		if mp != nil && mp.UserID == nil {
+			if trimSpace(in.DisplayName) != "" {
+				mp.DisplayName = trimSpace(in.DisplayName)
+			}
+			if in.Bio != nil {
+				if trimSpace(*in.Bio) == "" {
+					mp.Bio = nil
+				} else {
+					b := trimSpace(*in.Bio)
+					mp.Bio = &b
+				}
+			}
+			if in.Specializations != nil {
+				mp.Specializations = pq.StringArray(in.Specializations)
+			}
+			if in.YearsExperience != nil {
+				mp.YearsExperience = in.YearsExperience
+			}
+			if in.Phone != nil {
+				if trimSpace(*in.Phone) == "" {
+					mp.PhoneE164 = nil
+				} else if p := normalizePhoneE164Ptr(in.Phone); p != nil {
+					mp.PhoneE164 = p
+				}
+			}
+			if err := s.dash.UpdateMasterProfile(ctx, mp); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if in.ServiceIDs != nil || len(in.ServiceAssignments) > 0 {
+		if err := s.applyStaffServiceAssignments(ctx, salonID, staffID, in); err != nil {
 			return nil, err
 		}
 	}
 	return st, nil
 }
 
-func (s *dashboardService) GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.Staff, []uuid.UUID, error) {
+func (s *dashboardService) applyStaffServiceAssignments(ctx context.Context, salonID, salonMasterID uuid.UUID, in StaffInput) error {
+	if len(in.ServiceAssignments) > 0 {
+		rows := make([]repository.SalonMasterServiceAssignment, 0, len(in.ServiceAssignments))
+		for _, a := range in.ServiceAssignments {
+			var po *int
+			if a.PriceOverrideCents != nil {
+				v := int(*a.PriceOverrideCents)
+				po = &v
+			}
+			rows = append(rows, repository.SalonMasterServiceAssignment{
+				ServiceID:               a.ServiceID,
+				PriceOverrideCents:      po,
+				DurationOverrideMinutes: a.DurationOverrideMinutes,
+			})
+		}
+		return s.dash.ReplaceSalonMasterServiceAssignments(ctx, salonID, salonMasterID, rows)
+	}
+	if len(in.ServiceIDs) > 0 {
+		return s.dash.ReplaceStaffServices(ctx, salonID, salonMasterID, dedupeUUIDs(in.ServiceIDs))
+	}
+	return nil
+}
+
+func (s *dashboardService) GetStaff(ctx context.Context, salonID, staffID uuid.UUID) (*model.SalonMaster, []uuid.UUID, error) {
 	st, err := s.dash.GetStaff(ctx, salonID, staffID)
 	if err != nil {
 		return nil, nil, err
@@ -677,6 +867,77 @@ func (s *dashboardService) GetStaff(ctx context.Context, salonID, staffID uuid.U
 		return nil, nil, err
 	}
 	return st, ids, nil
+}
+
+func (s *dashboardService) GetSalonMasterDashboardDetail(ctx context.Context, salonID, salonMasterID uuid.UUID) (*SalonMasterDashboardDetail, error) {
+	st, err := s.dash.GetStaff(ctx, salonID, salonMasterID)
+	if err != nil {
+		return nil, err
+	}
+	if st == nil {
+		return nil, nil
+	}
+	ids, err := s.dash.ListStaffServiceIDs(ctx, salonID, salonMasterID)
+	if err != nil {
+		return nil, err
+	}
+	details, err := s.dash.ListSalonMasterServiceDetails(ctx, salonID, salonMasterID)
+	if err != nil {
+		return nil, err
+	}
+	var mpLite *MasterProfileLite
+	if st.MasterID != nil {
+		mp, err := s.dash.GetMasterProfile(ctx, *st.MasterID)
+		if err != nil {
+			return nil, err
+		}
+		mpLite = masterProfileLiteFrom(mp)
+	}
+	svcOut := make([]SalonMasterServiceOut, 0, len(details))
+	for _, row := range details {
+		var po *int64
+		if row.PriceOverrideCents != nil {
+			v := int64(*row.PriceOverrideCents)
+			po = &v
+		}
+		svcOut = append(svcOut, SalonMasterServiceOut{
+			ServiceID:               row.ServiceID,
+			ServiceName:             row.ServiceName,
+			SalonPriceCents:         row.SalonPriceCents,
+			SalonDurationMinutes:    row.SalonDurationMinutes,
+			PriceOverrideCents:      po,
+			DurationOverrideMinutes: row.DurationOverrideMinutes,
+		})
+	}
+	status := st.Status
+	if status == "" {
+		if st.IsActive {
+			status = "active"
+		} else {
+			status = "inactive"
+		}
+	}
+	return &SalonMasterDashboardDetail{
+		ID:                    st.ID,
+		SalonID:               st.SalonID,
+		DisplayName:           st.DisplayName,
+		Color:                 st.Color,
+		IsActive:              st.IsActive,
+		Status:                status,
+		Role:                  st.Role,
+		Level:                 st.Level,
+		Bio:                   st.Bio,
+		Phone:                 st.Phone,
+		TelegramUsername:      st.TelegramUsername,
+		Email:                 st.Email,
+		JoinedAt:              st.JoinedAt,
+		DashboardAccess:       st.DashboardAccess,
+		TelegramNotifications: st.TelegramNotifications,
+		CreatedAt:             st.CreatedAt,
+		MasterProfile:         mpLite,
+		Services:              svcOut,
+		ServiceIds:            ids,
+	}, nil
 }
 
 func (s *dashboardService) DeleteStaff(ctx context.Context, salonID, staffID uuid.UUID) error {
@@ -855,7 +1116,7 @@ func (s *dashboardService) staffWeekCapacityMinutes(ctx context.Context, salonID
 	if err != nil {
 		return 0, err
 	}
-	staffBy := make(map[int16]model.StaffWorkingHour)
+	staffBy := make(map[int16]model.SalonMasterHour)
 	for _, r := range staffRows {
 		staffBy[r.DayOfWeek] = r
 	}
@@ -966,39 +1227,82 @@ func (s *dashboardService) StaffMetrics(ctx context.Context, salonID, staffID uu
 	}, nil
 }
 
-func (s *dashboardService) ListStaffDashboard(ctx context.Context, salonID uuid.UUID) ([]StaffListRow, error) {
+func (s *dashboardService) ListStaffDashboard(ctx context.Context, salonID uuid.UUID) ([]SalonMasterDashboardListItem, error) {
 	staffList, err := s.dash.ListStaff(ctx, salonID)
 	if err != nil {
 		return nil, err
 	}
-	lines, err := s.dash.StaffServiceLines(ctx, salonID)
+	details, err := s.dash.ListSalonMasterServiceDetailsForSalon(ctx, salonID)
 	if err != nil {
 		return nil, err
 	}
-	byStaff := make(map[uuid.UUID][]ServiceTag)
-	for _, ln := range lines {
-		byStaff[ln.StaffID] = append(byStaff[ln.StaffID], ServiceTag{ID: ln.ServiceID, Name: ln.ServiceName})
+	byMaster := make(map[uuid.UUID][]repository.SalonMasterServiceDetail)
+	for _, d := range details {
+		byMaster[d.SalonMasterID] = append(byMaster[d.SalonMasterID], d)
 	}
-	out := make([]StaffListRow, 0, len(staffList))
+	out := make([]SalonMasterDashboardListItem, 0, len(staffList))
 	for _, st := range staffList {
 		m, err := s.StaffMetrics(ctx, salonID, st.ID, "month")
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, StaffListRow{
-			Staff:             st,
-			ConnectedServices: byStaff[st.ID],
-			LoadPercentWeek:   m.LoadPercent,
-			RatingAvg:         m.Rating,
-			ReviewCount:       m.ReviewCount,
-			CompletedVisits:   m.TotalVisits,
-			RevenueMonthCents: m.RevenueMonthCents,
+		var mpLite *MasterProfileLite
+		if st.MasterID != nil {
+			mp, err := s.dash.GetMasterProfile(ctx, *st.MasterID)
+			if err != nil {
+				return nil, err
+			}
+			mpLite = masterProfileLiteFrom(mp)
+		}
+		svcOut := make([]SalonMasterServiceOut, 0, len(byMaster[st.ID]))
+		for _, row := range byMaster[st.ID] {
+			var po *int64
+			if row.PriceOverrideCents != nil {
+				v := int64(*row.PriceOverrideCents)
+				po = &v
+			}
+			svcOut = append(svcOut, SalonMasterServiceOut{
+				ServiceID:               row.ServiceID,
+				ServiceName:             row.ServiceName,
+				SalonPriceCents:         row.SalonPriceCents,
+				SalonDurationMinutes:    row.SalonDurationMinutes,
+				PriceOverrideCents:      po,
+				DurationOverrideMinutes: row.DurationOverrideMinutes,
+			})
+		}
+		status := st.Status
+		if status == "" {
+			if st.IsActive {
+				status = "active"
+			} else {
+				status = "inactive"
+			}
+		}
+		out = append(out, SalonMasterDashboardListItem{
+			ID:                    st.ID,
+			SalonID:               st.SalonID,
+			DisplayName:           st.DisplayName,
+			Color:                 st.Color,
+			IsActive:              st.IsActive,
+			Status:                status,
+			Role:                  st.Role,
+			Level:                 st.Level,
+			JoinedAt:              st.JoinedAt,
+			DashboardAccess:       st.DashboardAccess,
+			TelegramNotifications: st.TelegramNotifications,
+			MasterProfile:         mpLite,
+			Services:              svcOut,
+			LoadPercentWeek:       m.LoadPercent,
+			RatingAvg:             m.Rating,
+			ReviewCount:           m.ReviewCount,
+			CompletedVisits:       m.TotalVisits,
+			RevenueMonthCents:     m.RevenueMonthCents,
 		})
 	}
 	return out, nil
 }
 
-func (s *dashboardService) GetStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID) ([]model.StaffWorkingHour, error) {
+func (s *dashboardService) GetStaffSchedule(ctx context.Context, salonID, staffID uuid.UUID) ([]model.SalonMasterHour, error) {
 	return s.dash.ListStaffWorkingHours(ctx, staffID, salonID)
 }
 
@@ -1020,12 +1324,12 @@ func (s *dashboardService) GetStaffScheduleBundle(ctx context.Context, salonID, 
 
 func (s *dashboardService) PutStaffScheduleBundle(ctx context.Context, salonID, staffID uuid.UUID, in StaffSchedulePayload) error {
 	if len(in.Rows) > 0 {
-		out := make([]model.StaffWorkingHour, 0, len(in.Rows))
+		out := make([]model.SalonMasterHour, 0, len(in.Rows))
 		for _, r := range in.Rows {
 			if r.DayOfWeek < 0 || r.DayOfWeek > 6 {
 				return fmt.Errorf("invalid day_of_week")
 			}
-			o := model.StaffWorkingHour{
+			o := model.SalonMasterHour{
 				DayOfWeek: r.DayOfWeek,
 				IsDayOff:  r.IsDayOff,
 				OpensAt:   "10:00:00",
@@ -1048,7 +1352,7 @@ func (s *dashboardService) PutStaffScheduleBundle(ctx context.Context, salonID, 
 		}
 	}
 	if in.Absences != nil {
-		rows := make([]model.StaffAbsence, 0, len(in.Absences))
+		rows := make([]model.SalonMasterAbsence, 0, len(in.Absences))
 		for _, a := range in.Absences {
 			s0, err := time.Parse("2006-01-02", a.StartsOn)
 			if err != nil {
@@ -1062,8 +1366,8 @@ func (s *dashboardService) PutStaffScheduleBundle(ctx context.Context, salonID, 
 			if kind == "" {
 				kind = "vacation"
 			}
-			rows = append(rows, model.StaffAbsence{
-				StaffID:  staffID,
+			rows = append(rows, model.SalonMasterAbsence{
+				SalonMasterID: staffID,
 				StartsOn: s0,
 				EndsOn:   s1,
 				Kind:     kind,
@@ -1228,4 +1532,67 @@ func (s *dashboardService) PutSalonProfile(ctx context.Context, salonID uuid.UUI
 		return nil, err
 	}
 	return s.dash.FindSalonModel(ctx, salonID)
+}
+
+func (s *dashboardService) LookupMasterByPhone(ctx context.Context, phoneE164 string) (*model.MasterProfile, bool, error) {
+	p := strings.TrimSpace(phoneE164)
+	if p == "" {
+		return nil, false, fmt.Errorf("phone required")
+	}
+	p = strings.ReplaceAll(p, " ", "")
+	p = strings.ReplaceAll(p, "-", "")
+	if strings.HasPrefix(p, "8") && len(p) == 11 {
+		p = "+7" + p[1:]
+	}
+	if !phoneDashRe.MatchString(p) {
+		return nil, false, fmt.Errorf("invalid phone, use E.164 +7XXXXXXXXXX")
+	}
+	mp, err := s.dash.GetMasterProfileByPhoneE164(ctx, p)
+	if err != nil {
+		return nil, false, err
+	}
+	if mp == nil {
+		return nil, false, nil
+	}
+	return mp, true, nil
+}
+
+func (s *dashboardService) CreateMasterInvite(ctx context.Context, salonID, masterProfileID uuid.UUID) (*model.SalonMaster, error) {
+	mp, err := s.dash.GetMasterProfile(ctx, masterProfileID)
+	if err != nil {
+		return nil, err
+	}
+	if mp == nil {
+		return nil, fmt.Errorf("master profile not found")
+	}
+	st := &model.SalonMaster{
+		SalonID:               salonID,
+		MasterID:              &masterProfileID,
+		DisplayName:           mp.DisplayName,
+		IsActive:              false,
+		Status:                "pending",
+		DashboardAccess:       false,
+		TelegramNotifications: true,
+	}
+	if err := s.dash.CreateStaff(ctx, st); err != nil {
+		return nil, err
+	}
+	return st, nil
+}
+
+func (s *dashboardService) ReplaceSalonMasterServices(ctx context.Context, salonID, salonMasterID uuid.UUID, rows []SalonMasterServiceAssignmentInput) error {
+	out := make([]repository.SalonMasterServiceAssignment, 0, len(rows))
+	for _, a := range rows {
+		var po *int
+		if a.PriceOverrideCents != nil {
+			v := int(*a.PriceOverrideCents)
+			po = &v
+		}
+		out = append(out, repository.SalonMasterServiceAssignment{
+			ServiceID:               a.ServiceID,
+			PriceOverrideCents:      po,
+			DurationOverrideMinutes: a.DurationOverrideMinutes,
+		})
+	}
+	return s.dash.ReplaceSalonMasterServiceAssignments(ctx, salonID, salonMasterID, out)
 }
