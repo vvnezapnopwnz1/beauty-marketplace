@@ -188,6 +188,7 @@
         guest-booking/
           ui/
             GuestBookingDialog.tsx
+            PublicSlotPicker.tsx
         location/
           lib/
             effectiveSearchCoords.ts
@@ -311,7 +312,9 @@
 - `GET /api/v1/salons` -> `SalonController.ListSalons`
 - `GET /api/v1/salons/{id}` -> `SalonController.getSalonByID` (через `SalonController.SalonRoutes`)
 - `GET /api/v1/salons/{id}/masters` -> `SalonController.listPublicSalonMasters` (публично; активные `salon_masters` + `master_profiles` + услуги, см. `service/master_public.go`)
-- `POST /api/v1/salons/{id}/bookings` -> `SalonController.createGuestBooking` (через `SalonController.SalonRoutes`)
+- `POST /api/v1/salons/{id}/bookings` -> `SalonController.createGuestBooking` (через `SalonController.SalonRoutes`; тело: `serviceId` (первая услуга) и опционально `serviceIds` для нескольких услуг; опц. `startsAt`/`endsAt`/`salonMasterId`/`masterProfileId` — иначе сервис сам подбирает первый слот в ближайшие 7 дней или возвращает `ErrBookingUnavailable`; вставка `appointments` + строки `appointment_line_items` со снимком цены/длительности)
+- `GET /api/v1/salons/{id}/slots?date=&serviceId=&serviceIds=&masterProfileId=&salonMasterId=` -> `SalonController.listPublicSlots` (публичный пикер слотов, ответ `{date, slotDurationMinutes, slots[], masters[]}`; `serviceIds` — UUID через запятую (до 10), длительность слота = сумма услуг с оверрайдами мастера; мастера без полного набора услуг отфильтровываются; сузить мастера можно **либо** `masterProfileId`, **либо** `salonMasterId` — при передаче обоих — **400** `use only one of masterProfileId or salonMasterId`)
+- `GET /api/v1/dashboard/slots?date=&serviceId=&salonMasterId=` -> `DashboardController.listDashboardSlots` (JWT, тот же формат ответа)
 - `GET /api/v1/masters/{masterProfileId}` -> `MasterController.MasterRoutes` → `MasterPublicService.GetMasterProfilePublic`
 - `GET /api/v1/places/search` -> `PlacesController.SearchPlaces`
 - `GET /api/v1/places/item/{id}` -> `PlacesController.GetPlaceByID`
@@ -385,11 +388,25 @@
   - `SalonRepository` (`backend/internal/repository/salon.go`)
   - `MasterPublicRepository` (`backend/internal/repository/master_public.go`) — публичные списки мастеров салона и профиль мастера
   - `MasterDashboardRepository` (`backend/internal/repository/master_dashboard.go`) — claiming по телефону, кабинет мастера (профиль, инвайты, записи по `master_id`)
-  - `AppointmentRepository` (`backend/internal/repository/appointment.go`)
+  - `AppointmentRepository` (`backend/internal/repository/appointment.go`) — `Create`, `CreateWithLineItems`, `FindServiceForSalon`, `FindByMasterInRange` (активные записи мастера за интервал, статусы `cancelled_*` / `no_show` исключены)
+  - `BookingSlotsRepository` (`backend/internal/repository/booking_slots.go`) — `GetSalonMeta`, `ListActiveSalonMasters`, `GetSalonMaster`, `GetSalonMasterByProfileID`, `GetMasterWorkingHour`, `GetServiceDurationOverride`, `GetMasterServiceOverrides`, `ListSalonMastersCoveringServices` для генерации слотов и мульти-услуги
   - `HealthRepository` (`backend/internal/repository/health.go`)
 - `OTPSender`:
   - отдельный интерфейс `OTPSender` в коде отсутствует;
   - в `backend/internal/service/auth.go` есть `TODO` на интеграцию SMS-провайдера.
+
+### План `track2-booking-slots` и фактическая модель (имена таблиц)
+
+В [`docs/plans/track2-booking-slots.md`](plans/track2-booking-slots.md) в алгоритме `GetAvailableSlots` встречается **`staff_working_hours`**. В репозитории это **не отдельная актуальная таблица под таким именем**: в миграции [`000012_master_profiles.up.sql`](../backend/migrations/000012_master_profiles.up.sql) таблица **`staff_working_hours` переименована в `salon_master_hours`**. Именно **`salon_master_hours`** читает `BookingSlotsRepository.GetMasterWorkingHour` при расчёте слотов.
+
+| Что в плане track2 (смысл) | Где в коде / БД |
+|----------------------------|-----------------|
+| Рабочие часы мастера в салоне, перерыв, выходной (`staff_working_hours` в тексте плана) | Таблица **`salon_master_hours`** (строка на `(salon_master_id, day_of_week)`, поля `opens_at` / `closes_at`, перерыв, `is_day_off`). Репозиторий: [`booking_slots_repository.go`](../backend/internal/infrastructure/persistence/booking_slots_repository.go) (`GetMasterWorkingHour`). |
+| Длительность услуги и оверрайд у мастера | **`services.duration_minutes`** и **`salon_master_services`** (`duration_override_minutes`, `price_override_cents`) — `GetMasterServiceOverrides` / `GetServiceDurationOverride`. |
+| Шаг сетки | **`salons.slot_duration_minutes`** — `GetSalonMeta`. |
+| Занятые окна | **`appointments`** по `salon_master_id` — `AppointmentRepository.FindByMasterInRange`. |
+
+**Не смешивать с `working_hours`:** в БД есть отдельная таблица **`working_hours`** — это расписание **салона** (`salon_id`), а не недельные строки мастера для генерации слотов в `BookingService.GetAvailableSlots` (логика трека 2 опирается на **`salon_master_hours`**).
 
 ### Структура БД (таблицы и колонки из миграций)
 
@@ -405,6 +422,7 @@
 - `working_hours`: `id`, `salon_id`, `day_of_week`, `opens_at`, `closes_at`, `valid_from`, `valid_to`
 - `salon_subscriptions`: `id`, `salon_id`, `plan`, `status`, `current_period_end`, `external_payment_ref`, `payment_provider`, `created_at`
 - `appointments`: `id`, `salon_id`, `client_user_id`, `guest_name`, `guest_phone_e164`, `salon_master_id`, `service_id`, `starts_at`, `ends_at`, `status`, `client_note`, `created_at`, `updated_at`
+- `appointment_line_items`: `id`, `appointment_id`, `service_id`, `service_name`, `duration_minutes`, `price_cents`, `sort_order`, `created_at` (снимок на момент записи; миграция `000014`)
 - `user_telegram_identities`: `user_id`, `telegram_user_id`, `telegram_chat_id`, `linked_at`
 - `reviews`: `id`, `appointment_id`, `rating`, `body`, `response_text`, `created_at`
 - `waitlist_entries`: `id`, `user_id`, `salon_id`, `service_id`, `desired_from`, `desired_to`, `status`, `created_at`
@@ -482,7 +500,7 @@ Store: `frontend/src/app/store.ts`
 - `GET|PUT /api/v1/master-dashboard/profile`
 - `GET /api/v1/master-dashboard/invites`, `POST .../invites/:id/accept|decline`
 - `GET /api/v1/master-dashboard/salons`
-- `GET /api/v1/master-dashboard/appointments` (query `from`, `to`, `status` — даты `YYYY-MM-DD`)
+- `GET /api/v1/master-dashboard/appointments` (query `from`, `to`, `status` — даты `YYYY-MM-DD`; поле `serviceName` в элементах списка — как в дашборде салона: агрегат имён из `appointment_line_items` при наличии строк, иначе имя основной услуги)
 - base через `publicApiUrl`
 
 `frontend/src/shared/api/geoApi.ts`:
@@ -502,7 +520,8 @@ Store: `frontend/src/app/store.ts`
 - `GET /v1/salons/by-external?source=2gis&id=...` — lookup связанного платформенного салона для внешнего place id
 - `GET /v1/salons/:salonId/masters` — публичный список мастеров салона
 - `GET /v1/masters/:masterProfileId` — публичный профиль мастера и салоны
-- `POST /v1/salons/:salonId/bookings` body `{ serviceId, name, phone, note? }`
+- `GET /v1/salons/:salonId/slots?date=YYYY-MM-DD&serviceId=` или `&serviceIds=uuid,uuid` + `masterProfileId` или `salonMasterId` (не оба)
+- `POST /v1/salons/:salonId/bookings` body `{ serviceId, serviceIds?, name, phone, note?, startsAt?, endsAt?, salonMasterId?, masterProfileId? }` (`serviceIds` — несколько услуг; `serviceId` = первая из списка)
 - base: `import.meta.env.VITE_API_BASE ?? ''` (в `.env` это `/api`, итоговые URL: `/api/v1/...`)
 
 `frontend/src/shared/api/searchApi.ts`:
@@ -513,13 +532,14 @@ Store: `frontend/src/app/store.ts`
 
 - **Бренд (глобально):** `ThemeModeProvider` + `createAppTheme` (`frontend/src/shared/theme/createAppTheme.ts`) — режимы `light` / `dark`, палитры `COLORS_LIGHT` / `COLORS_DARK` (`palettes.ts`).
 - **Дашборд:** расширение MUI — `theme.palette.dashboard` (`dashboardPalette.ts`, `getDashboardPalette`), доступ в UI через `useDashboardPalette()`; списки/карточки могут использовать `useDashboardListCardSurface()` для согласованных фона и тени в светлой теме.
+- **DnD в дашборде:** `@dnd-kit/react` (на dom-слое `@dnd-kit/dom`) — календарь «День»/«Неделя»: `DragDropProvider`, `useDraggable` / `useDroppable`; утилиты пересчёта времени и id — `pages/dashboard/lib/dndCalendarUtils.ts`. В `frontend/package.json` также `@dnd-kit/core` и `@dnd-kit/modifiers` для возможных ограничений оси/жестов.
 - **Главная:** `SearchPage` — фон Hero зависит от режима: в светлой теме светлый градиент (cream / blush), в тёмной — прежний тёмный линейный градиент; `SearchBar` подстраивает стиль поля поиска под тот же контраст.
 
 ### Страницы и ключевые компоненты
 
 Страницы:
 - `SearchPage` (`frontend/src/pages/search/ui/SearchPage.tsx`): общий поиск (`/api/v1/search` + fallback `/api/v1/places/search`), карточки, infinite scroll, карта; Hero и строка поиска учитывают светлую/тёмную тему (см. выше).
-- `SalonPage` (`frontend/src/pages/salon/ui/SalonPage.tsx`): детали салона/места, вкладки и гостевая запись; вкладка «Мастера» — данные с `GET /v1/salons/:id/masters` для UUID-салона.
+- `SalonPage` (`frontend/src/pages/salon/ui/SalonPage.tsx`): детали салона/места, вкладки; гостевая запись через `GuestBookingDialog` — wizard **услуга → мастер** (`fetchSalonMasters`, фильтр по `services` мастера) **→ слот** (`PublicSlotPicker` / `fetchPublicSlots`: `masterProfileId` или `salonMasterId`) **→ контакты**; вход: CTA «Записаться» в hero, кнопка у услуги и «Записаться онлайн» в сайдбаре — всегда с шага выбора услуги (опциональный проп `initialServiceId` в диалоге зарезервирован для других сценариев). Вкладка «Мастера» — `GET /v1/salons/:id/masters` для UUID-салона.
 - `SalonPage` работает в dual-mode:
   - `salon` режим (`/salon/:id`) — услуги/мастера/онлайн-запись;
   - `place` режим (`/place/:externalId`) — данные 2GIS, CTA «Позвонить»;
@@ -537,7 +557,7 @@ Store: `frontend/src/app/store.ts`
 - **SearchPage layout**: в режиме списка — две колонки в контейнере `maxWidth` (~1180px): слева счётчик + bento-сетка, справа узкая колонка с `PromoBanner` (sticky на desktop); в режиме карты — полная ширина контента, без промо-колонки.
 - **Bento**: `assignFeaturedVariants` (`pages/search/lib/calcFeaturedScore.ts`) делит выдачу на батчи по 5, выбирает featured по score; чётные батчи — `featured-vertical` (первая в батче), нечётные — `featured-horizontal` (**первая обычная, вторая — wide**, чтобы в сетке 3 колонки занимала слоты 2–3). У каждой карточки слот 0–4 задаёт градиент медиа из `bentoGradients.ts` (как `grad-1`…`grad-5` в `docs/beautica-v2-redesign.html`).
 - `MapSidebar`, `MapToggleButton`: карта 2GIS + переключение список/карта.
-- `GuestBookingDialog`: отправка гостевой записи.
+- `GuestBookingDialog` + `PublicSlotPicker`: пошаговая гостевая запись и загрузка слотов (`features/guest-booking/ui/`).
 - `DeviceLocationSync`, `LocationBootstrap`, `GeoLocationStorageWatcher`, `CityPickerModal`: геолокация/город/синхронизация localStorage.
 
 ### Переменные окружения (`VITE_*`)
@@ -568,7 +588,7 @@ Store: `frontend/src/app/store.ts`
 - `000005_guest_appointments.down.sql`: откат гостевых изменений
 - `000006_external_ids.up.sql`: нормализация внешних id в `salon_external_ids`, перенос данных из `salons.external_source/external_id`
 - `000006_external_ids.down.sql`: обратная денормализация в `salons.external_source/external_id`
-- Далее: `000007`–`000008` (графики staff/salon), `000009` (расширение dashboard: staff, services, слоты, перерывы), `000010` (`service_categories`, `salon_type`, `services.category_slug`), `000011` и др.; `000012` (`master_profiles`, переименование `staff` → `salon_masters`, `salon_master_services` с оверрайдами); `000013` (`salon_master_status`) — см. `backend/migrations/`.
+- Далее: `000007`–`000008` (графики staff/salon), `000009` (расширение dashboard: staff, services, слоты, перерывы), `000010` (`service_categories`, `salon_type`, `services.category_slug`), `000011` и др.; `000012` (`master_profiles`, переименование `staff` → `salon_masters`, `salon_master_services` с оверрайдами); `000013` (`salon_master_status`); `000014` (`appointment_line_items` для мульти-услуги и снимков цены) — см. `backend/migrations/`.
 
 ### Ключевые индексы и constraints
 
@@ -646,14 +666,14 @@ Store: `frontend/src/app/store.ts`
 
 - **Регистрация в DI** (`backend/internal/app/app.go`): `persistence.NewDashboardRepository`, `service.NewDashboardService`, `controller.NewDashboardController`.
 - **Точка входа HTTP:** префикс `/api/v1/dashboard` (см. `DashboardController.DashboardRoutes` в [`dashboard_controller.go`](backend/internal/controller/dashboard_controller.go)); перед этим `auth.RequireAuth` и проверка членства в салоне.
-- **Логика:** [`service/dashboard.go`](backend/internal/service/dashboard.go); **персистенция:** [`dashboard_repository.go`](backend/internal/infrastructure/persistence/dashboard_repository.go); интерфейс [`repository/dashboard.go`](backend/internal/repository/dashboard.go).
-- **Данные:** таблица `service_categories` (системный каталог slug), поля `services.category_slug`, `salons.salon_type`, `salons.slot_duration_minutes`, `salon_master_services` (связь мастер–услуга и оверрайды), `master_profiles`, расширения `salon_masters`/schedule — см. миграции `000009`–`000013` и [`docs/service-categories.md`](service-categories.md).
+- **Логика:** [`service/dashboard.go`](backend/internal/service/dashboard.go); **персистенция:** [`dashboard_repository.go`](backend/internal/infrastructure/persistence/dashboard_repository.go) — в т.ч. `ListAppointments`: поле **`serviceName`** в JSON = `string_agg(appointment_line_items.service_name)` при наличии строк, иначе имя услуги из `services` по `appointments.service_id`; query **`service_id`** фильтрует записи, где эта услуга либо основная (`appointments.service_id`), либо присутствует в **`appointment_line_items`** (`EXISTS`); интерфейс [`repository/dashboard.go`](backend/internal/repository/dashboard.go).
+- **Данные:** таблица `service_categories` (системный каталог slug), поля `services.category_slug`, `salons.salon_type`, `salons.slot_duration_minutes`, `salon_master_services` (связь мастер–услуга и оверрайды), `master_profiles`, расширения `salon_masters`/schedule, **`appointment_line_items`** (снимки строк мульти-услуги у гостевых записей; миграция `000014`) — см. миграции `000009`–`000014` и [`docs/service-categories.md`](service-categories.md).
 
 **Типовые группы эндпоинтов (не исчерпывающе):**
 
 | Область | Методы и путь (под `/api/v1/dashboard`) |
 |--------|----------------------------------------|
-| Записи | `GET /appointments`, `POST /appointments`, `PUT /appointments/{id}`, `PATCH /appointments/{id}/status` |
+| Записи | `GET /appointments?from=&to=&status=&salon_master_id|staff_id=&service_id=&page=&page_size=` (`service_id` — основная услуга **или** любая строка `appointment_line_items`), `POST /appointments`, `PUT /appointments/{id}`, `PATCH /appointments/{id}/status` |
 | Услуги | `GET/POST/PUT/DELETE /services`, связи мастер–услуга (`salon_master_services`) |
 | Категории услуг | `GET /service-categories` (в т.ч. режим полного списка для валидации) |
 | Мастера, расписание, профиль | **`/salon-masters`** (основной путь; deprecated **`/staff`** — те же хендлеры), `PUT .../salon-masters/:id/services`, **`GET /masters/lookup`**, **`POST /master-invites`**, `/schedule`, `/salon/profile`, bundle-роуты по необходимости |
@@ -666,7 +686,7 @@ Store: `frontend/src/app/store.ts`
 - **Услуги и категории:** [`views/ServicesView.tsx`](frontend/src/pages/dashboard/ui/views/ServicesView.tsx), [`modals/ServiceFormModal.tsx`](frontend/src/pages/dashboard/ui/modals/ServiceFormModal.tsx), [`lib/salonTypeOptions.ts`](frontend/src/pages/dashboard/lib/salonTypeOptions.ts).
 - **Записи:** [`DashboardAppointments.tsx`](frontend/src/pages/dashboard/ui/DashboardAppointments.tsx) — список, создание записи (модалка), просмотр/редактирование существующей — общий правый [`AppointmentDrawer.tsx`](frontend/src/pages/dashboard/ui/drawers/AppointmentDrawer.tsx) (клик по строке).
 - **Карточка мастера:** [`StaffDetailView.tsx`](frontend/src/pages/dashboard/ui/views/StaffDetailView.tsx) по `/dashboard/staff/:staffId` — шапка (статус, bio, специализации), таблица услуг с оверрайдами, недельное расписание, ближайшие записи; [`ScheduleDrawer.tsx`](frontend/src/pages/dashboard/ui/drawers/ScheduleDrawer.tsx) для `PUT .../salon-masters/:id/schedule` (поля дня, перерыв — `type="time"`); тот же `AppointmentDrawer` по клику на запись. Редактирование мастера и услуг — существующий [`StaffFormModal.tsx`](frontend/src/pages/dashboard/ui/modals/StaffFormModal.tsx).
-- **Календарь:** [`DashboardCalendar.tsx`](frontend/src/pages/dashboard/ui/DashboardCalendar.tsx); сетки день/неделя/месяц — [`CalendarDayStaffGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarDayStaffGrid.tsx), [`CalendarWeekGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarWeekGrid.tsx), [`CalendarMonthGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarMonthGrid.tsx); расчёт позиций и длительности — [`lib/calendarGridUtils.ts`](frontend/src/pages/dashboard/lib/calendarGridUtils.ts) (таймлайн по локальному времени, `startsAt`/`endsAt`, пересечения событий в колонке). Реализовано: NowLine (красная линия текущего времени), штриховка нерабочих часов/выходных из `staff_working_hours`, блоки перерывов, аватарки мастеров с цветом, 3-строчные блоки событий, клик по дню недели → режим «День», индикаторы загруженности в месяце, расширенная модалка деталей записи.
+- **Календарь:** [`DashboardCalendar.tsx`](frontend/src/pages/dashboard/ui/DashboardCalendar.tsx); сетки день/неделя/месяц — [`CalendarDayStaffGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarDayStaffGrid.tsx), [`CalendarWeekGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarWeekGrid.tsx), [`CalendarMonthGrid.tsx`](frontend/src/pages/dashboard/ui/CalendarMonthGrid.tsx); расчёт позиций и длительности — [`lib/calendarGridUtils.ts`](frontend/src/pages/dashboard/lib/calendarGridUtils.ts) (таймлайн по локальному времени, `startsAt`/`endsAt`, пересечения событий в колонке). **DnD:** [`lib/dndCalendarUtils.ts`](frontend/src/pages/dashboard/lib/dndCalendarUtils.ts) — строковые id колонок/ячеек, округление к слоту салона, кламп по сетке и смена `salonMasterId` в режиме «День»; UI-слой — `@dnd-kit/react` (`DragDropProvider`, `useDraggable`, `useDroppable`), сохранение через `updateDashboardAppointment` / `PUT .../appointments/:id`. Реализовано: NowLine (красная линия текущего времени), штриховка нерабочих часов/выходных из `staff_working_hours`, блоки перерывов, аватарки мастеров с цветом, 3-строчные блоки событий, клик по дню недели → режим «День», индикаторы загруженности в месяце, расширенная модалка деталей записи, перенос записей drag-and-drop в дне и неделе.
 
 Подробнее для постановки задач агенту см. **`docs/status.md` §7**.
 
@@ -677,8 +697,7 @@ Store: `frontend/src/app/store.ts`
 - `backend/internal/service/auth.go`
   - `TODO: send SMS via provider` (OTP реально не отправляется, только логируется)
   - `maxOTPPerMin` объявлен, но в бизнес-логике ограничения не применяется
-- `backend/internal/service/booking.go`
-  - `nextGuestSlot` использует placeholder-логику "завтра 10:00"
+- `backend/internal/service/booking.go` — заглушка `nextGuestSlot` («завтра 10:00») удалена; `BookingService.GetAvailableSlots` + `pickNextSlot` считают реальные слоты по расписанию мастеров и существующим записям (трек 2).
 - `backend/internal/service/search.go`
   - hardcoded defaults: координаты Москвы, `categoryQuery`, `rubricCategory`
 - `backend/internal/service/places.go`
@@ -699,7 +718,7 @@ Store: `frontend/src/app/store.ts`
   - fallback загрузки из `mockSalons` для не-UUID `id`
   - map section как placeholder
 - `frontend/src/pages/dashboard/ui/DashboardPage.tsx`
-  - часть подразделов кабинета всё ещё упрощается по UX (например drag-drop в календаре не подключён к API)
+  - часть подразделов кабинета всё ещё упрощается по UX (resize/zoom таймлайна, конфликты слотов — см. `docs/plans/track4-dashboard-features.md`)
 - `frontend/src/features/location/ui/CityPickerModal.tsx`
   - статический `DEFAULT_CITIES`
 - hardcoded московские fallback-координаты:

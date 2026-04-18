@@ -50,7 +50,11 @@ func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository
 		countQ = countQ.Where("salon_master_id = ?", *f.StaffID)
 	}
 	if f.ServiceID != nil {
-		countQ = countQ.Where("service_id = ?", *f.ServiceID)
+		sid := *f.ServiceID
+		countQ = countQ.Where(
+			"(service_id = ? OR EXISTS (SELECT 1 FROM appointment_line_items ali WHERE ali.appointment_id = appointments.id AND ali.service_id = ?))",
+			sid, sid,
+		)
 	}
 	var total int64
 	if err := countQ.Count(&total).Error; err != nil {
@@ -71,7 +75,14 @@ func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository
 	offset := (page - 1) * ps
 
 	q := r.db.WithContext(ctx).Table("appointments").
-		Select(`appointments.*, services.name AS service_name, salon_masters.display_name AS staff_name,
+		Select(`appointments.*,
+			COALESCE(
+				(SELECT string_agg(ali.service_name, ', ' ORDER BY ali.sort_order)
+				 FROM appointment_line_items ali
+				 WHERE ali.appointment_id = appointments.id),
+				services.name
+			) AS service_name,
+			salon_masters.display_name AS staff_name,
 			COALESCE(NULLIF(TRIM(appointments.guest_name), ''), users.display_name, 'Гость') AS client_label,
 			appointments.guest_phone_e164 AS client_phone`).
 		Joins("JOIN services ON services.id = appointments.service_id AND services.salon_id = appointments.salon_id").
@@ -91,7 +102,11 @@ func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository
 		q = q.Where("appointments.salon_master_id = ?", *f.StaffID)
 	}
 	if f.ServiceID != nil {
-		q = q.Where("appointments.service_id = ?", *f.ServiceID)
+		sid := *f.ServiceID
+		q = q.Where(
+			"(appointments.service_id = ? OR EXISTS (SELECT 1 FROM appointment_line_items ali WHERE ali.appointment_id = appointments.id AND ali.service_id = ?))",
+			sid, sid,
+		)
 	}
 
 	var raw []struct {

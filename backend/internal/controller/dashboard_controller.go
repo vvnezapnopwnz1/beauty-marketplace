@@ -19,13 +19,14 @@ import (
 
 // DashboardController handles /api/v1/dashboard/* (auth required).
 type DashboardController struct {
-	svc service.DashboardService
-	log *zap.Logger
+	svc     service.DashboardService
+	booking service.BookingService
+	log     *zap.Logger
 }
 
 // NewDashboardController constructs DashboardController.
-func NewDashboardController(svc service.DashboardService, log *zap.Logger) *DashboardController {
-	return &DashboardController{svc: svc, log: log}
+func NewDashboardController(svc service.DashboardService, booking service.BookingService, log *zap.Logger) *DashboardController {
+	return &DashboardController{svc: svc, booking: booking, log: log}
 }
 
 // DashboardRoutes dispatches under /api/v1/dashboard/ (caller strips prefix or full path).
@@ -104,6 +105,12 @@ func (h *DashboardController) DashboardRoutes(w http.ResponseWriter, r *http.Req
 	case "stats":
 		if len(parts) == 1 && r.Method == http.MethodGet {
 			h.getStats(w, r, salonID)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	case "slots":
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			h.listDashboardSlots(w, r, salonID)
 			return
 		}
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -837,6 +844,54 @@ func (h *DashboardController) putSchedule(w http.ResponseWriter, r *http.Request
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *DashboardController) listDashboardSlots(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	q := r.URL.Query()
+	dateStr := strings.TrimSpace(q.Get("date"))
+	if dateStr == "" {
+		jsonError(w, "date is required (YYYY-MM-DD)", http.StatusBadRequest)
+		return
+	}
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		jsonError(w, "invalid date, expected YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+	params := service.SlotParams{SalonID: salonID, Date: date}
+	if raw := strings.TrimSpace(q.Get("serviceId")); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			jsonError(w, "invalid serviceId", http.StatusBadRequest)
+			return
+		}
+		params.ServiceID = &id
+	}
+	if raw := strings.TrimSpace(q.Get("salonMasterId")); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			jsonError(w, "invalid salonMasterId", http.StatusBadRequest)
+			return
+		}
+		params.SalonMasterID = &id
+	}
+	slots, masters, meta, err := h.booking.GetAvailableSlots(r.Context(), params)
+	if err != nil {
+		if err.Error() == "salon not found" || err.Error() == "service not found for this salon" {
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		h.log.Error("dashboard slots", zap.Error(err))
+		jsonError(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(slotsResponseBody{
+		Date:                meta.Date,
+		SlotDurationMinutes: meta.SlotDurationMinutes,
+		Slots:               slots,
+		Masters:             masters,
+	})
 }
 
 func (h *DashboardController) getStats(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {

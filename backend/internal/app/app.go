@@ -33,6 +33,7 @@ func New() *fx.App {
 			persistence.NewHealthRepository,
 			persistence.NewSalonRepository,
 			persistence.NewAppointmentRepository,
+			persistence.NewBookingSlotsRepository,
 			persistence.NewDashboardRepository,
 			persistence.NewMasterPublicRepository,
 			persistence.NewMasterDashboardRepository,

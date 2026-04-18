@@ -62,7 +62,7 @@ export function SalonPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const [bookingService, setBookingService] = useState<Service | null>(null)
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -106,6 +106,18 @@ export function SalonPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const guestBookingServices = useMemo(() => {
+    if (!view || view.mode !== 'salon') return []
+    return view.services
+      .filter((s): s is Service & { id: string } => Boolean(s.id))
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        durationMinutes: s.durationMinutes,
+        priceCents: s.priceCents,
+      }))
+  }, [view])
 
   const tabs = useMemo(() => {
     if (!view) return [] as { id: Tab; label: string }[]
@@ -174,6 +186,16 @@ export function SalonPage() {
               </Box>
             )}
           </Stack>
+          {view.mode === 'salon' && view.canBookOnline && (
+            <Button
+              variant="contained"
+              size="medium"
+              sx={{ mt: 1.5, alignSelf: 'flex-start', borderRadius: '12px', fontWeight: 600 }}
+              onClick={() => setBookingDialogOpen(true)}
+            >
+              Записаться
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -245,7 +267,9 @@ export function SalonPage() {
                       <Typography sx={{ fontWeight: 700, fontSize: 16 }}>{formatPrice(s.priceCents)} ₽</Typography>
                     </Box>
                     {view.mode === 'salon' && view.canBookOnline && s.id && (
-                      <Button sx={{ mt: 1.2 }} variant="contained" onClick={() => setBookingService(s)}>Записаться</Button>
+                      <Button sx={{ mt: 1.2 }} variant="contained" onClick={() => setBookingDialogOpen(true)}>
+                        Записаться
+                      </Button>
                     )}
                   </Box>
                 ))}
@@ -275,14 +299,7 @@ export function SalonPage() {
                   <Typography sx={{ fontSize: 13, color: COLORS.inkSoft }}>· {view.reviewCount ?? 0} отзывов</Typography>
                 </Stack>
                 <Divider sx={{ mb: 1.5 }} />
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => {
-                    const first = view.services.find(s => s.id)
-                    if (first) setBookingService(first)
-                  }}
-                >
+                <Button fullWidth variant="contained" onClick={() => setBookingDialogOpen(true)}>
                   Записаться онлайн
                 </Button>
               </Box>
@@ -293,14 +310,13 @@ export function SalonPage() {
         </Box>
       </Box>
 
-      {bookingService?.id && view.salonId && (
+      {bookingDialogOpen && view.salonId && (
         <GuestBookingDialog
           open
-          onClose={() => setBookingService(null)}
+          onClose={() => setBookingDialogOpen(false)}
           salonId={view.salonId}
-          serviceId={bookingService.id}
-          serviceName={bookingService.name}
-          onSuccess={() => setBookingService(null)}
+          services={guestBookingServices}
+          onSuccess={() => setBookingDialogOpen(false)}
         />
       )}
 

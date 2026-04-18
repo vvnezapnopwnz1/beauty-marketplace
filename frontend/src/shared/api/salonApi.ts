@@ -154,21 +154,84 @@ export async function fetchMasterProfile(masterProfileId: string): Promise<Maste
 
 export async function submitGuestBooking(
   salonId: string,
-  body: { serviceId: string; name: string; phone: string; note?: string },
+  body: {
+    serviceId: string
+    /** When several services are booked, all ids (same order as UI); first must match serviceId. */
+    serviceIds?: string[]
+    name: string
+    phone: string
+    note?: string
+    startsAt?: string
+    endsAt?: string
+    salonMasterId?: string
+    masterProfileId?: string
+  },
 ): Promise<GuestBookingResponse> {
+  const payload: Record<string, unknown> = {
+    serviceId: body.serviceId,
+    name: body.name,
+    phone: body.phone,
+  }
+  if (body.serviceIds != null && body.serviceIds.length > 1) {
+    payload.serviceIds = body.serviceIds
+  }
+  if (body.note?.trim()) payload.note = body.note.trim()
+  if (body.startsAt) payload.startsAt = body.startsAt
+  if (body.endsAt) payload.endsAt = body.endsAt
+  if (body.salonMasterId) payload.salonMasterId = body.salonMasterId
+  if (body.masterProfileId) payload.masterProfileId = body.masterProfileId
+
   const res = await fetch(`${API}/v1/salons/${salonId}/bookings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      serviceId: body.serviceId,
-      name: body.name,
-      phone: body.phone,
-      ...(body.note?.trim() ? { note: body.note.trim() } : {}),
-    }),
+    body: JSON.stringify(payload),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(typeof data.error === 'string' ? data.error : `http_${res.status}`)
   }
   return data
+}
+
+export interface PublicAvailableSlot {
+  startsAt: string
+  endsAt: string
+  salonMasterId: string
+  masterName: string
+}
+
+export interface PublicSlotMasterInfo {
+  salonMasterId: string
+  masterName: string
+}
+
+export interface PublicSlotsResponse {
+  date: string
+  slotDurationMinutes: number
+  slots: PublicAvailableSlot[]
+  masters: PublicSlotMasterInfo[]
+}
+
+export async function fetchPublicSlots(
+  salonId: string,
+  params: {
+    date: string
+    serviceId?: string
+    serviceIds?: string[]
+    masterProfileId?: string
+    salonMasterId?: string
+  },
+): Promise<PublicSlotsResponse> {
+  const qs = new URLSearchParams()
+  qs.set('date', params.date)
+  if (params.serviceIds != null && params.serviceIds.length > 0) {
+    qs.set('serviceIds', params.serviceIds.join(','))
+  } else if (params.serviceId) {
+    qs.set('serviceId', params.serviceId)
+  }
+  if (params.masterProfileId) qs.set('masterProfileId', params.masterProfileId)
+  if (params.salonMasterId) qs.set('salonMasterId', params.salonMasterId)
+  const res = await fetch(`${API}/v1/salons/${salonId}/slots?${qs}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`http_${res.status}`)
+  return res.json()
 }

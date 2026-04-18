@@ -254,7 +254,13 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 		ClientPhone *string `gorm:"column:client_phone"`
 	}
 	q := r.db.WithContext(ctx).Table("appointments a").
-		Select(`a.*, s.name AS service_name,
+		Select(`a.*,
+			COALESCE(
+				(SELECT string_agg(ali.service_name, ', ' ORDER BY ali.sort_order)
+				 FROM appointment_line_items ali
+				 WHERE ali.appointment_id = a.id),
+				s.name
+			) AS service_name,
 			COALESCE(NULLIF(TRIM(sal.name_override), ''), 'Салон') AS salon_name,
 			COALESCE(NULLIF(TRIM(a.guest_name), ''), users.display_name, 'Гость') AS client_label,
 			a.guest_phone_e164 AS client_phone`).

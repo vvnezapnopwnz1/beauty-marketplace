@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import { Box, Typography, useTheme } from '@mui/material'
+import { DragDropProvider, useDraggable, useDroppable } from '@dnd-kit/react'
+import type { DragEndEvent, DragOverEvent } from '@dnd-kit/dom'
 import type { DashboardAppointment } from '@shared/api/dashboardApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import type { DashboardPalette } from '@shared/theme'
@@ -19,6 +21,14 @@ import {
   toLocalYMD,
   type CalendarEventVariant,
 } from '../lib/calendarGridUtils'
+import {
+  buildWeekViewReschedule,
+  canDragAppointmentStatus,
+  dragIdForWeekCell,
+  dropIdWeekDay,
+  parseWeekCellDragId,
+  parseWeekDropId,
+} from '../lib/dndCalendarUtils'
 
 function eventVariantSx(d: DashboardPalette): Record<CalendarEventVariant, object> {
   return {
@@ -97,6 +107,8 @@ function TimelineEventBlock({
   leftPct,
   widthPct,
   onClick,
+  dndRef,
+  dragging,
 }: {
   apt: DashboardAppointment
   top: number
@@ -104,14 +116,18 @@ function TimelineEventBlock({
   leftPct: number
   widthPct: number
   onClick: () => void
+  dndRef?: (node: Element | null) => void
+  dragging?: boolean
 }) {
   const theme = useTheme()
   const d = useDashboardPalette()
   const VARIANT_SX = useMemo(() => eventVariantSx(d), [d])
   const v = appointmentStatusVariant(apt.status)
   const lightLabels = theme.palette.mode === 'light' ? calendarEventLightTextColors(v, d) : null
+  const draggable = canDragAppointmentStatus(apt.status)
   return (
     <Box
+      ref={dndRef}
       data-appt-block
       onClick={e => {
         e.stopPropagation()
@@ -127,14 +143,17 @@ function TimelineEventBlock({
         px: 0.5,
         py: 0.3,
         borderRadius: '4px',
-        cursor: 'pointer',
+        cursor: draggable ? 'grab' : 'pointer',
         overflow: 'hidden',
         zIndex: 3,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-start',
+        opacity: dragging ? 0.45 : 1,
+        outline: dragging ? `2px dashed ${d.accent}` : undefined,
         ...VARIANT_SX[v],
         '&:hover': { filter: 'brightness(1.08)', zIndex: 4 },
+        '&:active': draggable ? { cursor: 'grabbing' } : {},
       }}
       title={`${apt.serviceName} · ${apt.clientLabel}`}
     >
@@ -182,6 +201,70 @@ function TimelineEventBlock({
   )
 }
 
+function DraggableWeekAppointment({
+  apt,
+  top,
+  height,
+  leftPct,
+  widthPct,
+  columnYmd,
+  onEventClick,
+}: {
+  apt: DashboardAppointment
+  top: number
+  height: number
+  leftPct: number
+  widthPct: number
+  columnYmd: string
+  onEventClick: (a: DashboardAppointment) => void
+}) {
+  const { ref, isDragging } = useDraggable({
+    id: dragIdForWeekCell(apt.id, columnYmd),
+    disabled: !canDragAppointmentStatus(apt.status),
+  })
+  return (
+    <TimelineEventBlock
+      apt={apt}
+      top={top}
+      height={height}
+      leftPct={leftPct}
+      widthPct={widthPct}
+      dndRef={ref}
+      dragging={isDragging}
+      onClick={() => onEventClick(apt)}
+    />
+  )
+}
+
+function WeekDroppableDayColumn({
+  dropId,
+  highlight,
+  sx,
+  onClick,
+  children,
+}: {
+  dropId: string
+  highlight: boolean
+  sx: object
+  onClick: (e: MouseEvent<HTMLDivElement>) => void
+  children: ReactNode
+}) {
+  const d = useDashboardPalette()
+  const { ref } = useDroppable({ id: dropId })
+  return (
+    <Box
+      ref={ref}
+      onClick={onClick}
+      sx={{
+        ...sx,
+        ...(highlight ? { boxShadow: `inset 0 0 0 2px ${d.accent}` } : {}),
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
 type Props = {
   weekDays: Date[]
   items: DashboardAppointment[]
@@ -189,6 +272,8 @@ type Props = {
   onEventClick: (a: DashboardAppointment) => void
   onEmptyClick: (day: Date, slotStart: Date) => void
   onDayHeaderClick?: (day: Date) => void
+  slotDurationMinutes?: number
+  onAppointmentMoved?: (p: { id: string; startsAt: string; endsAt: string }) => void | Promise<void>
 }
 
 export function CalendarWeekGrid({
@@ -198,16 +283,53 @@ export function CalendarWeekGrid({
   onEventClick,
   onEmptyClick,
   onDayHeaderClick,
+  slotDurationMinutes = 15,
+  onAppointmentMoved,
 }: Props) {
   const d = useDashboardPalette()
   const hours = hourRange()
   const timelineH = calendarTimelineTotalHeightPx()
   const template = `${timeColWidth}px repeat(${weekDays.length}, minmax(96px, 1fr))`
+  const [dropHighlightId, setDropHighlightId] = useState<string | null>(null)
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    if (event.defaultPrevented) return
+    const id = event.operation.target?.id
+    setDropHighlightId(id != null ? String(id) : null)
+  }, [])
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      setDropHighlightId(null)
+      if (event.canceled || !onAppointmentMoved) return
+      const op = event.operation
+      const parsedSource = parseWeekCellDragId(op.source?.id)
+      const targetId = op.target?.id
+      if (!parsedSource || targetId == null) return
+      const { appointmentId: aptId, columnYmd: sourceYmd } = parsedSource
+      const targetYmd = parseWeekDropId(targetId)
+      if (!targetYmd) return
+      const apt = items.find(a => a.id === aptId)
+      if (!apt) return
+      const deltaY = op.transform?.y ?? 0
+      const draft = buildWeekViewReschedule(
+        aptId,
+        apt,
+        deltaY,
+        CALENDAR_PX_PER_MINUTE,
+        slotDurationMinutes,
+        sourceYmd,
+        targetYmd,
+      )
+      if (!draft) return
+      await onAppointmentMoved(draft)
+    },
+    [items, onAppointmentMoved, slotDurationMinutes],
+  )
 
   const today = new Date()
 
-  return (
-    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
+  const grid = (
       <Box
         sx={{
           display: 'grid',
@@ -299,9 +421,12 @@ export function CalendarWeekGrid({
           const ymd = toLocalYMD(day)
           const dayItems = items.filter(a => aptOverlapsLocalDay(a, day))
           const layouts = layoutTimelineEventsForDay(dayItems, day, CALENDAR_PX_PER_MINUTE)
+          const dropId = dropIdWeekDay(ymd)
           return (
-            <Box
+            <WeekDroppableDayColumn
               key={ymd}
+              dropId={dropId}
+              highlight={dropHighlightId === dropId}
               sx={{
                 bgcolor: d.cell,
                 position: 'relative',
@@ -331,21 +456,29 @@ export function CalendarWeekGrid({
                 />
               ))}
               {layouts.map(l => (
-                <TimelineEventBlock
+                <DraggableWeekAppointment
                   key={`${ymd}-${l.apt.id}`}
                   apt={l.apt}
                   top={l.top}
                   height={l.height}
                   leftPct={l.leftPct}
                   widthPct={l.widthPct}
-                  onClick={() => onEventClick(l.apt)}
+                  columnYmd={ymd}
+                  onEventClick={onEventClick}
                 />
               ))}
               <NowLine day={day} />
-            </Box>
+            </WeekDroppableDayColumn>
           )
         })}
       </Box>
+  )
+
+  return (
+    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
+      <DragDropProvider onDragEnd={handleDragEnd} onDragOver={handleDragOver}>
+        {grid}
+      </DragDropProvider>
     </Box>
   )
 }

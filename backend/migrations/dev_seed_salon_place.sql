@@ -68,6 +68,11 @@ VALUES
   ('11111111-aaaa-4000-8000-000000000006', '11111111-1111-1111-1111-111111111111', 5, '10:00', '22:00', false, NULL, NULL),
   ('11111111-aaaa-4000-8000-000000000007', '11111111-1111-1111-1111-111111111111', 6, '10:00', '20:00', false, NULL, NULL);
 
+DELETE FROM appointments
+WHERE service_id IN (
+  SELECT id FROM services WHERE salon_id = '11111111-1111-1111-1111-111111111111'
+);
+
 DELETE FROM services WHERE salon_id = '11111111-1111-1111-1111-111111111111';
 INSERT INTO services (id, salon_id, name, duration_minutes, price_cents, is_active, sort_order, category, category_slug)
 VALUES
@@ -87,11 +92,70 @@ ON CONFLICT (id) DO UPDATE SET
   bio = EXCLUDED.bio,
   specializations = EXCLUDED.specializations;
 
+DELETE FROM salon_master_services
+WHERE staff_id IN (
+  SELECT id FROM salon_masters WHERE salon_id = '11111111-1111-1111-1111-111111111111'
+);
+DELETE FROM salon_masters WHERE salon_id = '11111111-1111-1111-1111-111111111111';
+
 INSERT INTO salon_masters (id, salon_id, master_id, display_name, color, status, is_active)
 VALUES
   ('11111111-cccc-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Анна К.', '#8B5CF6', 'active', true),
-  ('11111111-cccc-4000-8000-000000000002', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Марина С.', '#EC4899', 'active', true)
-ON CONFLICT DO NOTHING;
+  ('11111111-cccc-4000-8000-000000000002', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Марина С.', '#EC4899', 'active', true);
+
+INSERT INTO salon_master_services (staff_id, service_id, price_override_cents, duration_override_minutes)
+VALUES
+  ('11111111-cccc-4000-8000-000000000001', '11111111-bbbb-4000-8000-000000000001', NULL, NULL),
+  ('11111111-cccc-4000-8000-000000000001', '11111111-bbbb-4000-8000-000000000003', 520000, NULL),
+  ('11111111-cccc-4000-8000-000000000001', '11111111-bbbb-4000-8000-000000000004', NULL, 170),
+  ('11111111-cccc-4000-8000-000000000002', '11111111-bbbb-4000-8000-000000000005', NULL, NULL),
+  ('11111111-cccc-4000-8000-000000000002', '11111111-bbbb-4000-8000-000000000002', NULL, NULL);
+
+INSERT INTO appointments (
+  id, salon_id, guest_name, guest_phone_e164, salon_master_id, service_id,
+  starts_at, ends_at, status, created_at, updated_at
+)
+VALUES
+  (
+    '11111111-dddd-4000-8000-000000000001',
+    '11111111-1111-1111-1111-111111111111',
+    'Гость 1', '+79003000001',
+    '11111111-cccc-4000-8000-000000000001',
+    '11111111-bbbb-4000-8000-000000000001',
+    NOW() + INTERVAL '2 hours',
+    NOW() + INTERVAL '3 hours',
+    'confirmed',
+    NOW(), NOW()
+  ),
+  (
+    '11111111-dddd-4000-8000-000000000002',
+    '11111111-1111-1111-1111-111111111111',
+    'Гость 2', '+79003000002',
+    '11111111-cccc-4000-8000-000000000002',
+    '11111111-bbbb-4000-8000-000000000005',
+    NOW() + INTERVAL '1 day',
+    NOW() + INTERVAL '1 day 1 hour 15 minutes',
+    'pending',
+    NOW(), NOW()
+  ),
+  (
+    '11111111-dddd-4000-8000-000000000003',
+    '11111111-1111-1111-1111-111111111111',
+    'Гость 3', '+79003000003',
+    '11111111-cccc-4000-8000-000000000001',
+    '11111111-bbbb-4000-8000-000000000003',
+    NOW() - INTERVAL '2 days',
+    NOW() - INTERVAL '2 days' + INTERVAL '2 hours',
+    'completed',
+    NOW(), NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  salon_master_id = EXCLUDED.salon_master_id,
+  service_id = EXCLUDED.service_id,
+  starts_at = EXCLUDED.starts_at,
+  ends_at = EXCLUDED.ends_at,
+  status = EXCLUDED.status,
+  updated_at = NOW();
 
 -- 2) Redirect target salon for /place/:externalId -> /salon/:id
 INSERT INTO salons (

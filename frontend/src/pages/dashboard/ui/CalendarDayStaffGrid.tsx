@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react'
 import { Box, Typography, useTheme } from '@mui/material'
+import { DragDropProvider, useDraggable, useDroppable } from '@dnd-kit/react'
+import type { DragEndEvent, DragOverEvent } from '@dnd-kit/dom'
 import type { DashboardAppointment } from '@shared/api/dashboardApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import type { DashboardPalette } from '@shared/theme'
@@ -24,6 +26,14 @@ import {
   type CalendarEventVariant,
   type StaffScheduleInfo,
 } from '../lib/calendarGridUtils'
+import {
+  buildDayViewReschedule,
+  canDragAppointmentStatus,
+  dragIdForAppointment,
+  dropIdStaffColumn,
+  parseDragAppointmentId,
+  parseStaffDropId,
+} from '../lib/dndCalendarUtils'
 
 function eventVariantSx(d: DashboardPalette): Record<CalendarEventVariant, object> {
   return {
@@ -128,6 +138,8 @@ function TimelineEventBlock({
   widthPct,
   staffColor,
   onClick,
+  dndRef,
+  dragging,
 }: {
   apt: DashboardAppointment
   top: number
@@ -136,6 +148,8 @@ function TimelineEventBlock({
   widthPct: number
   staffColor?: string | null
   onClick: () => void
+  dndRef?: (node: Element | null) => void
+  dragging?: boolean
 }) {
   const theme = useTheme()
   const d = useDashboardPalette()
@@ -145,8 +159,11 @@ function TimelineEventBlock({
   const variantSx = { ...VARIANT_SX[v] } as Record<string, unknown>
   if (staffColor) variantSx['borderLeft'] = `3px solid ${staffColor}`
 
+  const draggable = canDragAppointmentStatus(apt.status)
+
   return (
     <Box
+      ref={dndRef}
       data-appt-block
       onClick={e => {
         e.stopPropagation()
@@ -162,14 +179,17 @@ function TimelineEventBlock({
         px: 0.5,
         py: 0.3,
         borderRadius: '4px',
-        cursor: 'pointer',
+        cursor: draggable ? 'grab' : 'pointer',
         overflow: 'hidden',
         zIndex: 3,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-start',
+        opacity: dragging ? 0.45 : 1,
+        outline: dragging ? `2px dashed ${d.accent}` : undefined,
         ...variantSx,
         '&:hover': { filter: 'brightness(1.08)', zIndex: 4 },
+        '&:active': draggable ? { cursor: 'grabbing' } : {},
       }}
       title={`${apt.serviceName} · ${apt.clientLabel}`}
     >
@@ -217,6 +237,76 @@ function TimelineEventBlock({
   )
 }
 
+function DraggableDayAppointment({
+  apt,
+  top,
+  height,
+  leftPct,
+  widthPct,
+  staffColor,
+  columnId,
+  onEventClick,
+}: {
+  apt: DashboardAppointment
+  top: number
+  height: number
+  leftPct: number
+  widthPct: number
+  staffColor?: string | null
+  columnId: string
+  onEventClick: (a: DashboardAppointment) => void
+}) {
+  const { ref, isDragging } = useDraggable({
+    id: dragIdForAppointment(apt.id),
+    disabled: !canDragAppointmentStatus(apt.status),
+    data: { sourceColumnId: columnId },
+  })
+  return (
+    <TimelineEventBlock
+      apt={apt}
+      top={top}
+      height={height}
+      leftPct={leftPct}
+      widthPct={widthPct}
+      staffColor={staffColor}
+      dndRef={ref}
+      dragging={isDragging}
+      onClick={() => onEventClick(apt)}
+    />
+  )
+}
+
+function DayStaffDroppableColumn({
+  dropId,
+  disabled,
+  highlight,
+  sx,
+  onClick,
+  children,
+}: {
+  dropId: string
+  disabled?: boolean
+  highlight: boolean
+  sx: object
+  onClick: (e: MouseEvent<HTMLDivElement>) => void
+  children: ReactNode
+}) {
+  const d = useDashboardPalette()
+  const { ref } = useDroppable({ id: dropId, disabled })
+  return (
+    <Box
+      ref={ref}
+      onClick={onClick}
+      sx={{
+        ...sx,
+        ...(highlight ? { boxShadow: `inset 0 0 0 2px ${d.accent}` } : {}),
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
 export type StaffColumn = { id: string; label: string; color?: string | null }
 
 type Props = {
@@ -227,6 +317,14 @@ type Props = {
   onEventClick: (a: DashboardAppointment) => void
   onEmptyClick: (staffId: string | null, slotStart: Date) => void
   staffSchedules?: Map<string, StaffScheduleInfo>
+  slotDurationMinutes?: number
+  onAppointmentMoved?: (p: {
+    id: string
+    startsAt: string
+    endsAt: string
+    salonMasterId?: string
+    clearSalonMasterId?: boolean
+  }) => void | Promise<void>
 }
 
 export function CalendarDayStaffGrid({
@@ -237,6 +335,8 @@ export function CalendarDayStaffGrid({
   onEventClick,
   onEmptyClick,
   staffSchedules,
+  slotDurationMinutes = 15,
+  onAppointmentMoved,
 }: Props) {
   const d = useDashboardPalette()
   const ymd = toLocalYMD(day)
@@ -245,9 +345,46 @@ export function CalendarDayStaffGrid({
   const template = `${timeColWidth}px repeat(${staffColumns.length}, minmax(100px, 1fr))`
   const gridStartMins = CALENDAR_HOUR_START * 60
   const gridEndMins = (CALENDAR_HOUR_END + 1) * 60
+  const [dropHighlightId, setDropHighlightId] = useState<string | null>(null)
 
-  return (
-    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    if (event.defaultPrevented) return
+    const id = event.operation.target?.id
+    setDropHighlightId(id != null ? String(id) : null)
+  }, [])
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      setDropHighlightId(null)
+      if (event.canceled || !onAppointmentMoved) return
+      const op = event.operation
+      const aptId = parseDragAppointmentId(op.source?.id)
+      const targetId = op.target?.id
+      if (aptId == null || targetId == null) return
+      const parsed = parseStaffDropId(targetId)
+      if (!parsed || parsed.ymd !== ymd) return
+      const apt = items.find(a => a.id === aptId)
+      if (!apt) return
+      const deltaY = op.transform?.y ?? 0
+      const draft = buildDayViewReschedule(
+        aptId,
+        apt,
+        deltaY,
+        CALENDAR_PX_PER_MINUTE,
+        slotDurationMinutes,
+        day,
+        parsed.columnId,
+        CALENDAR_DAY_COMBINED_COLUMN,
+        CALENDAR_UNASSIGNED_STAFF_KEY,
+        staffSchedules,
+      )
+      if (!draft) return
+      await onAppointmentMoved(draft)
+    },
+    [day, items, onAppointmentMoved, slotDurationMinutes, staffSchedules, ymd],
+  )
+
+  const grid = (
       <Box
         sx={{
           display: 'grid',
@@ -393,9 +530,17 @@ export function CalendarDayStaffGrid({
                 )
               : null
 
+          const dropId = dropIdStaffColumn(col.id, ymd)
+          const isSpecialCol =
+            col.id === CALENDAR_DAY_COMBINED_COLUMN || col.id === CALENDAR_UNASSIGNED_STAFF_KEY
+          const droppableDisabled = !isSpecialCol && schedule?.isOff
+
           return (
-            <Box
+            <DayStaffDroppableColumn
               key={`${col.id}-${ymd}`}
+              dropId={dropId}
+              disabled={droppableDisabled}
+              highlight={dropHighlightId === dropId}
               sx={{
                 bgcolor: schedule?.isOff ? d.cellAlt : d.cell,
                 position: 'relative',
@@ -501,7 +646,7 @@ export function CalendarDayStaffGrid({
 
               {/* Event blocks */}
               {layouts.map(l => (
-                <TimelineEventBlock
+                <DraggableDayAppointment
                   key={`${ymd}-${l.apt.id}`}
                   apt={l.apt}
                   top={l.top}
@@ -509,16 +654,24 @@ export function CalendarDayStaffGrid({
                   leftPct={l.leftPct}
                   widthPct={l.widthPct}
                   staffColor={col.color}
-                  onClick={() => onEventClick(l.apt)}
+                  columnId={col.id}
+                  onEventClick={onEventClick}
                 />
               ))}
 
               {/* Now line */}
               <NowLine day={day} />
-            </Box>
+            </DayStaffDroppableColumn>
           )
         })}
       </Box>
+  )
+
+  return (
+    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
+      <DragDropProvider onDragEnd={handleDragEnd} onDragOver={handleDragOver}>
+        {grid}
+      </DragDropProvider>
     </Box>
   )
 }

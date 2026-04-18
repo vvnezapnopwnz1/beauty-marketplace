@@ -2,9 +2,11 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/service"
@@ -87,7 +89,108 @@ func (h *SalonController) SalonRoutes(w http.ResponseWriter, r *http.Request) {
 		h.listPublicSalonMasters(w, r, salonID)
 		return
 	}
+	if len(parts) == 5 && parts[4] == "slots" && r.Method == http.MethodGet {
+		h.listPublicSlots(w, r, salonID)
+		return
+	}
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+}
+
+type slotsResponseBody struct {
+	Date                string                   `json:"date"`
+	SlotDurationMinutes int                      `json:"slotDurationMinutes"`
+	Slots               []service.AvailableSlot  `json:"slots"`
+	Masters             []service.SlotMasterInfo `json:"masters"`
+}
+
+func (h *SalonController) listPublicSlots(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	q := r.URL.Query()
+	dateStr := strings.TrimSpace(q.Get("date"))
+	if dateStr == "" {
+		jsonError(w, "date is required (YYYY-MM-DD)", http.StatusBadRequest)
+		return
+	}
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		jsonError(w, "invalid date, expected YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+	params := service.SlotParams{SalonID: salonID, Date: date}
+	const maxPublicSlotServices = 10
+	if raw := strings.TrimSpace(q.Get("serviceIds")); raw != "" {
+		seen := make(map[uuid.UUID]struct{})
+		for _, part := range strings.Split(raw, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			id, err := uuid.Parse(part)
+			if err != nil {
+				jsonError(w, "invalid serviceIds", http.StatusBadRequest)
+				return
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			params.ServiceIDs = append(params.ServiceIDs, id)
+		}
+		if len(params.ServiceIDs) > maxPublicSlotServices {
+			jsonError(w, "too many serviceIds (max 10)", http.StatusBadRequest)
+			return
+		}
+	}
+	if len(params.ServiceIDs) == 0 {
+		if raw := strings.TrimSpace(q.Get("serviceId")); raw != "" {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				jsonError(w, "invalid serviceId", http.StatusBadRequest)
+				return
+			}
+			params.ServiceID = &id
+		}
+	}
+	var masterProfileID *uuid.UUID
+	if raw := strings.TrimSpace(q.Get("masterProfileId")); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			jsonError(w, "invalid masterProfileId", http.StatusBadRequest)
+			return
+		}
+		masterProfileID = &id
+		params.MasterProfileID = masterProfileID
+	}
+	var salonMasterID *uuid.UUID
+	if raw := strings.TrimSpace(q.Get("salonMasterId")); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			jsonError(w, "invalid salonMasterId", http.StatusBadRequest)
+			return
+		}
+		salonMasterID = &id
+		params.SalonMasterID = salonMasterID
+	}
+	if masterProfileID != nil && salonMasterID != nil {
+		jsonError(w, "use only one of masterProfileId or salonMasterId", http.StatusBadRequest)
+		return
+	}
+	slots, masters, meta, err := h.booking.GetAvailableSlots(r.Context(), params)
+	if err != nil {
+		if errors.Is(err, service.ErrBookingUnavailable) || err.Error() == "salon not found" || err.Error() == "service not found for this salon" {
+			jsonError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		h.log.Error("list public slots", zap.Error(err))
+		jsonError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(slotsResponseBody{
+		Date:                meta.Date,
+		SlotDurationMinutes: meta.SlotDurationMinutes,
+		Slots:               slots,
+		Masters:             masters,
+	})
 }
 
 func (h *SalonController) listPublicSalonMasters(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
@@ -139,10 +242,37 @@ func (h *SalonController) getSalonByExternal(w http.ResponseWriter, r *http.Requ
 }
 
 type guestBookingBody struct {
-	ServiceID uuid.UUID `json:"serviceId"`
-	Name      string    `json:"name"`
-	Phone     string    `json:"phone"`
-	Note      string    `json:"note,omitempty"`
+	ServiceID       uuid.UUID   `json:"serviceId"`
+	ServiceIDs      []uuid.UUID `json:"serviceIds,omitempty"`
+	Name            string      `json:"name"`
+	Phone           string      `json:"phone"`
+	Note            string      `json:"note,omitempty"`
+	StartsAt        *time.Time  `json:"startsAt,omitempty"`
+	EndsAt          *time.Time  `json:"endsAt,omitempty"`
+	SalonMasterID   *uuid.UUID  `json:"salonMasterId,omitempty"`
+	MasterProfileID *uuid.UUID  `json:"masterProfileId,omitempty"`
+}
+
+func collectGuestBookingServiceIDs(body guestBookingBody) ([]uuid.UUID, error) {
+	seen := make(map[uuid.UUID]struct{})
+	out := make([]uuid.UUID, 0, len(body.ServiceIDs)+1)
+	for _, id := range body.ServiceIDs {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	if len(out) > 0 {
+		return out, nil
+	}
+	if body.ServiceID != uuid.Nil {
+		return []uuid.UUID{body.ServiceID}, nil
+	}
+	return nil, errors.New("at least one service is required")
 }
 
 func (h *SalonController) createGuestBooking(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
@@ -151,18 +281,29 @@ func (h *SalonController) createGuestBooking(w http.ResponseWriter, r *http.Requ
 		jsonError(w, "invalid json body", http.StatusBadRequest)
 		return
 	}
-	if body.ServiceID == uuid.Nil {
-		jsonError(w, "serviceId is required", http.StatusBadRequest)
+	const maxGuestBookingServices = 10
+	serviceIDs, err := collectGuestBookingServiceIDs(body)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(serviceIDs) > maxGuestBookingServices {
+		jsonError(w, "too many services (max 10)", http.StatusBadRequest)
 		return
 	}
 
 	phone := normalizePhone(body.Phone)
 	result, err := h.booking.CreateGuestBooking(r.Context(), service.GuestBookingInput{
-		SalonID:   salonID,
-		ServiceID: body.ServiceID,
-		Name:      body.Name,
-		PhoneE164: phone,
-		Note:      body.Note,
+		SalonID:         salonID,
+		ServiceID:       serviceIDs[0],
+		ServiceIDs:      serviceIDs,
+		Name:            body.Name,
+		PhoneE164:       phone,
+		Note:            body.Note,
+		StartsAt:        body.StartsAt,
+		EndsAt:          body.EndsAt,
+		SalonMasterID:   body.SalonMasterID,
+		MasterProfileID: body.MasterProfileID,
 	})
 	if err != nil {
 		msg := err.Error()
@@ -174,7 +315,10 @@ func (h *SalonController) createGuestBooking(w http.ResponseWriter, r *http.Requ
 		case "service not found for this salon":
 			jsonError(w, msg, http.StatusBadRequest)
 		default:
-			if strings.Contains(msg, "invalid phone") || strings.Contains(msg, "name is required") {
+			if strings.Contains(msg, "invalid phone") || strings.Contains(msg, "name is required") ||
+				strings.Contains(msg, "at least one service") || strings.Contains(msg, "too many services") ||
+				strings.Contains(msg, "master does not provide") || strings.Contains(msg, "slot duration") ||
+				strings.Contains(msg, "invalid slot") {
 				jsonError(w, msg, http.StatusBadRequest)
 				return
 			}

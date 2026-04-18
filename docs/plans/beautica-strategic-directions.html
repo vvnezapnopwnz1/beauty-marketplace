@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beautica — Стратегические направления развития</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1210;
+  --ink-soft: #4a3f3a;
+  --cream: #faf6f1;
+  --cream-deep: #f0e8df;
+  --blush: #e8c4b8;
+  --blush-soft: #f2ddd5;
+  --accent: #c4694a;
+  --accent-deep: #a8533a;
+  --sage: #7a9b8a;
+  --sage-deep: #5a7b6a;
+  --gold: #c9a96e;
+  --gold-soft: #dfc99e;
+  --coral: #e07b6a;
+  --violet: #8b7bb5;
+  --violet-soft: #b5a8d5;
+  --teal: #5a9b9b;
+  --card-shadow: 0 2px 20px rgba(26,18,16,0.06), 0 0 0 1px rgba(26,18,16,0.04);
+  --card-shadow-hover: 0 8px 40px rgba(26,18,16,0.1), 0 0 0 1px rgba(26,18,16,0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── HEADER ─── */
+.hero {
+  background: linear-gradient(135deg, #1a1210 0%, #2d2220 40%, #3a2a24 70%, #4a3328 100%);
+  color: var(--cream);
+  padding: 80px 60px 60px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -20%;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(196,105,74,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -30%; left: 10%;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(122,155,138,0.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(196,105,74,0.2);
+  border: 1px solid rgba(196,105,74,0.3);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blush);
+  margin-bottom: 24px;
+}
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 700;
+  line-height: 1.15;
+  max-width: 700px;
+  position: relative;
+  z-index: 1;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--blush);
+}
+.hero-meta {
+  margin-top: 24px;
+  font-size: 14px;
+  color: rgba(250,246,241,0.5);
+  position: relative;
+  z-index: 1;
+}
+.hero-meta span { margin-right: 24px; }
+
+/* ─── LAYOUT ─── */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* ─── SECTIONS ─── */
+.section {
+  padding: 60px 0;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+.section-subtitle {
+  font-size: 16px;
+  color: var(--ink-soft);
+  max-width: 600px;
+  margin-bottom: 40px;
+}
+
+/* ─── EXECUTIVE SUMMARY ─── */
+.exec-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 40px;
+}
+.exec-card {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+.exec-card:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
+}
+.exec-card .number {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.exec-card .label {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+.exec-card .detail {
+  font-size: 14px;
+  color: var(--ink);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+/* ─── RADAR CHART (CSS) ─── */
+.radar-wrapper {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 40px;
+}
+.radar-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.radar-subtitle {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: 32px;
+}
+
+.score-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+.score-table th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 2px solid var(--cream-deep);
+}
+.score-table th.center { text-align: center; }
+.score-table td {
+  padding: 14px 12px;
+  font-size: 14px;
+  vertical-align: middle;
+  background: var(--cream);
+  border: none;
+}
+.score-table tr td:first-child { border-radius: 10px 0 0 10px; }
+.score-table tr td:last-child { border-radius: 0 10px 10px 0; }
+
+.dir-name {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dir-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.dir-1 .dir-icon { background: #e0f0ff; }
+.dir-2 .dir-icon { background: #ffe8e0; }
+.dir-3 .dir-icon { background: #e0f0e8; }
+.dir-4 .dir-icon { background: #f0e8ff; }
+.dir-5 .dir-icon { background: #fff5e0; }
+
+.score-bar-cell {
+  min-width: 120px;
+}
+.score-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.score-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--cream-deep);
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+.score-bar-fill.high { background: var(--sage-deep); }
+.score-bar-fill.mid { background: var(--gold); }
+.score-bar-fill.low { background: var(--coral); }
+.score-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 24px;
+  text-align: right;
+}
+.total-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 18px;
+  text-align: center;
+}
+.total-score.rank-1 { color: var(--accent-deep); }
+.total-score.rank-2 { color: var(--sage-deep); }
+.total-score.rank-3 { color: var(--ink-soft); }
+
+/* ─── DIRECTION CARDS ─── */
+.direction-deep {
+  background: white;
+  border-radius: 20px;
+  padding: 48px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+}
+.direction-deep::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px;
+  height: 100%;
+}
+.direction-deep.d1::before { background: linear-gradient(180deg, #4a9ade, #7ab8ee); }
+.direction-deep.d2::before { background: linear-gradient(180deg, var(--accent), var(--coral)); }
+.direction-deep.d3::before { background: linear-gradient(180deg, var(--sage-deep), var(--sage)); }
+.direction-deep.d4::before { background: linear-gradient(180deg, var(--violet), var(--violet-soft)); }
+.direction-deep.d5::before { background: linear-gradient(180deg, var(--gold), var(--gold-soft)); }
+
+.dir-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+.dir-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.12;
+}
+.dir-header-text h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.dir-header-text .tagline {
+  font-size: 15px;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.dir-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.dir-block {
+  background: var(--cream);
+  border-radius: 12px;
+  padding: 24px;
+}
+.dir-block h4 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dir-block h4 .emoji { font-size: 16px; }
+.dir-block ul {
+  list-style: none;
+  padding: 0;
+}
+.dir-block li {
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 4px 0;
+  padding-left: 18px;
+  position: relative;
+  color: var(--ink-soft);
+}
+.dir-block li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.dir-block.pro li::before { background: var(--sage); }
+.dir-block.con li::before { background: var(--coral); }
+.dir-block.tech li::before { background: var(--violet); }
+.dir-block.metric li::before { background: var(--gold); }
+
+/* Effort / Impact mini chart */
+.effort-impact {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  background: var(--cream);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.ei-chart {
+  width: 200px;
+  height: 200px;
+  position: relative;
+  flex-shrink: 0;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--cream-deep);
+}
+.ei-axis-x, .ei-axis-y {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+.ei-axis-x { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.ei-axis-y { top: 50%; left: 6px; transform: translateY(-50%) rotate(-90deg); }
+.ei-dot {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  transition: transform 0.3s;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.ei-dot:hover { transform: scale(1.2); }
+.ei-quadrant-label {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  opacity: 0.3;
+}
+
+.ei-legend {
+  flex: 1;
+}
+.ei-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.ei-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── TIMELINE ─── */
+.timeline-wrapper {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 40px;
+}
+.timeline {
+  position: relative;
+  padding-left: 60px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--sage), var(--violet));
+}
+.timeline-item {
+  position: relative;
+  padding-bottom: 32px;
+}
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-dot {
+  position: absolute;
+  left: -44px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 0 0 2px var(--accent);
+  background: var(--accent);
+}
+.timeline-item:nth-child(2) .timeline-dot { background: var(--sage); box-shadow: 0 0 0 2px var(--sage); }
+.timeline-item:nth-child(3) .timeline-dot { background: var(--violet); box-shadow: 0 0 0 2px var(--violet); }
+.timeline-item:nth-child(4) .timeline-dot { background: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+.timeline-period {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.timeline-item:nth-child(2) .timeline-period { color: var(--sage-deep); }
+.timeline-item:nth-child(3) .timeline-period { color: var(--violet); }
+.timeline-item:nth-child(4) .timeline-period { color: var(--gold); }
+.timeline-title {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+.timeline-desc {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.timeline-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.timeline-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--cream);
+  color: var(--ink-soft);
+}
+
+/* ─── RISK MATRIX ─── */
+.risk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.risk-card {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+  border-left: 4px solid;
+}
+.risk-card.critical { border-color: var(--coral); }
+.risk-card.moderate { border-color: var(--gold); }
+.risk-card.low { border-color: var(--sage); }
+.risk-card h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.risk-card p {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.risk-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.risk-badge.critical { background: #fde8e5; color: var(--coral); }
+.risk-badge.moderate { background: #fef5e0; color: #b8860b; }
+.risk-badge.low { background: #e0f0e8; color: var(--sage-deep); }
+
+/* ─── RECOMMENDATION ─── */
+.reco-card {
+  background: linear-gradient(135deg, #1a1210 0%, #2d2220 50%, #3a2a24 100%);
+  color: var(--cream);
+  border-radius: 20px;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+}
+.reco-card::before {
+  content: '';
+  position: absolute;
+  top: -30%; right: -10%;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(196,105,74,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.reco-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blush);
+  margin-bottom: 12px;
+}
+.reco-card h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 20px;
+  max-width: 600px;
+}
+.reco-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(250,246,241,0.75);
+  max-width: 700px;
+}
+.reco-steps {
+  margin-top: 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.reco-step {
+  background: rgba(250,246,241,0.06);
+  border: 1px solid rgba(250,246,241,0.1);
+  border-radius: 14px;
+  padding: 24px;
+}
+.reco-step-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.reco-step h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.reco-step p {
+  font-size: 13px;
+  color: rgba(250,246,241,0.6);
+  line-height: 1.5;
+}
+
+/* ─── FOOTER ─── */
+.doc-footer {
+  text-align: center;
+  padding: 40px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  opacity: 0.5;
+}
+
+/* ─── BAR CHART ─── */
+.bar-chart-section {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 40px;
+}
+.bar-group {
+  margin-bottom: 20px;
+}
+.bar-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+.bar-label span { color: var(--ink-soft); font-weight: 400; }
+.bar-track {
+  height: 28px;
+  background: var(--cream);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  gap: 2px;
+}
+.bar-segment {
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  transition: width 1.2s ease;
+  min-width: 0;
+}
+
+/* ─── COMPARISON MATRIX ─── */
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.matrix-table th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding: 12px 16px;
+  text-align: center;
+  border-bottom: 2px solid var(--cream-deep);
+  background: white;
+  position: sticky;
+  top: 0;
+}
+.matrix-table th:first-child { text-align: left; }
+.matrix-table td {
+  padding: 14px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--cream-deep);
+}
+.matrix-table td:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+.matrix-table tr:hover td { background: rgba(196,105,74,0.03); }
+.dot-rating {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+}
+.dot-rating .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cream-deep);
+}
+.dot-rating .dot.filled { background: var(--accent); }
+.dot-rating .dot.half { background: var(--gold); }
+
+/* ─── FUNNEL ─── */
+.funnel-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 32px 0;
+}
+.funnel-step {
+  height: 44px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  transition: width 1s ease;
+  position: relative;
+}
+.funnel-label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 700px;
+}
+.funnel-label .fl-text {
+  width: 160px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+.funnel-label .fl-bar-wrap {
+  flex: 1;
+  position: relative;
+}
+.funnel-label .fl-bar {
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+}
+.funnel-label .fl-note {
+  width: 120px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  .hero { padding: 48px 24px 40px; }
+  .container { padding: 0 20px; }
+  .exec-grid { grid-template-columns: 1fr; }
+  .dir-grid { grid-template-columns: 1fr; }
+  .risk-grid { grid-template-columns: 1fr; }
+  .reco-steps { grid-template-columns: 1fr; }
+  .effort-impact { flex-direction: column; }
+  .score-table { font-size: 12px; }
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeUp 0.6s ease forwards;
+  opacity: 0;
+}
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+
+/* separator */
+.sep {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cream-deep), transparent);
+  margin: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-badge">◆ Стратегический анализ</div>
+    <h1>Beautica: <em>5 направлений</em> развития после MVP</h1>
+    <div class="hero-meta">
+      <span>Апрель 2026</span>
+      <span>pre-MVP → Product-Market Fit</span>
+      <span>Рынок: Москва → РФ/СНГ</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════ EXECUTIVE SUMMARY ═══════════════════ -->
+<div class="container">
+  <section class="section animate-in">
+    <div class="section-label">Executive Summary</div>
+    <div class="section-title">Текущая позиция</div>
+    <div class="section-subtitle">Beautica технически зрелый продукт на этапе pre-MVP. Ключевая задача — выбрать стратегию выхода к первым пользователям.</div>
+
+    <div class="exec-grid">
+      <div class="exec-card animate-in delay-1">
+        <div class="number">87%</div>
+        <div class="label">Core features built</div>
+        <div class="detail">Букинг, мастера, календарь с DnD, dual-mode страницы, гостевая запись, unified search — всё работает.</div>
+      </div>
+      <div class="exec-card animate-in delay-2">
+        <div class="number">0</div>
+        <div class="label">Реальных пользователей</div>
+        <div class="detail">Ни один клиент и ни один салон ещё не использовали платформу. Все гипотезы не валидированы.</div>
+      </div>
+      <div class="exec-card animate-in delay-3">
+        <div class="number">1</div>
+        <div class="label">Разработчик</div>
+        <div class="detail">Solo-dev с основной работой. Ключевое ограничение — время и отсутствие опыта продаж / маркетинга.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ SCORING MATRIX ═══════════════════ -->
+  <section class="section">
+    <div class="section-label">Оценка направлений</div>
+    <div class="section-title">Сравнительная матрица</div>
+    <div class="section-subtitle">Каждое направление оценено по 6 критериям (1–5). Итоговый балл — взвешенная сумма с учётом приоритетов solo-разработчика.</div>
+
+    <div class="radar-wrapper">
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th style="width:22%">Направление</th>
+            <th class="center">Time to<br>Market</th>
+            <th class="center">Техн.<br>готовность</th>
+            <th class="center">Валидация<br>гипотез</th>
+            <th class="center">Supply<br>acquisition</th>
+            <th class="center">Scalability</th>
+            <th class="center">Revenue<br>potential</th>
+            <th class="center" style="width:8%">Σ Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dir 2 - WINNER -->
+          <tr class="dir-2">
+            <td><div class="dir-name"><div class="dir-icon">🔗</div> Booking Link</div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:90%"></div></div><div class="score-val">4.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:96%"></div></div><div class="score-val">4.8</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:90%"></div></div><div class="score-val">4.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:100%"></div></div><div class="score-val">5.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:70%"></div></div><div class="score-val">3.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:60%"></div></div><div class="score-val">3.0</div></div></td>
+            <td class="total-score rank-1">4.3</td>
+          </tr>
+          <!-- Dir 1 -->
+          <tr class="dir-1">
+            <td><div class="dir-name"><div class="dir-icon">💬</div> Telegram Mini App</div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:70%"></div></div><div class="score-val">3.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:60%"></div></div><div class="score-val">3.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:80%"></div></div><div class="score-val">4.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:60%"></div></div><div class="score-val">3.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:100%"></div></div><div class="score-val">5.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:80%"></div></div><div class="score-val">4.0</div></div></td>
+            <td class="total-score rank-2">3.8</td>
+          </tr>
+          <!-- Dir 4 -->
+          <tr class="dir-4">
+            <td><div class="dir-name"><div class="dir-icon">📍</div> Локальный blitz</div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:80%"></div></div><div class="score-val">4.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:80%"></div></div><div class="score-val">4.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:100%"></div></div><div class="score-val">5.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:70%"></div></div><div class="score-val">3.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill low" style="width:30%"></div></div><div class="score-val">1.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill low" style="width:40%"></div></div><div class="score-val">2.0</div></div></td>
+            <td class="total-score rank-2">3.5</td>
+          </tr>
+          <!-- Dir 3 -->
+          <tr class="dir-3">
+            <td><div class="dir-name"><div class="dir-icon">🔄</div> Агрегатор YCLIENTS</div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill low" style="width:40%"></div></div><div class="score-val">2.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill low" style="width:30%"></div></div><div class="score-val">1.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:60%"></div></div><div class="score-val">3.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:100%"></div></div><div class="score-val">5.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:90%"></div></div><div class="score-val">4.5</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:70%"></div></div><div class="score-val">3.5</div></div></td>
+            <td class="total-score rank-3">3.2</td>
+          </tr>
+          <!-- Dir 5 -->
+          <tr class="dir-5">
+            <td><div class="dir-name"><div class="dir-icon">🏢</div> White-label SaaS</div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill low" style="width:40%"></div></div><div class="score-val">2.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:60%"></div></div><div class="score-val">3.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill low" style="width:40%"></div></div><div class="score-val">2.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:60%"></div></div><div class="score-val">3.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill mid" style="width:60%"></div></div><div class="score-val">3.0</div></div></td>
+            <td><div class="score-bar-wrapper"><div class="score-bar"><div class="score-bar-fill high" style="width:90%"></div></div><div class="score-val">4.5</div></div></td>
+            <td class="total-score rank-3">2.9</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Effort vs Impact scatter -->
+    <div class="bar-chart-section">
+      <div class="radar-title">Effort vs Impact</div>
+      <div class="radar-subtitle">Где каждое направление попадает на карту «усилия → отдача». Bubble size = скорость выхода к пользователям.</div>
+      <div class="effort-impact">
+        <div class="ei-chart">
+          <div class="ei-axis-x">Effort →</div>
+          <div class="ei-axis-y">Impact →</div>
+          <div class="ei-quadrant-label" style="top:12px;right:12px;">High impact,<br>High effort</div>
+          <div class="ei-quadrant-label" style="top:12px;left:12px;">High impact,<br>Low effort</div>
+          <div class="ei-quadrant-label" style="bottom:12px;left:12px;">Low impact,<br>Low effort</div>
+          <div class="ei-quadrant-label" style="bottom:12px;right:12px;">Low impact,<br>High effort</div>
+          <div style="position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--cream-deep);"></div>
+          <div style="position:absolute;left:0;top:50%;width:100%;height:1px;background:var(--cream-deep);"></div>
+          <!-- Dots: left=effort(low→high), bottom=impact(low→high) -->
+          <div class="ei-dot" style="left:25%;bottom:72%;background:#e07b6a;" title="Booking Link">🔗</div>
+          <div class="ei-dot" style="left:48%;bottom:82%;background:#4a9ade;" title="Telegram Mini App">💬</div>
+          <div class="ei-dot" style="left:18%;bottom:50%;background:#8b7bb5;" title="Локальный blitz">📍</div>
+          <div class="ei-dot" style="left:75%;bottom:68%;background:#7a9b8a;" title="Агрегатор">🔄</div>
+          <div class="ei-dot" style="left:72%;bottom:45%;background:#c9a96e;" title="White-label SaaS">🏢</div>
+        </div>
+        <div class="ei-legend">
+          <div class="ei-legend-item"><div class="ei-legend-dot" style="background:#e07b6a;"></div> <strong>Booking Link</strong> — мало усилий, высокий impact. Sweetspot.</div>
+          <div class="ei-legend-item"><div class="ei-legend-dot" style="background:#4a9ade;"></div> <strong>Telegram Mini App</strong> — средние усилия, максимальный ceiling.</div>
+          <div class="ei-legend-item"><div class="ei-legend-dot" style="background:#8b7bb5;"></div> <strong>Локальный blitz</strong> — минимум кода, но требует ног и времени.</div>
+          <div class="ei-legend-item"><div class="ei-legend-dot" style="background:#7a9b8a;"></div> <strong>Агрегатор</strong> — большие усилия на интеграцию, но решает cold start.</div>
+          <div class="ei-legend-item"><div class="ei-legend-dot" style="background:#c9a96e;"></div> <strong>White-label SaaS</strong> — другой бизнес, другая продажа.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ DEEP DIVES ═══════════════════ -->
+  <section class="section">
+    <div class="section-label">Детальный разбор</div>
+    <div class="section-title">5 стратегических направлений</div>
+    <div class="section-subtitle">Каждое направление — детальный анализ: что делаем, зачем, как, какие риски, и какие метрики покажут успех.</div>
+
+    <!-- ─── DIRECTION 1: TELEGRAM ─── -->
+    <div class="direction-deep d1">
+      <div class="dir-header">
+        <div class="dir-num">01</div>
+        <div class="dir-header-text">
+          <h3>Telegram Mini App</h3>
+          <div class="tagline">Живи там, где уже живёт аудитория</div>
+        </div>
+      </div>
+
+      <div class="dir-grid">
+        <div class="dir-block pro">
+          <h4><span class="emoji">✦</span> Преимущества</h4>
+          <ul>
+            <li>80%+ целевой аудитории уже в Telegram — нулевой барьер входа</li>
+            <li>Auth решается нативно через Telegram Login — не нужна OTP-доставка</li>
+            <li>Виральность через шеринг в чатах: «записалась через вот это»</li>
+            <li>Push-уведомления бесплатно и мгновенно — нативный канал</li>
+            <li>Mini Apps поддерживают React — можно переиспользовать 60-70% фронта</li>
+            <li>Telegram Payments (Stars) — встроенный платёжный механизм</li>
+          </ul>
+        </div>
+        <div class="dir-block con">
+          <h4><span class="emoji">▲</span> Риски и сложности</h4>
+          <ul>
+            <li>Ограничения UI: нет полноценного URL-роутинга, ограниченная навигация</li>
+            <li>Нужно адаптировать весь UX под мобильный формат Mini App</li>
+            <li>Dashboard салона слишком сложен для Mini App — нужен отдельный веб</li>
+            <li>Зависимость от одной платформы: Telegram может изменить правила</li>
+            <li>SEO отсутствует — весь трафик надо нагонять вручную</li>
+            <li>3–5 недель на адаптацию фронтенда + тестирование</li>
+          </ul>
+        </div>
+        <div class="dir-block tech">
+          <h4><span class="emoji">⚙</span> Что нужно сделать</h4>
+          <ul>
+            <li>Telegram Bot + Mini App setup (BotFather, webhook)</li>
+            <li>Адаптировать SearchPage → мобильный Mini App интерфейс</li>
+            <li>Telegram Login Widget → заменяет OTP полностью</li>
+            <li>Notification pipeline: бот → пользователю при букинге</li>
+            <li>Адаптировать GuestBookingDialog → компактный wizard</li>
+            <li>Deep links для шеринга: t.me/beautica_bot/app?startapp=salon_xxx</li>
+          </ul>
+        </div>
+        <div class="dir-block metric">
+          <h4><span class="emoji">◎</span> Метрики успеха</h4>
+          <ul>
+            <li><strong>MAU Mini App</strong> — рост месяц-к-месяцу</li>
+            <li><strong>Booking conversion</strong> — % от открытия до записи</li>
+            <li><strong>Viral coefficient</strong> — сколько новых юзеров от одного шера</li>
+            <li><strong>Retention D7/D30</strong> — возвращаемость</li>
+            <li><strong>Bot → Mini App funnel</strong> — % от старта бота до действия</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:var(--cream);border-radius:12px;padding:20px 24px;font-size:14px;color:var(--ink-soft);line-height:1.6;">
+        <strong style="color:var(--ink);">Ключевой инсайт:</strong> Telegram Mini App — это не просто канал дистрибуции, это смена парадигмы. Ты перестаёшь конкурировать за внимание в браузере и начинаешь жить внутри мессенджера. В России это особенно мощно: VK Mini Apps уже показали, что «приложение внутри мессенджера» — привычный паттерн для аудитории. Но ceiling выше, потому что Telegram растёт, а VK стагнирует.
+      </div>
+    </div>
+
+    <!-- ─── DIRECTION 2: BOOKING LINK ─── -->
+    <div class="direction-deep d2">
+      <div class="dir-header">
+        <div class="dir-num">02</div>
+        <div class="dir-header-text">
+          <h3>Booking Link для мастеров</h3>
+          <div class="tagline">Calendly для бьюти — wedge-стратегия</div>
+        </div>
+      </div>
+
+      <div class="dir-grid">
+        <div class="dir-block pro">
+          <h4><span class="emoji">✦</span> Преимущества</h4>
+          <ul>
+            <li>Решает конкретную боль: мастера записывают клиентов в личку / блокнот</li>
+            <li>Supply и demand приходят одновременно — мастер приводит своих клиентов</li>
+            <li>Переиспользует 90%+ существующего кода: /master/:id, слоты, букинг</li>
+            <li>Самая быстрая итерация к первым реальным юзерам (1–2 недели)</li>
+            <li>Органический рост маркетплейса: мастера → клиенты → другие мастера</li>
+            <li>Легко продавать: «У тебя нет записи? Вот бесплатная ссылка»</li>
+          </ul>
+        </div>
+        <div class="dir-block con">
+          <h4><span class="emoji">▲</span> Риски и сложности</h4>
+          <ul>
+            <li>Маркетплейс может не вырасти из набора изолированных ссылок</li>
+            <li>Конкуренция: tap.link, mssg.me и аналоги уже в нише</li>
+            <li>Монетизация неочевидна на старте — инструмент должен быть бесплатным</li>
+            <li>Нужен onboarding-сценарий для мастера без знания платформы</li>
+            <li>Без SEO и маркетплейса — ограниченный ceiling для клиентской стороны</li>
+          </ul>
+        </div>
+        <div class="dir-block tech">
+          <h4><span class="emoji">⚙</span> Что нужно сделать</h4>
+          <ul>
+            <li>Упростить /master/:id → лендинг с услугами, ценами, слотами</li>
+            <li>Vanity URL: beautica.ru/nastya (slug для мастера)</li>
+            <li>Self-service регистрация: мастер → профиль → расписание → ссылка</li>
+            <li>Мини-дашборд мастера: входящие записи, расписание, уведомления</li>
+            <li>Шеринг-карточка (OG:image) для Instagram/Telegram bio</li>
+            <li>Telegram-уведомление мастеру при новой записи</li>
+          </ul>
+        </div>
+        <div class="dir-block metric">
+          <h4><span class="emoji">◎</span> Метрики успеха</h4>
+          <ul>
+            <li><strong>Masters registered</strong> — сколько мастеров создали ссылку</li>
+            <li><strong>Link → Booking rate</strong> — конверсия посещения ссылки в запись</li>
+            <li><strong>Bookings/master/week</strong> — активность через платформу</li>
+            <li><strong>Cross-discovery</strong> — % клиентов, записавшихся к другому мастеру</li>
+            <li><strong>NPS мастера</strong> — порекомендует ли коллеге</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:var(--cream);border-radius:12px;padding:20px 24px;font-size:14px;color:var(--ink-soft);line-height:1.6;">
+        <strong style="color:var(--ink);">Ключевой инсайт:</strong> Это классическая «wedge» стратегия: входишь с маленьким инструментом, который решает конкретную боль, а потом расширяешься в платформу. Так делал Calendly (ссылка на запись → полная система расписаний), так делал Shopify (магазин → экосистема). Мастер приходит за ссылкой, а потом обнаруживает аналитику, отзывы, виджет для Instagram — и платит за это.
+      </div>
+    </div>
+
+    <!-- ─── DIRECTION 3: AGGREGATOR ─── -->
+    <div class="direction-deep d3">
+      <div class="dir-header">
+        <div class="dir-num">03</div>
+        <div class="dir-header-text">
+          <h3>Агрегатор YCLIENTS / DIKIDI</h3>
+          <div class="tagline">Стань Aviasales для бьюти</div>
+        </div>
+      </div>
+
+      <div class="dir-grid">
+        <div class="dir-block pro">
+          <h4><span class="emoji">✦</span> Преимущества</h4>
+          <ul>
+            <li>Мгновенное решение cold start: 80k+ салонов DIKIDI сразу в каталоге</li>
+            <li>Реальные слоты и цены — не пустые профили из 2GIS</li>
+            <li>Можно показать работающий продукт без единого онборженного салона</li>
+            <li>Конкурентный моат: агрегация сложна, но даёт network effect</li>
+            <li>Монетизация через лидогенерацию: плата за приведённого клиента</li>
+          </ul>
+        </div>
+        <div class="dir-block con">
+          <h4><span class="emoji">▲</span> Риски и сложности</h4>
+          <ul>
+            <li>API YCLIENTS и DIKIDI — платные, с ограничениями, могут закрыть доступ</li>
+            <li>Юридический риск: парсинг без разрешения = проблемы</li>
+            <li>Зависимость от чужих данных: качество, актуальность, формат</li>
+            <li>Самые большие затраты на разработку из всех направлений</li>
+            <li>YCLIENTS может запустить свой маркетплейс (YPLACES) и перекрыть API</li>
+            <li>Сложная синхронизация: расписания меняются в реалтайме</li>
+          </ul>
+        </div>
+        <div class="dir-block tech">
+          <h4><span class="emoji">⚙</span> Что нужно сделать</h4>
+          <ul>
+            <li>Исследовать API YCLIENTS: стоимость, лимиты, разрешения</li>
+            <li>Исследовать API DIKIDI: аналогично</li>
+            <li>Адаптер по аналогии с PlacesProvider для каждой CRM</li>
+            <li>Unified search: 2GIS (каталог) + YCLIENTS/DIKIDI (слоты/цены)</li>
+            <li>Обратный букинг: запись через API провайдера</li>
+            <li>Reconciliation: обработка конфликтов и отмен</li>
+          </ul>
+        </div>
+        <div class="dir-block metric">
+          <h4><span class="emoji">◎</span> Метрики успеха</h4>
+          <ul>
+            <li><strong>Coverage</strong> — % салонов Москвы с реальными слотами</li>
+            <li><strong>Booking success rate</strong> — % записей без ошибок синхронизации</li>
+            <li><strong>Cost per booking</strong> — стоимость API-запросов на одну запись</li>
+            <li><strong>Search → Booking funnel</strong> — конверсия поиска</li>
+            <li><strong>Data freshness</strong> — задержка обновления расписаний</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:var(--cream);border-radius:12px;padding:20px 24px;font-size:14px;color:var(--ink-soft);line-height:1.6;">
+        <strong style="color:var(--ink);">Ключевой инсайт:</strong> Агрегаторная модель — самая мощная для решения cold start, но и самая рискованная для solo-dev. Зависимость от чужих API — стратегическая уязвимость. Имеет смысл как второй этап: после того как Booking Link привлёк первых мастеров, агрегация YCLIENTS/DIKIDI расширяет каталог для клиентов.
+      </div>
+    </div>
+
+    <!-- ─── DIRECTION 4: LOCAL BLITZ ─── -->
+    <div class="direction-deep d4">
+      <div class="dir-header">
+        <div class="dir-num">04</div>
+        <div class="dir-header-text">
+          <h3>Локальный blitz — один район</h3>
+          <div class="tagline">Не масштабируется. Зато валидирует.</div>
+        </div>
+      </div>
+
+      <div class="dir-grid">
+        <div class="dir-block pro">
+          <h4><span class="emoji">✦</span> Преимущества</h4>
+          <ul>
+            <li>Максимально быстрая валидация product-market fit</li>
+            <li>Прямой контакт с салонами — лучший источник фидбека</li>
+            <li>Развивает навык продаж — главный identified risk</li>
+            <li>Плотное покрытие одного района = убедительная демо для инвесторов</li>
+            <li>Минимум дополнительной разработки — работа «в поле»</li>
+          </ul>
+        </div>
+        <div class="dir-block con">
+          <h4><span class="emoji">▲</span> Риски и сложности</h4>
+          <ul>
+            <li>Не масштабируется: каждый район = ручная работа</li>
+            <li>Требует много личного времени при наличии основной работы</li>
+            <li>Без OTP-доставки и деплоя невозможен (зависимость от отложенных задач)</li>
+            <li>Один район может не дать статистически значимый сигнал</li>
+            <li>Психологически тяжело: холодные продажи без опыта</li>
+          </ul>
+        </div>
+        <div class="dir-block tech">
+          <h4><span class="emoji">⚙</span> Что нужно сделать</h4>
+          <ul>
+            <li>Подготовить промо-материалы: QR-наклейки, буклеты</li>
+            <li>Скрипт первого контакта (elevator pitch для салона)</li>
+            <li>Лендинг для салонов: «Подключитесь бесплатно»</li>
+            <li>Выбрать район с высокой плотностью бьюти-бизнесов</li>
+            <li>Гео-таргет рекламы ВК/Telegram на этот район</li>
+            <li>Feedback-петля: Telegram-чат с подключёнными салонами</li>
+          </ul>
+        </div>
+        <div class="dir-block metric">
+          <h4><span class="emoji">◎</span> Метрики успеха</h4>
+          <ul>
+            <li><strong>Salon sign-up rate</strong> — % салонов, согласившихся в районе</li>
+            <li><strong>First booking time</strong> — время от подключения до первой записи</li>
+            <li><strong>Salon retention W4</strong> — используют ли через месяц</li>
+            <li><strong>Client NPS</strong> — опрос после первой записи</li>
+            <li><strong>Objection log</strong> — почему салоны отказывают</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:var(--cream);border-radius:12px;padding:20px 24px;font-size:14px;color:var(--ink-soft);line-height:1.6;">
+        <strong style="color:var(--ink);">Ключевой инсайт:</strong> Локальный blitz — это не продуктовая стратегия, это GTM-эксперимент. Его ценность не в пользователях, а в обучении: ты узнаешь, как говорить с салонами, какие возражения они дают, и что на самом деле им нужно. Для solo-dev без sales-опыта это может быть самый ценный инвестированный месяц. Но он зависит от деплоя, поэтому это не «прямо сейчас».
+      </div>
+    </div>
+
+    <!-- ─── DIRECTION 5: WHITE LABEL ─── -->
+    <div class="direction-deep d5">
+      <div class="dir-header">
+        <div class="dir-num">05</div>
+        <div class="dir-header-text">
+          <h3>White-label SaaS для мини-сетей</h3>
+          <div class="tagline">Продавай дашборд, не маркетплейс</div>
+        </div>
+      </div>
+
+      <div class="dir-grid">
+        <div class="dir-block pro">
+          <h4><span class="emoji">✦</span> Преимущества</h4>
+          <ul>
+            <li>Понятный B2B revenue: подписка за инструмент управления</li>
+            <li>Dashboard уже мощный: календарь, мастера, DnD, услуги</li>
+            <li>Мини-сети (2–5 филиалов) — underserved сегмент: YCLIENTS дорого, 1C сложно</li>
+            <li>Каждая сеть = 10–30 мастеров сразу, меньше онбординга на мастера</li>
+            <li>Стабильный recurring revenue vs комиссионная модель</li>
+          </ul>
+        </div>
+        <div class="dir-block con">
+          <h4><span class="emoji">▲</span> Риски и сложности</h4>
+          <ul>
+            <li>Это другой бизнес: B2B SaaS ≠ маркетплейс, другие навыки продаж</li>
+            <li>YCLIENTS — 800-lb gorilla в этой нише с 10+ лет развития</li>
+            <li>Нужна мультитенантность: несколько салонов под одним аккаунтом</li>
+            <li>Feature requests от B2B клиентов могут утянуть в кастомизацию</li>
+            <li>Отвлекает от маркетплейсной модели — основной vision</li>
+          </ul>
+        </div>
+        <div class="dir-block tech">
+          <h4><span class="emoji">⚙</span> Что нужно сделать</h4>
+          <ul>
+            <li>Multi-salon view в dashboard: переключение между филиалами</li>
+            <li>Агрегированная аналитика по сети (cross-salon reporting)</li>
+            <li>Централизованное управление мастерами и услугами</li>
+            <li>White-label: своё лого, домен, цвета</li>
+            <li>Биллинг: Stripe / ЮКасса, подписочная модель</li>
+            <li>Onboarding wizard для сети</li>
+          </ul>
+        </div>
+        <div class="dir-block metric">
+          <h4><span class="emoji">◎</span> Метрики успеха</h4>
+          <ul>
+            <li><strong>MRR</strong> — ежемесячный recurring revenue</li>
+            <li><strong>Churn rate</strong> — уход клиентов/месяц</li>
+            <li><strong>Seats per account</strong> — мастеров на одну сеть</li>
+            <li><strong>Feature adoption</strong> — какие фичи используют</li>
+            <li><strong>Support load</strong> — тикетов на клиента в месяц</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:var(--cream);border-radius:12px;padding:20px 24px;font-size:14px;color:var(--ink-soft);line-height:1.6;">
+        <strong style="color:var(--ink);">Ключевой инсайт:</strong> White-label SaaS — привлекательный pivot из-за уже готового дашборда, но это стратегическая ловушка на данном этапе. Ты будешь конкурировать с YCLIENTS и DIKIDI на их территории (B2B инструменты), где у них 10+ лет headstart. Маркетплейс — территория, где их нет. Имеет смысл как monetization layer позже, когда база мастеров позволяет предложить управление «мини-сетью» из маркетплейса.
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ COMPARATIVE MATRIX ═══════════════════ -->
+  <section class="section">
+    <div class="section-label">Сравнительная таблица</div>
+    <div class="section-title">Детальное сравнение по критериям</div>
+    <div class="section-subtitle">Точечная оценка каждого направления по ключевым параметрам для solo-разработчика.</div>
+
+    <div class="radar-wrapper" style="overflow-x:auto;">
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Критерий</th>
+            <th>💬 Telegram<br>Mini App</th>
+            <th>🔗 Booking<br>Link</th>
+            <th>🔄 Агрегатор</th>
+            <th>📍 Локальный<br>blitz</th>
+            <th>🏢 White-label<br>SaaS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Время до первого юзера</td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td>Переиспользование кода</td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td>Решает cold start</td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td>Revenue potential (12 мес)</td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+          </tr>
+          <tr>
+            <td>Можно делать solo</td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td>Moat / защита от копирования</td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+          </tr>
+          <tr>
+            <td>Развивает sales-навыки</td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+            <td><div class="dot-rating"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ ACQUISITION FUNNEL ═══════════════════ -->
+  <section class="section">
+    <div class="section-label">User Acquisition</div>
+    <div class="section-title">Воронка привлечения по направлениям</div>
+    <div class="section-subtitle">Как пользователи попадают на платформу в каждой модели — от первого контакта до повторной записи.</div>
+
+    <div class="bar-chart-section">
+      <div class="radar-title">🔗 Booking Link — органическая воронка</div>
+      <div class="radar-subtitle">Мастер сам приводит клиентов через свою ссылку</div>
+      <div class="funnel-chart">
+        <div class="funnel-label"><div class="fl-text">Мастер видит рекламу</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:100%;background:linear-gradient(90deg,var(--accent),var(--coral));">1000</div></div><div class="fl-note"></div></div>
+        <div class="funnel-label"><div class="fl-text">Регистрируется</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:30%;background:linear-gradient(90deg,var(--accent),var(--coral));">300</div></div><div class="fl-note">30% конверсия</div></div>
+        <div class="funnel-label"><div class="fl-text">Настраивает профиль</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:20%;background:linear-gradient(90deg,var(--accent),var(--coral));">200</div></div><div class="fl-note">67% activation</div></div>
+        <div class="funnel-label"><div class="fl-text">Шерит ссылку</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:12%;background:linear-gradient(90deg,var(--accent),var(--coral));">120</div></div><div class="fl-note">60% share rate</div></div>
+        <div class="funnel-label"><div class="fl-text">Получает запись</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:7%;background:linear-gradient(90deg,var(--accent),var(--coral));">70</div></div><div class="fl-note">×5 клиентов/мастер</div></div>
+      </div>
+      <div style="background:var(--cream);border-radius:8px;padding:14px 18px;font-size:13px;color:var(--ink-soft);margin-top:16px;">
+        <strong>→ 70 мастеров × 5 клиентов = 350 записей/мес</strong> от 1000 показов. Каждый мастер — виральный канал.
+      </div>
+    </div>
+
+    <div class="bar-chart-section">
+      <div class="radar-title">💬 Telegram Mini App — виральная воронка</div>
+      <div class="radar-subtitle">Шеринг в чатах и каналах создаёт виральный loop</div>
+      <div class="funnel-chart">
+        <div class="funnel-label"><div class="fl-text">Увидел ссылку в чате</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:100%;background:linear-gradient(90deg,#4a9ade,#7ab8ee);">5000</div></div><div class="fl-note"></div></div>
+        <div class="funnel-label"><div class="fl-text">Открыл Mini App</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:40%;background:linear-gradient(90deg,#4a9ade,#7ab8ee);">2000</div></div><div class="fl-note">40% CTR</div></div>
+        <div class="funnel-label"><div class="fl-text">Начал поиск</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:24%;background:linear-gradient(90deg,#4a9ade,#7ab8ee);">1200</div></div><div class="fl-note">60% engagement</div></div>
+        <div class="funnel-label"><div class="fl-text">Записался</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:6%;background:linear-gradient(90deg,#4a9ade,#7ab8ee);">300</div></div><div class="fl-note">25% booking</div></div>
+        <div class="funnel-label"><div class="fl-text">Поделился</div><div class="fl-bar-wrap"><div class="fl-bar" style="width:2%;background:linear-gradient(90deg,#4a9ade,#7ab8ee);">90</div></div><div class="fl-note">30% share</div></div>
+      </div>
+      <div style="background:var(--cream);border-radius:8px;padding:14px 18px;font-size:13px;color:var(--ink-soft);margin-top:16px;">
+        <strong>→ Viral coefficient ~0.3.</strong> Не самодостаточный вирал, но усиливает платный канал в 1.3×.
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ STACKED BAR: TIME ALLOCATION ═══════════════════ -->
+  <section class="section">
+    <div class="section-label">Ресурсы</div>
+    <div class="section-title">Распределение усилий</div>
+    <div class="section-subtitle">Сколько разработки vs маркетинга vs поддержки потребует каждое направление в первые 3 месяца.</div>
+
+    <div class="bar-chart-section">
+      <div class="bar-group">
+        <div class="bar-label">🔗 Booking Link <span>~6 недель</span></div>
+        <div class="bar-track">
+          <div class="bar-segment" style="width:30%;background:var(--accent);">Dev 30%</div>
+          <div class="bar-segment" style="width:45%;background:var(--sage);">Marketing 45%</div>
+          <div class="bar-segment" style="width:15%;background:var(--violet);">Sales 15%</div>
+          <div class="bar-segment" style="width:10%;background:var(--gold);">Support 10%</div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">💬 Telegram Mini App <span>~10 недель</span></div>
+        <div class="bar-track">
+          <div class="bar-segment" style="width:55%;background:var(--accent);">Dev 55%</div>
+          <div class="bar-segment" style="width:30%;background:var(--sage);">Marketing 30%</div>
+          <div class="bar-segment" style="width:5%;background:var(--violet);">Sales 5%</div>
+          <div class="bar-segment" style="width:10%;background:var(--gold);">Support 10%</div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">🔄 Агрегатор YCLIENTS/DIKIDI <span>~14 недель</span></div>
+        <div class="bar-track">
+          <div class="bar-segment" style="width:75%;background:var(--accent);">Dev 75%</div>
+          <div class="bar-segment" style="width:10%;background:var(--sage);">Marketing 10%</div>
+          <div class="bar-segment" style="width:5%;background:var(--violet);">Sales 5%</div>
+          <div class="bar-segment" style="width:10%;background:var(--gold);">Support 10%</div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">📍 Локальный blitz <span>~8 недель</span></div>
+        <div class="bar-track">
+          <div class="bar-segment" style="width:15%;background:var(--accent);">Dev 15%</div>
+          <div class="bar-segment" style="width:25%;background:var(--sage);">Marketing 25%</div>
+          <div class="bar-segment" style="width:50%;background:var(--violet);">Sales 50%</div>
+          <div class="bar-segment" style="width:10%;background:var(--gold);">Support 10%</div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label">🏢 White-label SaaS <span>~16 недель</span></div>
+        <div class="bar-track">
+          <div class="bar-segment" style="width:60%;background:var(--accent);">Dev 60%</div>
+          <div class="bar-segment" style="width:10%;background:var(--sage);">Marketing 10%</div>
+          <div class="bar-segment" style="width:20%;background:var(--violet);">Sales 20%</div>
+          <div class="bar-segment" style="width:10%;background:var(--gold);">Support 10%</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ RISKS ═══════════════════ -->
+  <section class="section">
+    <div class="section-label">Risk Assessment</div>
+    <div class="section-title">Ключевые риски</div>
+    <div class="section-subtitle">Сквозные риски, актуальные для любого из направлений, и специфичные для каждого.</div>
+
+    <div class="risk-grid">
+      <div class="risk-card critical">
+        <div class="risk-badge critical">Критический</div>
+        <h4>Zero-user risk</h4>
+        <p>Продукт технически зрел, но не видел ни одного пользователя. Все гипотезы — предположения. Каждый день без деплоя = день без обучения. Mitigation: Booking Link как fastest path to user.</p>
+      </div>
+      <div class="risk-card critical">
+        <div class="risk-badge critical">Критический</div>
+        <h4>Solo-dev bottleneck</h4>
+        <p>Один разработчик с основной работой. Любое направление с длинным dev-циклом (Агрегатор, SaaS) рискует растянуться в 2–3 раза. Mitigation: выбирать направление с минимальным dev overhead.</p>
+      </div>
+      <div class="risk-card moderate">
+        <div class="risk-badge moderate">Средний</div>
+        <h4>GTM inexperience</h4>
+        <p>Нет опыта продаж и маркетинга. Направления, требующие cold outreach (Blitz, SaaS), несут повышенный риск. Mitigation: Booking Link — inbound-подход, мастер приходит сам.</p>
+      </div>
+      <div class="risk-card moderate">
+        <div class="risk-badge moderate">Средний</div>
+        <h4>Platform dependency</h4>
+        <p>Telegram Mini App = зависимость от Telegram; Агрегатор = зависимость от API YCLIENTS/DIKIDI. Mitigation: web-версия как fallback, собственная БД мастеров.</p>
+      </div>
+      <div class="risk-card low">
+        <div class="risk-badge low">Низкий</div>
+        <h4>Competitive response</h4>
+        <p>YCLIENTS может ускорить YPLACES; DIKIDI может запустить маркетплейс. Окно возможностей 12–18 мес. Mitigation: скорость, фокус на мастерах (у конкурентов B2B-фокус).</p>
+      </div>
+      <div class="risk-card low">
+        <div class="risk-badge low">Низкий</div>
+        <h4>Tech debt accumulation</h4>
+        <p>Быстрый pivot между направлениями может создать технический долг. Mitigation: текущая архитектура Clean Architecture + PlacesProvider interface изоляция.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ RECOMMENDED TIMELINE ═══════════════════ -->
+  <section class="section">
+    <div class="section-label">Рекомендуемый план</div>
+    <div class="section-title">Поэтапная стратегия</div>
+    <div class="section-subtitle">Направления не взаимоисключающие. Рекомендуемая последовательность: Booking Link → Telegram Mini App → Агрегация.</div>
+
+    <div class="timeline-wrapper">
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-period">Фаза 1 — Недели 1–4</div>
+          <div class="timeline-title">🔗 Booking Link + первые мастера</div>
+          <div class="timeline-desc">Vanity URL для мастеров, self-service регистрация, мини-дашборд. Найти 20–30 самозанятых мастеров через Instagram/Telegram. Цель: первые 100 записей через платформу.</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag">1–2 нед. dev</span>
+            <span class="timeline-tag">outreach к мастерам</span>
+            <span class="timeline-tag">OG:image для шеринга</span>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-period">Фаза 2 — Недели 5–10</div>
+          <div class="timeline-title">💬 Telegram Mini App клиентский</div>
+          <div class="timeline-desc">Адаптировать клиентский поиск и букинг в Telegram Mini App. Интегрировать с Telegram Login. Запустить виральные механики: шеринг записи, бот-уведомления.</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag">Mini App setup</span>
+            <span class="timeline-tag">Telegram Auth</span>
+            <span class="timeline-tag">deep links</span>
+            <span class="timeline-tag">notifications</span>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-period">Фаза 3 — Недели 11–16</div>
+          <div class="timeline-title">📍 Локальный blitz + unit economics</div>
+          <div class="timeline-desc">С работающим продуктом — локальный blitz в одном районе. Онбордить салоны лично, валидировать unit economics. Собрать objection log, уточнить ICP.</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag">field sales</span>
+            <span class="timeline-tag">QR наклейки</span>
+            <span class="timeline-tag">гео-таргет реклама</span>
+            <span class="timeline-tag">NPS опросы</span>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-period">Фаза 4 — Месяцы 5–8</div>
+          <div class="timeline-title">🔄 Агрегация + монетизация</div>
+          <div class="timeline-desc">Если PMF подтверждён — расширять каталог через YCLIENTS/DIKIDI API. Запустить подписочную модель для мастеров (premium features). Первый revenue.</div>
+          <div class="timeline-tags">
+            <span class="timeline-tag">API интеграции</span>
+            <span class="timeline-tag">billing</span>
+            <span class="timeline-tag">premium тариф</span>
+            <span class="timeline-tag">analytics для мастеров</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ═══════════════════ RECOMMENDATION ═══════════════════ -->
+  <section class="section">
+    <div class="reco-card">
+      <div class="reco-label">◆ Рекомендация</div>
+      <h3>Начинай с Booking Link. Это кратчайший путь от кода к первым реальным записям.</h3>
+      <div class="reco-text">
+        У тебя уже есть 90% нужного кода. Booking Link максимально переиспользует /master/:id, PublicSlotPicker, и гостевую запись. Мастер приводит своих клиентов — ты получаешь supply и demand одновременно, без cold outreach к салонам. А маркетплейс вырастает органически из базы мастеров. Telegram Mini App — следующий шаг, который даёт distribution. Вместе они образуют flywheel: мастер шерит ссылку → клиент записывается → клиент находит других мастеров в Mini App → новый мастер приходит за своей ссылкой.
+      </div>
+      <div class="reco-steps">
+        <div class="reco-step">
+          <div class="reco-step-num">01</div>
+          <h4>Неделя 1–2</h4>
+          <p>Vanity URL, self-service регистрация мастера, Telegram-уведомление о новой записи. Deploy.</p>
+        </div>
+        <div class="reco-step">
+          <div class="reco-step-num">02</div>
+          <h4>Неделя 3–4</h4>
+          <p>Outreach к 30 мастерам маникюра/парикмахерам в Instagram. Собрать фидбек, итерировать.</p>
+        </div>
+        <div class="reco-step">
+          <div class="reco-step-num">03</div>
+          <h4>Неделя 5+</h4>
+          <p>Telegram Mini App для клиентской стороны. Виральные механики. Масштабирование.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="doc-footer">
+    Beautica Strategic Directions Analysis · April 2026 · Confidential
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ChangeEvent, type ReactNode } from 'react'
 import {
   Alert,
   Box,
@@ -18,10 +18,12 @@ import {
   fetchDashboardServices,
   fetchDashboardStaff,
   staffListItemsToRows,
+  type AvailableSlot,
   type DashboardAppointment,
   type DashboardServiceRow,
   type DashboardStaffRow,
 } from '@shared/api/dashboardApi'
+import { SlotPicker } from '@pages/dashboard/ui/components/SlotPicker'
 import { AppointmentDrawer } from '@pages/dashboard/ui/drawers/AppointmentDrawer'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import { useDashboardListCardSurface, useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
@@ -33,8 +35,6 @@ import {
   PanelFooter,
   PanelBtn,
   StaffPickGrid,
-  TimeSlotGrid,
-  generateTimeSlots,
   type StaffPickItem,
 } from '@pages/dashboard/ui/components/formComponents'
 
@@ -226,12 +226,12 @@ export function DashboardAppointments() {
     staffIds: [] as string[],
     date: todayISO(),
     timeSlot: '',
+    slotStartsAt: '',
+    slotEndsAt: '',
+    slotMasterId: '',
     guestName: '',
     guestPhone: '',
   })
-
-  // ── edit form state ──
-  const slots = useMemo(() => generateTimeSlots(9, 18, 30), [])
 
   const load = useCallback(async () => {
     setErr(null)
@@ -274,13 +274,12 @@ export function DashboardAppointments() {
   }
 
   async function submitCreate() {
-    if (!createForm.timeSlot) { setErr('Выберите время'); return }
+    if (!createForm.slotStartsAt) { setErr('Выберите время'); return }
     try {
-      const startsAt = new Date(`${createForm.date}T${createForm.timeSlot}:00`).toISOString()
       await createDashboardAppointment({
         serviceId: createForm.serviceId,
-        salonMasterId: createForm.staffIds[0] ?? null,
-        startsAt,
+        salonMasterId: createForm.slotMasterId || createForm.staffIds[0] || null,
+        startsAt: createForm.slotStartsAt,
         guestName: createForm.guestName,
         guestPhone: createForm.guestPhone,
       })
@@ -289,6 +288,16 @@ export function DashboardAppointments() {
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
     }
+  }
+
+  function onPickSlot(slot: AvailableSlot) {
+    setCreateForm(f => ({
+      ...f,
+      timeSlot: new Date(slot.startsAt).toTimeString().slice(0, 5),
+      slotStartsAt: slot.startsAt,
+      slotEndsAt: slot.endsAt,
+      slotMasterId: slot.salonMasterId,
+    }))
   }
 
   const filtered = search.trim()
@@ -536,17 +545,19 @@ export function DashboardAppointments() {
                 <FormField label="Дата" required>
                   <TextField
                     value={createForm.date}
-                    onChange={e => setCreateForm(f => ({ ...f, date: e.target.value, timeSlot: '' }))}
+                    onChange={e => setCreateForm(f => ({ ...f, date: e.target.value, timeSlot: '', slotStartsAt: '', slotEndsAt: '', slotMasterId: '' }))}
                     type="date"
                     sx={inputBaseSx}
                   />
                 </FormField>
 
                 <FormField label="Время" required hint="Запись создаётся со статусом «Ожидает»">
-                  <TimeSlotGrid
-                    slots={slots}
-                    selected={createForm.timeSlot}
-                    onChange={t => setCreateForm(f => ({ ...f, timeSlot: t }))}
+                  <SlotPicker
+                    date={createForm.date}
+                    serviceId={createForm.serviceId || undefined}
+                    salonMasterId={createForm.staffIds[0] ?? undefined}
+                    value={createForm.slotStartsAt || undefined}
+                    onChange={onPickSlot}
                   />
                 </FormField>
               </Stack>

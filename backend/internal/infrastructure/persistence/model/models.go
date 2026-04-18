@@ -331,6 +331,29 @@ func (a *Appointment) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// AppointmentLineItem is a snapshot of one booked service (multi-service guest flow).
+type AppointmentLineItem struct {
+	ID                uuid.UUID `gorm:"type:uuid;primaryKey"`
+	AppointmentID     uuid.UUID `gorm:"type:uuid;not null;column:appointment_id;index:idx_appointment_line_items_appointment_id"`
+	ServiceID         uuid.UUID `gorm:"type:uuid;not null;column:service_id"`
+	ServiceName       string    `gorm:"column:service_name;not null"`
+	DurationMinutes   int       `gorm:"column:duration_minutes;not null"`
+	PriceCents        int64     `gorm:"column:price_cents;not null;default:0"`
+	SortOrder         int       `gorm:"column:sort_order;not null;default:0"`
+	CreatedAt         time.Time `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+func (l *AppointmentLineItem) BeforeCreate(tx *gorm.DB) error {
+	if l.ID == uuid.Nil {
+		l.ID = uuid.New()
+	}
+	return nil
+}
+
+func (AppointmentLineItem) TableName() string {
+	return "appointment_line_items"
+}
+
 // UserTelegramIdentity maps to user_telegram_identities.
 type UserTelegramIdentity struct {
 	UserID         uuid.UUID `gorm:"type:uuid;primaryKey;column:user_id"`

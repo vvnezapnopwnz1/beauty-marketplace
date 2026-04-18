@@ -1,9 +1,18 @@
 # Статус разработки — Beauty Marketplace
 
-> Дата: 2026-04-17 | Версия: pre-MVP (v0.1)
+> Дата: 2026-04-18 | Версия: pre-MVP (v0.1)
+
+### Последние изменения (2026-04-18)
+
+- **Мульти-услуга — гость и дашборд (итог):** на странице салона — выбор **нескольких** услуг, мастера с полным набором, слот по сумме длительностей (`GET .../slots?serviceIds=`), сводка цен **над** контактами, `POST .../bookings` с `serviceId` + `serviceIds`, в БД `appointment_line_items` (миграция **`000014`** — обязательна на всех окружениях). В кабинете салона и у мастера список записей: **`serviceName`** из агрегата line items или из основной услуги; **`GET .../dashboard/appointments?service_id=`** находит визит и если услуга только во второй (и далее) строке мульти-записи (`EXISTS` по `appointment_line_items`). Код: `booking.go`, `salon_controller.go`, `GuestBookingDialog.tsx`, `dashboard_repository.go`, `master_dashboard_repository.go`. Планы: [`docs/plans/multi-service-guest-booking.md`](plans/multi-service-guest-booking.md); отображение в списках — см. также §12 того файла. **Сводка для PR / релиза и backlog улучшений:** [`docs/multi-service-booking-rollout-summary.md`](multi-service-booking-rollout-summary.md).
+
+- **Трек 4.1 — перенос записей в календаре дашборда (DnD):** режимы «День» и «Неделя» обёрнуты в `DragDropProvider` (`@dnd-kit/react`); блоки записей — `useDraggable`, колонки — `useDroppable` (`staff:<columnId>:<ymd>`, `week:<ymd>`); вертикальное смещение по `event.operation.transform.y`, шаг и кламп по `slot_duration_minutes` из `GET /api/v1/dashboard/schedule` и рабочим часам мастера (`dndCalendarUtils.ts`); `PUT /api/v1/dashboard/appointments/:id` через `updateDashboardAppointment`; в неделе уникальный id ячейки `appt:<uuid>:cell:<ymd>` для записей на несколько дней. Файлы: `CalendarDayStaffGrid.tsx`, `CalendarWeekGrid.tsx`, `DashboardCalendar.tsx`. План и дальнейшие задачи: `docs/plans/track4-dashboard-features.md`.
+
+- **Гостевая запись на странице салона (wizard):** см. пункт выше «Мульти-услуга — гость и дашборд»; ранее wizard был только на одну услугу — теперь мультивыбор, `serviceIds` в API слотов и бронирования, CTA «Далее». Публичный `GET .../slots` — также **`salonMasterId`** (без `master_profiles`); **`masterProfileId` и `salonMasterId` вместе — 400**. Файлы: `GuestBookingDialog.tsx`, `PublicSlotPicker.tsx`, `SalonPage.tsx`, `salon_controller.go`.
 
 ### Последние изменения (2026-04-17)
 
+- **Трек 2 — реальные слоты букинга:** Заглушка «завтра 10:00» удалена. Новый метод `BookingService.GetAvailableSlots(ctx, SlotParams)` генерирует свободные окна по `salons.slot_duration_minutes`, `salon_master_hours` (с исключением перерывов), `services.duration_minutes` + `salon_master_services.duration_override_minutes`, исключает пересечения с существующими `appointments` (кроме `cancelled_*` / `no_show`), фильтрует прошедшие слоты на сегодня (< `now + 30min`), сортирует по `startsAt` / `masterName`, считает в таймзоне салона. Новый `BookingSlotsRepository` + `AppointmentRepository.FindByMasterInRange`. Новые эндпоинты: публичный `GET /api/v1/salons/:salonId/slots?date=&serviceId=&masterProfileId=` (**+ опционально `salonMasterId`**, см. изменения 2026-04-18) и JWT-ный `GET /api/v1/dashboard/slots?date=&serviceId=&salonMasterId=` с одинаковым JSON `{date, slotDurationMinutes, slots[], masters[]}`. `POST /api/v1/salons/:id/bookings` принимает опциональные `startsAt`/`endsAt`/`salonMasterId`/`masterProfileId`; если не заданы — `pickNextSlot` перебирает до 7 дней (иначе `ErrBookingUnavailable`). Фронт: `fetchAvailableSlots` в `dashboardApi.ts`, `fetchPublicSlots` в `salonApi.ts`; компонент `SlotPicker` заменил статический `TimeSlotGrid` в форме создания записи дашборда; `PublicSlotPicker` в гостевом флоу. Юнит-тесты `TestGetAvailableSlots_BasicDay/_DayOff/_BreakExclusion/_FullyBooked/_TodayPast` (моки через интерфейсы, без БД). См. `docs/plans/track2-booking-slots.md`.
 - **Этап 4 — кабинет мастера:** при успешной OTP-верификации теневой `master_profiles` (`user_id IS NULL`, тот же `phone_e164`, самый ранний по `created_at`) автоматически привязывается к пользователю (`ClaimMasterProfile`). `GET /api/auth/me` и ответ `verify` включают `masterProfileId` (UUID или отсутствует). API кабинета под префиксом **`/api/v1/master-dashboard/`** (JWT + строка `master_profiles` с `user_id = текущий пользователь`, иначе 403): `GET|PUT /profile`, `GET /invites`, `POST /invites/:salonMasterId/accept|decline`, `GET /salons`, `GET /appointments?from=&to=&status=`. Реализация: `master_dashboard_repository.go`, `service/master_dashboard.go`, `controller/master_dashboard_controller.go`, доработка `service/auth.go`, регистрация в `app.go` / `server.go`. Фронт: `masterDashboardApi.ts`, `/master-dashboard` (`MasterDashboardPage.tsx`, секции `?section=profile|invites|salons|appointments`), защита без `masterProfileId` → редирект на `/`, `AuthBootstrap` + поле `masterProfileId` в `authApi`/`authSlice`, в `NavBar` — «Кабинет салона» (роль `salon_owner`) и/или «Кабинет мастера». См. `docs/agent-prompt-stage4-master-cabinet.md`.
 - **Дашборд — страница мастера и drawer’ы:** `/dashboard/staff/:staffId` (`StaffDetailView.tsx`): шапка с аватаром (цвет мастера), статус `active`/`pending`/`inactive`, bio и специализации, кнопки «Редактировать» / «Деактивировать» (confirm + `DELETE .../salon-masters/:id` как в форме), таблица услуг с базовой и эффективной ценой/длительностью, «Настроить услуги» открывает `StaffFormModal`; недельное расписание из `GET .../salon-masters/:id/schedule`, правка — `ScheduleDrawer` → `PUT` того же bundle; ближайшие записи — `GET .../appointments?salon_master_id=&from=&page_size=5`, клик — `AppointmentDrawer`. Список записей (`DashboardAppointments.tsx`) использует тот же `AppointmentDrawer` вместо модалки редактирования; создание новой записи по-прежнему в модалке. См. `docs/agent-prompt-dashboard-master-page-drawer.md`.
 - **Этап 3 — публичный профиль мастера:** без JWT: `GET /api/v1/salons/:salonId/masters` (активные `salon_masters` + опционально `master_profiles`, услуги с `effectivePriceCents`), `GET /api/v1/masters/:masterProfileId` (профиль + активные салоны и названия услуг; `headerCalendarColor` — цвет первого членства). Реализация: `master_public_repository.go`, `service/master_public.go`, `SalonController` + `MasterController`, маршрут в `server.go`. Фронт: `fetchSalonMasters` / `fetchMasterProfile` в `salonApi.ts`, страница `/master/:masterProfileId` (`MasterPage.tsx`), вкладка «Мастера» на `SalonPage` с реальными данными для UUID-салона (для `/place/...` и mock-id секция скрыта). См. `docs/agent-prompt-stage3-master-public.md`.
@@ -246,7 +255,7 @@ VALUES ('<наш UUID>', '2gis', '<2GIS ID>', '{"booking_url": "..."}');
 | Файл           | Базовый URL                  | Покрытые эндпоинты                                                                                       |
 | -------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `authApi.ts`   | `VITE_API_URL`               | `/api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/refresh`, `/api/auth/me`, `/api/auth/logout` |
-| `salonApi.ts`  | `VITE_API_BASE`              | `GET /v1/salons`, `GET /v1/salons/{id}`, `POST /v1/salons/{id}/bookings`                                 |
+| `salonApi.ts`  | `VITE_API_BASE`              | `GET /v1/salons`, `GET /v1/salons/{id}`, `GET /v1/salons/{id}/masters`, `GET /v1/salons/{id}/slots`, `POST /v1/salons/{id}/bookings` |
 | `placesApi.ts` | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/places/search`, `GET /api/v1/places/item/{id}`                                              |
 | `searchApi.ts` | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/search` (unified: 2GIS + обогащение из БД), infinite scroll                                 |
 | `geoApi.ts`    | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/geo/region`, `/geo/cities`, `/geo/reverse`                                                  |
@@ -261,7 +270,7 @@ VALUES ('<наш UUID>', '2gis', '<2GIS ID>', '{"booking_url": "..."}');
 | Поиск мест через 2GIS                   | ✅ Подключён (`placesApi.ts`), в т.ч. как fallback с главной                                                                                                                                                                                   |
 | Unified поиск на главной                | ✅ `searchApi.ts` → `GET /api/v1/search`; при ошибке — fallback на `placesApi` и режим «только 2GIS»                                                                                                                                           |
 | Детальная страница салона (`SalonPage`) | ✅ Dual-mode: `/salon/:id` (platform) и `/place/:externalId` (2GIS), с auto-redirect через `GET /api/v1/salons/by-external`                                                                                                                  |
-| Гостевая запись                         | ✅ `GuestBookingDialog` → `POST /v1/salons/{id}/bookings`                                                                                                                                                                                      |
+| Гостевая запись                         | ✅ Wizard в `GuestBookingDialog` (услуга → мастер → `PublicSlotPicker` → контакты), `POST /v1/salons/{id}/bookings` со слотом                                                                                                                      |
 | **Dashboard**                           | ✅ API `GET/POST/PATCH/PUT/DELETE /api/v1/dashboard/...` (JWT + членство в салоне); UI: обзор, календарь (день/неделя/месяц), список записей с редактированием, услуги с категориями, мастера, расписание, профиль. Доступ: `staff.dashboard_access` и/или роль в `salon_members` — см. `docs/seed-dashboard-access.sql` |
 | Список всех салонов (`GET /v1/salons`)  | ⚠️ Эндпоинт есть; главная использует unified search, не этот список                                                                                                                                                                            |
 
@@ -293,7 +302,7 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 - Архитектура: Clean Architecture с Uber Fx DI
 - Auth: OTP (4 цифры, 5 мин) + JWT (access 15 мин, refresh 30 дней)
 - 2GIS: поиск и детали работают (подтверждено тестом 2026-04-04)
-- Salon API: `GET /v1/salons`, `GET /v1/salons/{id}`, `POST /v1/salons/{id}/bookings`
+- Salon API: `GET /v1/salons`, `GET /v1/salons/{id}`, `GET /v1/salons/{id}/masters`, `GET /v1/salons/{id}/slots`, `POST /v1/salons/{id}/bookings`
 - Гостевые записи: без регистрации (имя + телефон)
 - Health check: `GET /health`
 - CORS middleware
@@ -304,7 +313,7 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 - Auth flow: Phone → OTP → JWT tokens в localStorage
 - **SearchPage**: unified search + fallback 2GIS; режимы список/карта; bento-сетка (`SearchResultCard`: normal / featured-vertical / featured-horizontal); пять градиентов медиа на батч из 5 карточек (`entities/search/lib/bentoGradients.ts`); горизонтальный featured — вторая ячейка в ряду (1 колонка + 2 колонки); в режиме списка — колонка с промо (`PromoBanner`); скелетоны загрузки
 - Карточки: `SearchResultCard`, PlaceCard, SalonCard
-- Гостевой букинг: диалог с валидацией
+- Гостевой букинг: `GuestBookingDialog` (wizard + `PublicSlotPicker`, `fetchSalonMasters` / `fetchPublicSlots`)
 - i18n: полный русский перевод
 - Гео: выбор города, синхронизация координат, `geoApi` для региона/городов
 
@@ -314,8 +323,8 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 | ------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
 | OTP-доставка | Логика генерации/верификации                          | SMS/Telegram реально не отправляет (только stderr)                             |
 | SearchPage   | Unified API + 2GIS fallback, фильтры, карта, bento UI | Дожать фильтры (часть чипов в `FilterRow` без бэкенда), polish карты           |
-| SalonPage    | Dual-mode загрузка, lookup `by-external`, UI parity (hero/карточки/типографика), расписание и контакты из API | Отзывы/промо/фото-секции скрыты фичефлагами до появления API                    |
-| Dashboard    | Записи CRUD, календарь (день/неделя/месяц) с расписанием мастеров, перерывами, NowLine, аватарками, детальной модалкой; услуги с `category_slug`; мастера: `master_profiles` + `salon-masters`, оверрайды услуг, lookup/invite | Drag-drop перенос записей, напоминания, конфликты слотов, кастомные `service_categories` на салон |
+| SalonPage    | Dual-mode, lookup `by-external`, hero CTA «Записаться», wizard гостевой записи, расписание и контакты из API | Отзывы/промо/фото-секции скрыты фичефлагами до появления API                    |
+| Dashboard    | Записи CRUD, календарь (день/неделя/месяц) с расписанием мастеров, перерывами, NowLine, аватарками, детальной модалкой; услуги с `category_slug`; мастера: `master_profiles` + `salon-masters`, оверрайды услуг, lookup/invite; **DnD-перенос записей** в дне/неделе (`@dnd-kit/react` → `PUT .../appointments/:id`) | Resize длительности, zoom таймлайна, конфликты слотов (предупреждение), кастомные `service_categories` на салон, напоминания |
 
 ### ❌ Не начато
 
@@ -389,7 +398,7 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 | CORS разрешает `*`                           | 🟡 Важно    | Ограничить на конкретные домены     |
 | lat/lon = 0 для части 2GIS-результатов       | 🟡 Важно    | Дебаггинг запросов к 2GIS API       |
 | Нет error tracking (Sentry и т.п.)           | 🟠 Средне   | Добавить перед beta                 |
-| Booking slot = "завтра 10:00" (заглушка) в гостевом флоу | 🟠 Средне | В кабинете слот задаётся явно; гостевой `BookingService` всё ещё упрощён |
+| Валидация гостевого букинга: мастер обязан оказывать выбранную услугу | 🟠 Средне | UI фильтрует по `salon_master_services`; на бэке опционально жёсткая проверка в `CreateGuestBooking` |
 
 ---
 
@@ -408,11 +417,11 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 
 - **Фронт:** [DashboardAppointments.tsx](frontend/src/pages/dashboard/ui/DashboardAppointments.tsx) — фильтр по дате, поиск, статусы, **двойной щелчок по строке** открывает редактирование.
 - **API:** `PUT /api/v1/dashboard/appointments/:id` (время, услуга, мастер, комментарий, гость при необходимости), `PATCH .../status`, `POST` создание.
-- **Идеи задач:** перенос drag-and-drop; массовые операции; экспорт.
+- **Идеи задач:** массовые операции; экспорт; (перенос из списка — опционально, основной DnD в календаре).
 
 ### Календарь
 
-- **Фронт:** [DashboardCalendar.tsx](frontend/src/pages/dashboard/ui/DashboardCalendar.tsx); сетки [CalendarDayStaffGrid.tsx](frontend/src/pages/dashboard/ui/CalendarDayStaffGrid.tsx), [CalendarWeekGrid.tsx](frontend/src/pages/dashboard/ui/CalendarWeekGrid.tsx), [CalendarMonthGrid.tsx](frontend/src/pages/dashboard/ui/CalendarMonthGrid.tsx); геометрия времени [calendarGridUtils.ts](frontend/src/pages/dashboard/lib/calendarGridUtils.ts) — таймлайн 08:00–21:59, высота блока из `endsAt - startsAt`, пересечения в колонке — несколько колонок ширины.
+- **Фронт:** [DashboardCalendar.tsx](frontend/src/pages/dashboard/ui/DashboardCalendar.tsx); сетки [CalendarDayStaffGrid.tsx](frontend/src/pages/dashboard/ui/CalendarDayStaffGrid.tsx), [CalendarWeekGrid.tsx](frontend/src/pages/dashboard/ui/CalendarWeekGrid.tsx), [CalendarMonthGrid.tsx](frontend/src/pages/dashboard/ui/CalendarMonthGrid.tsx); геометрия времени [calendarGridUtils.ts](frontend/src/pages/dashboard/lib/calendarGridUtils.ts) — таймлайн 08:00–21:59, высота блока из `endsAt - startsAt`, пересечения в колонке — несколько колонок ширины. **DnD перенос:** [dndCalendarUtils.ts](frontend/src/pages/dashboard/lib/dndCalendarUtils.ts) (id, округление к `slot_duration_minutes`, кламп по видимой сетке и рабочим часам колонки), обёртка `@dnd-kit/react` (`DragDropProvider`, `useDraggable`, `useDroppable`); слот салона — `fetchSalonSchedule` в `DashboardCalendar`.
 - **Реализовано (все 8 задач из `docs/calendar-upgrade-prompt.md`):**
   - Красная линия текущего времени (`NowLine`) — день и неделя, обновляется каждые 60 сек.
   - Штриховка нерабочего времени — выходной, до/после рабочих часов мастера (по `staff_working_hours`).
@@ -422,7 +431,10 @@ VITE_API_BASE=http://localhost:8080    # для salon API
   - Клик по заголовку дня в «Неделе» — переход в режим «День».
   - Индикаторы загруженности в «Месяце» (`LoadBar`: 3 уровня ширины/цвета).
   - Модалка деталей записи: аватар клиента, бейдж статуса, услуга/мастер, дата-время, длительность, заметка, кнопки действий по статусу.
-- **Идеи задач (следующий этап):** drag-and-drop перенос записей с вызовом API; resize длительности; zoom масштаб таймлайна; синхронизация с `slot_duration_minutes`; доступные слоты в форме создания.
+  - **Плюс (трек 4.1):** перетаскивание записи в «Неделе» (смена времени и/или дня колонки) и в «Дне» (время + смена мастера / «Без мастера» / общая колонка) с `PUT /api/v1/dashboard/appointments/:id`.
+- **Идеи задач (следующий этап):** resize длительности; zoom масштаб таймлайна; конфликты слотов (визуал + поле в ответе API); доступные слоты в форме создания (частично есть через `SlotPicker`).
+
+**Что можно улучшить в DnD / таймлайне:** `DragOverlay` или кастомный feedback вместо только opacity/outline на исходном блоке; модификатор **только вертикаль** и/или `distance`/`delay` на pointer-сensor, чтобы не конфликтовать с кликом; при drop опираться на **координату указателя в колонке**, а не только на `transform.y`, для более предсказуемого слота при смене колонки; **оптимистичный** сдвиг блока до ответа API; явный запрет дропа на зону перерыва; перенос из режима «Месяц» — отдельная задача.
 
 ### Мастера и профили (Этап 2)
 

@@ -20,6 +20,7 @@ export interface DashboardAppointment {
   startsAt: string
   endsAt: string
   status: string
+  /** One service name, or several joined with ", " when the visit has appointment_line_items. */
   serviceName: string
   staffName?: string | null
   clientLabel: string
@@ -323,6 +324,38 @@ async function parseJson<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>
 }
 
+export interface AvailableSlot {
+  startsAt: string
+  endsAt: string
+  salonMasterId: string
+  masterName: string
+}
+
+export interface SlotMasterInfo {
+  salonMasterId: string
+  masterName: string
+}
+
+export interface SlotsResponse {
+  date: string
+  slotDurationMinutes: number
+  slots: AvailableSlot[]
+  masters: SlotMasterInfo[]
+}
+
+export async function fetchAvailableSlots(params: {
+  date: string
+  serviceId?: string
+  salonMasterId?: string
+}): Promise<SlotsResponse> {
+  const q = new URLSearchParams()
+  q.set('date', params.date)
+  if (params.serviceId) q.set('serviceId', params.serviceId)
+  if (params.salonMasterId) q.set('salonMasterId', params.salonMasterId)
+  const res = await authFetch(`${base()}/slots?${q}`)
+  return parseJson<SlotsResponse>(res)
+}
+
 export async function fetchDashboardStats(period = 'week'): Promise<DashboardStats> {
   const res = await authFetch(`${base()}/stats?period=${encodeURIComponent(period)}`)
   return parseJson<DashboardStats>(res)
@@ -333,6 +366,7 @@ export async function fetchDashboardAppointments(params: {
   to?: string
   status?: string
   staffId?: string
+  /** Matches primary `appointments.service_id` or any `appointment_line_items.service_id` (multi-service guest visits). */
   serviceId?: string
   page?: number
   pageSize?: number

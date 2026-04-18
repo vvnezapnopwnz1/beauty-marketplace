@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local db-migrate seed-salon-page-dev
+.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local backend-local-no-seed db-migrate seed-salon-page-dev
 
 up:
 	@docker compose up -d --build
@@ -38,6 +38,16 @@ backend-local: db-migrate
 	HTTP_ADDR=:8080 \
 	LOG_LEVEL=development \
 	DEV_DEMO_SEED=1 \
+	DEV_OTP_BYPASS=1 \
+	DATABASE_DSN="$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" \
+	go run ./cmd/api
+
+# Бэкенд на хосте без автосида devseed (для проверки точечного SQL seed-а).
+backend-local-no-seed: db-migrate
+	@cd backend && \
+	HTTP_ADDR=:8080 \
+	LOG_LEVEL=development \
+	DEV_DEMO_SEED=0 \
 	DEV_OTP_BYPASS=1 \
 	DATABASE_DSN="$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" \
 	go run ./cmd/api

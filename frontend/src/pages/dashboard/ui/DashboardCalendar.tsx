@@ -22,9 +22,11 @@ import {
   fetchDashboardAppointments,
   fetchDashboardServices,
   fetchDashboardStaff,
+  fetchSalonSchedule,
   fetchStaffSchedule,
   patchAppointmentStatus,
   staffListItemsToRows,
+  updateDashboardAppointment,
   type DashboardAppointment,
   type DashboardServiceRow,
   type DashboardStaffListItem,
@@ -134,6 +136,7 @@ export function DashboardCalendar() {
     guestPhone: '',
   })
   const [staffSchedules, setStaffSchedules] = useState<Map<string, StaffScheduleInfo>>(new Map())
+  const [slotDurationMinutes, setSlotDurationMinutes] = useState(15)
 
   const weekStart = useMemo(() => startOfWeekMonday(anchor), [anchor])
   const weekDays = useMemo(() => eachDayOfWeek(weekStart), [weekStart])
@@ -203,11 +206,16 @@ export function DashboardCalendar() {
     const t = window.setTimeout(() => {
       void (async () => {
         try {
-          const [s, st] = await Promise.all([fetchDashboardServices(), fetchDashboardStaff()])
+          const [s, st, salonSched] = await Promise.all([
+            fetchDashboardServices(),
+            fetchDashboardStaff(),
+            fetchSalonSchedule().catch(() => null),
+          ])
           setServices(s.filter(x => x.isActive))
           setStaff(staffListItemsToRows(st))
           setStaffListItems(st)
           setForm(f => (f.serviceId ? f : { ...f, serviceId: s.find(x => x.isActive)?.id ?? '' }))
+          if (salonSched?.slotDurationMinutes) setSlotDurationMinutes(salonSched.slotDurationMinutes)
         } catch {
           /* ignore */
         }
@@ -290,6 +298,33 @@ export function DashboardCalendar() {
       setErr(e instanceof Error ? e.message : 'Ошибка')
     }
   }
+
+  const handleAppointmentMoved = useCallback(
+    async (update: {
+      id: string
+      startsAt: string
+      endsAt: string
+      salonMasterId?: string
+      clearSalonMasterId?: boolean
+    }) => {
+      setErr(null)
+      try {
+        await updateDashboardAppointment(update.id, {
+          startsAt: update.startsAt,
+          endsAt: update.endsAt,
+          ...(update.clearSalonMasterId
+            ? { clearSalonMasterId: true }
+            : update.salonMasterId
+              ? { salonMasterId: update.salonMasterId }
+              : {}),
+        })
+        void load()
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : 'Не удалось перенести запись')
+      }
+    },
+    [load],
+  )
 
   const mockBtnSx = {
     px: 1.5,
@@ -462,6 +497,8 @@ export function DashboardCalendar() {
             setAnchor(d)
             setMode('day')
           }}
+          slotDurationMinutes={slotDurationMinutes}
+          onAppointmentMoved={handleAppointmentMoved}
         />
       ) : mode === 'day' ? (
         <CalendarDayStaffGrid
@@ -472,6 +509,8 @@ export function DashboardCalendar() {
           onEventClick={a => setDetail(a)}
           onEmptyClick={(staffId, slotStart) => openCreateAtSlot(slotStart, staffId)}
           staffSchedules={staffSchedules}
+          slotDurationMinutes={slotDurationMinutes}
+          onAppointmentMoved={handleAppointmentMoved}
         />
       ) : (
         <CalendarMonthGrid
