@@ -1,16 +1,43 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react'
 import {
   Alert,
   Box,
+  CircularProgress,
   Dialog,
   DialogContent,
   MenuItem,
+  Popover,
   Select,
   Stack,
   TextField,
-  Typography,
+  Tooltip,
+  useTheme,
+  Autocomplete,
+  Chip,
   type SelectChangeEvent,
 } from '@mui/material'
+// import { styled } from '@mui/material/styles'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
+import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import { ru } from 'date-fns/locale'
+import {
+  // DataGridPremium,
+  GridToolbarColumnsButton,
+  GridValidRowModel,
+  type GridColDef,
+  type GridPaginationModel,
+  type GridRowParams,
+  type GridSortModel,
+} from '@mui/x-data-grid-premium'
 import {
   fetchDashboardAppointments,
   patchAppointmentStatus,
@@ -26,7 +53,7 @@ import {
 import { SlotPicker } from '@pages/dashboard/ui/components/SlotPicker'
 import { AppointmentDrawer } from '@pages/dashboard/ui/drawers/AppointmentDrawer'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
-import { useDashboardListCardSurface, useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import type { DashboardPalette } from '@shared/theme'
 import {
   FormField,
@@ -37,87 +64,92 @@ import {
   StaffPickGrid,
   type StaffPickItem,
 } from '@pages/dashboard/ui/components/formComponents'
+import { DateRangeCalendar } from '@mui/x-date-pickers-pro'
+import RenderTable from '@shared/ui/DataGrid/RenderTable'
 
-// ─── date filter ────────────────────────────────────────────────────────────
+// ─── date filter ─────────────────────────────────────────────────────────────
 
-type DateFilter = 'today' | 'tomorrow' | 'week' | 'all'
+type DatePreset = 'today' | 'tomorrow' | 'week' | 'custom'
 
-const DATE_FILTER_LABELS: Record<DateFilter, string> = {
-  today:    'Сегодня',
+const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+  today: 'Сегодня',
   tomorrow: 'Завтра',
-  week:     'Эта неделя',
-  all:      'Все',
+  week: 'Эта неделя',
+  custom: 'Период',
 }
 
-function getDateRange(filter: DateFilter): { from?: string; to?: string } {
+const fmt = (d: Date) => d.toISOString().slice(0, 10)
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+
+function getPresetRange(preset: DatePreset): { from: string; to: string } | null {
   const now = new Date()
-  const startOf = (d: Date) => { const r = new Date(d); r.setHours(0, 0, 0, 0); return r }
-  const endOf   = (d: Date) => { const r = new Date(d); r.setHours(23, 59, 59, 999); return r }
-
-  if (filter === 'today') {
-    return { from: startOf(now).toISOString(), to: endOf(now).toISOString() }
+  if (preset === 'today') {
+    const s = fmt(now)
+    return { from: s, to: s }
   }
-  if (filter === 'tomorrow') {
-    const t = new Date(now); t.setDate(t.getDate() + 1)
-    return { from: startOf(t).toISOString(), to: endOf(t).toISOString() }
+  if (preset === 'tomorrow') {
+    const t = addDays(now, 1)
+    return { from: fmt(t), to: fmt(t) }
   }
-  if (filter === 'week') {
-    const mon = new Date(now)
-    const d = mon.getDay()
-    mon.setDate(mon.getDate() - d + (d === 0 ? -6 : 1))
-    const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
-    return { from: startOf(mon).toISOString(), to: endOf(sun).toISOString() }
+  if (preset === 'week') {
+    const d = now.getDay()
+    const mon = addDays(now, -(d === 0 ? 6 : d - 1))
+    const sun = addDays(mon, 6)
+    return { from: fmt(mon), to: fmt(sun) }
   }
-  return {}
-}
-
-function formatTime(iso: string, filter: DateFilter): string {
-  const d = new Date(iso)
-  if (filter === 'today' || filter === 'tomorrow') {
-    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  }
-  return d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
-function todayISO(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return null
 }
 
 // ─── status config ───────────────────────────────────────────────────────────
 
-function statusCfg(d: DashboardPalette): Record<string, { label: string; bg: string; color: string; timeColor: string }> {
-  return {
-    pending: { label: 'Ожидает', bg: 'rgba(255,217,61,.15)', color: '#FFD93D', timeColor: '#FFD93D' },
-    confirmed: { label: 'Подтверждена', bg: 'rgba(107,203,119,.15)', color: '#6BCB77', timeColor: d.accent },
-    completed: { label: 'Завершена', bg: 'rgba(78,205,196,.15)', color: '#4ECDC4', timeColor: d.accent },
-    cancelled_by_salon: { label: 'Отмена', bg: 'rgba(224,96,96,.15)', color: d.red, timeColor: d.red },
-    no_show: { label: 'Не пришёл', bg: 'rgba(255,255,255,.07)', color: d.mutedDark, timeColor: d.accent },
-  }
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Ожидает',
+  confirmed: 'Подтверждена',
+  completed: 'Завершена',
+  cancelled_by_salon: 'Отмена',
+  no_show: 'Не пришёл',
 }
 
-// ─── primitives ─────────────────────────────────────────────────────────────
+const ALL_STATUSES = Object.keys(STATUS_LABELS)
 
-function StatusBadge({ status }: { status: string }) {
+function statusColors(d: DashboardPalette, status: string) {
+  const map: Record<string, { bg: string; color: string }> = {
+    pending: { bg: 'rgba(255,217,61,.15)', color: d.yellow },
+    confirmed: { bg: 'rgba(107,203,119,.15)', color: d.green },
+    completed: { bg: 'rgba(78,205,196,.15)', color: d.blue },
+    cancelled_by_salon: { bg: 'rgba(224,96,96,.15)', color: d.red },
+    no_show: { bg: 'rgba(255,255,255,.07)', color: d.mutedDark },
+  }
+  return map[status] ?? { bg: 'rgba(255,255,255,.07)', color: d.mutedDark }
+}
+
+// ─── primitives ──────────────────────────────────────────────────────────────
+
+function StatusChip({ status }: { status: string }) {
   const d = useDashboardPalette()
-  const cfg = statusCfg(d)[status] ?? { label: status, bg: 'rgba(255,255,255,.07)', color: d.mutedDark }
+  const { bg, color } = statusColors(d, status)
   return (
     <Box
       component="span"
       sx={{
         display: 'inline-block',
         px: 1.25,
-        py: 0.25,
+        py: 0.35,
         borderRadius: '20px',
         fontSize: 11,
         fontWeight: 600,
-        bgcolor: cfg.bg,
-        color: cfg.color,
+        bgcolor: bg,
+        color,
         whiteSpace: 'nowrap',
+        lineHeight: 1.5,
       }}
     >
-      {cfg.label}
+      {STATUS_LABELS[status] ?? status}
     </Box>
   )
 }
@@ -151,18 +183,10 @@ function PillBtn({
         whiteSpace: 'nowrap',
         transition: '.15s',
         fontFamily: 'inherit',
-        bgcolor: danger
-          ? 'rgba(224,96,96,.15)'
-          : active
-          ? d.accent
-          : d.control,
+        bgcolor: danger ? 'rgba(224,96,96,.15)' : active ? d.accent : d.control,
         color: danger ? d.red : active ? '#fff' : d.mutedDark,
         '&:hover': {
-          bgcolor: danger
-            ? 'rgba(224,96,96,.28)'
-            : active
-            ? d.accentDark
-            : d.controlHover,
+          bgcolor: danger ? 'rgba(224,96,96,.28)' : active ? d.accentDark : d.controlHover,
           color: danger ? d.red : d.text,
         },
       }}
@@ -192,38 +216,534 @@ function menuItemSx(d: DashboardPalette) {
   return { fontSize: 13, color: d.text, '&:hover': { bgcolor: d.card } }
 }
 
-// иконка записи
 function ApptIcon() {
   return (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#6BCB77" strokeWidth="1.8">
-      <rect x="3" y="4" width="18" height="18" rx="3"/>
-      <path d="M16 2v4M8 2v4M3 10h18"/>
+      <rect x="3" y="4" width="18" height="18" rx="3" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
     </svg>
   )
 }
 
-// ─── main component ──────────────────────────────────────────────────────────
+function todayISO(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
-const COLS = '80px 1fr 130px 100px 130px minmax(148px, auto)'
+// ─── styled DataGrid ──────────────────────────────────────────────────────────
+
+// const StyledGrid = styled(DataGridPremium, {
+//   shouldForwardProp: p => p !== 'dashPalette',
+// })<{ dashPalette: DashboardPalette }>(({ dashPalette: d }) => ({
+//   border: `1px solid ${d.border}`,
+//   borderRadius: '10px',
+//   backgroundColor: d.card,
+//   color: d.text,
+//   fontFamily: 'inherit',
+//   '& .MuiDataGrid-columnHeaders': {
+//     backgroundColor: d.gridHeader,
+//     borderBottom: `1px solid ${d.border}`,
+//     borderRadius: '10px 10px 0 0',
+//   },
+//   '& .MuiDataGrid-columnHeaderTitle': {
+//     fontWeight: 600,
+//     fontSize: 11,
+//     textTransform: 'uppercase',
+//     letterSpacing: '.4px',
+//     color: d.muted,
+//   },
+//   '& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': {
+//     outline: 'none',
+//   },
+//   '& .MuiDataGrid-columnSeparator': { color: d.border },
+
+//   '& .MuiDataGrid-row': {
+//     borderBottom: `1px solid ${d.borderSubtle}`,
+//     cursor: 'pointer',
+//     transition: 'background .12s',
+//     '&:hover': { backgroundColor: d.controlHover },
+//     '&.Mui-selected': { backgroundColor: `${d.accent}14` },
+//     '&.Mui-selected:hover': { backgroundColor: `${d.accent}1e` },
+//   },
+//   '& .MuiDataGrid-cell': {
+//     borderBottom: 'none',
+//     color: d.text,
+//     display: 'flex',
+//     alignItems: 'center',
+//     '&:focus, &:focus-within': { outline: 'none' },
+//   },
+
+//   '& .MuiDataGrid-footerContainer': {
+//     borderTop: `1px solid ${d.border}`,
+//     backgroundColor: d.gridHeader,
+//     borderRadius: '0 0 10px 10px',
+//   },
+//   '& .MuiTablePagination-root': { color: d.muted },
+//   '& .MuiTablePagination-selectIcon': { color: d.mutedDark },
+//   '& .MuiIconButton-root': {
+//     color: d.mutedDark,
+//     '&:hover': { color: d.text },
+//     '&.Mui-disabled': { color: d.borderLight },
+//   },
+
+//   '& .MuiDataGrid-toolbarContainer': {
+//     padding: '8px 12px',
+//     borderBottom: `1px solid ${d.borderSubtle}`,
+//     gap: '8px',
+//   },
+//   '& .MuiButton-root': {
+//     color: d.mutedDark,
+//     fontSize: 12,
+//     '&:hover': { color: d.text, backgroundColor: d.control },
+//   },
+
+//   '& .MuiDataGrid-overlayWrapper': { minHeight: 120 },
+//   '& .MuiDataGrid-virtualScroller ': {
+//     '@supports(overflow: overlay)': {
+//       overflow: 'overlay',
+//     },
+//     overflow: 'overlay',
+//     scrollbarGutter: 'auto',
+//     '& + div': {
+//       // watermark: none
+//       display: 'none',
+//       // marginTop: "0 !important"
+//     },
+//     '::-webkit-scrollbar': {
+//       width: '8px',
+//       height: '8px',
+//       outline: 'none',
+//     },
+//     ':hover::-webkit-scrollbar': {
+//       backgroundColor: d.controlHover,
+//     },
+//     ':hover::-webkit-scrollbar-thumb': {
+//       backgroundColor: d.controlHover,
+//       borderRadius: '15px',
+//       border: 'none',
+//     },
+//     '::-webkit-scrollbar-thumb': {
+//       backgroundColor: d.controlHover,
+//       outline: 'none',
+//       borderRadius: '15px',
+//       border: 'none',
+//     },
+//   },
+//   '& .cellInputField div, .cellSelectField div': {
+//     borderRadius: 4,
+//     border: `1px solid`,
+//     fontSize: 12,
+//     padding: '0px 10px',
+//     display: 'flex',
+//     alignItems: 'center',
+//     height: '70%',
+//     width: '100%',
+//     justifyContent: 'space-between',
+//   },
+//   '.row--inactive': {},
+//   '& .cellSwtichField svg': {
+//     borderRadius: 4,
+//     padding: '7px',
+//     width: '40px',
+//     height: '70%',
+//   },
+//   '& .cellSelectField .MuiDataGrid-cellContent:after': {
+//     display: 'block',
+//     content: `""`,
+//     backgroundSize: '10px 10px',
+//     height: '10px',
+//     width: '10px',
+//   },
+//   '& .cellSelectField div div': {
+//     border: 'none',
+//   },
+//   '& .cellSelectField div fieldset': {
+//     border: 'none',
+//   },
+//   '& .MuiTablePagination-toolbar': {
+//     overflow: 'auto',
+//   },
+//   '& .MuiTablePagination-toolbar nav': {
+//     order: -1,
+//   },
+//   // '& .MuiDataGrid-columnHeader:last-child': {
+//   //   border: 'none',
+//   // },
+//   '& .ColumnHeaderActions div': {
+//     fontWeight: 400,
+//     wordBreak: 'break-word',
+//     whiteSpace: 'inherit',
+//     lineHeight: 'normal',
+//   },
+//   '.MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainerContent': {
+//     display: 'flex',
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   '.MuiDataGrid-columnHeaderCheckbox .MuiDataGrid-columnHeaderTitleContainerContent .MuiCheckbox-root':
+//     {
+//       width: '44px',
+//     },
+//   '[data-field="isDummy"]': {
+//     justifyContent: 'start',
+//   },
+//   // wrapper intialized over no results overlay in empty state
+//   ' & .MuiDataGrid-overlayWrapperInner div': {
+//     width: 'min(400px, 50%) !important',
+//     height: 'min(400px, 50%) !important',
+//   },
+//   '& .MuiDataGrid-overlayWrapperInner': {
+//     display: 'flex',
+//     flexDirection: 'column',
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+
+//   '& .editedCell .MuiDataGrid-cellContent': {
+//     fontWeight: 'bold',
+//   },
+//   '& .editCell input': {
+//     padding: '4px 8px 4px 2px',
+//   },
+//   '&.MuiDataGrid-root .MuiDataGrid-cell:focus': {
+//     outline: 'none',
+//   },
+//   '& .rowSpanCell': {
+//     paddingLeft: 0,
+//     paddingRight: 0,
+//   },
+// }))
+
+// ─── styled DatePicker ────────────────────────────────────────────────────────
+
+// function StyledDatePicker({
+//   label,
+//   value,
+//   onChange,
+//   d,
+// }: {
+//   label: string
+//   value: Date | null
+//   onChange: (v: Date | null) => void
+//   d: DashboardPalette
+// }) {
+//   return (
+//     <DatePicker
+//       label={label}
+//       value={value}
+//       onChange={onChange}
+//       format="dd.MM.yyyy"
+//       slotProps={{
+//         textField: {
+//           size: 'small',
+//           sx: {
+//             width: 148,
+//             '& .MuiInputBase-root': {
+//               bgcolor: d.input,
+//               borderRadius: '6px',
+//               fontSize: 12,
+//               color: d.text,
+//               height: '31px',
+//             },
+//             '& .MuiOutlinedInput-notchedOutline': { borderColor: d.border, top: 0 },
+//             '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+//             '& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline': {
+//               borderColor: d.borderLight,
+//             },
+//             '& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+//               borderColor: d.borderFocus,
+//             },
+//             '& .MuiInputBase-input': { py: 0, px: '10px', fontSize: 12, color: d.text },
+//             '& .MuiInputLabel-root': { display: 'none' },
+//             '& .MuiSvgIcon-root': { color: d.mutedDark, fontSize: 18 },
+//           },
+//         },
+//         popper: {
+//           sx: {
+//             '& .MuiPaper-root': { bgcolor: d.card, color: d.text, border: `1px solid ${d.border}` },
+//             '& .MuiPickersDay-root': { color: d.text, '&:hover': { bgcolor: d.control } },
+//             '& .MuiPickersDay-root.Mui-selected': { bgcolor: d.accent, color: '#fff' },
+//             '& .MuiPickersCalendarHeader-label': { color: d.text },
+//             '& .MuiIconButton-root': { color: d.mutedDark },
+//             '& .MuiDayCalendar-weekDayLabel': { color: d.muted },
+//           },
+//         },
+//       }}
+//     />
+//   )
+// }
+
+// ─── toolbar ─────────────────────────────────────────────────────────────────
+
+function AppointmentsToolbar({ setModal }: { setModal: (modal: boolean) => void }) {
+  const d = useDashboardPalette()
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: '4px' }}>
+      <GridToolbarColumnsButton />
+      <Box sx={{ flex: 1 }} />
+      <PillBtn active onClick={() => setModal(true)}>
+        + Создать запись
+      </PillBtn>
+      <Box sx={{ width: 4, color: d.text }} />
+    </Box>
+  )
+}
+
+// ─── filter bar ──────────────────────────────────────────────────────────────
+
+interface FilterState {
+  preset: DatePreset
+  from: string
+  to: string
+  statuses: string[]
+  staffId: string
+  serviceId: string
+  search: string
+}
+
+function FilterBar({
+  filters,
+  setFilters,
+  staff,
+  services,
+  setModal,
+}: {
+  filters: FilterState
+  setFilters: (f: FilterState) => void
+  staff: DashboardStaffRow[]
+  services: DashboardServiceRow[]
+  setModal: (modal: boolean) => void
+}) {
+  const d = useDashboardPalette()
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [localSearch, setLocalSearch] = useState(filters.search)
+
+  const fromDate = filters.from ? new Date(filters.from + 'T00:00:00') : null
+  const toDate = filters.to ? new Date(filters.to + 'T00:00:00') : null
+
+  function setPreset(preset: DatePreset) {
+    if (preset === 'custom') {
+      setFilters({ ...filters, preset })
+      return
+    }
+    const range = getPresetRange(preset)!
+    setFilters({ ...filters, preset, from: range.from, to: range.to })
+  }
+
+  // function toggleStatus(s: string) {
+  //   const next = filters.statuses.includes(s)
+  //     ? filters.statuses.filter(x => x !== s)
+  //     : [...filters.statuses, s]
+  //   setFilters({ ...filters, statuses: next })
+  // }
+
+  function onSearchChange(e: ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value
+    setLocalSearch(v)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      setFilters({ ...filters, search: v })
+    }, 300)
+  }
+
+  const filterSelectSx = {
+    bgcolor: d.input,
+    borderRadius: '6px',
+    fontSize: 12,
+    color: d.text,
+    height: '31px',
+    minWidth: 120,
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: d.border, top: 0 },
+    '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: d.borderLight },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: d.borderFocus },
+    '& .MuiSelect-select': { py: 0, px: '10px' },
+    '& .MuiSvgIcon-root': { color: d.mutedDark },
+  }
+
+  const inputBase = {
+    px: '10px',
+    py: '5px',
+    borderRadius: '6px',
+    border: `1px solid ${d.border}`,
+    bgcolor: d.input,
+    color: d.text,
+    fontSize: 12,
+    outline: 'none',
+    fontFamily: 'inherit',
+    '&::placeholder': { color: d.muted },
+    '&:focus': { borderColor: d.borderFocus },
+  }
+
+  const [dateRangeAnchor, setDateRangeAnchor] = useState<HTMLDivElement | null>(null)
+  const [dateRangeOpen, setDateRangeOpen] = useState(false)
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+        {/* row 1: presets + date range + search */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          {(['today', 'tomorrow', 'week'] as DatePreset[]).map(p => (
+            <PillBtn key={p} active={filters.preset === p} onClick={() => setPreset(p)}>
+              {DATE_PRESET_LABELS[p]}
+            </PillBtn>
+          ))}
+          {/* Date range calendar */}
+          <Box ref={setDateRangeAnchor} sx={{ display: 'inline-flex' }}>
+            <PillBtn active={filters.preset === 'custom'} onClick={() => setDateRangeOpen(v => !v)}>
+              Задать период
+            </PillBtn>
+          </Box>
+          <Popover
+            open={dateRangeOpen}
+            anchorEl={dateRangeAnchor}
+            onClose={() => setDateRangeOpen(false)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            slotProps={{
+              paper: {
+                sx: {
+                  bgcolor: d.card,
+                  border: `1px solid ${d.border}`,
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  mt: 0.5,
+                },
+              },
+            }}
+          >
+            <DateRangeCalendar
+              calendars={2}
+              value={[fromDate, toDate]}
+              onChange={([from, to]) => {
+                setFilters({
+                  ...filters,
+                  preset: 'custom',
+                  from: from ? fmt(from) : '',
+                  to: to ? fmt(to) : '',
+                })
+              }}
+            />
+          </Popover>
+          <Box sx={{ flex: 1 }} />
+          <Box
+            component="input"
+            type="text"
+            placeholder="Поиск по клиенту..."
+            value={localSearch}
+            onChange={onSearchChange}
+            sx={{ ...inputBase, width: 180 }}
+          />{' '}
+        </Box>
+
+        {/* row 2: status chips + staff + service */}
+
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Select
+            value={filters.statuses.join(',')}
+            onChange={(e: SelectChangeEvent) =>
+              setFilters({ ...filters, statuses: e.target.value.split(',') })
+            }
+            displayEmpty
+            size="small"
+            sx={filterSelectSx}
+            MenuProps={{ PaperProps: { sx: { bgcolor: d.card, color: d.text } } }}
+          >
+            <MenuItem value="" sx={menuItemSx(d)}>
+              Все статусы
+            </MenuItem>
+            {ALL_STATUSES.map(s => (
+              <MenuItem key={s} value={s} sx={menuItemSx(d)}>
+                {STATUS_LABELS[s]}
+              </MenuItem>
+            ))}
+          </Select>
+          <Select
+            value={filters.staffId}
+            onChange={(e: SelectChangeEvent) => setFilters({ ...filters, staffId: e.target.value })}
+            displayEmpty
+            size="small"
+            sx={filterSelectSx}
+            MenuProps={{ PaperProps: { sx: { bgcolor: d.card, color: d.text } } }}
+          >
+            <MenuItem value="" sx={menuItemSx(d)}>
+              Все мастера
+            </MenuItem>
+            {staff.map(s => (
+              <MenuItem key={s.id} value={s.id} sx={menuItemSx(d)}>
+                {s.displayName}
+              </MenuItem>
+            ))}
+          </Select>
+          <Select
+            value={filters.serviceId}
+            onChange={(e: SelectChangeEvent) =>
+              setFilters({ ...filters, serviceId: e.target.value })
+            }
+            displayEmpty
+            size="small"
+            sx={filterSelectSx}
+            MenuProps={{ PaperProps: { sx: { bgcolor: d.card, color: d.text } } }}
+          >
+            <MenuItem value="" sx={menuItemSx(d)}>
+              Все услуги
+            </MenuItem>
+            {services.map(s => (
+              <MenuItem key={s.id} value={s.id} sx={menuItemSx(d)}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </Select>
+          <Box sx={{ flex: 1 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+            <PillBtn active onClick={() => setModal(true)}>
+              + Создать запись
+            </PillBtn>
+          </Box>{' '}
+        </Box>
+      </Box>
+    </LocalizationProvider>
+  )
+}
+
+// ─── main component ───────────────────────────────────────────────────────────
 
 export function DashboardAppointments() {
   const d = useDashboardPalette()
-  const listCard = useDashboardListCardSurface()
+  const theme = useTheme()
   const { inputBaseSx, panelPaperSmSx, errorAlertSx, selectMenuSx } = useDashboardFormStyles()
-  const [items, setItems]           = useState<DashboardAppointment[]>([])
-  const [total, setTotal]           = useState(0)
-  const [dateFilter, setDateFilter] = useState<DateFilter>('today')
-  const [search, setSearch]         = useState('')
-  const [err, setErr]               = useState<string | null>(null)
-  const [modal, setModal]           = useState(false)
-  const [editAppt, setEditAppt]     = useState<DashboardAppointment | null>(null)
-  const [services, setServices]     = useState<DashboardServiceRow[]>([])
-  const [staff, setStaff]           = useState<DashboardStaffRow[]>([])
 
-  // ── create form state ──
-  const [createForm, setCreateForm] = useState({
+  const [rows, setRows] = useState<DashboardAppointment[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [editAppt, setEditAppt] = useState<DashboardAppointment | null>(null)
+  const [modal, setModal] = useState(false)
+  const [services, setServices] = useState<DashboardServiceRow[]>([])
+  const [staff, setStaff] = useState<DashboardStaffRow[]>([])
+
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: 25,
+  })
+  const [sortModel, setSortModel] = useState<GridSortModel>([{ field: 'startsAt', sort: 'desc' }])
+
+  const initRange = getPresetRange('today')!
+  const [filters, setFilters] = useState<FilterState>({
+    preset: 'today',
+    from: initRange.from,
+    to: initRange.to,
+    statuses: [],
+    staffId: '',
     serviceId: '',
+    search: '',
+  })
+
+  const [createForm, setCreateForm] = useState({
+    serviceIds: [] as string[],
     staffIds: [] as string[],
+    status: 'pending',
     date: todayISO(),
     timeSlot: '',
     slotStartsAt: '',
@@ -234,16 +754,36 @@ export function DashboardAppointments() {
   })
 
   const load = useCallback(async () => {
+    setLoading(true)
     setErr(null)
     try {
-      const { from, to } = getDateRange(dateFilter)
-      const res = await fetchDashboardAppointments({ from, to, pageSize: 100 })
-      setItems(res.items)
+      const sort = sortModel[0]
+      const fieldMap: Record<string, string> = {
+        startsAt: 'starts_at',
+        serviceName: 'service_name',
+        status: 'status',
+        clientLabel: 'client_name',
+      }
+      const res = await fetchDashboardAppointments({
+        from: filters.from || undefined,
+        to: filters.to || undefined,
+        statuses: filters.statuses.length ? filters.statuses : undefined,
+        staffId: filters.staffId || undefined,
+        serviceId: filters.serviceId || undefined,
+        sortBy: sort ? (fieldMap[sort.field] ?? 'starts_at') : 'starts_at',
+        sortDir: sort?.sort ?? 'desc',
+        search: filters.search || undefined,
+        page: paginationModel.page + 1,
+        pageSize: paginationModel.pageSize,
+      })
+      setRows(res.items)
       setTotal(res.total)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Ошибка')
+      setErr(e instanceof Error ? e.message : 'Ошибка загрузки')
+    } finally {
+      setLoading(false)
     }
-  }, [dateFilter])
+  }, [filters, paginationModel, sortModel])
 
   useEffect(() => {
     const t = window.setTimeout(() => void load(), 0)
@@ -257,12 +797,26 @@ export function DashboardAppointments() {
           const [s, st] = await Promise.all([fetchDashboardServices(), fetchDashboardStaff()])
           setServices(s.filter(x => x.isActive))
           setStaff(staffListItemsToRows(st).filter(x => x.isActive))
-          setCreateForm(f => f.serviceId ? f : { ...f, serviceId: s[0]?.id ?? '' })
-        } catch { /* ignore */ }
+          setCreateForm(f =>
+            f.serviceIds.length > 0 ? f : { ...f, serviceIds: s[0] ? [s[0].id] : [] },
+          )
+        } catch {
+          /* ignore */
+        }
       })()
     }, 0)
     return () => window.clearTimeout(t)
   }, [])
+
+  const prevFilters = useRef(filters)
+  const prevSort = useRef(sortModel)
+  useEffect(() => {
+    if (prevFilters.current !== filters || prevSort.current !== sortModel) {
+      prevFilters.current = filters
+      prevSort.current = sortModel
+      setPaginationModel(m => (m.page === 0 ? m : { ...m, page: 0 }))
+    }
+  }, [filters, sortModel])
 
   async function setApptStatus(id: string, s: string) {
     try {
@@ -274,10 +828,13 @@ export function DashboardAppointments() {
   }
 
   async function submitCreate() {
-    if (!createForm.slotStartsAt) { setErr('Выберите время'); return }
+    if (!createForm.slotStartsAt) {
+      setErr('Выберите время')
+      return
+    }
     try {
       await createDashboardAppointment({
-        serviceId: createForm.serviceId,
+        serviceIds: createForm.serviceIds,
         salonMasterId: createForm.slotMasterId || createForm.staffIds[0] || null,
         startsAt: createForm.slotStartsAt,
         guestName: createForm.guestName,
@@ -297,170 +854,287 @@ export function DashboardAppointments() {
       slotStartsAt: slot.startsAt,
       slotEndsAt: slot.endsAt,
       slotMasterId: slot.salonMasterId,
+      staffIds: [slot.salonMasterId],
     }))
   }
 
-  const filtered = search.trim()
-    ? items.filter(a => {
-        const q = search.toLowerCase()
-        return (
-          a.clientLabel?.toLowerCase().includes(q) ||
-          a.clientPhone?.toLowerCase().includes(q) ||
-          a.serviceName?.toLowerCase().includes(q) ||
-          a.staffName?.toLowerCase().includes(q)
-        )
-      })
-    : items
+  // ─── columns ────────────────────────────────────────────────────────────────
 
-  const staffPickItems: StaffPickItem[] = staff.map(s => ({
-    id: s.id,
-    displayName: s.displayName,
-  }))
+  const columns = useMemo(
+    (): GridColDef<DashboardAppointment>[] => [
+      {
+        field: 'startsAt',
+        headerName: 'Дата и время',
+        width: 160,
+        sortable: true,
+        renderCell: ({ value }) => {
+          if (!value) return '—'
+          const dt = new Date(value as string)
+          return dt.toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        },
+      },
+      {
+        field: 'clientLabel',
+        headerName: 'Клиент',
+        flex: 1,
+        minWidth: 180,
+        sortable: true,
+        renderCell: ({ row }) => (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'start',
+              gap: 1,
+            }}
+          >
+            <Box sx={{ fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>{row.clientLabel}</Box>
+            {row.clientPhone && <Box sx={{ fontSize: 11, color: d.muted }}>{row.clientPhone}</Box>}
+          </Box>
+        ),
+      },
+      {
+        field: 'serviceName',
+        headerName: 'Услуга',
+        width: 200,
+        sortable: true,
+        renderCell: ({ value }) => (
+          <Tooltip title={value as string} placement="top" enterDelay={400}>
+            <Box
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontSize: 13,
+                color: d.text,
+              }}
+            >
+              {value as string}
+            </Box>
+          </Tooltip>
+        ),
+      },
+      {
+        field: 'staffName',
+        headerName: 'Мастер',
+        width: 160,
+        sortable: false,
+        renderCell: ({ value }) => (
+          <Box sx={{ fontSize: 13, color: value ? d.text : d.muted }}>
+            {(value as string | null) ?? '—'}
+          </Box>
+        ),
+      },
+      {
+        field: 'status',
+        headerName: 'Статус',
+        width: 140,
+        sortable: true,
+        renderCell: ({ value }) => <StatusChip status={value as string} />,
+      },
+      {
+        field: 'actions',
+        headerName: '',
+        minWidth: 250,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: ({ row }) => (
+          <Box
+            sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <PillBtn compact onClick={() => setEditAppt(row)}>
+              Редактировать
+            </PillBtn>
+            {row.status === 'pending' && (
+              <>
+                <PillBtn compact active onClick={() => void setApptStatus(row.id, 'confirmed')}>
+                  ✓
+                </PillBtn>
+                <PillBtn
+                  compact
+                  danger
+                  onClick={() => void setApptStatus(row.id, 'cancelled_by_salon')}
+                >
+                  ✗
+                </PillBtn>
+              </>
+            )}
+            {row.status === 'confirmed' && (
+              <>
+                <PillBtn compact active onClick={() => void setApptStatus(row.id, 'completed')}>
+                  Готово
+                </PillBtn>
+                <PillBtn
+                  compact
+                  danger
+                  onClick={() => void setApptStatus(row.id, 'cancelled_by_salon')}
+                >
+                  ✗
+                </PillBtn>
+              </>
+            )}
+            {row.status === 'cancelled_by_salon' && (
+              <PillBtn compact onClick={() => void setApptStatus(row.id, 'pending')}>
+                ↺
+              </PillBtn>
+            )}
+          </Box>
+        ),
+      },
+    ],
+    [d, theme], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  const staffPickItems: StaffPickItem[] = staff.map(s => ({ id: s.id, displayName: s.displayName }))
 
   return (
     <Box>
       {err && (
-        <Alert severity="error" sx={{ ...errorAlertSx, mb: 2 }}>{err}</Alert>
+        <Alert severity="error" sx={{ ...errorAlertSx, mb: 2 }}>
+          {err}
+        </Alert>
       )}
 
-      {/* ── Header ── */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography sx={{ fontSize: 17, fontWeight: 600, color: d.text }}>Записи</Typography>
-        <PillBtn active onClick={() => setModal(true)}>+ Создать запись</PillBtn>
-      </Box>
-
-      {/* ── Filter bar ── */}
-      <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-        {(Object.keys(DATE_FILTER_LABELS) as DateFilter[]).map(f => (
-          <PillBtn key={f} active={dateFilter === f} onClick={() => setDateFilter(f)}>
-            {DATE_FILTER_LABELS[f]}
-          </PillBtn>
-        ))}
-        <Box sx={{ flex: 1 }} />
-        <Box
-          component="input"
-          type="text"
-          placeholder="Поиск..."
-          value={search}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+      <FilterBar
+        filters={filters}
+        setFilters={setFilters}
+        staff={staff}
+        services={services}
+        setModal={setModal}
+      />
+      <Box>
+        <RenderTable
+          tableName="appointments"
+          rows={rows}
+          checkboxSelection={false}
+          heightOffset={130}
+          // dashboardPalette={d}
           sx={{
-            px: '12px', py: '6px',
-            borderRadius: '6px',
-            border: `1px solid ${d.border}`,
-            bgcolor: d.page,
-            color: d.text,
-            fontSize: 12,
-            width: 160,
-            outline: 'none',
-            fontFamily: 'inherit',
-            '&::placeholder': { color: d.muted },
-            '&:focus': { borderColor: d.accent },
+            boxShadow: `0 2px 16px ${d.shadowDeep}`,
+            // ── toolbar ─────────────────────────────────────────────
+            '& .MuiDataGrid-toolbarContainer': {
+              padding: '8px 12px',
+              borderBottom: `1px solid ${d.borderSubtle}`,
+              backgroundColor: d.gridHeader,
+              '& .MuiButton-root': {
+                color: d.mutedDark,
+                fontSize: 12,
+                fontFamily: 'inherit',
+                borderRadius: '6px',
+                '&:hover': { backgroundColor: d.control, color: d.text },
+              },
+            },
+            // ── checkboxes ──────────────────────────────────────────
+            '& .MuiCheckbox-root': {
+              color: d.borderLight,
+              padding: '4px',
+              '&.Mui-checked, &.MuiCheckbox-indeterminate': { color: d.accent },
+            },
+            // ── footer / pagination ─────────────────────────────────
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: `1px solid ${d.border}`,
+              borderRadius: '0 0 10px 10px',
+              overflow: 'hidden',
+              '& > div': {
+                backgroundColor: `${d.gridHeader} !important`,
+                borderTop: 'none !important',
+              },
+            },
+            '& .MuiTablePagination-root': { color: d.muted },
+            '& .MuiTablePagination-displayedRows, & .MuiTablePagination-selectLabel': {
+              color: d.muted,
+              fontSize: 12,
+              margin: 0,
+            },
+            '& .MuiTablePagination-select': { color: d.text, fontSize: 12 },
+            '& .MuiDataGrid-footerContainer .MuiIconButton-root': {
+              color: d.mutedDark,
+              borderRadius: '6px',
+              '&:hover': { backgroundColor: d.control, color: d.text },
+              '&.Mui-disabled': { color: d.borderLight, opacity: 0.5 },
+            },
+            '& .MuiSelect-icon': { color: d.mutedDark },
+            // ── scrollbars ──────────────────────────────────────────
+            '& .MuiDataGrid-virtualScroller::-webkit-scrollbar': {
+              width: '7px',
+              height: '7px',
+            },
+            '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-track': {
+              backgroundColor: 'transparent',
+            },
+            '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb': {
+              backgroundColor: d.borderLight,
+              borderRadius: '10px',
+            },
+            // ── pinned columns ──────────────────────────────────────
+            '& .MuiDataGrid-pinnedColumns--right': {
+              boxShadow: `0px 4px 16px 0px ${d.shadowDeep}`,
+              backgroundColor: d.card,
+            },
+            '& .MuiDataGrid-pinnedColumnHeaders--right': {
+              backgroundColor: d.gridHeader,
+            },
+          }}
+          minHeight={600}
+          columns={columns as GridColDef<GridValidRowModel>[]}
+          getRowId={r => r.id}
+          loading={loading}
+          pagination={true}
+          paginationMode="server"
+          sortingMode="server"
+          filterMode="server"
+          rowCount={total}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          sortModel={sortModel}
+          onSortModelChange={setSortModel}
+          pageSizeOptions={[25, 50, 100]}
+          density="comfortable"
+          disableColumnMenu
+          disableRowSelectionOnClick
+          onRowClick={({ row }: GridRowParams<DashboardAppointment>) => setEditAppt(row)}
+          slots={{
+            toolbar: () => <AppointmentsToolbar setModal={setModal} />,
+            loadingOverlay: () => (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                }}
+              >
+                <CircularProgress size={32} sx={{ color: d.accent }} />
+              </Box>
+            ),
+            noRowsOverlay: () => (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: d.muted,
+                  fontSize: 13,
+                }}
+              >
+                Нет записей
+              </Box>
+            ),
           }}
         />
-        <Typography sx={{ color: d.muted, fontSize: 12, ml: 0.5 }}>{total}</Typography>
       </Box>
 
-      {/* ── Table ── */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: COLS,
-            gap: '12px',
-            px: '14px',
-            py: 1,
-            fontSize: 11,
-            color: d.muted,
-            textTransform: 'uppercase',
-            letterSpacing: '.5px',
-            borderBottom: `1px solid ${d.borderSubtle}`,
-          }}
-        >
-          <span>Время</span>
-          <span>Клиент</span>
-          <span>Услуга</span>
-          <span>Мастер</span>
-          <span>Статус</span>
-          <span />
-        </Box>
-
-        {filtered.length === 0 && (
-          <Box sx={{ py: 5, textAlign: 'center', color: d.muted, fontSize: 13 }}>
-            Нет записей
-          </Box>
-        )}
-
-        {filtered.map(a => {
-          const isCancelled = a.status === 'cancelled_by_salon'
-          const timeColor = statusCfg(d)[a.status]?.timeColor ?? d.accent
-          return (
-            <Box
-              key={a.id}
-              onClick={() => {
-                setErr(null)
-                setEditAppt(a)
-              }}
-              title="Открыть карточку записи"
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: COLS,
-                gap: '12px',
-                px: '14px',
-                py: '10px',
-                bgcolor: listCard.bg,
-                border: `1px solid ${listCard.border}`,
-                boxShadow: listCard.shadow,
-                borderRadius: '8px',
-                alignItems: 'center',
-                fontSize: 13,
-                opacity: isCancelled ? 0.6 : 1,
-                transition: 'background .15s, box-shadow .15s',
-                cursor: 'pointer',
-                '&:hover': { bgcolor: listCard.hoverBg },
-              }}
-            >
-              <Box component="span" sx={{ fontWeight: 600, color: timeColor }}>
-                {formatTime(a.startsAt, dateFilter)}
-              </Box>
-              <Box>
-                <Box component="div" sx={{ fontWeight: 600, color: d.text, textDecoration: isCancelled ? 'line-through' : 'none', lineHeight: 1.3 }}>
-                  {a.clientLabel}
-                </Box>
-                {a.clientPhone && (
-                  <Box component="div" sx={{ fontSize: 11, color: d.muted, mt: 0.25 }}>{a.clientPhone}</Box>
-                )}
-              </Box>
-              <Box component="span" sx={{ color: d.text }}>{a.serviceName}</Box>
-              <Box component="span" sx={{ color: d.muted }}>{a.staffName ?? '—'}</Box>
-              <Box><StatusBadge status={a.status} /></Box>
-              <Box
-                sx={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}
-                onClick={e => e.stopPropagation()}
-              >
-                {a.status === 'pending' && (
-                  <>
-                    <PillBtn compact active onClick={() => void setApptStatus(a.id, 'confirmed')}>✓</PillBtn>
-                    <PillBtn compact danger onClick={() => void setApptStatus(a.id, 'cancelled_by_salon')}>✗</PillBtn>
-                  </>
-                )}
-                {a.status === 'confirmed' && (
-                  <>
-                    <PillBtn compact active onClick={() => void setApptStatus(a.id, 'completed')}>Готово</PillBtn>
-                    <PillBtn compact danger onClick={() => void setApptStatus(a.id, 'cancelled_by_salon')}>✗</PillBtn>
-                  </>
-                )}
-                {isCancelled && (
-                  <PillBtn compact onClick={() => void setApptStatus(a.id, 'pending')}>↺</PillBtn>
-                )}
-              </Box>
-            </Box>
-          )
-        })}
-      </Box>
-
-      {/* ═══════════════════════════════════
-          ДИАЛОГ: Создать запись
-      ═══════════════════════════════════ */}
+      {/* ═══════════════════ ДИАЛОГ: Создать запись ═══════════════════ */}
       <Dialog
         open={modal}
         onClose={() => setModal(false)}
@@ -477,10 +1151,7 @@ export function DashboardAppointments() {
             subtitle="Вручную — без онлайн-бронирования"
             onClose={() => setModal(false)}
           />
-
           <DialogContent sx={{ px: 0, py: 0, overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
-
-            {/* СЕКЦИЯ 1: Клиент */}
             <FormSection num={1} name="Клиент">
               <Stack spacing={1.5}>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -506,28 +1177,58 @@ export function DashboardAppointments() {
               </Stack>
             </FormSection>
 
-            {/* СЕКЦИЯ 2: Услуга и мастер */}
             <FormSection num={2} name="Услуга и мастер">
               <Stack spacing={1.5}>
-                <FormField label="Услуга" required>
-                  <Select
-                    value={createForm.serviceId}
-                    onChange={(e: SelectChangeEvent<string>) => setCreateForm(f => ({ ...f, serviceId: e.target.value }))}
-                    displayEmpty
-                    MenuProps={selectMenuSx}
-                    sx={apptSelectSx(d)}
-                  >
-                    <MenuItem value="" disabled sx={menuItemSx(d)}>Выберите услугу…</MenuItem>
-                    {services.map(s => (
-                      <MenuItem key={s.id} value={s.id} sx={menuItemSx(d)}>
-                        {s.name}
-                        {s.durationMinutes ? ` · ${s.durationMinutes} мин` : ''}
-                        {s.priceCents != null ? ` · ${s.priceCents / 100} ₽` : ''}
-                      </MenuItem>
-                    ))}
-                  </Select>
+                <FormField label="Услуги" required>
+                  <Autocomplete
+                    multiple
+                    options={services}
+                    getOptionLabel={option => option.name}
+                    value={services.filter(s => createForm.serviceIds.includes(s.id))}
+                    onChange={(_, newValue) => {
+                      setCreateForm(f => ({ ...f, serviceIds: newValue.map(v => v.id) }))
+                    }}
+                    renderInput={params => (
+                      <TextField {...params} placeholder="Выберите услуги" sx={inputBaseSx} />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          variant="outlined"
+                          label={option.name}
+                          size="small"
+                          {...getTagProps({ index })}
+                          key={option.id}
+                          sx={{
+                            borderRadius: '6px',
+                            bgcolor: `${d.accent}10`,
+                            borderColor: `${d.accent}40`,
+                            color: d.text,
+                            fontSize: 12,
+                            height: 24,
+                          }}
+                        />
+                      ))
+                    }
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        p: '4px 8px !important',
+                        bgcolor: d.input,
+                        borderRadius: '10px',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: d.inputBorder,
+                          top: 0,
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: d.borderLight,
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: d.borderFocus,
+                        },
+                      },
+                    }}
+                  />
                 </FormField>
-
                 <FormField label="Мастер">
                   <StaffPickGrid
                     items={staffPickItems}
@@ -536,41 +1237,66 @@ export function DashboardAppointments() {
                     allowNone
                   />
                 </FormField>
-              </Stack>
-            </FormSection>
-
-            {/* СЕКЦИЯ 3: Дата и время */}
-            <FormSection num={3} name="Дата и время" last>
-              <Stack spacing={1.5}>
-                <FormField label="Дата" required>
-                  <TextField
-                    value={createForm.date}
-                    onChange={e => setCreateForm(f => ({ ...f, date: e.target.value, timeSlot: '', slotStartsAt: '', slotEndsAt: '', slotMasterId: '' }))}
-                    type="date"
-                    sx={inputBaseSx}
-                  />
-                </FormField>
-
-                <FormField label="Время" required hint="Запись создаётся со статусом «Ожидает»">
-                  <SlotPicker
-                    date={createForm.date}
-                    serviceId={createForm.serviceId || undefined}
-                    salonMasterId={createForm.staffIds[0] ?? undefined}
-                    value={createForm.slotStartsAt || undefined}
-                    onChange={onPickSlot}
-                  />
+                <FormField label="Статус записи">
+                  <Select
+                    value={createForm.status}
+                    onChange={(e: SelectChangeEvent<string>) =>
+                      setCreateForm(f => ({ ...f, status: e.target.value }))
+                    }
+                    displayEmpty
+                    MenuProps={selectMenuSx}
+                    sx={apptSelectSx(d)}
+                  >
+                    <MenuItem value="" disabled sx={menuItemSx(d)}>
+                      Выберите статус…
+                    </MenuItem>
+                    {ALL_STATUSES.map(s => (
+                      <MenuItem key={s} value={s} sx={menuItemSx(d)}>
+                        {STATUS_LABELS[s]}
+                      </MenuItem>
+                    ))}
+                  </Select>
                 </FormField>
               </Stack>
             </FormSection>
 
+            <FormSection num={3} name="Дата и время">
+              <Stack spacing={2}>
+                <Box sx={{ maxWidth: 200 }}>
+                  <DatePicker
+                    value={new Date(createForm.date)}
+                    onChange={val =>
+                      val && setCreateForm(f => ({ ...f, date: val.toISOString().slice(0, 10) }))
+                    }
+                    slotProps={{
+                      textField: { fullWidth: true, size: 'small', sx: inputBaseSx },
+                    }}
+                  />
+                </Box>
+                <Box>
+                  {createForm.date && (
+                    <SlotPicker
+                      date={createForm.date}
+                      serviceIds={createForm.serviceIds}
+                      salonMasterId={createForm.staffIds[0] || undefined}
+                      value={createForm.slotStartsAt}
+                      onChange={onPickSlot}
+                    />
+                  )}
+                </Box>
+              </Stack>
+            </FormSection>
           </DialogContent>
-
           <PanelFooter
             note="Запись со статусом «Ожидает»"
             actions={
               <>
-                <PanelBtn variant="ghost" onClick={() => setModal(false)}>Отмена</PanelBtn>
-                <PanelBtn variant="success" onClick={() => void submitCreate()}>Создать запись</PanelBtn>
+                <PanelBtn variant="ghost" onClick={() => setModal(false)}>
+                  Отмена
+                </PanelBtn>
+                <PanelBtn variant="success" onClick={() => void submitCreate()}>
+                  Создать запись
+                </PanelBtn>
               </>
             }
           />
@@ -583,7 +1309,6 @@ export function DashboardAppointments() {
         onClose={() => setEditAppt(null)}
         onUpdated={() => void load()}
       />
-
     </Box>
   )
 }

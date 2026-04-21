@@ -88,6 +88,7 @@ func (f *fakeApptsRepo) FindServiceForSalon(ctx context.Context, salonID, servic
 func (f *fakeApptsRepo) FindByMasterInRange(ctx context.Context, salonMasterID uuid.UUID, from, to time.Time) ([]model.Appointment, error) {
 	return f.appts, nil
 }
+func (f *fakeApptsRepo) SetSalonClientID(_ context.Context, _, _ uuid.UUID) error { return nil }
 
 // --- helpers ---
 

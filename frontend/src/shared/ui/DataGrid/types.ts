@@ -1,0 +1,1 @@
+export type TTableName = 'appointments' | 'clients' | 'services' | 'staff';

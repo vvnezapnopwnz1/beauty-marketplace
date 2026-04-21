@@ -5,7 +5,17 @@
       "Bash(wc -l /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend/src/pages/dashboard/ui/modals/*.tsx /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend/src/pages/dashboard/ui/DashboardProfile.tsx /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend/src/pages/dashboard/ui/DashboardAppointments.tsx)",
       "Bash(python3 /Users/vvnezapnopwnz/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0/.claude/skills/ui-ux-pro-max/scripts/search.py \"beauty salon booking service marketplace\" --design-system -p \"Beauty Marketplace\" -f markdown)",
       "Bash(grep -l \"inputSx\\\\|sx=\" /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend/src/pages/dashboard/ui/*.tsx)",
-      "Bash(grep -E \"borderRadius.*8px|bgcolor.*mocha\\\\.\\(input|dialog|accent|control\\)|border.*mocha\\\\.\\(inputBorder|grid\\)\" /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend/src/pages/dashboard/ui/modals/*.tsx)"
+      "Bash(grep -E \"borderRadius.*8px|bgcolor.*mocha\\\\.\\(input|dialog|accent|control\\)|border.*mocha\\\\.\\(inputBorder|grid\\)\" /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend/src/pages/dashboard/ui/modals/*.tsx)",
+      "Read(//usr/local/go/bin/**)",
+      "Read(//Users/vvnezapnopwnz/go/bin/**)",
+      "Read(//usr/local/**)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(yarn tsc *)",
+      "Bash(/usr/local/bin/node node_modules/.bin/tsc --noEmit)",
+      "Bash(/Users/vvnezapnopwnz/.nvm/versions/node/v24.14.0/bin/node node_modules/.bin/tsc --noEmit)",
+      "Bash(/Users/vvnezapnopwnz/.nvm/versions/node/v24.14.0/bin/node node_modules/typescript/lib/tsc.js --noEmit)",
+      "Bash(bash -c 'cd /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend && /Users/vvnezapnopwnz/.nvm/versions/node/v24.14.0/bin/node node_modules/typescript/lib/tsc.js --noEmit 2>&1')",
+      "Bash(python3 *)"
     ]
   }
 }

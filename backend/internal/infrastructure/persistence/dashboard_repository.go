@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,24 +37,40 @@ func (r *dashboardRepository) FindMembershipForUser(ctx context.Context, userID 
 }
 
 func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository.AppointmentListFilter) ([]repository.AppointmentListRow, int64, error) {
+	applyFilters := func(q *gorm.DB, tablePrefix bool) *gorm.DB {
+		prefix := ""
+		if tablePrefix {
+			prefix = "appointments."
+		}
+		if f.From != nil {
+			q = q.Where(prefix+"starts_at >= ?", *f.From)
+		}
+		if f.To != nil {
+			q = q.Where(prefix+"starts_at < ?", *f.To)
+		}
+		if len(f.Statuses) > 0 {
+			q = q.Where(prefix+"status IN ?", f.Statuses)
+		}
+		if f.StaffID != nil {
+			q = q.Where(prefix+"salon_master_id = ?", *f.StaffID)
+		}
+		return q
+	}
+
 	countQ := r.db.WithContext(ctx).Model(&model.Appointment{}).Where("salon_id = ?", f.SalonID)
-	if f.From != nil {
-		countQ = countQ.Where("starts_at >= ?", *f.From)
-	}
-	if f.To != nil {
-		countQ = countQ.Where("starts_at < ?", *f.To)
-	}
-	if f.Status != "" {
-		countQ = countQ.Where("status = ?", f.Status)
-	}
-	if f.StaffID != nil {
-		countQ = countQ.Where("salon_master_id = ?", *f.StaffID)
-	}
+	countQ = applyFilters(countQ, false)
 	if f.ServiceID != nil {
 		sid := *f.ServiceID
 		countQ = countQ.Where(
 			"(service_id = ? OR EXISTS (SELECT 1 FROM appointment_line_items ali WHERE ali.appointment_id = appointments.id AND ali.service_id = ?))",
 			sid, sid,
+		)
+	}
+	if f.Search != "" {
+		s := "%" + f.Search + "%"
+		countQ = countQ.Where(
+			"(guest_name ILIKE ? OR guest_phone_e164 LIKE ? OR EXISTS (SELECT 1 FROM users u WHERE u.id = client_user_id AND u.display_name ILIKE ?))",
+			s, s, s,
 		)
 	}
 	var total int64
@@ -67,12 +84,27 @@ func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository
 	}
 	ps := f.PageSize
 	if ps < 1 {
-		ps = 20
+		ps = 25
 	}
 	if ps > 500 {
 		ps = 500
 	}
 	offset := (page - 1) * ps
+
+	sortColMap := map[string]string{
+		"starts_at":    "appointments.starts_at",
+		"service_name": "service_name",
+		"status":       "appointments.status",
+		"client_name":  "client_label",
+	}
+	sortCol, ok := sortColMap[f.SortBy]
+	if !ok {
+		sortCol = "appointments.starts_at"
+	}
+	sortDir := "DESC"
+	if strings.ToLower(f.SortDir) == "asc" {
+		sortDir = "ASC"
+	}
 
 	q := r.db.WithContext(ctx).Table("appointments").
 		Select(`appointments.*,
@@ -89,23 +121,19 @@ func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository
 		Joins("LEFT JOIN salon_masters ON salon_masters.id = appointments.salon_master_id").
 		Joins("LEFT JOIN users ON users.id = appointments.client_user_id").
 		Where("appointments.salon_id = ?", f.SalonID)
-	if f.From != nil {
-		q = q.Where("appointments.starts_at >= ?", *f.From)
-	}
-	if f.To != nil {
-		q = q.Where("appointments.starts_at < ?", *f.To)
-	}
-	if f.Status != "" {
-		q = q.Where("appointments.status = ?", f.Status)
-	}
-	if f.StaffID != nil {
-		q = q.Where("appointments.salon_master_id = ?", *f.StaffID)
-	}
+	q = applyFilters(q, true)
 	if f.ServiceID != nil {
 		sid := *f.ServiceID
 		q = q.Where(
 			"(appointments.service_id = ? OR EXISTS (SELECT 1 FROM appointment_line_items ali WHERE ali.appointment_id = appointments.id AND ali.service_id = ?))",
 			sid, sid,
+		)
+	}
+	if f.Search != "" {
+		s := "%" + f.Search + "%"
+		q = q.Where(
+			"(appointments.guest_name ILIKE ? OR appointments.guest_phone_e164 LIKE ? OR users.display_name ILIKE ?)",
+			s, s, s,
 		)
 	}
 
@@ -116,7 +144,7 @@ func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository
 		ClientLabel string  `gorm:"column:client_label"`
 		ClientPhone *string `gorm:"column:client_phone"`
 	}
-	if err := q.Order("appointments.starts_at ASC").Offset(offset).Limit(ps).Scan(&raw).Error; err != nil {
+	if err := q.Order(sortCol + " " + sortDir).Offset(offset).Limit(ps).Scan(&raw).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]repository.AppointmentListRow, len(raw))
@@ -174,6 +202,30 @@ func (r *dashboardRepository) UpdateAppointmentStatus(ctx context.Context, salon
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+func (r *dashboardRepository) ListAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID) ([]model.AppointmentLineItem, error) {
+	var rows []model.AppointmentLineItem
+	err := r.db.WithContext(ctx).Where("appointment_id = ?", appointmentID).Order("sort_order ASC").Find(&rows).Error
+	return rows, err
+}
+
+func (r *dashboardRepository) ReplaceAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID, items []model.AppointmentLineItem) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("appointment_id = ?", appointmentID).Delete(&model.AppointmentLineItem{}).Error; err != nil {
+			return err
+		}
+		for i := range items {
+			items[i].AppointmentID = appointmentID
+			if items[i].ID == uuid.Nil {
+				items[i].ID = uuid.New()
+			}
+			if err := tx.Create(&items[i]).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *dashboardRepository) ListServices(ctx context.Context, salonID uuid.UUID) ([]model.SalonService, error) {

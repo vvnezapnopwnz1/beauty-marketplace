@@ -2,6 +2,7 @@
   "enabledPlugins": {
     "agent-ui-ux-designer@agent-toolkit": true,
     "frontend-design@claude-plugins-official": true,
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
+    "superpowers@claude-plugins-official": true
   }
 }

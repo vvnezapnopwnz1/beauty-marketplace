@@ -6,6 +6,7 @@ import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 export interface SlotPickerProps {
   date: string
   serviceId?: string
+  serviceIds?: string[]
   salonMasterId?: string
   value?: string
   onChange: (slot: AvailableSlot) => void
@@ -17,7 +18,7 @@ function formatTime(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function SlotPicker({ date, serviceId, salonMasterId, value, onChange }: SlotPickerProps) {
+export function SlotPicker({ date, serviceId, serviceIds, salonMasterId, value, onChange }: SlotPickerProps) {
   const mocha = useDashboardPalette()
   const [loading, setLoading] = useState(false)
   const [slots, setSlots] = useState<AvailableSlot[]>([])
@@ -30,7 +31,7 @@ export function SlotPicker({ date, serviceId, salonMasterId, value, onChange }: 
     setErr(null)
     ;(async () => {
       try {
-        const res = await fetchAvailableSlots({ date, serviceId, salonMasterId })
+        const res = await fetchAvailableSlots({ date, serviceId, serviceIds, salonMasterId })
         if (!cancelled) setSlots(res.slots)
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : 'Ошибка')
@@ -41,7 +42,7 @@ export function SlotPicker({ date, serviceId, salonMasterId, value, onChange }: 
     return () => {
       cancelled = true
     }
-  }, [date, serviceId, salonMasterId])
+  }, [date, serviceId, JSON.stringify(serviceIds), salonMasterId])
 
   if (loading) {
     return (

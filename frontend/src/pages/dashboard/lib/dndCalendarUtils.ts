@@ -205,6 +205,162 @@ export type WeekReschedulePayload = { id: string; startsAt: string; endsAt: stri
 /**
  * Week view: move start time by vertical delta; optionally move to another day column.
  */
+// ─── New utilities for DnD polish (Tasks 3, 4, 6) ───────────────────────────
+
+/**
+ * Returns true if [startMinutes, endMinutes) overlaps the master break interval.
+ */
+export function isBreakZone(
+  startMinutes: number,
+  endMinutes: number,
+  masterBreak: { startMinutes: number; endMinutes: number } | null,
+): boolean {
+  if (!masterBreak) return false
+  return startMinutes < masterBreak.endMinutes && endMinutes > masterBreak.startMinutes
+}
+
+/**
+ * Computes drop-target preview from live pointer position.
+ * Returns absolute top/height (px within column timeline) and validity flag.
+ */
+export function getDropPreview(
+  pointerClientY: number,
+  columnElement: Element,
+  durationMinutes: number,
+  slotDurationMinutes: number,
+  pxPerMinute: number,
+  hourStart: number,
+  masterBreak: { startMinutes: number; endMinutes: number } | null,
+  masterWorkingHours: { opensMinutes: number; closesMinutes: number } | null,
+): { topPx: number; heightPx: number; startMinutes: number; isValid: boolean } {
+  const rect = columnElement.getBoundingClientRect()
+  const relativeY = pointerClientY - rect.top
+  const rawMinutes = relativeY / pxPerMinute + hourStart * 60
+  const snappedStart = roundToSlot(rawMinutes, slotDurationMinutes)
+  const topPx = (snappedStart - hourStart * 60) * pxPerMinute
+  const heightPx = durationMinutes * pxPerMinute
+  const endMinutes = snappedStart + durationMinutes
+
+  let isValid = true
+  if (masterWorkingHours) {
+    if (snappedStart < masterWorkingHours.opensMinutes || endMinutes > masterWorkingHours.closesMinutes) {
+      isValid = false
+    }
+  }
+  if (masterBreak && isBreakZone(snappedStart, endMinutes, masterBreak)) {
+    isValid = false
+  }
+  return { topPx, heightPx, startMinutes: snappedStart, isValid }
+}
+
+/**
+ * Day view: build PUT payload using real pointer Y position (Task 4).
+ */
+export function buildDayViewRescheduleFromPointer(
+  appointmentId: string,
+  appointment: { startsAt: string; endsAt: string; status: string; salonMasterId?: string | null },
+  pointerClientY: number,
+  columnElement: Element,
+  pxPerMinute: number,
+  slotDurationMinutes: number,
+  dayAnchor: Date,
+  targetColumnId: string,
+  combinedColumnId: string,
+  unassignedKey: string,
+  staffSchedules: Map<string, StaffScheduleInfo> | undefined,
+): DayReschedulePayload | null {
+  if (!canDragAppointmentStatus(appointment.status)) return null
+  const dur = appointmentDurationMinutes(appointment.startsAt, appointment.endsAt)
+  const targetWin = gridStartMinuteWindowForDayColumn(
+    targetColumnId,
+    combinedColumnId,
+    unassignedKey,
+    staffSchedules,
+    dur,
+  )
+  if (!targetWin) return null
+
+  const rect = columnElement.getBoundingClientRect()
+  const relativeY = pointerClientY - rect.top
+  const rawRel = relativeY / pxPerMinute
+  const snappedRel = roundToSlot(rawRel, slotDurationMinutes)
+
+  function clamp(n: number, lo: number, hi: number) {
+    return Math.min(hi, Math.max(lo, n))
+  }
+  const nextRel = clamp(snappedRel, targetWin.minRel, targetWin.maxRel)
+  const nextStart = dateAtGridMinutesFromDayStart(dayAnchor, nextRel)
+  const nextEnd = new Date(nextStart.getTime() + dur * 60000)
+
+  let salonMasterId: string | undefined
+  let clearSalonMasterId: boolean | undefined
+  if (targetColumnId !== combinedColumnId) {
+    if (targetColumnId === unassignedKey) {
+      if (appointment.salonMasterId?.trim()) clearSalonMasterId = true
+    } else if (targetColumnId !== (appointment.salonMasterId ?? '').trim()) {
+      salonMasterId = targetColumnId
+    }
+  }
+
+  const sameTime = nextStart.getTime() === new Date(appointment.startsAt).getTime()
+  const sameEnd = nextEnd.getTime() === new Date(appointment.endsAt).getTime()
+  const masterChanged = Boolean(clearSalonMasterId || salonMasterId)
+  if (sameTime && sameEnd && !masterChanged) return null
+
+  const out: DayReschedulePayload = {
+    id: appointmentId,
+    startsAt: nextStart.toISOString(),
+    endsAt: nextEnd.toISOString(),
+  }
+  if (clearSalonMasterId) out.clearSalonMasterId = true
+  else if (salonMasterId) out.salonMasterId = salonMasterId
+  return out
+}
+
+/**
+ * Week view: build PUT payload using real pointer Y position (Task 4).
+ */
+export function buildWeekViewRescheduleFromPointer(
+  appointmentId: string,
+  appointment: { startsAt: string; endsAt: string; status: string },
+  pointerClientY: number,
+  columnElement: Element,
+  pxPerMinute: number,
+  slotDurationMinutes: number,
+  targetYmd: string,
+): WeekReschedulePayload | null {
+  if (!canDragAppointmentStatus(appointment.status)) return null
+  const dur = appointmentDurationMinutes(appointment.startsAt, appointment.endsAt)
+  const win = weekColumnStartMinuteWindow(dur)
+
+  const rect = columnElement.getBoundingClientRect()
+  const relativeY = pointerClientY - rect.top
+  const rawRel = relativeY / pxPerMinute
+  const snappedRel = roundToSlot(rawRel, slotDurationMinutes)
+
+  function clamp(n: number, lo: number, hi: number) {
+    return Math.min(hi, Math.max(lo, n))
+  }
+  const nextRel = clamp(snappedRel, win.minRel, win.maxRel)
+
+  const targetDay = parseYmdToLocalDay(targetYmd)
+  if (Number.isNaN(targetDay.getTime())) return null
+
+  const nextStart = dateAtGridMinutesFromDayStart(targetDay, nextRel)
+  const nextEnd = new Date(nextStart.getTime() + dur * 60000)
+
+  if (
+    nextStart.getTime() === new Date(appointment.startsAt).getTime() &&
+    nextEnd.getTime() === new Date(appointment.endsAt).getTime()
+  ) return null
+
+  return {
+    id: appointmentId,
+    startsAt: nextStart.toISOString(),
+    endsAt: nextEnd.toISOString(),
+  }
+}
+
 export function buildWeekViewReschedule(
   appointmentId: string,
   appointment: { startsAt: string; endsAt: string; status: string },

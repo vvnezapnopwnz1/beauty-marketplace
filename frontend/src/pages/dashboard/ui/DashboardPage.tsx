@@ -12,13 +12,16 @@ import { StaffListView } from './views/StaffListView'
 import { ScheduleView } from './views/ScheduleView'
 import { StaffDetailView } from './views/StaffDetailView'
 import { DashboardProfile } from './DashboardProfile'
+import { ClientsListView } from './ClientsListView'
+import { ClientDetailView } from './ClientDetailView'
 
-type Section = 'overview' | 'calendar' | 'appointments' | 'services' | 'staff' | 'schedule' | 'profile'
+type Section = 'overview' | 'calendar' | 'appointments' | 'services' | 'staff' | 'schedule' | 'profile' | 'clients'
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'overview', label: 'Обзор', icon: '◈' },
   { id: 'calendar', label: 'Календарь', icon: '📅' },
   { id: 'appointments', label: 'Записи', icon: '📋' },
+  { id: 'clients', label: 'Клиенты', icon: '👥' },
   { id: 'services', label: 'Услуги', icon: '✦' },
   { id: 'staff', label: 'Мастера', icon: '👤' },
   { id: 'schedule', label: 'Расписание', icon: '🕐' },
@@ -29,6 +32,7 @@ const TITLES: Record<Section, string> = {
   overview: 'Обзор',
   calendar: 'Календарь',
   appointments: 'Записи',
+  clients: 'Клиенты',
   services: 'Услуги',
   staff: 'Мастера',
   schedule: 'Расписание',
@@ -36,7 +40,7 @@ const TITLES: Record<Section, string> = {
 }
 
 function isSection(s: string | null): s is Section {
-  return s === 'overview' || s === 'calendar' || s === 'appointments' || s === 'services' || s === 'staff' || s === 'schedule' || s === 'profile'
+  return s === 'overview' || s === 'calendar' || s === 'appointments' || s === 'services' || s === 'staff' || s === 'schedule' || s === 'profile' || s === 'clients'
 }
 
 function DashboardMainContent({ section }: { section: Section }) {
@@ -47,6 +51,8 @@ function DashboardMainContent({ section }: { section: Section }) {
       return <DashboardCalendar />
     case 'appointments':
       return <DashboardAppointments />
+    case 'clients':
+      return <ClientsListView />
     case 'services':
       return <ServicesView />
     case 'staff':
@@ -65,6 +71,7 @@ export function DashboardPage() {
   const { mode, setMode } = useThemeMode()
   const [searchParams] = useSearchParams()
   const staffMatch = useMatch('/dashboard/staff/:staffId')
+  const clientMatch = useMatch('/dashboard/clients/:clientId')
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
   const theme = useTheme()
@@ -72,10 +79,11 @@ export function DashboardPage() {
 
   const section = useMemo((): Section => {
     if (staffMatch) return 'staff'
+    if (clientMatch) return 'clients'
     const s = searchParams.get('section')
     if (isSection(s)) return s
     return 'overview'
-  }, [staffMatch, searchParams])
+  }, [staffMatch, clientMatch, searchParams])
 
   useEffect(() => {
     if (!getStoredAccessToken()) {
@@ -85,8 +93,9 @@ export function DashboardPage() {
 
   const headerTitle = useMemo(() => {
     if (staffMatch) return 'Мастер'
+    if (clientMatch) return 'Клиент'
     return TITLES[section]
-  }, [staffMatch, section])
+  }, [staffMatch, clientMatch, section])
 
   function goSection(id: Section) {
     if (id === 'overview') {
@@ -100,6 +109,7 @@ export function DashboardPage() {
     <Routes>
       <Route index element={<DashboardMainContent section={section} />} />
       <Route path="staff/:staffId" element={<StaffDetailView />} />
+      <Route path="clients/:clientId" element={<ClientDetailView />} />
     </Routes>
   )
 

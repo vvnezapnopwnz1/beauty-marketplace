@@ -27,10 +27,7 @@ import { selectUser } from '@features/auth-by-phone/model/authSlice'
 import { useThemeMode } from '@shared/theme'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { ChipMultiSelect } from '@pages/dashboard/ui/components/formComponents'
-import {
-  STAFF_COLOR_SWATCHES,
-  SPECIALIZATION_PRESETS,
-} from '@shared/api/dashboardApi'
+import { STAFF_COLOR_SWATCHES, SPECIALIZATION_PRESETS } from '@shared/api/dashboardApi'
 import {
   acceptMasterInvite,
   declineMasterInvite,
@@ -101,7 +98,9 @@ function ProfileSection({
   const [displayName, setDisplayName] = useState(profile.displayName)
   const [bio, setBio] = useState(profile.bio ?? '')
   const [specs, setSpecs] = useState<string[]>(profile.specializations ?? [])
-  const [years, setYears] = useState(profile.yearsExperience != null ? String(profile.yearsExperience) : '')
+  const [years, setYears] = useState(
+    profile.yearsExperience != null ? String(profile.yearsExperience) : '',
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -188,9 +187,10 @@ function ProfileSection({
           items={SPECIALIZATION_PRESETS.map(p => ({ id: p.value, label: p.label }))}
           selected={specs}
           onChange={setSpecs}
-          getLabel={item => String((item as { label: string }).label)}
+          getLabel={item => String((item as unknown as { label: string }).label)}
           getId={item => item.id}
         />
+        ``
       </Box>
       <TextField
         label="Стаж (лет)"
@@ -209,7 +209,12 @@ function ProfileSection({
         helperText="Используется для входа"
         sx={{ '& .MuiOutlinedInput-root': { bgcolor: d.cardAlt } }}
       />
-      <Button variant="contained" onClick={() => void onSave()} disabled={saving} sx={{ alignSelf: 'flex-start', bgcolor: d.accent }}>
+      <Button
+        variant="contained"
+        onClick={() => void onSave()}
+        disabled={saving}
+        sx={{ alignSelf: 'flex-start', bgcolor: d.accent }}
+      >
         {saving ? 'Сохранение…' : 'Сохранить'}
       </Button>
     </Stack>
@@ -259,9 +264,7 @@ function InvitesSection({ onChanged }: { onChanged: () => void }) {
   }
 
   if (loading) {
-    return (
-      <Typography sx={{ color: d.muted }}>Загрузка…</Typography>
-    )
+    return <Typography sx={{ color: d.muted }}>Загрузка…</Typography>
   }
   if (rows.length === 0) {
     return (
@@ -287,10 +290,20 @@ function InvitesSection({ onChanged }: { onChanged: () => void }) {
             {new Date(r.createdAt).toLocaleString('ru-RU')}
           </Typography>
           <Stack direction="row" spacing={1} mt={2}>
-            <Button variant="contained" size="small" disabled={busy === r.salonMasterId} onClick={() => void accept(r.salonMasterId)}>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={busy === r.salonMasterId}
+              onClick={() => void accept(r.salonMasterId)}
+            >
               Принять
             </Button>
-            <Button variant="outlined" size="small" disabled={busy === r.salonMasterId} onClick={() => void decline(r.salonMasterId)}>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={busy === r.salonMasterId}
+              onClick={() => void decline(r.salonMasterId)}
+            >
               Отклонить
             </Button>
           </Stack>
@@ -328,7 +341,11 @@ function SalonsSection() {
   return (
     <Stack spacing={2}>
       {rows.map(r => (
-        <Paper key={r.salonMasterId} elevation={0} sx={{ p: 2.5, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}>
+        <Paper
+          key={r.salonMasterId}
+          elevation={0}
+          sx={{ p: 2.5, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}
+        >
           <Typography sx={{ fontWeight: 600, color: d.text }}>{r.salonName}</Typography>
           {r.salonAddress && (
             <Typography sx={{ fontSize: 14, color: d.muted, mt: 0.5 }}>{r.salonAddress}</Typography>
@@ -436,7 +453,15 @@ function AppointmentsSection() {
       ) : items.length === 0 ? (
         <Typography sx={{ color: d.muted }}>Нет записей</Typography>
       ) : (
-        <Table size="small" sx={{ bgcolor: d.card, border: `1px solid ${d.borderSubtle}`, borderRadius: 1, overflow: 'hidden' }}>
+        <Table
+          size="small"
+          sx={{
+            bgcolor: d.card,
+            border: `1px solid ${d.borderSubtle}`,
+            borderRadius: 1,
+            overflow: 'hidden',
+          }}
+        >
           <TableHead>
             <TableRow>
               <TableCell>Дата и время</TableCell>
@@ -547,11 +572,31 @@ export function MasterDashboardPage() {
         borderRight: `1px solid ${dashboard.borderSubtle}`,
       }}
     >
-      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${dashboard.borderSubtle}`, cursor: 'pointer' }} onClick={() => navigate(ROUTES.HOME)}>
-        <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: dashboard.text }}>
-          beauti<Box component="span" sx={{ color: dashboard.accent }}>ca</Box>
+      <Box
+        sx={{
+          px: 2.5,
+          py: 2,
+          borderBottom: `1px solid ${dashboard.borderSubtle}`,
+          cursor: 'pointer',
+        }}
+        onClick={() => navigate(ROUTES.HOME)}
+      >
+        <Typography
+          sx={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 18,
+            fontWeight: 600,
+            color: dashboard.text,
+          }}
+        >
+          beauti
+          <Box component="span" sx={{ color: dashboard.accent }}>
+            ca
+          </Box>
         </Typography>
-        <Typography sx={{ fontSize: 11, color: dashboard.muted, mt: 0.5 }}>Кабинет мастера</Typography>
+        <Typography sx={{ fontSize: 11, color: dashboard.muted, mt: 0.5 }}>
+          Кабинет мастера
+        </Typography>
       </Box>
       <Stack sx={{ flex: 1, py: 1 }}>
         {NAV.map(item => {
@@ -582,7 +627,10 @@ export function MasterDashboardPage() {
         })}
       </Stack>
       <Box sx={{ p: 2, borderTop: `1px solid ${dashboard.borderSubtle}` }}>
-        <Typography onClick={() => navigate(ROUTES.HOME)} sx={{ fontSize: 13, color: dashboard.muted, cursor: 'pointer' }}>
+        <Typography
+          onClick={() => navigate(ROUTES.HOME)}
+          sx={{ fontSize: 13, color: dashboard.muted, cursor: 'pointer' }}
+        >
           ← На сайт
         </Typography>
       </Box>
@@ -630,7 +678,12 @@ export function MasterDashboardPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: dashboard.page, display: 'flex' }}>
       {!narrow && sidebar}
       {narrow && (
-        <Drawer anchor="left" open={drawer} onClose={() => setDrawer(false)} PaperProps={{ sx: { bgcolor: dashboard.sidebar } }}>
+        <Drawer
+          anchor="left"
+          open={drawer}
+          onClose={() => setDrawer(false)}
+          PaperProps={{ sx: { bgcolor: dashboard.sidebar } }}
+        >
           {sidebar}
         </Drawer>
       )}
@@ -651,7 +704,9 @@ export function MasterDashboardPage() {
               ☰
             </IconButton>
           )}
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>{TITLES[section]}</Typography>
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>
+            {TITLES[section]}
+          </Typography>
           <Switch
             size="small"
             checked={mode === 'dark'}
@@ -660,7 +715,9 @@ export function MasterDashboardPage() {
             sx={{
               ml: 'auto',
               '& .MuiSwitch-track': { bgcolor: dashboard.border },
-              '& .MuiSwitch-thumb': { bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark },
+              '& .MuiSwitch-thumb': {
+                bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark,
+              },
             }}
           />
         </Box>

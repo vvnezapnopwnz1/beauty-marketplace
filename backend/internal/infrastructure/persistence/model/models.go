@@ -320,6 +320,7 @@ type Appointment struct {
 	EndsAt         time.Time  `gorm:"column:ends_at;not null"`
 	Status         string     `gorm:"type:appointment_status;not null;default:pending;column:status"`
 	ClientNote     *string    `gorm:"column:client_note"`
+	SalonClientID  *uuid.UUID `gorm:"type:uuid;column:salon_client_id"`
 	CreatedAt      time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
 	UpdatedAt      time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
 }
@@ -353,6 +354,54 @@ func (l *AppointmentLineItem) BeforeCreate(tx *gorm.DB) error {
 func (AppointmentLineItem) TableName() string {
 	return "appointment_line_items"
 }
+
+// SalonClient maps to salon_clients.
+type SalonClient struct {
+	ID          uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SalonID     uuid.UUID  `gorm:"type:uuid;not null;column:salon_id"`
+	UserID      *uuid.UUID `gorm:"type:uuid;column:user_id"`
+	PhoneE164   *string    `gorm:"column:phone_e164"`
+	DisplayName string     `gorm:"column:display_name;not null"`
+	Notes       *string    `gorm:"column:notes"`
+	CreatedAt   time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt   time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
+}
+
+func (c *SalonClient) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == uuid.Nil {
+		c.ID = uuid.New()
+	}
+	return nil
+}
+
+func (SalonClient) TableName() string { return "salon_clients" }
+
+// SalonClientTag maps to salon_client_tags.
+// salon_id NULL = system tag visible to all.
+type SalonClientTag struct {
+	ID        uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SalonID   *uuid.UUID `gorm:"type:uuid;column:salon_id"`
+	Name      string     `gorm:"column:name;not null"`
+	Color     string     `gorm:"column:color;not null"`
+	CreatedAt time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+func (t *SalonClientTag) BeforeCreate(tx *gorm.DB) error {
+	if t.ID == uuid.Nil {
+		t.ID = uuid.New()
+	}
+	return nil
+}
+
+func (SalonClientTag) TableName() string { return "salon_client_tags" }
+
+// SalonClientTagAssignment maps to salon_client_tag_assignments.
+type SalonClientTagAssignment struct {
+	SalonClientID uuid.UUID `gorm:"type:uuid;primaryKey;column:salon_client_id"`
+	TagID         uuid.UUID `gorm:"type:uuid;primaryKey;column:tag_id"`
+}
+
+func (SalonClientTagAssignment) TableName() string { return "salon_client_tag_assignments" }
 
 // UserTelegramIdentity maps to user_telegram_identities.
 type UserTelegramIdentity struct {

@@ -13,6 +13,7 @@ type DashboardService interface {
 	Membership(ctx context.Context, userID uuid.UUID) (*repository.SalonMembership, error)
 
 	ListAppointments(ctx context.Context, salonID uuid.UUID, f repository.AppointmentListFilter) ([]repository.AppointmentListRow, int64, error)
+	GetAppointment(ctx context.Context, salonID, appointmentID uuid.UUID) (*AppointmentDetailDTO, error)
 	CreateManualAppointment(ctx context.Context, salonID uuid.UUID, in ManualAppointmentInput) (*model.Appointment, error)
 	UpdateAppointmentStatus(ctx context.Context, salonID, appointmentID uuid.UUID, newStatus string) error
 	UpdateAppointment(ctx context.Context, salonID uuid.UUID, in UpdateAppointmentInput) error
@@ -55,10 +56,11 @@ type DashboardService interface {
 }
 
 type dashboardService struct {
-	dash repository.DashboardRepository
+	dash    repository.DashboardRepository
+	clients repository.SalonClientRepository
 }
 
 // NewDashboardService constructs DashboardService.
-func NewDashboardService(dash repository.DashboardRepository) DashboardService {
-	return &dashboardService{dash: dash}
+func NewDashboardService(dash repository.DashboardRepository, clients repository.SalonClientRepository) DashboardService {
+	return &dashboardService{dash: dash, clients: clients}
 }

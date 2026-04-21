@@ -21,12 +21,13 @@ import (
 type DashboardController struct {
 	svc     service.DashboardService
 	booking service.BookingService
+	clients *SalonClientController
 	log     *zap.Logger
 }
 
 // NewDashboardController constructs DashboardController.
-func NewDashboardController(svc service.DashboardService, booking service.BookingService, log *zap.Logger) *DashboardController {
-	return &DashboardController{svc: svc, booking: booking, log: log}
+func NewDashboardController(svc service.DashboardService, booking service.BookingService, clients *SalonClientController, log *zap.Logger) *DashboardController {
+	return &DashboardController{svc: svc, booking: booking, clients: clients, log: log}
 }
 
 // DashboardRoutes dispatches under /api/v1/dashboard/ (caller strips prefix or full path).
@@ -58,6 +59,8 @@ func (h *DashboardController) DashboardRoutes(w http.ResponseWriter, r *http.Req
 	}
 
 	switch parts[0] {
+	case "clients":
+		h.clients.HandleClients(w, r, salonID, parts)
 	case "appointments":
 		h.handleAppointments(w, r, salonID, parts)
 	case "service-categories":
@@ -166,11 +169,32 @@ func (h *DashboardController) handleAppointments(w http.ResponseWriter, r *http.
 		h.patchAppointmentStatus(w, r, salonID, id)
 		return
 	}
-	if len(parts) == 2 && r.Method == http.MethodPut {
-		h.putAppointment(w, r, salonID, id)
-		return
+	if len(parts) == 2 {
+		if r.Method == http.MethodGet {
+			h.getAppointment(w, r, salonID, id)
+			return
+		}
+		if r.Method == http.MethodPut {
+			h.putAppointment(w, r, salonID, id)
+			return
+		}
 	}
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+}
+
+func (h *DashboardController) getAppointment(w http.ResponseWriter, r *http.Request, salonID, id uuid.UUID) {
+	out, err := h.svc.GetAppointment(r.Context(), salonID, id)
+	if err != nil {
+		h.log.Error("get appointment", zap.Error(err))
+		jsonError(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if out == nil {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
@@ -190,7 +214,16 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 			f.To = &end
 		}
 	}
-	f.Status = q.Get("status")
+	if v := q.Get("status"); v != "" {
+		for _, s := range strings.Split(v, ",") {
+			if s = strings.TrimSpace(s); s != "" {
+				f.Statuses = append(f.Statuses, s)
+			}
+		}
+	}
+	f.SortBy = q.Get("sort_by")
+	f.SortDir = q.Get("sort_dir")
+	f.Search = q.Get("search")
 	if v := q.Get("salon_master_id"); v != "" {
 		if sid, err := uuid.Parse(v); err == nil {
 			f.StaffID = &sid
@@ -255,8 +288,8 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 }
 
 type createApptBody struct {
-	ServiceID     uuid.UUID  `json:"serviceId"`
-	SalonMasterID *uuid.UUID `json:"salonMasterId"`
+	ServiceIDs    []uuid.UUID `json:"serviceIds"`
+	SalonMasterID *uuid.UUID  `json:"salonMasterId"`
 	StaffID       *uuid.UUID `json:"staffId"` // deprecated; prefer salonMasterId
 	StartsAt      string     `json:"startsAt"`
 	GuestName     string     `json:"guestName"`
@@ -281,7 +314,7 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 		staffRef = body.StaffID
 	}
 	ap, err := h.svc.CreateManualAppointment(r.Context(), salonID, service.ManualAppointmentInput{
-		ServiceID:      body.ServiceID,
+		ServiceIDs:     body.ServiceIDs,
 		StaffID:        staffRef,
 		StartsAt:       st,
 		GuestName:      body.GuestName,
@@ -344,7 +377,7 @@ type putApptBody struct {
 	StaffID            *uuid.UUID `json:"staffId"` // deprecated
 	ClearSalonMasterID *bool      `json:"clearSalonMasterId"`
 	ClearStaffID       *bool      `json:"clearStaffId"` // deprecated
-	ServiceID          *uuid.UUID `json:"serviceId"`
+	ServiceIDs         []uuid.UUID `json:"serviceIds"`
 	ClientNote         *string    `json:"clientNote"`
 	GuestName          *string    `json:"guestName"`
 	GuestPhone         *string    `json:"guestPhone"`
@@ -384,7 +417,7 @@ func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Requ
 			in.StaffID = body.StaffID
 		}
 	}
-	in.ServiceID = body.ServiceID
+	in.ServiceIDs = body.ServiceIDs
 	in.ClientNote = body.ClientNote
 	in.GuestName = body.GuestName
 	in.GuestPhone = body.GuestPhone
@@ -859,13 +892,19 @@ func (h *DashboardController) listDashboardSlots(w http.ResponseWriter, r *http.
 		return
 	}
 	params := service.SlotParams{SalonID: salonID, Date: date}
-	if raw := strings.TrimSpace(q.Get("serviceId")); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			jsonError(w, "invalid serviceId", http.StatusBadRequest)
-			return
+	if raw := strings.TrimSpace(q.Get("serviceIds")); raw != "" {
+		for _, part := range strings.Split(raw, ",") {
+			if id, err := uuid.Parse(strings.TrimSpace(part)); err == nil {
+				params.ServiceIDs = append(params.ServiceIDs, id)
+			}
 		}
-		params.ServiceID = &id
+	}
+	if len(params.ServiceIDs) == 0 {
+		if raw := strings.TrimSpace(q.Get("serviceId")); raw != "" {
+			if id, err := uuid.Parse(raw); err == nil {
+				params.ServiceID = &id
+			}
+		}
 	}
 	if raw := strings.TrimSpace(q.Get("salonMasterId")); raw != "" {
 		id, err := uuid.Parse(raw)

@@ -35,6 +35,7 @@ func New() *fx.App {
 			persistence.NewAppointmentRepository,
 			persistence.NewBookingSlotsRepository,
 			persistence.NewDashboardRepository,
+			persistence.NewSalonClientRepository,
 			persistence.NewMasterPublicRepository,
 			persistence.NewMasterDashboardRepository,
 			fx.Annotate(
@@ -53,6 +54,7 @@ func New() *fx.App {
 			service.NewSalonService,
 			service.NewBookingService,
 			service.NewDashboardService,
+			service.NewSalonClientService,
 			service.NewMasterPublicService,
 			service.NewMasterDashboardService,
 			service.NewAuthService,
@@ -63,6 +65,7 @@ func New() *fx.App {
 			controller.NewGeoController,
 			controller.NewAuthController,
 			controller.NewDashboardController,
+			controller.NewSalonClientController,
 			controller.NewMasterController,
 			controller.NewMasterDashboardController,
 			controller.NewHTTPServer,

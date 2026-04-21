@@ -38,6 +38,11 @@ export type DashboardPalette = {
   navHover: string
   shadowDeep: string
   backdrop: string
+  bg: string
+  surface: string
+  shadowLight: string
+  tableHeader: string
+  tableBorder: string
 }
 
 export const DASHBOARD_DARK: DashboardPalette = {
@@ -78,6 +83,12 @@ export const DASHBOARD_DARK: DashboardPalette = {
   navHover: 'rgba(255,255,255,0.05)',
   shadowDeep: 'rgba(0,0,0,0.5)',
   backdrop: 'rgba(20, 16, 12, 0.82)',
+
+  bg: '#fff',
+  surface: '#fff',
+  shadowLight: '0px 4px 20px rgba(0, 0, 0, 0.08)',
+  tableHeader: '#fff',
+  tableBorder: 'rgba(0, 0, 0, 0.1)',
 }
 
 export const DASHBOARD_LIGHT: DashboardPalette = {
@@ -118,6 +129,12 @@ export const DASHBOARD_LIGHT: DashboardPalette = {
   navHover: 'rgba(26,22,18,0.05)',
   shadowDeep: 'rgba(26,22,18,0.16)',
   backdrop: 'rgba(26, 22, 18, 0.30)',
+
+  bg: '#fff',
+  surface: '#fff',
+  shadowLight: '0px 4px 20px rgba(0, 0, 0, 0.08)',
+  tableHeader: '#fff',
+  tableBorder: 'rgba(0, 0, 0, 0.1)',
 }
 
 export function getDashboardPalette(mode: ThemeMode): DashboardPalette {

@@ -1,19 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
   TextField,
   Stack,
   Typography,
   Alert,
   CircularProgress,
   Box,
-  Checkbox,
-  Paper,
   Divider,
+  IconButton,
 } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { formatPhone, toE164 } from '@shared/lib/formatPhone'
@@ -47,12 +43,152 @@ interface Props {
   onSuccess: () => void
 }
 
-function toggleId(ids: string[], id: string): string[] {
-  if (ids.includes(id)) {
-    return ids.filter(x => x !== id)
-  }
-  return [...ids, id]
+// ─── palette ─────────────────────────────────────────────────────────────────
+
+const P = {
+  accent: '#C4607A',
+  accentSoft: 'rgba(196, 96, 122, 0.08)',
+  accentBorder: 'rgba(196, 96, 122, 0.28)',
+  accentDark: '#A84E65',
+  surface: '#FAF9F7',
+  card: '#FFFFFF',
+  border: '#E8E3DD',
+  borderSub: '#F0EBE6',
+  text: '#1A1613',
+  textMuted: '#7A7168',
+  textSub: '#A89F97',
+  success: '#4D956E',
+  successSoft: 'rgba(77, 149, 110, 0.09)',
+  successBorder: 'rgba(77, 149, 110, 0.22)',
+} as const
+
+// ─── wizard config ────────────────────────────────────────────────────────────
+
+const STEPS: Array<{ key: WizardStep; label: string }> = [
+  { key: 'service', label: 'Услуги' },
+  { key: 'master', label: 'Мастер' },
+  { key: 'slot', label: 'Время' },
+  { key: 'contact', label: 'Контакты' },
+]
+
+const STEP_INDEX: Record<WizardStep, number> = {
+  service: 0,
+  master: 1,
+  slot: 2,
+  contact: 3,
 }
+
+// ─── step indicator ───────────────────────────────────────────────────────────
+
+function StepIndicator({ step }: { step: WizardStep }) {
+  const current = STEP_INDEX[step]
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', px: 0.5 }}>
+      {STEPS.map((s, i) => {
+        const done = i < current
+        const active = i === current
+        return (
+          <React.Fragment key={s.key}>
+            {/* circle + label */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  transition: 'all 0.25s',
+                  bgcolor: done ? P.successSoft : active ? P.accent : 'transparent',
+                  border: `2px solid ${done ? P.success : active ? P.accent : P.border}`,
+                  color: done ? P.success : active ? '#fff' : P.textSub,
+                }}
+              >
+                {done ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: 10,
+                  fontWeight: active ? 700 : 400,
+                  color: done ? P.success : active ? P.accent : P.textSub,
+                  letterSpacing: '0.2px',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {s.label}
+              </Typography>
+            </Box>
+            {/* connector line */}
+            {i < STEPS.length - 1 && (
+              <Box
+                sx={{
+                  flex: 1,
+                  height: 2,
+                  mx: '6px',
+                  mt: '13px',
+                  bgcolor: i < current ? P.success : P.border,
+                  transition: 'background 0.3s',
+                  flexShrink: 1,
+                }}
+              />
+            )}
+          </React.Fragment>
+        )
+      })}
+    </Box>
+  )
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+function toggleId(ids: string[], id: string): string[] {
+  return ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]
+}
+
+function ContextBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        px: 1.5,
+        py: '6px',
+        bgcolor: P.successSoft,
+        border: `1px solid ${P.successBorder}`,
+        borderRadius: '8px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.75,
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+      <Typography sx={{ fontSize: 12, color: P.success, fontWeight: 500 }}>{children}</Typography>
+    </Box>
+  )
+}
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: P.card, fontSize: 14 },
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: P.border },
+  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C8C4BE' },
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: P.accent },
+  '& .MuiInputLabel-root.Mui-focused': { color: P.accent },
+  '& .MuiFormHelperText-root': { color: P.textSub },
+} as const
+
+// ─── main component ───────────────────────────────────────────────────────────
 
 export function GuestBookingDialog({
   open,
@@ -98,9 +234,7 @@ export function GuestBookingDialog({
   }, [])
 
   useEffect(() => {
-    if (!open) {
-      return
-    }
+    if (!open) return
     const preset =
       initialServiceId != null && initialServiceId !== ''
         ? bookableServices.find(s => s.id === initialServiceId)
@@ -123,44 +257,27 @@ export function GuestBookingDialog({
   }, [open, initialServiceId, bookableServices])
 
   useEffect(() => {
-    if (!open || step !== 'master' || selectedServiceIds.length === 0) {
-      return
-    }
+    if (!open || step !== 'master' || selectedServiceIds.length === 0) return
     let cancelled = false
     setMasterLoading(true)
     setMasterError(null)
     void fetchSalonMasters(salonId)
-      .then(rows => {
-        if (!cancelled) {
-          setMasters(rows)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMasterError('Не удалось загрузить список мастеров.')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setMasterLoading(false)
-        }
-      })
-    return () => {
-      cancelled = true
-    }
+      .then(rows => { if (!cancelled) setMasters(rows) })
+      .catch(() => { if (!cancelled) setMasterError('Не удалось загрузить список мастеров.') })
+      .finally(() => { if (!cancelled) setMasterLoading(false) })
+    return () => { cancelled = true }
   }, [open, step, selectedServiceIds, salonId])
 
   const mastersForSelection = useMemo(() => {
-    if (selectedServiceIds.length === 0) {
-      return []
-    }
-    return masters.filter(m => selectedServiceIds.every(id => m.services.some(s => s.serviceId === id)))
+    if (selectedServiceIds.length === 0) return []
+    return masters.filter(m =>
+      selectedServiceIds.every(id => m.services.some(s => s.serviceId === id)),
+    )
   }, [masters, selectedServiceIds])
 
   const bookingSummary = useMemo(() => {
-    if (!selectedMaster || selectedServices.length === 0) {
+    if (!selectedMaster || selectedServices.length === 0)
       return { lines: [] as { name: string; priceCents: number }[], totalCents: 0 }
-    }
     const lines = selectedServices.map(svc => {
       const link = selectedMaster.services.find(ms => ms.serviceId === svc.id)
       const priceCents = link?.effectivePriceCents ?? svc.priceCents
@@ -171,57 +288,31 @@ export function GuestBookingDialog({
   }, [selectedMaster, selectedServices])
 
   const handleClose = () => {
-    if (!loading) {
-      setError(null)
-      resetWizard()
-      onClose()
-    }
+    if (!loading) { setError(null); resetWizard(); onClose() }
   }
 
   const goBack = () => {
     setError(null)
-    if (step === 'contact') {
-      setStep('slot')
-      return
-    }
-    if (step === 'slot') {
-      setSlot(null)
-      setStep('master')
-      return
-    }
+    if (step === 'contact') { setStep('slot'); return }
+    if (step === 'slot') { setSlot(null); setStep('master'); return }
     if (step === 'master') {
       setSelectedMaster(null)
       if (initialServiceId != null && initialServiceId !== '') {
         const preset = bookableServices.find(s => s.id === initialServiceId)
-        if (preset) {
-          setSelectedServiceIds([preset.id])
-        }
+        if (preset) setSelectedServiceIds([preset.id])
       }
       setStep('service')
-      return
     }
   }
 
   const submitBooking = async () => {
     setError(null)
-    if (selectedServiceIds.length === 0) {
-      setError('Выберите хотя бы одну услугу')
-      return
-    }
-    if (!slot) {
-      setError('Выберите время')
-      return
-    }
+    if (selectedServiceIds.length === 0) { setError('Выберите хотя бы одну услугу'); return }
+    if (!slot) { setError('Выберите время'); return }
     const trimmed = name.trim()
-    if (!trimmed) {
-      setError(t('guestBooking.nameRequired'))
-      return
-    }
+    if (!trimmed) { setError(t('guestBooking.nameRequired')); return }
     const e164 = toE164(phone)
-    if (!/^\+7\d{10}$/.test(e164)) {
-      setError(t('guestBooking.phoneInvalid'))
-      return
-    }
+    if (!/^\+7\d{10}$/.test(e164)) { setError(t('guestBooking.phoneInvalid')); return }
     setLoading(true)
     try {
       const primaryId = selectedServiceIds[0]!
@@ -245,36 +336,75 @@ export function GuestBookingDialog({
     }
   }
 
-  const stepTitle = (() => {
-    switch (step) {
-      case 'service':
-        return 'Выберите услуги'
-      case 'master':
-        return 'Выберите мастера'
-      case 'slot':
-        return 'Выберите время'
-      case 'contact':
-        return 'Контакты'
-      default:
-        return t('guestBooking.title')
-    }
-  })()
-
+  const serviceNamesShort = selectedServices.map(s => s.name).join(', ')
   const showBack = step === 'contact' || step === 'slot' || step === 'master'
 
-  const serviceNamesShort = selectedServices.map(s => s.name).join(', ')
-
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle>{t('guestBooking.title')}</DialogTitle>
-      <Typography variant="body2" color="text.secondary" sx={{ px: 3, pb: 0.5 }}>
-        {stepTitle}
-      </Typography>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullWidth
+      maxWidth="sm"
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: '18px',
+            bgcolor: P.surface,
+            boxShadow: '0 32px 80px rgba(26, 22, 19, 0.18), 0 4px 16px rgba(26, 22, 19, 0.08)',
+            overflow: 'hidden',
+          },
+        },
+      }}
+    >
+      {/* ── Header ── */}
+      <Box sx={{ px: 3, pt: 3, pb: 2.5, borderBottom: `1px solid ${P.border}` }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2.5 }}>
+          <Box>
+            <Typography
+              sx={{
+                fontSize: 20,
+                fontWeight: 600,
+                color: P.text,
+                letterSpacing: '-0.3px',
+                lineHeight: 1.2,
+              }}
+            >
+              Онлайн-запись
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: P.textMuted, mt: '3px' }}>
+              {step === 'service' && 'Выберите одну или несколько услуг'}
+              {step === 'master' && 'Выберите специалиста'}
+              {step === 'slot' && 'Выберите удобное время'}
+              {step === 'contact' && 'Введите контактные данные'}
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={handleClose}
+            size="small"
+            sx={{ color: P.textSub, '&:hover': { bgcolor: P.borderSub, color: P.textMuted }, mt: -0.25, mr: -0.5 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </IconButton>
+        </Box>
+
+        {/* Step indicator */}
+        <StepIndicator step={step} />
+      </Box>
+
+      {/* ── Content ── */}
+      <DialogContent sx={{ px: 3, py: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+
+        {/* ── 1: Service ── */}
         {step === 'service' && (
-          <Stack gap={1.5} sx={{ pt: 1 }}>
+          <Stack gap={1.25}>
             {bookableServices.length === 0 ? (
-              <Typography color="text.secondary">Нет услуг для онлайн-записи.</Typography>
+              <Box sx={{ py: 5, textAlign: 'center' }}>
+                <Typography sx={{ color: P.textMuted, fontSize: 14 }}>
+                  Нет услуг для онлайн-записи.
+                </Typography>
+              </Box>
             ) : (
               bookableServices.map(s => {
                 const checked = selectedServiceIds.includes(s.id)
@@ -283,32 +413,74 @@ export function GuestBookingDialog({
                     key={s.id}
                     component="button"
                     type="button"
-                    onClick={() => {
-                      setSelectedServiceIds(prev => toggleId(prev, s.id))
-                    }}
+                    onClick={() => setSelectedServiceIds(prev => toggleId(prev, s.id))}
                     sx={{
                       textAlign: 'left',
                       width: '100%',
-                      p: 2,
-                      borderRadius: '12px',
-                      border: '1px solid',
-                      borderColor: checked ? 'primary.main' : 'divider',
-                      bgcolor: checked ? 'action.selected' : 'background.paper',
+                      p: '14px 16px',
+                      borderRadius: '10px',
+                      border: '1.5px solid',
+                      borderColor: checked ? P.accentBorder : P.border,
+                      bgcolor: checked ? P.accentSoft : P.card,
                       cursor: 'pointer',
                       fontFamily: 'inherit',
-                      transition: 'border-color .12s, background-color .12s',
-                      '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+                      transition: 'border-color .15s, background-color .15s',
+                      '&:hover': {
+                        borderColor: checked ? P.accentBorder : '#D0CBC5',
+                        bgcolor: checked ? P.accentSoft : '#F5F3F0',
+                      },
                     }}
                   >
-                    <Stack direction="row" alignItems="flex-start" gap={1.5}>
-                      <Checkbox checked={checked} tabIndex={-1} sx={{ p: 0, mt: -0.25, pointerEvents: 'none' }} />
-                      <Box flex={1}>
-                        <Typography fontWeight={600}>{s.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      {/* custom checkbox */}
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '5px',
+                          border: '1.5px solid',
+                          borderColor: checked ? P.accent : '#C8C4BE',
+                          bgcolor: checked ? P.accent : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          transition: 'all .15s',
+                        }}
+                      >
+                        {checked && (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: 14,
+                            color: P.text,
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {s.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: 12, color: P.textMuted, mt: '2px' }}>
                           {s.durationMinutes} мин
                         </Typography>
                       </Box>
-                    </Stack>
+                      <Typography
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: 14,
+                          color: checked ? P.accent : P.text,
+                          flexShrink: 0,
+                          transition: 'color .15s',
+                        }}
+                      >
+                        {formatPrice(s.priceCents)} ₽
+                      </Typography>
+                    </Box>
                   </Box>
                 )
               })
@@ -316,27 +488,46 @@ export function GuestBookingDialog({
           </Stack>
         )}
 
+        {/* ── 2: Master ── */}
         {step === 'master' && selectedServices.length > 0 && (
-          <Stack gap={1.5} sx={{ pt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Услуги: {serviceNamesShort}
-            </Typography>
-            {masterError && <Alert severity="error">{masterError}</Alert>}
+          <Stack gap={1.25}>
+            {serviceNamesShort && <ContextBadge>{serviceNamesShort}</ContextBadge>}
+
+            {masterError && (
+              <Alert severity="error" sx={{ borderRadius: '8px', fontSize: 13 }}>
+                {masterError}
+              </Alert>
+            )}
+
             {masterLoading ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
-                <CircularProgress size={20} />
-                <Typography variant="body2" color="text.secondary">
-                  Загружаем мастеров…
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 4, justifyContent: 'center' }}>
+                <CircularProgress size={20} sx={{ color: P.accent }} />
+                <Typography sx={{ fontSize: 13, color: P.textMuted }}>Загружаем мастеров…</Typography>
               </Box>
             ) : mastersForSelection.length === 0 ? (
-              <Stack gap={1}>
-                <Typography color="text.secondary">
-                  Нет мастеров, которые выполняют все выбранные услуги. Измените выбор.
+              <Stack gap={1.5} sx={{ py: 2, alignItems: 'flex-start' }}>
+                <Typography sx={{ color: P.textMuted, fontSize: 13 }}>
+                  Нет мастеров для всех выбранных услуг. Измените выбор.
                 </Typography>
-                <Button variant="outlined" onClick={() => setStep('service')}>
-                  К списку услуг
-                </Button>
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => setStep('service')}
+                  sx={{
+                    px: 2,
+                    py: '7px',
+                    borderRadius: '8px',
+                    border: `1px solid ${P.border}`,
+                    bgcolor: 'transparent',
+                    color: P.textMuted,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    '&:hover': { bgcolor: P.borderSub },
+                  }}
+                >
+                  ← К списку услуг
+                </Box>
               </Stack>
             ) : (
               mastersForSelection.map(m => (
@@ -344,36 +535,63 @@ export function GuestBookingDialog({
                   key={m.id}
                   component="button"
                   type="button"
-                  onClick={() => {
-                    setSelectedMaster(m)
-                    setSlot(null)
-                    setStep('slot')
-                  }}
+                  onClick={() => { setSelectedMaster(m); setSlot(null); setStep('slot') }}
                   sx={{
                     textAlign: 'left',
                     width: '100%',
-                    p: 2,
-                    borderRadius: '12px',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'background.paper',
+                    p: '14px 16px',
+                    borderRadius: '10px',
+                    border: `1.5px solid ${P.border}`,
+                    bgcolor: P.card,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
-                    '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+                    transition: 'border-color .15s, background-color .15s',
+                    '&:hover': { borderColor: P.accentBorder, bgcolor: P.accentSoft },
                   }}
                 >
-                  <Typography fontWeight={600}>{m.displayName}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        bgcolor: P.accentSoft,
+                        border: `1px solid ${P.accentBorder}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: P.accent,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {m.displayName.charAt(0).toUpperCase()}
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 600, fontSize: 14, color: P.text }}>
+                        {m.displayName}
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, color: P.textMuted, mt: '2px' }}>
+                        {m.services.length} услуг{m.services.length === 1 ? 'а' : ''}
+                      </Typography>
+                    </Box>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={P.textSub} strokeWidth="2" strokeLinecap="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </Box>
                 </Box>
               ))
             )}
           </Stack>
         )}
 
+        {/* ── 3: Slot ── */}
         {step === 'slot' && selectedServices.length > 0 && selectedMaster && (
-          <Stack gap={1.5} sx={{ pt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
+          <Stack gap={1.5}>
+            <ContextBadge>
               {serviceNamesShort} · {selectedMaster.displayName}
-            </Typography>
+            </ContextBadge>
             <PublicSlotPicker
               salonId={salonId}
               serviceIds={selectedServiceIds.length > 1 ? selectedServiceIds : undefined}
@@ -381,51 +599,103 @@ export function GuestBookingDialog({
               masterProfileId={selectedMaster.masterProfile?.id}
               salonMasterId={selectedMaster.masterProfile?.id ? undefined : selectedMaster.id}
               value={slot?.startsAt}
-              onChange={s => {
-                setSlot(s)
-                setStep('contact')
-              }}
+              onChange={s => { setSlot(s); setStep('contact') }}
             />
           </Stack>
         )}
 
+        {/* ── 4: Contact ── */}
         {step === 'contact' && selectedServices.length > 0 && (
-          <Stack gap={2} sx={{ pt: 1 }}>
-            {error && <Alert severity="error">{error}</Alert>}
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                Ваша запись
-              </Typography>
-              {selectedMaster && (
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {selectedMaster.displayName}
-                  {slot ? ` · ${new Date(slot.startsAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
+          <Stack gap={2}>
+            {error && (
+              <Alert severity="error" sx={{ borderRadius: '8px', fontSize: 13 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* Summary card */}
+            <Box
+              sx={{
+                bgcolor: P.card,
+                border: `1px solid ${P.border}`,
+                borderRadius: '12px',
+                overflow: 'hidden',
+              }}
+            >
+              <Box sx={{ px: 2, pt: 1.75, pb: 0.5 }}>
+                <Typography
+                  sx={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: P.textSub,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.6px',
+                    mb: 1.5,
+                  }}
+                >
+                  Ваша запись
                 </Typography>
-              )}
-              <Stack gap={0.75} sx={{ mt: 1 }}>
-                {bookingSummary.lines.map(l => (
-                  <Stack key={l.name} direction="row" justifyContent="space-between" alignItems="baseline">
-                    <Typography variant="body2">{l.name}</Typography>
-                    <Typography variant="body2" fontWeight={600}>
+
+                {selectedMaster && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pb: 1.25, mb: 0.5, borderBottom: `1px solid ${P.borderSub}` }}>
+                    <Typography sx={{ fontSize: 13, color: P.textMuted }}>Мастер</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: P.text }}>{selectedMaster.displayName}</Typography>
+                  </Box>
+                )}
+
+                {slot && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pb: 1.25, mb: 0.5, borderBottom: `1px solid ${P.borderSub}` }}>
+                    <Typography sx={{ fontSize: 13, color: P.textMuted }}>Дата и время</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: P.text }}>
+                      {new Date(slot.startsAt).toLocaleString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Typography>
+                  </Box>
+                )}
+
+                {bookingSummary.lines.map((l, i) => (
+                  <Box
+                    key={l.name}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      pb: 1.25,
+                      mb: 0.5,
+                      borderBottom: i < bookingSummary.lines.length - 1 ? `1px solid ${P.borderSub}` : 'none',
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 13, color: P.textMuted }}>{l.name}</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: P.text }}>
                       {formatPrice(l.priceCents)} ₽
                     </Typography>
-                  </Stack>
+                  </Box>
                 ))}
-              </Stack>
-              <Divider sx={{ my: 1.5 }} />
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography fontWeight={700}>Итого</Typography>
-                <Typography fontWeight={700}>{formatPrice(bookingSummary.totalCents)} ₽</Typography>
-              </Stack>
-            </Paper>
+              </Box>
 
+              <Divider sx={{ borderColor: P.border }} />
+
+              <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: P.borderSub }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 14, color: P.text }}>Итого</Typography>
+                <Typography sx={{ fontWeight: 700, fontSize: 16, color: P.accent }}>
+                  {formatPrice(bookingSummary.totalCents)} ₽
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Contact fields */}
             <TextField
               label={t('guestBooking.name')}
               value={name}
               onChange={e => setName(e.target.value)}
               required
               fullWidth
+              size="small"
               disabled={loading}
+              sx={fieldSx}
             />
             <TextField
               label={t('guestBooking.phone')}
@@ -434,7 +704,9 @@ export function GuestBookingDialog({
               placeholder="+7 (___) ___-__-__"
               inputMode="numeric"
               fullWidth
+              size="small"
               disabled={loading}
+              sx={fieldSx}
             />
             <TextField
               label={t('guestBooking.note')}
@@ -443,43 +715,142 @@ export function GuestBookingDialog({
               multiline
               minRows={2}
               fullWidth
+              size="small"
               disabled={loading}
               helperText={t('guestBooking.noteHint')}
+              sx={fieldSx}
             />
           </Stack>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
+
+      {/* ── Footer ── */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderTop: `1px solid ${P.border}`,
+          display: 'flex',
+          gap: 1.5,
+          alignItems: 'center',
+          bgcolor: P.surface,
+        }}
+      >
         {showBack && (
-          <Button onClick={goBack} disabled={loading}>
-            Назад
-          </Button>
-        )}
-        <Box sx={{ flex: 1 }} />
-        {step === 'service' && (
-          <Button
+          <Box
+            component="button"
             type="button"
-            variant="contained"
+            onClick={goBack}
+            disabled={loading}
+            sx={{
+              px: 2,
+              py: '7px',
+              borderRadius: '8px',
+              border: `1px solid ${P.border}`,
+              bgcolor: 'transparent',
+              color: P.textMuted,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'all .15s',
+              '&:hover:not(:disabled)': { bgcolor: P.borderSub, borderColor: '#C8C4BE' },
+              '&:disabled': { opacity: 0.4, cursor: 'default' },
+            }}
+          >
+            ← Назад
+          </Box>
+        )}
+
+        <Box sx={{ flex: 1 }} />
+
+        {/* Cancel (always) */}
+        <Box
+          component="button"
+          type="button"
+          onClick={handleClose}
+          disabled={loading}
+          sx={{
+            px: 2,
+            py: '7px',
+            borderRadius: '8px',
+            border: 'none',
+            bgcolor: 'transparent',
+            color: P.textMuted,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            '&:hover:not(:disabled)': { color: P.text },
+            '&:disabled': { opacity: 0.4, cursor: 'default' },
+          }}
+        >
+          {t('guestBooking.cancel')}
+        </Box>
+
+        {/* Next (service step) */}
+        {step === 'service' && (
+          <Box
+            component="button"
+            type="button"
             disabled={selectedServiceIds.length === 0}
             onClick={() => setStep('master')}
+            sx={{
+              px: '20px',
+              py: '8px',
+              borderRadius: '8px',
+              border: 'none',
+              bgcolor: P.accent,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'background .15s',
+              '&:hover:not(:disabled)': { bgcolor: P.accentDark },
+              '&:disabled': { bgcolor: P.border, color: P.textSub, cursor: 'default' },
+            }}
           >
-            Далее
-          </Button>
+            Далее →
+          </Box>
         )}
-        <Button onClick={handleClose} disabled={loading}>
-          {t('guestBooking.cancel')}
-        </Button>
+
+        {/* Submit (contact step) */}
         {step === 'contact' && (
-          <Button
+          <Box
+            component="button"
             type="button"
-            variant="contained"
             disabled={loading || !slot}
             onClick={() => void submitBooking()}
+            sx={{
+              px: '20px',
+              py: '8px',
+              borderRadius: '8px',
+              border: 'none',
+              bgcolor: P.accent,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              minWidth: 160,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              transition: 'background .15s',
+              '&:hover:not(:disabled)': { bgcolor: P.accentDark },
+              '&:disabled': { bgcolor: P.border, color: P.textSub, cursor: 'default' },
+            }}
           >
-            {loading ? <CircularProgress size={22} color="inherit" /> : t('guestBooking.submit')}
-          </Button>
+            {loading ? (
+              <CircularProgress size={16} sx={{ color: 'rgba(255,255,255,0.7)' }} />
+            ) : (
+              t('guestBooking.submit')
+            )}
+          </Box>
         )}
-      </DialogActions>
+      </Box>
     </Dialog>
   )
 }

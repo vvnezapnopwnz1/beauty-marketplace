@@ -11,14 +11,27 @@ import {
   TextField,
   Typography,
   type SelectChangeEvent,
+  Autocomplete,
+  Chip,
+  CircularProgress,
 } from '@mui/material'
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
+import { ru } from 'date-fns/locale'
 import CloseIcon from '@mui/icons-material/Close'
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import ContentCutIcon from '@mui/icons-material/ContentCut'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import {
   fetchDashboardServices,
   fetchDashboardStaff,
   patchAppointmentStatus,
   staffListItemsToRows,
   updateDashboardAppointment,
+  fetchAppointmentDetail,
   type DashboardAppointment,
   type DashboardServiceRow,
   type DashboardStaffRow,
@@ -41,7 +54,11 @@ function statusBadgeCfg(
 
 function StatusBadge({ status }: { status: string }) {
   const d = useDashboardPalette()
-  const cfg = statusBadgeCfg(d)[status] ?? { label: status, bg: 'rgba(255,255,255,.07)', color: d.mutedDark }
+  const cfg = statusBadgeCfg(d)[status] ?? {
+    label: status,
+    bg: 'rgba(255,255,255,.07)',
+    color: d.mutedDark,
+  }
   return (
     <Box
       component="span"
@@ -62,17 +79,12 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function clientInitials(label: string): string {
+function clientInitials(label: string | undefined | null): string {
+  if (!label) return '?'
   const parts = label.trim().split(/\s+/).filter(Boolean)
   if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
   if (parts[0] && parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase()
   return parts[0]?.slice(0, 1).toUpperCase() ?? '?'
-}
-
-function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function durationMinutes(startsAt: string, endsAt: string): number {
@@ -88,15 +100,22 @@ export type AppointmentDrawerProps = {
   onUpdated: () => void
 }
 
-export function AppointmentDrawer({ open, appointment, onClose, onUpdated }: AppointmentDrawerProps) {
+export function AppointmentDrawer({
+  open,
+  appointment,
+  onClose,
+  onUpdated,
+}: AppointmentDrawerProps) {
   const d = useDashboardPalette()
   const { inputBaseSx, textareaSx, selectMenuSx } = useDashboardFormStyles()
   const [services, setServices] = useState<DashboardServiceRow[]>([])
   const [staff, setStaff] = useState<DashboardStaffRow[]>([])
   const [err, setErr] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
-  const [serviceId, setServiceId] = useState('')
+  const [serviceIds, setServiceIds] = useState<string[]>([])
   const [salonMasterId, setSalonMasterId] = useState<string>('')
   const [startsLocal, setStartsLocal] = useState('')
   const [clientNote, setClientNote] = useState('')
@@ -135,12 +154,32 @@ export function AppointmentDrawer({ open, appointment, onClose, onUpdated }: App
         }
       })()
     }, 0)
+
+    if (appointment?.id) {
+      void (async () => {
+        setLoadingDetail(true)
+        try {
+          const detail = await fetchAppointmentDetail(appointment.id)
+          setServiceIds(detail.services.map(s => s.id))
+          setSalonMasterId(detail.salonMasterId ?? '')
+          setStartsLocal(detail.startsAt)
+          setClientNote(detail.clientNote ?? '')
+          setGuestName(detail.guestName ?? (detail.clientUserId ? detail.clientLabel : ''))
+          setGuestPhone(detail.guestPhone ?? detail.clientPhone ?? '')
+        } catch (e) {
+          console.error('Failed to fetch appointment detail', e)
+        } finally {
+          setLoadingDetail(false)
+        }
+      })()
+    }
+
     return () => window.clearTimeout(t)
-  }, [open])
+  }, [open, appointment?.id])
 
   const resetFromAppt = useCallback((a: DashboardAppointment | null) => {
     if (!a) {
-      setServiceId('')
+      setServiceIds([])
       setSalonMasterId('')
       setStartsLocal('')
       setClientNote('')
@@ -149,9 +188,10 @@ export function AppointmentDrawer({ open, appointment, onClose, onUpdated }: App
       return
     }
     setErr(null)
-    setServiceId(a.serviceId)
+    // Initial sync from simple list data, will be refined by fetchAppointmentDetail
+    if (a.serviceId) setServiceIds([a.serviceId])
     setSalonMasterId(a.salonMasterId ?? '')
-    setStartsLocal(toDatetimeLocal(a.startsAt))
+    setStartsLocal(a.startsAt)
     setClientNote(a.clientNote ?? '')
     setGuestName(a.guestName ?? (a.clientUserId ? a.clientLabel : ''))
     setGuestPhone(a.guestPhone ?? a.clientPhone ?? '')
@@ -161,7 +201,8 @@ export function AppointmentDrawer({ open, appointment, onClose, onUpdated }: App
     if (open && appointment) resetFromAppt(appointment)
   }, [open, appointment, resetFromAppt])
 
-  const showEditForm = appointment && (appointment.status === 'pending' || appointment.status === 'confirmed')
+  const showEditForm =
+    appointment && (appointment.status === 'pending' || appointment.status === 'confirmed')
   const readOnlyGuest = Boolean(appointment?.clientUserId)
 
   async function patchStatus(status: string) {
@@ -194,16 +235,27 @@ export function AppointmentDrawer({ open, appointment, onClose, onUpdated }: App
       }
     }
     setErr(null)
+    setInfo(null)
     setBusy(true)
+    const wasConfirmed = appointment.status === 'confirmed'
+    const hasStructuralChanges =
+      serviceIds.join(',') !== (appointment.serviceId ?? '') ||
+      salonMasterId !== (appointment.salonMasterId ?? '') ||
+      new Date(startsLocal).toISOString() !== appointment.startsAt ||
+      (!readOnlyGuest && (guestName.trim() !== (appointment.guestName ?? '') ||
+        guestPhone.trim() !== (appointment.guestPhone ?? '')))
     try {
       const startsAt = new Date(startsLocal).toISOString()
       await updateDashboardAppointment(appointment.id, {
-        serviceId,
+        serviceIds,
         startsAt,
         clientNote: clientNote.trim(),
         ...(salonMasterId ? { salonMasterId } : { clearSalonMasterId: true }),
         ...(!readOnlyGuest ? { guestName: guestName.trim(), guestPhone: guestPhone.trim() } : {}),
       })
+      if (wasConfirmed && hasStructuralChanges) {
+        setInfo('Запись возвращена в статус «Ожидает» и требует повторного подтверждения')
+      }
       onUpdated()
       onClose()
     } catch (e) {
@@ -214,8 +266,7 @@ export function AppointmentDrawer({ open, appointment, onClose, onUpdated }: App
   }
 
   const phoneDisplay = appointment?.clientPhone ?? appointment?.guestPhone ?? '—'
-  const dur =
-    appointment != null ? durationMinutes(appointment.startsAt, appointment.endsAt) : 0
+  const dur = appointment != null ? durationMinutes(appointment.startsAt, appointment.endsAt) : 0
 
   return (
     <Drawer
@@ -238,221 +289,435 @@ export function AppointmentDrawer({ open, appointment, onClose, onUpdated }: App
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            px: 2,
-            py: 1.5,
+            px: 3,
+            py: 2,
             borderBottom: `1px solid ${d.borderSubtle}`,
+            bgcolor: d.card,
           }}
         >
-          <Typography sx={{ fontSize: 16, fontWeight: 700, color: d.text }}>Запись</Typography>
-          <IconButton onClick={onClose} size="small" aria-label="Закрыть" sx={{ color: d.mutedDark }}>
-            <CloseIcon />
+          <Box>
+            <Typography sx={{ fontSize: 18, fontWeight: 800, color: d.text, lineHeight: 1.2 }}>
+              Запись
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: d.mutedDark }}>
+              Просмотр и редактирование
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={onClose}
+            size="small"
+            aria-label="Закрыть"
+            sx={{ color: d.mutedDark, bgcolor: d.control, '&:hover': { bgcolor: d.controlHover } }}
+          >
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
 
-        <Box sx={{ flex: 1, overflow: 'auto', px: 2, py: 2 }}>
-          {!appointment ? (
-            <Typography sx={{ color: d.muted }}>Нет данных</Typography>
-          ) : (
-            <Stack spacing={2}>
-              {err && (
-                <Typography sx={{ color: d.red, fontSize: 13 }}>{err}</Typography>
-              )}
-
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    bgcolor: `${d.accent}22`,
-                    color: d.accent,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: 16,
-                    flexShrink: 0,
-                  }}
-                >
-                  {clientInitials(appointment.clientLabel)}
-                </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 700, color: d.text, fontSize: 16 }}>
-                    {appointment.clientLabel}
-                  </Typography>
-                  <Typography sx={{ fontSize: 13, color: d.mutedDark }}>{phoneDisplay}</Typography>
-                </Box>
-              </Stack>
-
-              <Box>
-                <StatusBadge status={appointment.status} />
+        <Box sx={{ flex: 1, overflow: 'auto', px: 3, py: 3 }}>
+          <Stack spacing={1}>
+            {!appointment ? (
+              <Typography sx={{ color: d.muted }}>Нет данных</Typography>
+            ) : loadingDetail ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                <CircularProgress size={32} sx={{ color: d.accent }} />
               </Box>
+            ) : (
+              <Stack spacing={3}>
+                {err && <Typography sx={{ color: d.red, fontSize: 13 }}>{err}</Typography>}
+                {info && <Typography sx={{ color: d.accent, fontSize: 13 }}>{info}</Typography>}
 
-              <Typography sx={{ fontSize: 14, color: d.text }}>
-                {new Date(appointment.startsAt).toLocaleString('ru-RU')} —{' '}
-                {new Date(appointment.endsAt).toLocaleTimeString('ru-RU', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-                <Box component="span" sx={{ color: d.mutedDark, ml: 1 }}>
-                  ({dur} мин)
-                </Box>
-              </Typography>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      bgcolor: `${d.accent}22`,
+                      color: d.accent,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: 16,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {clientInitials(appointment.clientLabel)}
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      sx={{ fontWeight: 800, color: d.text, fontSize: 18, lineHeight: 1.2 }}
+                    >
+                      {appointment.clientLabel}
+                    </Typography>
+                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
+                      <PhoneOutlinedIcon sx={{ fontSize: 14, color: d.mutedDark }} />
+                      <Typography sx={{ fontSize: 13, color: d.mutedDark }}>
+                        {phoneDisplay}
+                      </Typography>
+                    </Stack>
+                  </Box>
+                </Stack>
 
-              <Typography sx={{ fontSize: 14, color: d.text }}>
-                <Box component="span" sx={{ color: d.mutedDark }}>Услуга: </Box>
-                {appointment.serviceName}
-              </Typography>
-              <Typography sx={{ fontSize: 14, color: d.text }}>
-                <Box component="span" sx={{ color: d.mutedDark }}>Мастер: </Box>
-                {appointment.staffName ?? '—'}
-              </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <StatusBadge status={appointment.status} />
 
-              {appointment.clientNote?.trim() && (
-                <Typography sx={{ fontSize: 13, color: d.mutedDark }}>
-                  Заметка: {appointment.clientNote}
-                </Typography>
-              )}
+                  {appointment.status === 'pending' && (
+                    <>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={busy}
+                        onClick={() => void patchStatus('confirmed')}
+                        sx={{
+                          bgcolor: d.green,
+                          color: '#fff',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '6px',
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: d.green, transform: 'translateY(-1px)' },
+                        }}
+                      >
+                        Подтвердить
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={busy}
+                        onClick={() => void patchStatus('cancelled_by_salon')}
+                        sx={{
+                          borderColor: d.red,
+                          color: d.red,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '6px',
+                          textTransform: 'none',
+                          '&:hover': {
+                            borderColor: d.red,
+                            bgcolor: `${d.red}10`,
+                            transform: 'translateY(-1px)',
+                          },
+                        }}
+                      >
+                        Отменить
+                      </Button>
+                    </>
+                  )}
 
-              <Divider sx={{ borderColor: d.borderSubtle }} />
+                  {appointment.status === 'confirmed' && (
+                    <>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        disabled={busy}
+                        onClick={() => void patchStatus('completed')}
+                        sx={{
+                          bgcolor: d.accent,
+                          color: d.onAccent,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '6px',
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: d.accent, transform: 'translateY(-1px)' },
+                        }}
+                      >
+                        Завершить
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={busy}
+                        onClick={() => void patchStatus('cancelled_by_salon')}
+                        sx={{
+                          borderColor: d.red,
+                          color: d.red,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '6px',
+                          textTransform: 'none',
+                          '&:hover': {
+                            borderColor: d.red,
+                            bgcolor: `${d.red}10`,
+                            transform: 'translateY(-1px)',
+                          },
+                        }}
+                      >
+                        Отменить
+                      </Button>
+                    </>
+                  )}
+                </Stack>
 
-              {showEditForm && (
                 <Stack spacing={1.5}>
-                  <Typography sx={{ fontSize: 12, fontWeight: 600, color: d.mutedDark, textTransform: 'uppercase' }}>
-                    Редактирование
-                  </Typography>
-                  <Box>
-                    <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>Мастер</Typography>
-                    <Select
-                      value={salonMasterId}
-                      onChange={(e: SelectChangeEvent<string>) => setSalonMasterId(e.target.value)}
-                      displayEmpty
-                      fullWidth
-                      MenuProps={selectMenuSx}
-                      sx={apptSelectSx}
-                    >
-                      <MenuItem value="" sx={menuItemSx}>
-                        Не назначен
-                      </MenuItem>
-                      {staff.map(s => (
-                        <MenuItem key={s.id} value={s.id} sx={menuItemSx}>
-                          {s.displayName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>Услуга</Typography>
-                    <Select
-                      value={serviceId}
-                      onChange={(e: SelectChangeEvent<string>) => setServiceId(e.target.value)}
-                      fullWidth
-                      MenuProps={selectMenuSx}
-                      sx={apptSelectSx}
-                    >
-                      {services.map(s => (
-                        <MenuItem key={s.id} value={s.id} sx={menuItemSx}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </Box>
-                  <TextField
-                    label="Начало"
-                    type="datetime-local"
-                    value={startsLocal}
-                    onChange={e => setStartsLocal(e.target.value)}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                    sx={inputBaseSx}
-                  />
-                  <TextField
-                    label="Заметка"
-                    value={clientNote}
-                    onChange={e => setClientNote(e.target.value)}
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    sx={textareaSx}
-                  />
-                  {!readOnlyGuest && (
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <TextField
-                        label="Имя гостя"
-                        value={guestName}
-                        onChange={e => setGuestName(e.target.value)}
-                        fullWidth
-                        sx={inputBaseSx}
-                      />
-                      <TextField
-                        label="Телефон"
-                        value={guestPhone}
-                        onChange={e => setGuestPhone(e.target.value)}
-                        fullWidth
-                        placeholder="+79161234567"
-                        sx={inputBaseSx}
-                      />
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <AccessTimeIcon sx={{ color: d.mutedDark, fontSize: 18 }} />
+                    <Typography sx={{ fontSize: 14, color: d.text, fontWeight: 500 }}>
+                      {new Date(appointment.startsAt).toLocaleString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}{' '}
+                      —{' '}
+                      {new Date(appointment.endsAt).toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                      <Box component="span" sx={{ color: d.mutedDark, ml: 1, fontWeight: 400 }}>
+                        ({dur} мин)
+                      </Box>
+                    </Typography>
+                  </Stack>
+
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <ContentCutIcon sx={{ color: d.mutedDark, fontSize: 18 }} />
+                    <Typography sx={{ fontSize: 14, color: d.text }}>
+                      <Box component="span" sx={{ color: d.mutedDark }}>
+                        Услуга:{' '}
+                      </Box>
+                      {appointment.serviceName}
+                    </Typography>
+                  </Stack>
+
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <PersonOutlineIcon sx={{ color: d.mutedDark, fontSize: 18 }} />
+                    <Typography sx={{ fontSize: 14, color: d.text }}>
+                      <Box component="span" sx={{ color: d.mutedDark }}>
+                        Мастер:{' '}
+                      </Box>
+                      {appointment.staffName ?? '—'}
+                    </Typography>
+                  </Stack>
+
+                  {appointment.clientNote?.trim() && (
+                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                      <DescriptionOutlinedIcon sx={{ color: d.mutedDark, fontSize: 18, mt: 0.2 }} />
+                      <Typography sx={{ fontSize: 13, color: d.mutedDark, lineHeight: 1.4 }}>
+                        {appointment.clientNote}
+                      </Typography>
                     </Stack>
                   )}
                 </Stack>
-              )}
-            </Stack>
-          )}
+
+                <Divider sx={{ borderColor: d.borderSubtle }} />
+
+                {showEditForm && (
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                        Специалист
+                      </Typography>
+                      <Select
+                        value={salonMasterId}
+                        onChange={(e: SelectChangeEvent<string>) =>
+                          setSalonMasterId(e.target.value)
+                        }
+                        displayEmpty
+                        fullWidth
+                        MenuProps={selectMenuSx}
+                        sx={apptSelectSx}
+                      >
+                        <MenuItem value="" sx={menuItemSx}>
+                          Не назначен
+                        </MenuItem>
+                        {staff.map(s => (
+                          <MenuItem key={s.id} value={s.id} sx={menuItemSx}>
+                            {s.displayName}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </Box>
+
+                    <Box>
+                      <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                        Услуги
+                      </Typography>
+                      <Autocomplete
+                        multiple
+                        options={services}
+                        getOptionLabel={option => option.name}
+                        value={services.filter(s => serviceIds.includes(s.id))}
+                        onChange={(_, newValue) => {
+                          setServiceIds(newValue.map(v => v.id))
+                        }}
+                        renderInput={params => (
+                          <TextField
+                            {...params}
+                            placeholder="Выберите услуги"
+                            sx={inputBaseSx}
+                            InputProps={{
+                              ...params.InputProps,
+                              endAdornment: (
+                                <>
+                                  {services.length === 0 ? (
+                                    <CircularProgress color="inherit" size={20} />
+                                  ) : null}
+                                  {params.InputProps.endAdornment}
+                                </>
+                              ),
+                            }}
+                          />
+                        )}
+                        renderTags={(value, getTagProps) =>
+                          value.map((option, index) => (
+                            <Chip
+                              variant="outlined"
+                              label={option.name}
+                              size="small"
+                              {...getTagProps({ index })}
+                              key={option.id}
+                              sx={{
+                                borderRadius: '6px',
+                                bgcolor: `${d.accent}10`,
+                                borderColor: `${d.accent}40`,
+                                color: d.text,
+                                fontSize: 12,
+                                height: 24,
+                              }}
+                            />
+                          ))
+                        }
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            p: '4px 8px !important',
+                            bgcolor: d.input,
+                            borderRadius: '10px',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: d.inputBorder,
+                              top: 0,
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: d.borderLight,
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: d.borderFocus,
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                        Дата и время
+                      </Typography>
+                      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
+                        <DateTimePicker
+                          value={startsLocal ? new Date(startsLocal) : null}
+                          onChange={val => setStartsLocal(val ? val.toISOString() : '')}
+                          ampm={false}
+                          format="dd.MM.yyyy HH:mm"
+                          views={['year', 'month', 'day', 'hours', 'minutes']}
+                          slotProps={{ textField: { fullWidth: true, size: 'small', sx: inputBaseSx } }}
+                        />
+                      </LocalizationProvider>
+                    </Box>
+
+                    <Box>
+                      <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                        Заметка
+                      </Typography>
+                      <TextField
+                        value={clientNote}
+                        onChange={e => setClientNote(e.target.value)}
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        sx={textareaSx}
+                      />
+                    </Box>
+
+                    {!readOnlyGuest && (
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                            Имя гостя
+                          </Typography>
+                          <TextField
+                            value={guestName}
+                            onChange={e => setGuestName(e.target.value)} // Fixed from setForm
+                            fullWidth
+                            sx={inputBaseSx}
+                          />
+                        </Box>
+                        <Box>
+                          <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                            Контактный телефон
+                          </Typography>
+                          <TextField
+                            value={guestPhone}
+                            onChange={e => setGuestPhone(e.target.value)}
+                            fullWidth
+                            placeholder="+7 (___) ___ - __ - __"
+                            sx={inputBaseSx}
+                          />
+                        </Box>
+                      </Stack>
+                    )}
+                  </Stack>
+                )}
+              </Stack>
+            )}
+          </Stack>
         </Box>
 
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
-            px: 2,
-            py: 1.5,
+            px: 3,
+            py: 2,
             borderTop: `1px solid ${d.borderSubtle}`,
+            bgcolor: d.card,
           }}
         >
-          {appointment?.status === 'pending' && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Button
-                variant="contained"
-                disabled={busy}
-                onClick={() => void patchStatus('confirmed')}
-                sx={{ bgcolor: d.green, color: '#fff' }}
-              >
-                Подтвердить
-              </Button>
-              <Button variant="outlined" disabled={busy} onClick={() => void patchStatus('cancelled_by_salon')} sx={{ borderColor: d.red, color: d.red }}>
-                Отменить
-              </Button>
-            </Stack>
-          )}
-          {appointment?.status === 'confirmed' && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Button
-                variant="contained"
-                disabled={busy}
-                onClick={() => void patchStatus('completed')}
-                sx={{ bgcolor: d.accent, color: d.onAccent }}
-              >
-                Завершить
-              </Button>
-              <Button variant="outlined" disabled={busy} onClick={() => void patchStatus('cancelled_by_salon')} sx={{ borderColor: d.red, color: d.red }}>
-                Отменить
-              </Button>
-            </Stack>
-          )}
-          {(appointment?.status === 'completed' || appointment?.status === 'cancelled_by_salon' || appointment?.status === 'no_show') && (
-            <Button variant="outlined" onClick={onClose} sx={{ borderColor: d.borderLight, color: d.text }}>
-              Закрыть
-            </Button>
-          )}
-          {showEditForm && (
+          {showEditForm ? (
             <Button
               variant="contained"
+              fullWidth
               disabled={busy}
               onClick={() => void saveChanges()}
-              sx={{ bgcolor: d.accent, color: d.onAccent }}
+              sx={{
+                bgcolor: d.accent,
+                color: d.onAccent,
+                py: 1,
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: 15,
+                textTransform: 'none',
+                boxShadow: `0 4px 14px ${d.accent}40`,
+                '&:hover': {
+                  bgcolor: d.accent,
+                  boxShadow: `0 6px 20px ${d.accent}60`,
+                  transform: 'translateY(-1px)',
+                },
+                transition: 'all 0.2s',
+              }}
             >
-              Сохранить изменения
+              {busy ? 'Сохранение...' : 'Сохранить изменения'}
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={onClose}
+              sx={{
+                borderColor: d.borderLight,
+                color: d.text,
+                py: 1.25,
+                borderRadius: '12px',
+                fontWeight: 600,
+                textTransform: 'none',
+              }}
+            >
+              Закрыть
             </Button>
           )}
         </Box>

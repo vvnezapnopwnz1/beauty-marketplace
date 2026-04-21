@@ -52,6 +52,13 @@ func (r *appointmentRepository) FindServiceForSalon(ctx context.Context, salonID
 	return &s, nil
 }
 
+func (r *appointmentRepository) SetSalonClientID(ctx context.Context, appointmentID, salonClientID uuid.UUID) error {
+	return r.db.WithContext(ctx).
+		Model(&model.Appointment{}).
+		Where("id = ?", appointmentID).
+		Update("salon_client_id", salonClientID).Error
+}
+
 func (r *appointmentRepository) FindByMasterInRange(ctx context.Context, salonMasterID uuid.UUID, from, to time.Time) ([]model.Appointment, error) {
 	var rows []model.Appointment
 	excluded := []string{"cancelled_by_client", "cancelled_by_salon", "no_show"}

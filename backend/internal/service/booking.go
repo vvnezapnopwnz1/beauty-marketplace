@@ -28,10 +28,11 @@ type BookingService interface {
 }
 
 type bookingService struct {
-	salons repository.SalonRepository
-	appts  repository.AppointmentRepository
-	slots  repository.BookingSlotsRepository
-	now    func() time.Time
+	salons  repository.SalonRepository
+	appts   repository.AppointmentRepository
+	slots   repository.BookingSlotsRepository
+	clients repository.SalonClientRepository
+	now     func() time.Time
 }
 
 // NewBookingService constructs BookingService.
@@ -39,8 +40,9 @@ func NewBookingService(
 	salons repository.SalonRepository,
 	appts repository.AppointmentRepository,
 	slots repository.BookingSlotsRepository,
+	clients repository.SalonClientRepository,
 ) BookingService {
-	return &bookingService{salons: salons, appts: appts, slots: slots, now: time.Now}
+	return &bookingService{salons: salons, appts: appts, slots: slots, clients: clients, now: time.Now}
 }
 
 // GuestBookingInput is a public booking request without auth.
@@ -303,6 +305,12 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 
 	if err := s.appts.CreateWithLineItems(ctx, appt, lines); err != nil {
 		return nil, fmt.Errorf("create appointment: %w", err)
+	}
+
+	if s.clients != nil {
+		if sc, scErr := s.clients.GetOrCreateByPhone(ctx, in.SalonID, guestPhone, guestName); scErr == nil {
+			_ = s.appts.SetSalonClientID(ctx, appt.ID, sc.ID)
+		}
 	}
 
 	return &GuestBookingResult{

@@ -32,6 +32,13 @@ export interface DashboardAppointment {
   /** Assigned master in this salon (appointments.salon_master_id). */
   salonMasterId?: string | null
   clientNote?: string | null
+  services?: { id: string; name: string; durationMinutes: number; priceCents: number }[]
+}
+
+export interface AppointmentDetail extends DashboardAppointment {
+  salonClientId?: string | null
+  createdAt: string
+  services: { id: string; name: string; durationMinutes: number; priceCents: number }[]
 }
 
 export interface DashboardAppointmentList {
@@ -346,11 +353,16 @@ export interface SlotsResponse {
 export async function fetchAvailableSlots(params: {
   date: string
   serviceId?: string
+  serviceIds?: string[]
   salonMasterId?: string
 }): Promise<SlotsResponse> {
   const q = new URLSearchParams()
   q.set('date', params.date)
-  if (params.serviceId) q.set('serviceId', params.serviceId)
+  if (params.serviceIds && params.serviceIds.length > 0) {
+    q.set('serviceIds', params.serviceIds.join(','))
+  } else if (params.serviceId) {
+    q.set('serviceId', params.serviceId)
+  }
   if (params.salonMasterId) q.set('salonMasterId', params.salonMasterId)
   const res = await authFetch(`${base()}/slots?${q}`)
   return parseJson<SlotsResponse>(res)
@@ -364,19 +376,25 @@ export async function fetchDashboardStats(period = 'week'): Promise<DashboardSta
 export async function fetchDashboardAppointments(params: {
   from?: string
   to?: string
-  status?: string
+  statuses?: string[]
   staffId?: string
   /** Matches primary `appointments.service_id` or any `appointment_line_items.service_id` (multi-service guest visits). */
   serviceId?: string
+  sortBy?: string
+  sortDir?: 'asc' | 'desc'
+  search?: string
   page?: number
   pageSize?: number
 }): Promise<DashboardAppointmentList> {
   const q = new URLSearchParams()
   if (params.from) q.set('from', params.from)
   if (params.to) q.set('to', params.to)
-  if (params.status) q.set('status', params.status)
+  if (params.statuses?.length) q.set('status', params.statuses.join(','))
   if (params.staffId) q.set('salon_master_id', params.staffId)
   if (params.serviceId) q.set('service_id', params.serviceId)
+  if (params.sortBy) q.set('sort_by', params.sortBy)
+  if (params.sortDir) q.set('sort_dir', params.sortDir)
+  if (params.search) q.set('search', params.search)
   if (params.page) q.set('page', String(params.page))
   if (params.pageSize) q.set('page_size', String(params.pageSize))
   const res = await authFetch(`${base()}/appointments?${q}`)
@@ -396,8 +414,13 @@ export async function patchAppointmentStatus(id: string, status: string): Promis
   // 204 No Content
 }
 
+export async function fetchAppointmentDetail(id: string): Promise<AppointmentDetail> {
+  const res = await authFetch(`${base()}/appointments/${id}`)
+  return parseJson<AppointmentDetail>(res)
+}
+
 export async function createDashboardAppointment(body: {
-  serviceId: string
+  serviceIds: string[]
   salonMasterId?: string | null
   startsAt: string
   guestName: string
@@ -408,7 +431,7 @@ export async function createDashboardAppointment(body: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      serviceId: body.serviceId,
+      serviceIds: body.serviceIds,
       salonMasterId: body.salonMasterId ?? undefined,
       startsAt: body.startsAt,
       guestName: body.guestName,
@@ -428,7 +451,7 @@ export async function updateDashboardAppointment(
   body: {
     startsAt?: string
     endsAt?: string
-    serviceId?: string
+    serviceIds?: string[]
     salonMasterId?: string
     clearSalonMasterId?: boolean
     clientNote?: string
@@ -439,7 +462,7 @@ export async function updateDashboardAppointment(
   const payload: Record<string, unknown> = {}
   if (body.startsAt !== undefined) payload.startsAt = body.startsAt
   if (body.endsAt !== undefined) payload.endsAt = body.endsAt
-  if (body.serviceId !== undefined) payload.serviceId = body.serviceId
+  if (body.serviceIds !== undefined) payload.serviceIds = body.serviceIds
   if (body.salonMasterId !== undefined) payload.salonMasterId = body.salonMasterId
   if (body.clearSalonMasterId === true) payload.clearSalonMasterId = true
   if (body.clientNote !== undefined) payload.clientNote = body.clientNote

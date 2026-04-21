@@ -8,7 +8,7 @@ import (
 )
 
 type ManualAppointmentInput struct {
-	ServiceID    uuid.UUID
+	ServiceIDs   []uuid.UUID
 	StaffID      *uuid.UUID
 	StartsAt     time.Time
 	GuestName    string
@@ -17,13 +17,37 @@ type ManualAppointmentInput struct {
 	ClientUserID *uuid.UUID
 }
 
+type AppointmentServiceDTO struct {
+	ID              uuid.UUID `json:"id"`
+	Name            string    `json:"name"`
+	DurationMinutes int       `json:"durationMinutes"`
+	PriceCents      int64     `json:"priceCents"`
+}
+
+type AppointmentDetailDTO struct {
+	ID             uuid.UUID               `json:"id"`
+	SalonID        uuid.UUID               `json:"salonId"`
+	StartsAt       time.Time               `json:"startsAt"`
+	EndsAt         time.Time               `json:"endsAt"`
+	Status         string                  `json:"status"`
+	SalonMasterID  *uuid.UUID              `json:"salonMasterId,omitempty"`
+	StaffName      *string                 `json:"staffName,omitempty"`
+	GuestName      *string                 `json:"guestName,omitempty"`
+	GuestPhone     *string                 `json:"guestPhone,omitempty"`
+	ClientUserID   *uuid.UUID              `json:"clientUserId,omitempty"`
+	ClientNote     *string                 `json:"clientNote,omitempty"`
+	SalonClientID  *uuid.UUID              `json:"salonClientId,omitempty"`
+	Services       []AppointmentServiceDTO `json:"services"`
+	CreatedAt      time.Time               `json:"createdAt"`
+}
+
 type UpdateAppointmentInput struct {
 	AppointmentID uuid.UUID
 	StartsAt      *time.Time
 	EndsAt        *time.Time
 	StaffID       *uuid.UUID
 	ClearStaffID  bool
-	ServiceID     *uuid.UUID
+	ServiceIDs    []uuid.UUID
 	ClientNote    *string
 	GuestName     *string
 	GuestPhone    *string

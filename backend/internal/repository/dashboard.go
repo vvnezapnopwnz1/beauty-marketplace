@@ -44,9 +44,12 @@ type AppointmentListFilter struct {
 	SalonID   uuid.UUID
 	From      *time.Time
 	To        *time.Time
-	Status    string
+	Statuses  []string   // multi-status filter; empty = no status filter
 	StaffID   *uuid.UUID
 	ServiceID *uuid.UUID
+	SortBy    string     // allowlist-validated in repository: starts_at | service_name | status | client_name
+	SortDir   string     // "asc" | "desc"; default "desc"
+	Search    string     // ILIKE on guest_name, guest_phone_e164, users.display_name
 	Page      int
 	PageSize  int
 }
@@ -69,6 +72,8 @@ type DashboardRepository interface {
 	CreateAppointment(ctx context.Context, a *model.Appointment) error
 	UpdateAppointment(ctx context.Context, a *model.Appointment) error
 	UpdateAppointmentStatus(ctx context.Context, salonID, appointmentID uuid.UUID, status string) error
+	ListAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID) ([]model.AppointmentLineItem, error)
+	ReplaceAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID, items []model.AppointmentLineItem) error
 
 	ListServices(ctx context.Context, salonID uuid.UUID) ([]model.SalonService, error)
 	ListSystemServiceCategories(ctx context.Context) ([]model.ServiceCategory, error)
