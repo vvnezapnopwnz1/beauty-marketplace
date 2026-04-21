@@ -590,6 +590,17 @@ Store: `frontend/src/app/store.ts`
 - `000006_external_ids.down.sql`: обратная денормализация в `salons.external_source/external_id`
 - Далее: `000007`–`000008` (графики staff/salon), `000009` (расширение dashboard: staff, services, слоты, перерывы), `000010` (`service_categories`, `salon_type`, `services.category_slug`), `000011` и др.; `000012` (`master_profiles`, переименование `staff` → `salon_masters`, `salon_master_services` с оверрайдами); `000013` (`salon_master_status`); `000014` (`appointment_line_items` для мульти-услуги и снимков цены) — см. `backend/migrations/`.
 
+### Статусы записей и машина состояний
+
+Подробная спецификация — **`docs/entities/appointment-statuses.md`**.
+
+Коротко:
+- Статусы: `pending` → `confirmed` → `completed` / `no_show` / `cancelled_by_salon`; `cancelled_by_client` зарезервирован
+- Редактирование деталей разрешено только в `pending` и `confirmed`; редактирование `confirmed`-записи автоматически сбрасывает статус в `pending`
+- Терминальные статусы (`completed`, `cancelled_*`, `no_show`) не редактируются и не допускают переходов
+- Логика переходов: `allowedStatusTransition` в `backend/internal/service/dashboard_appointment.go`
+- Защита редактирования по статусу должна быть на **бэкенде** (не только на фронтенде)
+
 ### Ключевые индексы и constraints
 
 - Unique constraints:
