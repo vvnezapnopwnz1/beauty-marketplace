@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useForm, Controller, useWatch } from 'react-hook-form'
+import { useForm, Controller, useWatch, type Resolver } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import {
@@ -136,7 +136,7 @@ export function StaffFormModal(props: {
     setValue,
     formState: { errors },
   } = useForm<FormVals>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as unknown as Resolver<FormVals>,
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -551,7 +551,7 @@ export function StaffFormModal(props: {
                       items={SPECIALIZATION_PRESETS.map(p => ({ id: p.value, label: p.label }))}
                       selected={field.value}
                       onChange={field.onChange}
-                      getLabel={item => String((item as { label: string }).label)}
+                      getLabel={item => String(item['label'])}
                       getId={item => item.id}
                     />
                   </FormField>
@@ -660,7 +660,7 @@ export function StaffFormModal(props: {
               render={({ field }) => (
                 <>
                   <ChipMultiSelect
-                    items={services}
+                    items={services as unknown as { id: string; [k: string]: unknown }[]}
                     selected={field.value}
                     onChange={ids => {
                       field.onChange(ids)
@@ -675,7 +675,7 @@ export function StaffFormModal(props: {
                         return next
                       })
                     }}
-                    getLabel={item => (item as DashboardServiceRow).name}
+                    getLabel={item => (item as unknown as DashboardServiceRow).name}
                     getId={item => item.id}
                   />
                   <Stack spacing={1} sx={{ mt: 2 }}>

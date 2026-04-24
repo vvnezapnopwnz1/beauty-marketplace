@@ -5,7 +5,7 @@
 //   - X-Client-Request-ID — optional id from the SPA for end-to-end correlation;
 //   - X-Client-Action — optional short label (e.g. analytics / search client action).
 //
-// The frontend sends the client headers on public API calls such as unified search (see docs/architecture.md).
+// The frontend sends the client headers on public API calls such as unified search (see docs/vault/architecture/api-flows.md).
 package requestid
 
 import "context"

@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beauty Marketplace — App Pages Graph</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #toolbar {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 8px 16px;
+    z-index: 100;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  #toolbar h1 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #7d8590;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+  .mode-btn {
+    background: transparent;
+    border: 1px solid #30363d;
+    color: #7d8590;
+    padding: 5px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .mode-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+  .mode-btn.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+
+  #legend {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 520px;
+    z-index: 100;
+  }
+  .legend-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 20px;
+    padding: 4px 10px 4px 8px;
+    font-size: 11px;
+    color: #8b949e;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .legend-pill:hover { border-color: #58a6ff; color: #e6edf3; }
+  .legend-pill.dimmed { opacity: 0.4; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  #hint {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    font-size: 11px;
+    color: #484f58;
+    text-align: right;
+    line-height: 1.6;
+    pointer-events: none;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12px;
+    max-width: 280px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  #tooltip.visible { opacity: 1; }
+  .tt-route { font-family: monospace; font-size: 11px; color: #79c0ff; margin-bottom: 4px; }
+  .tt-name { font-size: 14px; font-weight: 700; color: #e6edf3; margin-bottom: 2px; }
+  .tt-comp { font-size: 11px; color: #7d8590; margin-bottom: 8px; }
+  .tt-desc { font-size: 12px; color: #8b949e; margin-bottom: 8px; line-height: 1.5; }
+  .tt-section { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #484f58; margin-bottom: 4px; }
+  .tt-api-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #8b949e; margin-bottom: 3px; font-family: monospace;
+  }
+  .method-badge {
+    font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
+    flex-shrink: 0; letter-spacing: 0.5px;
+  }
+  .GET  { background: #1a3d1a; color: #3fb950; }
+  .POST { background: #3d1f1a; color: #f85149; }
+  .PUT  { background: #3d2d1a; color: #d29922; }
+  .PATCH{ background: #1a1e3d; color: #79c0ff; }
+  .DELETE{ background: #2d1a3d; color: #d2a8ff; }
+  .tt-redux { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .redux-chip {
+    font-size: 10px; padding: 2px 7px; border-radius: 10px;
+    background: #21262d; border: 1px solid #30363d; color: #7d8590;
+  }
+
+  /* D3 elements */
+  .link { stroke-opacity: 0.4; }
+  .link-label {
+    font-size: 9px;
+    fill: #484f58;
+    pointer-events: none;
+    user-select: none;
+  }
+  .node-circle { cursor: pointer; }
+  .node-label {
+    font-size: 11px;
+    font-weight: 500;
+    fill: #c9d1d9;
+    pointer-events: none;
+    user-select: none;
+  }
+  .node-badge {
+    font-size: 8px;
+    font-weight: 700;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>App Pages</h1>
+  <button class="mode-btn active" data-mode="nav">Nav</button>
+  <button class="mode-btn" data-mode="api">API</button>
+  <button class="mode-btn" data-mode="redux">Redux</button>
+</div>
+
+<div id="legend"></div>
+<div id="hint">Scroll — zoom · Drag — pan<br>Click node — focus · Click bg — reset</div>
+<div id="tooltip"></div>
+
+<svg id="graph"></svg>
+
+<script>
+const GROUPS = {
+  public:    { label: 'Публичные',     color: '#1f6feb' },
+  auth:      { label: 'Аутентификация',color: '#388bfd' },
+  dashboard: { label: 'Dashboard',     color: '#3fb950' },
+  master:    { label: 'Мастер',        color: '#d29922' },
+  shared:    { label: 'Общие',         color: '#6e7681' },
+};
+
+const REDUX_COLORS = {
+  authSlice:     '#d29922',
+  locationSlice: '#3fb950',
+  searchSlice:   '#d2a8ff',
+  none:          '#484f58',
+};
+
+const nodes = [
+  // ── PUBLIC ──
+  {
+    id: 'search', group: 'public',
+    label: 'Поиск', route: '/',
+    component: 'SearchPage',
+    desc: 'Главная страница. Поиск салонов/мастеров по карте и тексту. Bento-сетка результатов.',
+    api: [
+      { method:'GET', path:'/api/v1/search' },
+      { method:'GET', path:'/api/v1/places/search' },
+      { method:'GET', path:'/api/v1/geo/reverse' },
+      { method:'GET', path:'/api/v1/geo/cities' },
+    ],
+    redux: ['searchSlice','locationSlice'],
+  },
+  {
+    id: 'salon', group: 'public',
+    label: 'Салон', route: '/salon/:id',
+    component: 'SalonPage',
+    desc: 'Публичная страница салона. Описание, мастера, услуги. Dual-mode: /salon/:uuid и /place/:externalId.',
+    api: [
+      { method:'GET', path:'/api/v1/salons/:id' },
+      { method:'GET', path:'/api/v1/salons/:id/masters' },
+      { method:'GET', path:'/api/v1/places/item/:id' },
+    ],
+    redux: ['locationSlice'],
+  },
+  {
+    id: 'master_public', group: 'public',
+    label: 'Мастер (публ.)', route: '/masters/:id',
+    component: 'MasterPublicPage',
+    desc: 'Публичный профиль мастера. Портфолио, услуги, отзывы.',
+    api: [
+      { method:'GET', path:'/api/v1/masters/:id' },
+    ],
+    redux: [],
+  },
+  {
+    id: 'booking', group: 'public',
+    label: 'Бронирование', route: '/salon/:id/book',
+    component: 'GuestBookingWizard',
+    desc: 'Гостевой wizard: выбор услуг → мастер → слот → контакты. Без регистрации.',
+    api: [
+      { method:'GET',  path:'/api/v1/salons/:id/masters' },
+      { method:'GET',  path:'/api/v1/salons/:id/slots' },
+      { method:'POST', path:'/api/v1/salons/:id/bookings' },
+    ],
+    redux: ['locationSlice'],
+  },
+  // ── AUTH ──
+  {
+    id: 'login', group: 'auth',
+    label: 'Вход / OTP', route: '/login',
+    component: 'AuthByPhonePage',
+    desc: 'Вход по номеру телефона. OTP 4 цифры, 5 мин. JWT access+refresh.',
+    api: [
+      { method:'POST', path:'/api/auth/otp/request' },
+      { method:'POST', path:'/api/auth/otp/verify' },
+      { method:'POST', path:'/api/auth/refresh' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'profile', group: 'auth',
+    label: 'Профиль', route: '/profile',
+    component: 'ProfilePage',
+    desc: 'Профиль текущего пользователя. Просмотр данных аккаунта.',
+    api: [
+      { method:'GET',  path:'/api/auth/me' },
+      { method:'POST', path:'/api/auth/logout' },
+    ],
+    redux: ['authSlice'],
+  },
+  // ── DASHBOARD ──
+  {
+    id: 'dashboard', group: 'dashboard',
+    label: 'Dashboard', route: '/dashboard',
+    component: 'DashboardPage',
+    desc: 'Дашборд салона. Корневой лейаут с сайдбаром и навигацией.',
+    api: [],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_calendar', group: 'dashboard',
+    label: 'Календарь', route: '/dashboard/calendar',
+    component: 'CalendarView',
+    desc: 'Календарь записей (день/неделя/месяц). DnD перетаскивание, NowLine, аватарки мастеров.',
+    api: [
+      { method:'GET',   path:'/api/v1/dashboard/appointments' },
+      { method:'POST',  path:'/api/v1/dashboard/appointments' },
+      { method:'PUT',   path:'/api/v1/dashboard/appointments/:id' },
+      { method:'PATCH', path:'/api/v1/dashboard/appointments/:id' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_appointments', group: 'dashboard',
+    label: 'Записи', route: '/dashboard/appointments',
+    component: 'AppointmentsListView',
+    desc: 'Список всех записей с фильтрами по статусу, мастеру, дате.',
+    api: [
+      { method:'GET',   path:'/api/v1/dashboard/appointments' },
+      { method:'PATCH', path:'/api/v1/dashboard/appointments/:id' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_services', group: 'dashboard',
+    label: 'Услуги', route: '/dashboard/services',
+    component: 'ServicesView',
+    desc: 'Управление каталогом услуг. CRUD категорий и отдельных услуг.',
+    api: [
+      { method:'GET',    path:'/api/v1/dashboard/services' },
+      { method:'POST',   path:'/api/v1/dashboard/services' },
+      { method:'GET',    path:'/api/v1/dashboard/service-categories' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_staff', group: 'dashboard',
+    label: 'Персонал', route: '/dashboard/staff',
+    component: 'StaffView',
+    desc: 'Управление мастерами. Инвайты, привязка услуг, расписание.',
+    api: [
+      { method:'GET',    path:'/api/v1/dashboard/salon-masters' },
+      { method:'POST',   path:'/api/v1/dashboard/salon-masters' },
+      { method:'PUT',    path:'/api/v1/dashboard/salon-masters/:id/services' },
+      { method:'POST',   path:'/api/v1/dashboard/master-invites' },
+      { method:'GET',    path:'/api/v1/dashboard/masters/lookup' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_schedule', group: 'dashboard',
+    label: 'Расписание', route: '/dashboard/schedule',
+    component: 'ScheduleView',
+    desc: 'Расписание работы мастеров по дням недели.',
+    api: [
+      { method:'GET', path:'/api/v1/dashboard/schedule' },
+      { method:'GET', path:'/api/v1/dashboard/slots' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_stats', group: 'dashboard',
+    label: 'Статистика', route: '/dashboard/stats',
+    component: 'StatsView',
+    desc: 'Статистика салона: выручка, записи, популярные услуги.',
+    api: [
+      { method:'GET', path:'/api/v1/dashboard/stats' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_clients', group: 'dashboard',
+    label: 'Клиенты (CRM)', route: '/dashboard/clients',
+    component: 'ClientsListView',
+    desc: 'CRM-модуль. Список клиентов, теги, история визитов, merge guest→user.',
+    api: [
+      { method:'GET',    path:'/api/v1/dashboard/clients' },
+      { method:'GET',    path:'/api/v1/dashboard/clients/tags' },
+      { method:'POST',   path:'/api/v1/dashboard/clients/tags' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_client_detail', group: 'dashboard',
+    label: 'Клиент', route: '/dashboard/clients/:id',
+    component: 'ClientDetailView',
+    desc: 'Профиль клиента: контакты, теги, полная история записей.',
+    api: [
+      { method:'GET',   path:'/api/v1/dashboard/clients/:id' },
+      { method:'PUT',   path:'/api/v1/dashboard/clients/:id' },
+      { method:'GET',   path:'/api/v1/dashboard/clients/:id/appointments' },
+      { method:'POST',  path:'/api/v1/dashboard/clients/:id/tags' },
+      { method:'DELETE',path:'/api/v1/dashboard/clients/:id/tags' },
+      { method:'POST',  path:'/api/v1/dashboard/clients/:id/merge' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'dash_profile', group: 'dashboard',
+    label: 'Профиль салона', route: '/dashboard/profile',
+    component: 'SalonProfileView',
+    desc: 'Редактирование публичного профиля салона: название, адрес, фото.',
+    api: [
+      { method:'GET', path:'/api/v1/dashboard/salon/profile' },
+      { method:'PUT', path:'/api/v1/dashboard/salon/profile' },
+    ],
+    redux: ['authSlice'],
+  },
+  // ── MASTER ──
+  {
+    id: 'master_dash', group: 'master',
+    label: 'Кабинет мастера', route: '/master-dashboard',
+    component: 'MasterDashboardPage',
+    desc: 'Личный кабинет мастера. Профиль, инвайты от салонов, записи.',
+    api: [
+      { method:'GET', path:'/api/v1/master-dashboard/profile' },
+      { method:'PUT', path:'/api/v1/master-dashboard/profile' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'master_invites', group: 'master',
+    label: 'Инвайты', route: '/master-dashboard/invites',
+    component: 'MasterInvitesView',
+    desc: 'Входящие приглашения от салонов. Принять/отклонить.',
+    api: [
+      { method:'GET',   path:'/api/v1/master-dashboard/invites' },
+      { method:'POST',  path:'/api/v1/master-dashboard/invites/:id/accept' },
+      { method:'DELETE',path:'/api/v1/master-dashboard/invites/:id' },
+    ],
+    redux: ['authSlice'],
+  },
+  {
+    id: 'master_appointments', group: 'master',
+    label: 'Записи мастера', route: '/master-dashboard/appointments',
+    component: 'MasterAppointmentsView',
+    desc: 'Личные записи мастера по всем салонам.',
+    api: [
+      { method:'GET', path:'/api/v1/master-dashboard/appointments' },
+    ],
+    redux: ['authSlice'],
+  },
+  // ── SHARED ──
+  {
+    id: 'not_found', group: 'shared',
+    label: '404', route: '*',
+    component: 'NotFoundPage',
+    desc: 'Страница 404. Редирект на поиск.',
+    api: [],
+    redux: [],
+  },
+  {
+    id: 'place_redirect', group: 'shared',
+    label: 'Place redirect', route: '/place/:externalId',
+    component: 'PlaceRedirectPage',
+    desc: 'Редирект с 2GIS external ID на /salon/:uuid.',
+    api: [
+      { method:'GET', path:'/api/v1/places/item/:id' },
+    ],
+    redux: [],
+  },
+];
+
+const links = [
+  // public navigation
+  { source:'search',      target:'salon',             label:'открыть салон' },
+  { source:'search',      target:'master_public',     label:'открыть мастера' },
+  { source:'search',      target:'login',             label:'войти' },
+  { source:'salon',       target:'booking',           label:'забронировать' },
+  { source:'salon',       target:'master_public',     label:'профиль мастера' },
+  { source:'booking',     target:'login',             label:'войти (OTP)' },
+  { source:'place_redirect',target:'salon',           label:'redirect' },
+  // auth
+  { source:'login',       target:'profile',           label:'успешный вход' },
+  { source:'login',       target:'dashboard',         label:'если salon owner' },
+  { source:'login',       target:'master_dash',       label:'если мастер' },
+  // dashboard internal
+  { source:'dashboard',   target:'dash_calendar',     label:'календарь' },
+  { source:'dashboard',   target:'dash_appointments', label:'записи' },
+  { source:'dashboard',   target:'dash_services',     label:'услуги' },
+  { source:'dashboard',   target:'dash_staff',        label:'персонал' },
+  { source:'dashboard',   target:'dash_schedule',     label:'расписание' },
+  { source:'dashboard',   target:'dash_stats',        label:'статистика' },
+  { source:'dashboard',   target:'dash_clients',      label:'клиенты' },
+  { source:'dashboard',   target:'dash_profile',      label:'профиль' },
+  { source:'dash_clients',target:'dash_client_detail',label:'открыть клиента' },
+  { source:'dash_staff',  target:'master_public',     label:'профиль' },
+  // master dashboard
+  { source:'master_dash', target:'master_invites',    label:'инвайты' },
+  { source:'master_dash', target:'master_appointments',label:'записи' },
+  // error
+  { source:'not_found',   target:'search',            label:'на главную' },
+];
+
+// ───────────────────────────────────────────────
+// Setup D3
+
+let currentMode = 'nav';
+let focusedGroup = null;
+
+const svg = d3.select('#svg').node() ? d3.select('#svg') : d3.select('svg#graph');
+const tooltip = document.getElementById('tooltip');
+
+const width  = () => window.innerWidth;
+const height = () => window.innerHeight;
+
+// Defs
+const defs = svg.append('defs');
+defs.append('marker')
+  .attr('id','arrow')
+  .attr('viewBox','0 -4 8 8')
+  .attr('refX',18).attr('refY',0)
+  .attr('markerWidth',6).attr('markerHeight',6)
+  .attr('orient','auto')
+  .append('path')
+    .attr('d','M0,-4L8,0L0,4')
+    .attr('fill','#30363d');
+
+// Glow filter
+const filter = defs.append('filter').attr('id','glow');
+filter.append('feGaussianBlur').attr('stdDeviation','3').attr('result','coloredBlur');
+const feMerge = filter.append('feMerge');
+feMerge.append('feMergeNode').attr('in','coloredBlur');
+feMerge.append('feMergeNode').attr('in','SourceGraphic');
+
+const g = svg.append('g');
+
+// Zoom
+const zoom = d3.zoom()
+  .scaleExtent([0.2, 3])
+  .on('zoom', e => g.attr('transform', e.transform));
+svg.call(zoom);
+svg.on('click', (e) => {
+  if (e.target === svg.node()) resetFocus();
+});
+
+// Simulation
+const sim = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d=>d.id).distance(d => {
+    if (d.source.group === d.target.group) return 120;
+    return 200;
+  }).strength(0.6))
+  .force('charge', d3.forceManyBody().strength(-600))
+  .force('center', d3.forceCenter(0, 0))
+  .force('x', d3.forceX().strength(0.04))
+  .force('y', d3.forceY().strength(0.04))
+  .force('collide', d3.forceCollide(38));
+
+// Cluster force
+const clusterTargets = {
+  public:    { x: -300, y: -200 },
+  auth:      { x:  300, y: -200 },
+  dashboard: { x: -200, y:  200 },
+  master:    { x:  250, y:  250 },
+  shared:    { x:    0, y:  320 },
+};
+sim.force('cluster', alpha => {
+  nodes.forEach(d => {
+    const t = clusterTargets[d.group];
+    if (!t) return;
+    d.vx += (t.x - d.x) * 0.04 * alpha;
+    d.vy += (t.y - d.y) * 0.04 * alpha;
+  });
+});
+
+// ─── Links ───
+const linkG = g.append('g').attr('class','links');
+const linkSel = linkG.selectAll('.link')
+  .data(links).enter().append('path')
+    .attr('class','link')
+    .attr('fill','none')
+    .attr('stroke','#30363d')
+    .attr('stroke-width', 1.2)
+    .attr('marker-end','url(#arrow)');
+
+const linkLabelSel = linkG.selectAll('.link-label')
+  .data(links).enter().append('text')
+    .attr('class','link-label')
+    .text(d => currentMode === 'api' && d.apiLabel ? d.apiLabel : d.label);
+
+// ─── Nodes ───
+const nodeG = g.append('g').attr('class','nodes');
+const nodeGSel = nodeG.selectAll('.node-group')
+  .data(nodes).enter().append('g')
+    .attr('class','node-group')
+    .call(d3.drag()
+      .on('start', (e,d) => { if(!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; })
+      .on('end',   (e,d) => { if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+    )
+    .on('click', (e, d) => { e.stopPropagation(); focusNode(d); })
+    .on('mouseover', (e, d) => showTooltip(e, d))
+    .on('mousemove',  (e) => moveTooltip(e))
+    .on('mouseout',  ()  => hideTooltip());
+
+nodeGSel.append('circle')
+  .attr('class','node-circle')
+  .attr('r', 20)
+  .attr('fill', d => GROUPS[d.group].color + '22')
+  .attr('stroke', d => GROUPS[d.group].color)
+  .attr('stroke-width', 1.5);
+
+// API badge (green, top-right)
+nodeGSel.filter(d => d.api.length > 0)
+  .append('circle').attr('class','badge-api-bg')
+    .attr('cx', 13).attr('cy', -13).attr('r', 8)
+    .attr('fill','#0d4429').attr('stroke','#3fb950').attr('stroke-width',1);
+nodeGSel.filter(d => d.api.length > 0)
+  .append('text').attr('class','node-badge')
+    .attr('x',13).attr('y',-10).attr('text-anchor','middle')
+    .attr('fill','#3fb950').text(d => d.api.length);
+
+// Redux badge (amber, top-left)
+nodeGSel.filter(d => d.redux.length > 0)
+  .append('circle').attr('class','badge-redux-bg')
+    .attr('cx',-13).attr('cy',-13).attr('r',8)
+    .attr('fill','#2d1f00').attr('stroke','#d29922').attr('stroke-width',1);
+nodeGSel.filter(d => d.redux.length > 0)
+  .append('text').attr('class','node-badge')
+    .attr('x',-13).attr('y',-10).attr('text-anchor','middle')
+    .attr('fill','#d29922').text(d => d.redux.length);
+
+nodeGSel.append('text')
+  .attr('class','node-label')
+  .attr('y', 34)
+  .attr('text-anchor','middle')
+  .text(d => d.label);
+
+// ─── Simulation tick ───
+sim.on('tick', () => {
+  linkSel.attr('d', d => {
+    const dx = d.target.x - d.source.x;
+    const dy = d.target.y - d.source.y;
+    const dr = Math.sqrt(dx*dx + dy*dy) * 0.6;
+    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+  });
+  linkLabelSel
+    .attr('x', d => (d.source.x + d.target.x) / 2)
+    .attr('y', d => (d.source.y + d.target.y) / 2 - 4);
+  nodeGSel.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// Initial zoom-to-fit
+setTimeout(() => {
+  const bounds = g.node().getBBox();
+  const W = width(), H = height();
+  const scale = 0.85 / Math.max(bounds.width / W, bounds.height / H);
+  const tx = W/2 - scale * (bounds.x + bounds.width/2);
+  const ty = H/2 - scale * (bounds.y + bounds.height/2);
+  svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+}, 800);
+
+// ─── Mode toggle ───
+function applyMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+
+  if (mode === 'redux') {
+    nodeGSel.selectAll('circle.node-circle')
+      .attr('fill', d => {
+        const c = d.redux.length ? REDUX_COLORS[d.redux[0]] : REDUX_COLORS.none;
+        return c + '33';
+      })
+      .attr('stroke', d => {
+        return d.redux.length ? REDUX_COLORS[d.redux[0]] : REDUX_COLORS.none;
+      });
+  } else {
+    nodeGSel.selectAll('circle.node-circle')
+      .attr('fill', d => GROUPS[d.group].color + '22')
+      .attr('stroke', d => GROUPS[d.group].color);
+  }
+
+  linkLabelSel.text(d => {
+    if (mode === 'api' && d.apiLabel) return d.apiLabel;
+    return d.label;
+  });
+}
+
+document.querySelectorAll('.mode-btn').forEach(b => {
+  b.addEventListener('click', () => applyMode(b.dataset.mode));
+});
+
+// ─── Legend ───
+const legendEl = document.getElementById('legend');
+Object.entries(GROUPS).forEach(([key, g]) => {
+  const pill = document.createElement('div');
+  pill.className = 'legend-pill';
+  pill.innerHTML = `<span class="legend-dot" style="background:${g.color}"></span>${g.label}`;
+  pill.addEventListener('click', () => {
+    if (focusedGroup === key) {
+      focusedGroup = null;
+      pill.classList.remove('dimmed');
+      document.querySelectorAll('.legend-pill').forEach(p => p.classList.remove('dimmed'));
+      nodeGSel.style('opacity', 1);
+      linkSel.style('opacity', 0.4);
+    } else {
+      focusedGroup = key;
+      document.querySelectorAll('.legend-pill').forEach(p => p.classList.add('dimmed'));
+      pill.classList.remove('dimmed');
+      nodeGSel.style('opacity', d => d.group === key ? 1 : 0.15);
+      linkSel.style('opacity', d => (d.source.group === key || d.target.group === key) ? 0.5 : 0.05);
+    }
+  });
+  legendEl.appendChild(pill);
+});
+
+// Redux legend
+if (currentMode === 'redux') {
+  Object.entries(REDUX_COLORS).forEach(([k, c]) => {
+    const pill = document.createElement('div');
+    pill.className = 'legend-pill';
+    pill.innerHTML = `<span class="legend-dot" style="background:${c}"></span>${k}`;
+    legendEl.appendChild(pill);
+  });
+}
+
+// ─── Tooltip ───
+function showTooltip(e, d) {
+  const apiHtml = d.api.length
+    ? `<div class="tt-section" style="margin-top:8px">API</div>` +
+      d.api.map(a => `<div class="tt-api-item"><span class="method-badge ${a.method}">${a.method}</span>${a.path}</div>`).join('')
+    : '';
+  const reduxHtml = d.redux.length
+    ? `<div class="tt-section" style="margin-top:8px">Redux</div><div class="tt-redux">${d.redux.map(r=>`<span class="redux-chip">${r}</span>`).join('')}</div>`
+    : '';
+  tooltip.innerHTML = `
+    <div class="tt-route">${d.route}</div>
+    <div class="tt-name">${d.label}</div>
+    <div class="tt-comp">${d.component}</div>
+    <div class="tt-desc">${d.desc}</div>
+    ${apiHtml}${reduxHtml}
+  `;
+  tooltip.classList.add('visible');
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const x = e.clientX + 16;
+  const y = e.clientY - 20;
+  const tw = 280, th = tooltip.offsetHeight;
+  tooltip.style.left = (x + tw > window.innerWidth ? x - tw - 32 : x) + 'px';
+  tooltip.style.top  = (y + th > window.innerHeight ? y - th : y) + 'px';
+}
+function hideTooltip() { tooltip.classList.remove('visible'); }
+
+// ─── Focus ───
+function focusNode(d) {
+  const connected = new Set([d.id]);
+  links.forEach(l => {
+    if (l.source.id === d.id) connected.add(l.target.id);
+    if (l.target.id === d.id) connected.add(l.source.id);
+  });
+  nodeGSel.style('opacity', n => connected.has(n.id) ? 1 : 0.1);
+  linkSel.style('opacity', l => (l.source.id === d.id || l.target.id === d.id) ? 0.7 : 0.03);
+  // zoom to node
+  const scale = 1.6;
+  svg.transition().duration(600).call(
+    zoom.transform,
+    d3.zoomIdentity
+      .translate(width()/2, height()/2)
+      .scale(scale)
+      .translate(-d.x, -d.y)
+  );
+}
+function resetFocus() {
+  nodeGSel.style('opacity', 1);
+  linkSel.style('opacity', 0.4);
+  svg.transition().duration(500).call(
+    zoom.transform, d3.zoomIdentity.translate(width()/2, height()/2).scale(1)
+  );
+}
+
+// Resize
+window.addEventListener('resize', () => {
+  sim.force('center', d3.forceCenter(0,0));
+});
+</script>
+</body>
+</html>

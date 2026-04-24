@@ -1,7 +1,7 @@
 # Сводка: мульти-услуга в гостевой записи, `appointment_line_items`, дашборд
 
 > Единый документ по сделанной работе (ветка функционала: гостевая запись с несколькими услугами, снимки в БД, отображение и фильтры в кабинете салона и у мастера).  
-> Связанные планы: [`docs/plans/multi-service-guest-booking.md`](plans/multi-service-guest-booking.md), [`.cursor/plans/multi-service_guest_booking_b1bf7af7.plan.md`](../.cursor/plans/multi-service_guest_booking_b1bf7af7.plan.md), [`.cursor/plans/dashboard_multi-service_labels_a275cf04.plan.md`](../.cursor/plans/dashboard_multi-service_labels_a275cf04.plan.md).
+> Связанные планы (архив): [`docs/archive/vault-plans-2026-04-24/multi-service-guest-booking.md`](archive/vault-plans-2026-04-24/multi-service-guest-booking.md), [`.cursor/plans/multi-service_guest_booking_b1bf7af7.plan.md`](../.cursor/plans/multi-service_guest_booking_b1bf7af7.plan.md), [`.cursor/plans/dashboard_multi-service_labels_a275cf04.plan.md`](../.cursor/plans/dashboard_multi-service_labels_a275cf04.plan.md).
 
 ---
 
@@ -69,10 +69,10 @@
 
 ## 7. Документация в репозитории (обновлено в рамках темы)
 
-- [`docs/architecture.md`](architecture.md) — HTTP-роуты, §7 кабинет салона, таблица `appointment_line_items`, `salonApi`.
-- [`docs/status.md`](status.md) — блок «Мульти-услуга — гость и дашборд (итог)».
-- [`docs/context.md`](context.md) — продуктовое описание онлайн-записи и дашборда, чеклист.
-- [`docs/plans/multi-service-guest-booking.md`](plans/multi-service-guest-booking.md) — §12 (дашборд), §11 (риски), правки по мере реализации.
+- [`docs/vault/architecture/api-flows.md`](vault/architecture/api-flows.md) — HTTP-флоу, кабинет салона, `salonApi`.
+- [`docs/vault/product/status.md`](vault/product/status.md) — блок «Мульти-услуга — гость и дашборд (итог)».
+- [`docs/vault/product/context.md`](vault/product/context.md) — продуктовое описание онлайн-записи и дашборда, чеклист.
+- [`docs/archive/vault-plans-2026-04-24/multi-service-guest-booking.md`](archive/vault-plans-2026-04-24/multi-service-guest-booking.md) — §12 (дашборд), §11 (риски), правки по мере реализации.
 
 ---
 
@@ -91,7 +91,7 @@ cd frontend && npm run lint && npm run build
 
 - **Редактирование мульти-визита в дашборде:** сейчас `PUT` записи и drawer могут опираться на одну «основную» услугу; явный UX «добавить / убрать услугу из визита» с пересчётом времени и line items.
 - **Календарь:** при желании отдельный бейдж «+N услуг» или разворачиваемая подсказка вместо длинной строки `serviceName`.
-- **Запись с публичного профиля мастера** (`MasterPage`): тот же мульти-флоу или отдельный канал цен — по [`multi-service-guest-booking.md`](plans/multi-service-guest-booking.md) (сценарий 1).
+- **Запись с публичного профиля мастера** (`MasterPage`): тот же мульти-флоу или отдельный канал цен — по [`multi-service-guest-booking.md`](archive/vault-plans-2026-04-24/multi-service-guest-booking.md) (сценарий 1).
 
 ### Данные и API
 
@@ -117,7 +117,7 @@ cd frontend && npm run lint && npm run build
 
 ### Документация
 
-- Держать этот файл в актуальном виде при следующих изменениях мульти-визита или ссылаться на него из [`docs/status.md`](status.md) одной строкой, чтобы не дублировать длинные описания.
+- Держать этот файл в актуальном виде при следующих изменениях мульти-визита или ссылаться на него из [`docs/vault/product/status.md`](vault/product/status.md) одной строкой, чтобы не дублировать длинные описания.
 
 ---
 

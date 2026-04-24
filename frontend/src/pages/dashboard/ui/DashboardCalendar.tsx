@@ -71,8 +71,6 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
   )
 }
 
-
-
 export function DashboardCalendar() {
   const d = useDashboardPalette()
   const narrow = useMediaQuery('(max-width:600px)')
@@ -227,10 +225,6 @@ export function DashboardCalendar() {
     setCreateOpen(true)
   }
 
-
-
-
-
   const handleAppointmentMoved = useCallback(
     async (update: {
       id: string
@@ -289,17 +283,15 @@ export function DashboardCalendar() {
     color: d.text,
     border: `1px solid ${d.border}`,
     transition: 'all 0.2s',
-    '&:hover': { 
-      bgcolor: d.controlHover, 
+    '&:hover': {
+      bgcolor: d.controlHover,
       borderColor: d.borderLight,
       transform: 'translateY(-1px)',
     },
     '&:active': {
       transform: 'translateY(0)',
-    }
+    },
   }
-
-
 
   return (
     <Box>
@@ -385,7 +377,11 @@ export function DashboardCalendar() {
               bgcolor: d.accent,
               color: d.onAccent,
               borderColor: 'transparent',
-              '&:hover': { bgcolor: '#e4a882', color: d.onAccent, boxShadow: `0 4px 12px ${d.accent}40` },
+              '&:hover': {
+                bgcolor: '#e4a882',
+                color: d.onAccent,
+                boxShadow: `0 4px 12px ${d.accent}40`,
+              },
             }}
             onClick={() => setAnchor(new Date())}
           >
@@ -456,7 +452,15 @@ export function DashboardCalendar() {
             setMode('day')
           }}
           slotDurationMinutes={slotDurationMinutes}
-          onAppointmentMoved={handleAppointmentMoved}
+          onAppointmentMoved={p =>
+            handleAppointmentMoved({
+              id: p?.id ?? '',
+              startsAt: p?.ymd ?? '',
+              endsAt: p?.ymd ?? '',
+              salonMasterId: p?.columnId ?? '',
+              clearSalonMasterId: false,
+            })
+          }
         />
       ) : mode === 'day' ? (
         <CalendarDayStaffGrid
@@ -468,7 +472,15 @@ export function DashboardCalendar() {
           onEmptyClick={(staffId, slotStart) => openCreateAtSlot(slotStart, staffId)}
           staffSchedules={staffSchedules}
           slotDurationMinutes={slotDurationMinutes}
-          onAppointmentMoved={handleAppointmentMoved}
+          onAppointmentMoved={p =>
+            handleAppointmentMoved({
+              id: p?.id ?? '',
+              startsAt: p?.ymd ?? '',
+              endsAt: p?.ymd ?? '',
+              salonMasterId: p?.columnId ?? '',
+              clearSalonMasterId: false,
+            })
+          }
         />
       ) : (
         <CalendarMonthGrid

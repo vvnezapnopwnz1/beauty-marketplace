@@ -1,7 +1,7 @@
 # AI Operating Guide
 
 This file is the shared source of truth for AI coding agents in this repository.
-Tool-specific wrappers (`.cursor/rules/*`, `CLAUDE.md`) should point to this guide and not duplicate logic.
+Tool-specific wrappers (`.cursor/rules/*`, `CLAUDE.md`) should point to this guide and not duplicate logic. **Cursor** and **Claude Code** share the same vault bootstrap: read `docs/vault/README.md` + `docs/vault/product/status.md` before substantive work (see §7 and `.cursor/rules/00-core.mdc`).
 
 ## 1) Project Context
 
@@ -51,3 +51,10 @@ If a command cannot be run locally, report what is missing and provide exact com
 - Use only approved MCP servers configured in workspace.
 - Before calling a new MCP tool, read its schema/descriptor first.
 - Do not install or configure "shadow MCP" servers without explicit user approval.
+
+## 7) Documentation contract
+
+- **Canonical docs** live under **`docs/vault/`** (Obsidian vault): [`docs/vault/README.md`](docs/vault/README.md) is the map of content; product state in [`docs/vault/product/status.md`](docs/vault/product/status.md).
+- **Do not** treat root-level `docs/archive/*-monolith-*.md` as the live source of truth — those files are historical snapshots with deprecation banners.
+- When you change APIs, schema, or major behavior, update the matching vault note (architecture, ADR, or `product/status.md`) in the same change set when practical.
+- Completed planning docs live in **`docs/archive/vault-plans-2026-04-24/`**; active entity specs in **`docs/vault/entities/`**. Do not recreate removed top-level **`plans`** or **`entities`** folders directly under `docs/` (use vault + archive instead).

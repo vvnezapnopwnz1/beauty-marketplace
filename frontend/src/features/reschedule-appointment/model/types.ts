@@ -11,7 +11,7 @@ export type DropPreviewState = {
 
 export interface RescheduleHookProps {
   items: DashboardAppointment[]
-  onAppointmentMoved?: (update: any) => Promise<void>
+  onAppointmentMoved?: (update: DropPreviewState) => Promise<void>
   slotDurationMinutes: number
   pxPerMinute: number
   hourStart: number

@@ -20,11 +20,9 @@ import {
   snapClickYToQuarterHour,
   toLocalYMD,
 } from '../lib/calendarGridUtils'
-import {
-  canDragAppointmentStatus,
-  dragIdForWeekCell,
-  dropIdWeekDay,
-} from '../lib/dndCalendarUtils'
+import { canDragAppointmentStatus, dragIdForWeekCell, dropIdWeekDay } from '../lib/dndCalendarUtils'
+import { SxProps, Theme } from '@mui/material'
+import { DropPreviewState } from '@features/reschedule-appointment/model/types'
 
 type Props = {
   weekDays: Date[]
@@ -34,7 +32,7 @@ type Props = {
   onEmptyClick: (day: Date, slotStart: Date) => void
   onDayHeaderClick?: (day: Date) => void
   slotDurationMinutes?: number
-  onAppointmentMoved?: (p: any) => Promise<void>
+  onAppointmentMoved?: (p: DropPreviewState) => Promise<void>
 }
 
 function NowLine({ day }: { day: Date }) {
@@ -48,7 +46,17 @@ function NowLine({ day }: { day: Date }) {
   if (top === null) return null
   return (
     <Box sx={{ position: 'absolute', left: 0, right: 0, top, zIndex: 10, pointerEvents: 'none' }}>
-      <Box sx={{ position: 'absolute', left: -3, top: -4, width: 8, height: 8, borderRadius: '50%', bgcolor: d.red }} />
+      <Box
+        sx={{
+          position: 'absolute',
+          left: -3,
+          top: -4,
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          bgcolor: d.red,
+        }}
+      />
       <Box sx={{ position: 'absolute', left: 6, right: 0, top: -1, height: 2, bgcolor: d.red }} />
     </Box>
   )
@@ -85,7 +93,7 @@ function DraggableWeekAppointment({
       leftPct={leftPct}
       widthPct={widthPct}
       dragging={isDragging}
-      dndRef={(el) => ref(el as any)}
+      dndRef={el => ref(el as HTMLDivElement)}
       onClick={() => onEventClick(apt)}
     />
   )
@@ -103,8 +111,8 @@ function WeekDroppableDayColumn({
   dropId: string
   ymd: string
   highlight: boolean
-  dropPreview: any
-  sx: object
+  dropPreview: DropPreviewState | null
+  sx: SxProps<Theme>
   onClick: (e: MouseEvent<HTMLDivElement>) => void
   children: ReactNode
 }) {
@@ -113,7 +121,7 @@ function WeekDroppableDayColumn({
   const preview = dropPreview?.ymd === ymd ? dropPreview : null
   return (
     <Box
-      ref={(el) => ref(el as any)}
+      ref={el => ref(el as HTMLDivElement)}
       onClick={onClick}
       sx={{
         ...sx,
@@ -140,7 +148,9 @@ function WeekDroppableDayColumn({
             transition: 'top 80ms ease-out',
           }}
         >
-          {!preview.isValid && <Typography sx={{ fontSize: 12, color: 'error.main' }}>⊘</Typography>}
+          {!preview.isValid && (
+            <Typography sx={{ fontSize: 12, color: 'error.main' }}>⊘</Typography>
+          )}
         </Box>
       )}
     </Box>
@@ -197,18 +207,70 @@ export function CalendarWeekGrid({
     >
       <Box sx={{ bgcolor: d.gridHeader, p: 1, minHeight: 44 }} />
       {weekDays.map(day => {
-        const isToday = day.getFullYear() === today.getFullYear() && day.getMonth() === today.getMonth() && day.getDate() === today.getDate()
+        const isToday =
+          day.getFullYear() === today.getFullYear() &&
+          day.getMonth() === today.getMonth() &&
+          day.getDate() === today.getDate()
         return (
-          <Box key={toLocalYMD(day)} onClick={() => onDayHeaderClick?.(day)} sx={{ bgcolor: isToday ? `${d.accent}18` : d.gridHeader, p: 1, textAlign: 'center', cursor: onDayHeaderClick ? 'pointer' : 'default', transition: 'background 0.15s', '&:hover': onDayHeaderClick ? { bgcolor: isToday ? `${d.accent}28` : d.controlHover } : {} }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 600, color: isToday ? d.accent : d.text, lineHeight: 1.2 }}>{day.toLocaleDateString('ru-RU', { weekday: 'short' }).toUpperCase()}</Typography>
-            <Typography sx={{ fontSize: isToday ? 13 : 11, fontWeight: isToday ? 700 : 400, color: isToday ? d.accent : d.mutedDark, lineHeight: 1.2 }}>{day.getDate()}</Typography>
+          <Box
+            key={toLocalYMD(day)}
+            onClick={() => onDayHeaderClick?.(day)}
+            sx={{
+              bgcolor: isToday ? `${d.accent}18` : d.gridHeader,
+              p: 1,
+              textAlign: 'center',
+              cursor: onDayHeaderClick ? 'pointer' : 'default',
+              transition: 'background 0.15s',
+              '&:hover': onDayHeaderClick
+                ? { bgcolor: isToday ? `${d.accent}28` : d.controlHover }
+                : {},
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: isToday ? d.accent : d.text,
+                lineHeight: 1.2,
+              }}
+            >
+              {day.toLocaleDateString('ru-RU', { weekday: 'short' }).toUpperCase()}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: isToday ? 13 : 11,
+                fontWeight: isToday ? 700 : 400,
+                color: isToday ? d.accent : d.mutedDark,
+                lineHeight: 1.2,
+              }}
+            >
+              {day.getDate()}
+            </Typography>
           </Box>
         )
       })}
 
       <Box sx={{ bgcolor: d.timeColumn, position: 'relative', height: timelineH }}>
         {hours.map(h => (
-          <Box key={h} sx={{ position: 'absolute', left: 0, right: 0, top: (h - CALENDAR_HOUR_START) * CALENDAR_HOUR_HEIGHT_PX, height: CALENDAR_HOUR_HEIGHT_PX, pl: 0.5, pr: 0.25, fontSize: 10, color: d.mutedDark, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', pt: 0.25, pointerEvents: 'none' }}>
+          <Box
+            key={h}
+            sx={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: (h - CALENDAR_HOUR_START) * CALENDAR_HOUR_HEIGHT_PX,
+              height: CALENDAR_HOUR_HEIGHT_PX,
+              pl: 0.5,
+              pr: 0.25,
+              fontSize: 10,
+              color: d.mutedDark,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              pt: 0.25,
+              pointerEvents: 'none',
+            }}
+          >
             {String(h).padStart(2, '0')}:00
           </Box>
         ))}
@@ -236,10 +298,30 @@ export function CalendarWeekGrid({
             }}
           >
             {hours.map(h => (
-              <Box key={h} sx={{ position: 'absolute', left: 0, right: 0, top: (h - CALENDAR_HOUR_START) * CALENDAR_HOUR_HEIGHT_PX, height: CALENDAR_HOUR_HEIGHT_PX, borderTop: `1px solid ${d.grid}`, pointerEvents: 'none' }} />
+              <Box
+                key={h}
+                sx={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: (h - CALENDAR_HOUR_START) * CALENDAR_HOUR_HEIGHT_PX,
+                  height: CALENDAR_HOUR_HEIGHT_PX,
+                  borderTop: `1px solid ${d.grid}`,
+                  pointerEvents: 'none',
+                }}
+              />
             ))}
             {layouts.map(l => (
-              <DraggableWeekAppointment key={`${ymd}-${l.apt.id}`} apt={l.apt} top={l.top} height={l.height} leftPct={l.leftPct} widthPct={l.widthPct} columnYmd={ymd} onEventClick={onEventClick} />
+              <DraggableWeekAppointment
+                key={`${ymd}-${l.apt.id}`}
+                apt={l.apt}
+                top={l.top}
+                height={l.height}
+                leftPct={l.leftPct}
+                widthPct={l.widthPct}
+                columnYmd={ymd}
+                onEventClick={onEventClick}
+              />
             ))}
             <NowLine day={day} />
           </WeekDroppableDayColumn>
@@ -250,12 +332,33 @@ export function CalendarWeekGrid({
 
   return (
     <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
-      <DragDropProvider sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      <DragDropProvider
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
         {grid}
-        <RescheduleDragOverlay activeDragApt={activeDragApt} pxPerMinute={CALENDAR_PX_PER_MINUTE} width={140} />
+        <RescheduleDragOverlay
+          activeDragApt={activeDragApt}
+          pxPerMinute={CALENDAR_PX_PER_MINUTE}
+          width={140}
+        />
       </DragDropProvider>
-      <Snackbar open={snackMsg.open} autoHideDuration={3500} onClose={() => setSnackMsg(s => ({ ...s, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity={snackMsg.severity} onClose={() => setSnackMsg(s => ({ ...s, open: false }))} sx={{ width: '100%' }}>{snackMsg.message}</Alert>
+      <Snackbar
+        open={snackMsg.open}
+        autoHideDuration={3500}
+        onClose={() => setSnackMsg(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackMsg.severity}
+          onClose={() => setSnackMsg(s => ({ ...s, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackMsg.message}
+        </Alert>
       </Snackbar>
     </Box>
   )

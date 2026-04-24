@@ -2,6 +2,12 @@
 
 Use `AGENTS.md` as the canonical instruction set for this project.
 
+**Cursor:** те же шаги закреплены в **`.cursor/rules/00-core.mdc`** и **`.cursor/rules/10-workflow.mdc`** (`alwaysApply: true`), чтобы агенты в IDE не зависели только от чтения `CLAUDE.md`.
+
+## Документация (обязательно)
+
+Перед любой задачей прочитай **[`docs/vault/README.md`](docs/vault/README.md)** (карта волта, MOC) и **[`docs/vault/product/status.md`](docs/vault/product/status.md)** (последние изменения и приоритеты). Источник правды по продукту и архитектуре — каталог **`docs/vault/`**; снимки старых монолитов — только в **`docs/archive/*-monolith-2026-04-24.md`**.
+
 ## Project
 
 - Monorepo: Go backend + React/TS frontend.

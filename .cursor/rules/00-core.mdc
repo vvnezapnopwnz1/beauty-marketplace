@@ -12,5 +12,23 @@ Follow `AGENTS.md` as primary guidance for:
 - safety rules
 - verification checklist
 - MCP governance
+- documentation contract (§7 — Obsidian vault)
 
 When `AGENTS.md` and this file conflict, prioritize `AGENTS.md`.
+
+## Documentation vault (same as `CLAUDE.md` / Claude Code)
+
+Treat **`docs/vault/`** as the live product and architecture source of truth (Obsidian-compatible markdown).
+
+**At the start of any substantive task** (feature, bugfix, refactor, API change), read:
+
+1. `docs/vault/README.md` — MOC: where ADR, runbooks, entities, archive plans live.
+2. `docs/vault/product/status.md` — recent changes, priorities, dashboard §7 pointers.
+
+**While implementing**, use `docs/vault/architecture/code-map.md` to jump to the right code paths.
+
+**When changing a product or architecture decision**, add or update an ADR under `docs/vault/adr/` when practical.
+
+**Before considering work done**, if behavior or contracts changed, update `docs/vault/product/status.md` (section «Последние изменения») and any affected vault architecture notes — same expectation as for Claude Code.
+
+**Do not** use `docs/archive/*-monolith-*.md` or `docs/archive/vault-plans-*` as the authoritative spec for new work; they are history only (see `AGENTS.md` §7).

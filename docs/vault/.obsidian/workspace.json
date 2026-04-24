@@ -1,0 +1,221 @@
+{
+  "main": {
+    "id": "17db15308e57e230",
+    "type": "split",
+    "children": [
+      {
+        "id": "7992b5c1973010bb",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a1cd97641129649f",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "e8315eca2e915afe",
+    "type": "split",
+    "children": [
+      {
+        "id": "4ac7b1ba9471579e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "246c7a60e247d2fa",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "4323b9ba500870e7",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "49a87a8f2293ab04",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "d397a23cf77bdf0b",
+    "type": "split",
+    "children": [
+      {
+        "id": "e2f20192de676956",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b6a1f9ac93d96453",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "2c9e61cfed593e82",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "architecture/db-schema.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from db-schema"
+            }
+          },
+          {
+            "id": "b85389836930e45c",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "a094228f87092f19",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "352236961eac6649",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "architecture/db-schema.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of db-schema"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "246c7a60e247d2fa",
+  "lastOpenFiles": [
+    "architecture/db-schema.md",
+    "runbooks/session-end-update-status.md",
+    "runbooks/add-frontend-feature-fsd.md",
+    "runbooks/add-dashboard-endpoint.md",
+    "runbooks/add-db-migration.md",
+    "runbooks",
+    "adr/0005-salon-master-vs-master-profile.md",
+    "adr/0004-jwt-auth-with-otp.md",
+    "adr/0003-uber-fx-for-di.md",
+    "adr/0002-fsd-architecture-frontend.md",
+    "adr/0001-no-2gis-db-cache.md",
+    "adr",
+    "glossary.md",
+    "architecture/code-map.md",
+    "README.md",
+    "entities/service-categories.md",
+    "entities/plan-unified-search.md",
+    "entities/master-profiles-salon-masters.md",
+    "entities/dashboard-i18n.md",
+    "entities/entity-prototype.md",
+    "entities/appointment-statuses.md",
+    "entities",
+    "plans/track4-dashboard-features.md",
+    "plans/track2-booking-slots.md",
+    "plans/salon_place_page.md",
+    "plans/phase1-agent-prompt.md",
+    "plans/multi-service-guest-booking.md",
+    "plans/calendar-upgrade-prompt.md",
+    "plans/bento-redesign-task.md",
+    "plans/beautica-strategic-directions.html",
+    "plans",
+    "product",
+    "Untitled.canvas",
+    "Untitled 1.canvas",
+    "app-pages-graph.html",
+    "frontend/src/pages/dashboard/ui/drawers",
+    "frontend/src/pages/dashboard/ui",
+    "frontend/src/pages/dashboard"
+  ]
+}

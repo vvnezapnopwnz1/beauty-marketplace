@@ -15,7 +15,8 @@
       "Bash(/Users/vvnezapnopwnz/.nvm/versions/node/v24.14.0/bin/node node_modules/.bin/tsc --noEmit)",
       "Bash(/Users/vvnezapnopwnz/.nvm/versions/node/v24.14.0/bin/node node_modules/typescript/lib/tsc.js --noEmit)",
       "Bash(bash -c 'cd /Users/vvnezapnopwnz/Documents/Files/beauty-marketplace/frontend && /Users/vvnezapnopwnz/.nvm/versions/node/v24.14.0/bin/node node_modules/typescript/lib/tsc.js --noEmit 2>&1')",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

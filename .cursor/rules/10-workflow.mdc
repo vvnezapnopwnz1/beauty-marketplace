@@ -7,7 +7,8 @@ alwaysApply: true
 
 For coding tasks:
 
-1. Read impacted files first.
+0. If the task touches product behavior, APIs, schema, or dashboard flows: skim **`docs/vault/README.md`** and **`docs/vault/product/status.md`** (same bootstrap as `CLAUDE.md` / Claude Code).
+1. Read impacted code and relevant vault notes (`architecture/code-map.md`, `entities/*`, `runbooks/*` as needed).
 2. Implement minimal focused change.
 3. Run relevant checks:
    - backend: `go test ./...`

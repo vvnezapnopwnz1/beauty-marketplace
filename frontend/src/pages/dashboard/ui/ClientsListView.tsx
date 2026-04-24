@@ -1,25 +1,32 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, Chip, CircularProgress, InputAdornment, Stack, TextField, Typography } from '@mui/material'
 import {
-  fetchClients,
-  fetchTags,
-  type ClientTag,
-  type SalonClient,
-} from '@shared/api/clientsApi'
+  Box,
+  Chip,
+  CircularProgress,
+  InputAdornment,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { fetchClients, fetchTags, type ClientTag, type SalonClient } from '@shared/api/clientsApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Ожидает',
-  confirmed: 'Подтверждена',
-  completed: 'Завершена',
-  cancelled_by_salon: 'Отмена',
-  no_show: 'Не пришёл',
-}
+// const STATUS_LABELS: Record<string, string> = {
+//   pending: 'Ожидает',
+//   confirmed: 'Подтверждена',
+//   completed: 'Завершена',
+//   cancelled_by_salon: 'Отмена',
+//   no_show: 'Не пришёл',
+// }
 
 function formatDate(s: string | null | undefined): string {
   if (!s) return '—'
-  return new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(s).toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 export function ClientsListView() {
@@ -46,7 +53,9 @@ export function ClientsListView() {
   }, [search, selectedTagIds, page])
 
   useEffect(() => {
-    fetchTags().then(setTags).catch(() => {})
+    fetchTags()
+      .then(setTags)
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -69,9 +78,16 @@ export function ClientsListView() {
           placeholder="Поиск по имени или телефону"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          sx={{ width: { xs: '100%', sm: 300 }, '& .MuiInputBase-root': { bgcolor: d.card, color: d.text, borderColor: d.border } }}
+          sx={{
+            width: { xs: '100%', sm: 300 },
+            '& .MuiInputBase-root': { bgcolor: d.card, color: d.text, borderColor: d.border },
+          }}
           InputProps={{
-            startAdornment: <InputAdornment position="start"><span style={{ color: d.muted }}>🔍</span></InputAdornment>,
+            startAdornment: (
+              <InputAdornment position="start">
+                <span style={{ color: d.muted }}>🔍</span>
+              </InputAdornment>
+            ),
           }}
         />
         <Stack direction="row" flexWrap="wrap" gap={1}>
@@ -118,7 +134,14 @@ export function ClientsListView() {
                     <Box
                       key={h}
                       component="th"
-                      sx={{ textAlign: 'left', py: 1, px: 1.5, color: d.muted, fontWeight: 500, whiteSpace: 'nowrap' }}
+                      sx={{
+                        textAlign: 'left',
+                        py: 1,
+                        px: 1.5,
+                        color: d.muted,
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                      }}
                     >
                       {h}
                     </Box>
@@ -128,7 +151,11 @@ export function ClientsListView() {
               <Box component="tbody">
                 {clients.length === 0 && (
                   <Box component="tr">
-                    <Box component="td" colSpan={5} sx={{ py: 4, textAlign: 'center', color: d.muted }}>
+                    <Box
+                      component="td"
+                      colSpan={5}
+                      sx={{ py: 4, textAlign: 'center', color: d.muted }}
+                    >
                       Клиенты не найдены
                     </Box>
                   </Box>
@@ -173,9 +200,7 @@ export function ClientsListView() {
               </Box>
             </Box>
           </Box>
-          <Typography sx={{ fontSize: 12, color: d.muted, mt: 1 }}>
-            Всего: {total}
-          </Typography>
+          <Typography sx={{ fontSize: 12, color: d.muted, mt: 1 }}>Всего: {total}</Typography>
         </>
       )}
     </Box>

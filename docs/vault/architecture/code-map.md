@@ -1,0 +1,32 @@
+---
+title: Указатели концепция → код
+updated: 2026-04-24
+source_of_truth: true
+code_pointers:
+  - backend/internal/app/app.go
+  - frontend/src/app/App.tsx
+---
+
+# Code map
+
+Краткая таблица: **где в коде искать логику**. Детали — в [`backend.md`](backend.md), [`frontend.md`](frontend.md), [`api-flows.md`](api-flows.md).
+
+| Концепция | Backend | Frontend |
+|-----------|---------|----------|
+| OTP + JWT, claim теневого мастера | `backend/internal/service/auth.go` | `frontend/src/features/auth-by-phone/` |
+| Расчёт слотов, гостевое бронирование | `backend/internal/service/booking.go` (`GetAvailableSlots`, `CreateGuestBooking`) | `frontend/src/features/guest-booking/ui/PublicSlotPicker.tsx`, `GuestBookingDialog.tsx` |
+| State machine записи в дашборде | `backend/internal/service/dashboard_appointment.go` | `frontend/src/entities/appointment/` |
+| Палитра дашборда | — | `frontend/src/shared/theme/dashboardPalette.ts` |
+| 2GIS адаптер | `backend/internal/infrastructure/twogis/` | — |
+| DI-граф, регистрация контроллеров | `backend/internal/app/app.go` | — |
+| Redux store | — | `frontend/src/app/store.ts` |
+| HTTP-роутинг сервера | `backend/internal/controller/server.go` | — |
+| Роуты SPA | — | `frontend/src/app/App.tsx` |
+| Unified search | `backend/internal/service/search.go`, `controller/search_controller.go` | `frontend/src/features/` + `entities/search/` |
+| CRM клиенты салона | `backend/internal/service/salon_client_service.go`, `controller/salon_client_controller.go` | `frontend/src/shared/api/clientsApi.ts`, `pages/dashboard/ui/ClientsListView.tsx` |
+| DnD перенос записи | `PUT .../appointments/:id` (см. dashboard) | `frontend/src/features/reschedule-appointment/`, `pages/dashboard/lib/dndCalendarUtils.ts` |
+
+## Связанные заметки
+
+- [[overview]] ([overview.md](overview.md)) — архитектура системы
+- [[backend]] ([backend.md](backend.md)) — детали бэкенда
