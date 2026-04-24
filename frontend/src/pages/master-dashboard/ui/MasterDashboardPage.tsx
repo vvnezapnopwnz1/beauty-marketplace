@@ -527,8 +527,9 @@ export function MasterDashboardPage() {
   useEffect(() => {
     if (!getStoredAccessToken()) return
     if (user === null) return
-    if (!user.masterProfileId) {
-      navigate(ROUTES.HOME, { replace: true })
+    const canMaster = !!user.effectiveRoles?.isMaster || !!user.masterProfileId
+    if (!canMaster) {
+      navigate(`${ROUTES.ME}?tab=general`, { replace: true })
     }
   }, [user, navigate])
 

@@ -1,7 +1,7 @@
 import { Box, Paper, Typography, IconButton } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAppSelector } from '@app/store'
 import { selectAuthStep } from '@features/auth-by-phone/model/authSlice'
 import { PhoneStep } from '@features/auth-by-phone/ui/PhoneStep'
@@ -9,7 +9,9 @@ import { OtpStep } from '@features/auth-by-phone/ui/OtpStep'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const step = useAppSelector(selectAuthStep)
+  const returnTo = searchParams.get('returnTo') || null
 
   return (
     <Box
@@ -19,7 +21,10 @@ export function LoginPage() {
       justifyContent="center"
       sx={{ background: 'linear-gradient(135deg, #fdf4f8 0%, #f3eeff 100%)', p: 3 }}
     >
-      <IconButton onClick={() => navigate(-1)} sx={{ position: 'fixed', top: 20, left: 20 }}>
+      <IconButton
+        onClick={() => navigate(returnTo || -1)}
+        sx={{ position: 'fixed', top: 20, left: 20 }}
+      >
         <ArrowBackIcon />
       </IconButton>
 
@@ -36,7 +41,7 @@ export function LoginPage() {
             exit={{ opacity: 0, x: step === 'otp' ? -24 : 24 }}
             transition={{ duration: 0.2 }}
           >
-            {step === 'phone' ? <PhoneStep /> : <OtpStep />}
+            {step === 'phone' ? <PhoneStep /> : <OtpStep returnTo={returnTo} />}
           </motion.div>
         </AnimatePresence>
       </Paper>

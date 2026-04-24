@@ -36,11 +36,20 @@ func New() *fx.App {
 			persistence.NewBookingSlotsRepository,
 			persistence.NewDashboardRepository,
 			persistence.NewSalonClientRepository,
+			persistence.NewTelegramLinkRepository,
 			persistence.NewMasterPublicRepository,
 			persistence.NewMasterDashboardRepository,
 			fx.Annotate(
 				persistence.NewAuthRepository,
 				fx.As(new(repository.AuthRepository)),
+			),
+			fx.Annotate(
+				persistence.NewUserProfileRepository,
+				fx.As(new(repository.UserProfileRepository)),
+			),
+			fx.Annotate(
+				persistence.NewUserRolesRepository,
+				fx.As(new(repository.UserRolesRepository)),
 			),
 			fx.Annotate(
 				twogis.NewCatalogAdapter,
@@ -57,6 +66,8 @@ func New() *fx.App {
 			service.NewSalonClientService,
 			service.NewMasterPublicService,
 			service.NewMasterDashboardService,
+			service.NewUserRolesService,
+			service.NewUserProfileService,
 			service.NewAuthService,
 			controller.NewHealthController,
 			controller.NewSalonController,
@@ -68,6 +79,7 @@ func New() *fx.App {
 			controller.NewSalonClientController,
 			controller.NewMasterController,
 			controller.NewMasterDashboardController,
+			controller.NewUserController,
 			controller.NewHTTPServer,
 		),
 		fx.Invoke(func(*http.Server) {}),

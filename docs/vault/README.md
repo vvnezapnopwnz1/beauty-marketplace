@@ -56,6 +56,7 @@ code_pointers: []
 | [`entities/master-profiles-salon-masters.md`](entities/master-profiles-salon-masters.md) | Мастер в салоне vs профиль |
 | [`entities/plan-unified-search.md`](entities/plan-unified-search.md) | Unified search |
 | [`entities/service-categories.md`](entities/service-categories.md) | Slug категорий услуг |
+| [`entities/user-roles.md`](entities/user-roles.md) | Двухуровневая модель ролей и `EffectiveRoles` |
 
 ## Архив постановок (`../archive/vault-plans-2026-04-24/`)
 

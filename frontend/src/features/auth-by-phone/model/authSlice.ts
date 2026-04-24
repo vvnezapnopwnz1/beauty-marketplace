@@ -2,22 +2,27 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { RootState } from '@app/store'
 import {
   requestOTP,
+  TelegramNotLinkedError,
   verifyOTP,
   fetchMe,
   logout as logoutApi,
   storeTokens,
+  storeSessionId,
   clearTokens,
   getStoredAccessToken,
   type UserInfo,
 } from '@shared/api/authApi'
 
 type AuthStep = 'phone' | 'otp'
+type OTPChannel = 'sms' | 'telegram'
 
 interface AuthState {
   step: AuthStep
   phone: string
   token: string | null
   user: UserInfo | null
+  channel: OTPChannel
+  telegramBotUsername: string | null
   loading: boolean
   error: string | null
 }
@@ -27,15 +32,30 @@ const initialState: AuthState = {
   phone: '',
   token: getStoredAccessToken(),
   user: null,
+  channel: 'sms',
+  telegramBotUsername: null,
   loading: false,
   error: null,
 }
 
 export const sendOtp = createAsyncThunk(
   'auth/sendOtp',
-  async (phone: string) => {
-    await requestOTP(phone)
-    return phone
+  async (
+    { phone, channel }: { phone: string; channel: OTPChannel },
+    { rejectWithValue },
+  ) => {
+    try {
+      await requestOTP(phone, channel)
+      return { phone, channel }
+    } catch (error) {
+      if (error instanceof TelegramNotLinkedError) {
+        return rejectWithValue({
+          kind: 'telegram_not_linked',
+          botUsername: error.botUsername,
+        })
+      }
+      throw error
+    }
   },
 )
 
@@ -44,6 +64,7 @@ export const confirmOtp = createAsyncThunk(
   async ({ phone, code }: { phone: string; code: string }) => {
     const result = await verifyOTP(phone, code)
     storeTokens(result.tokenPair)
+    storeSessionId(result.user.sessionId)
     return result
   },
 )
@@ -64,6 +85,11 @@ export const authSlice = createSlice({
       state.step = 'phone'
       state.error = null
     },
+    setAuthChannel: (state, action: { payload: OTPChannel }) => {
+      state.channel = action.payload
+      state.telegramBotUsername = null
+      state.error = null
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -73,11 +99,19 @@ export const authSlice = createSlice({
       })
       .addCase(sendOtp.fulfilled, (state, action) => {
         state.loading = false
-        state.phone = action.payload
+        state.phone = action.payload.phone
+        state.channel = action.payload.channel
+        state.telegramBotUsername = null
         state.step = 'otp'
       })
       .addCase(sendOtp.rejected, (state, action) => {
         state.loading = false
+        const payload = action.payload as { kind?: string; botUsername?: string } | undefined
+        if (payload?.kind === 'telegram_not_linked') {
+          state.error = 'telegram_not_linked'
+          state.telegramBotUsername = payload.botUsername || '@beautica_bot'
+          return
+        }
         state.error = action.error.message ?? 'Ошибка отправки кода'
       })
 
@@ -114,12 +148,14 @@ export const authSlice = createSlice({
   },
 })
 
-export const { backToPhone } = authSlice.actions
+export const { backToPhone, setAuthChannel } = authSlice.actions
 
 export const selectAuthStep = (state: RootState) => state.auth.step
 export const selectAuthPhone = (state: RootState) => state.auth.phone
 export const selectAuthLoading = (state: RootState) => state.auth.loading
 export const selectAuthError = (state: RootState) => state.auth.error
+export const selectAuthChannel = (state: RootState) => state.auth.channel
+export const selectTelegramBotUsername = (state: RootState) => state.auth.telegramBotUsername
 export const selectIsAuthenticated = (state: RootState) => !!state.auth.token
 export const selectUser = (state: RootState) => state.auth.user
 export const selectUserRole = (state: RootState) => state.auth.user?.role ?? null

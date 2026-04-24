@@ -32,6 +32,7 @@ func NewHTTPServer(
 	dh *DashboardController,
 	mh *MasterController,
 	md *MasterDashboardController,
+	uh *UserController,
 ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", hh.Health)
@@ -58,6 +59,8 @@ func NewHTTPServer(
 
 	mux.HandleFunc("/api/v1/dashboard/", withCORS(auth.RequireAuth(jwtMgr, dh.DashboardRoutes)))
 	mux.HandleFunc("/api/v1/master-dashboard/", withCORS(auth.RequireAuth(jwtMgr, md.MasterDashboardRoutes)))
+	mux.HandleFunc("/api/v1/me", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
+	mux.HandleFunc("/api/v1/me/", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
 
 	// Admin-only example
 	// mux.HandleFunc("/api/admin/...", withCORS(auth.RequireRole(jwtMgr, adminHandler, "admin")))

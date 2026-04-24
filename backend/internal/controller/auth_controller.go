@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/yourusername/beauty-marketplace/internal/auth"
+	"github.com/yourusername/beauty-marketplace/internal/config"
 	"github.com/yourusername/beauty-marketplace/internal/errs"
 	"github.com/yourusername/beauty-marketplace/internal/service"
 	"go.uber.org/zap"
@@ -15,17 +17,24 @@ import (
 var phoneE164Re = regexp.MustCompile(`^\+7\d{10}$`)
 
 type AuthController struct {
-	svc    *service.AuthService
-	jwt    *auth.JWTManager
-	logger *zap.Logger
+	svc         *service.AuthService
+	jwt         *auth.JWTManager
+	logger      *zap.Logger
+	botUsername string
 }
 
-func NewAuthController(svc *service.AuthService, jwt *auth.JWTManager, logger *zap.Logger) *AuthController {
-	return &AuthController{svc: svc, jwt: jwt, logger: logger}
+func NewAuthController(svc *service.AuthService, jwt *auth.JWTManager, logger *zap.Logger, cfg *config.Config) *AuthController {
+	return &AuthController{
+		svc:         svc,
+		jwt:         jwt,
+		logger:      logger,
+		botUsername: normalizeBotUsername(cfg.TelegramBotUsername),
+	}
 }
 
 type otpRequestBody struct {
-	Phone string `json:"phone"`
+	Phone   string `json:"phone"`
+	Channel string `json:"channel"`
 }
 
 func (c *AuthController) RequestOTP(w http.ResponseWriter, r *http.Request) {
@@ -46,10 +55,31 @@ func (c *AuthController) RequestOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := c.svc.RequestOTP(r.Context(), phone)
+	channel := strings.TrimSpace(strings.ToLower(body.Channel))
+	if channel == "" {
+		channel = "sms"
+	}
+	if channel != "sms" && channel != "telegram" {
+		jsonError(w, "invalid channel, expected sms or telegram", http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.svc.RequestOTP(r.Context(), service.OTPRequestParams{
+		Phone:   phone,
+		Channel: channel,
+	})
 	if err != nil {
 		if errors.Is(err, errs.ErrOTPTooMany) {
 			jsonError(w, err.Error(), http.StatusTooManyRequests)
+			return
+		}
+		if errors.Is(err, errs.ErrTelegramNotLinked) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error":       "telegram_not_linked",
+				"botUsername": c.botUsername,
+			})
 			return
 		}
 		c.logger.Error("request otp", zap.Error(err))
@@ -91,6 +121,14 @@ func (c *AuthController) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, errs.ErrOTPNotFound) || errors.Is(err, errs.ErrOTPInvalid) {
 			jsonError(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		if errors.Is(err, errs.ErrAccountDeleted) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "account_deleted",
+			})
 			return
 		}
 		c.logger.Error("verify otp", zap.Error(err))
@@ -207,4 +245,15 @@ func jsonError(w http.ResponseWriter, msg string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+func normalizeBotUsername(raw string) string {
+	v := strings.TrimSpace(raw)
+	for strings.HasPrefix(v, "@") {
+		v = strings.TrimPrefix(v, "@")
+	}
+	if v == "" {
+		return ""
+	}
+	return "@" + v
 }

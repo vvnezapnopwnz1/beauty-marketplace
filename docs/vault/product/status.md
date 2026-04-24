@@ -13,7 +13,10 @@ code_pointers:
 
 ### Последние изменения (2026-04-24)
 
+- **Профиль пользователя (`/me`):** реализованы новые эндпоинты `/api/v1/me/*` (GET/PUT профиль, sessions list/revoke/revoke-all, DELETE soft-delete), расширение `users` (username, демография, locale/theme, avatar_url, `updated_at`, `deleted_at`), soft-delete-safe вход по телефону и выдача `account_deleted` для удалённых аккаунтов. Добавлены SQL-триггеры пересчёта `users.global_role` от `salon_members`/`master_profiles` + backfill. Фронт: страница `/me` (General/Security/Danger), `UserMenu` в NavBar, поддержка `beauty_session_id`, гейты `/dashboard` и `/master-dashboard` на `effectiveRoles`. Спека: `docs/superpowers/specs/2026-04-24-user-profile-design.md`.
+- **Backlog:** отложенные пункты фиксируются в [`product/backlog.md`](backlog.md) (смена телефона, расширение `salon_members.role`, super-admin платформы и пр.).
 - **Документация (vault):** единая точка входа [`README.md`](../README.md); продукт в `product/`; **планы** перенесены в архив [`docs/archive/vault-plans-2026-04-24/`](../../archive/vault-plans-2026-04-24/) (реализованные постановки); **entities** остаются в `docs/vault/entities/`; монолиты заархивированы в `docs/archive/*-monolith-2026-04-24.md`; ADR, runbooks, [`architecture/code-map.md`](../architecture/code-map.md), `make docs-check`.
+- **Telegram OTP auth (MVP):** добавлен канал OTP через Telegram (`POST /api/auth/otp/request` принимает `channel: "sms" | "telegram"`), новая ошибка `422 {"error":"telegram_not_linked","botUsername":"@..."}`; миграция `000017_telegram_phone_links`; репозиторий связок `phone_e164 -> chat_id`; новый рантайм `backend/cmd/bot` (long-polling, `/start`, сохранение контакта). Фронтенд логина получил переключатель SMS/Telegram и подсказку по привязке через бота при `telegram_not_linked`.
 
 ### Последние изменения (2026-04-21)
 

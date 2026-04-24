@@ -31,8 +31,23 @@ services:
       2GIS_API_KEY: ${TWO_GIS_API_KEY:-}
       2GIS_REGION_ID: ${TWO_GIS_REGION_ID:-32}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-in-production}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
     ports:
       - "8080:8080"
+
+  bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.bot
+    container_name: beauty_bot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_DSN: postgres://beauty:beauty@postgres:5432/beauty?sslmode=disable
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
 
   # UI: http://localhost:5173 — геолокация в браузере требует secure context (HTTPS или localhost).
   # Открытие по http://<LAN-IP>:5173 без HTTPS обычно блокирует GPS; образы/контейнеры тут ни при чём.

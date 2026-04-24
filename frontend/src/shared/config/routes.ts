@@ -4,6 +4,7 @@ export const ROUTES = {
   PLACE: '/place/:externalId',
   MASTER: '/master/:masterProfileId',
   LOGIN: '/login',
+  ME: '/me',
   DASHBOARD: '/dashboard',
   MASTER_DASHBOARD: '/master-dashboard',
   MASTER_DASHBOARD_INVITES: '/master-dashboard?section=invites',

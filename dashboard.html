@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beauty Marketplace — Dashboard</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a22;
+    --surface2: #22222e;
+    --border: #2e2e3e;
+    --text: #e8e8f0;
+    --muted: #8888a0;
+    --accent: #a78bfa;
+    --accent2: #60a5fa;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --green: #34d399;
+    --blue: #60a5fa;
+    --radius: 10px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+
+  header {
+    padding: 20px 28px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+  .logo { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .meta { font-size: 12px; color: var(--muted); }
+  .version-badge {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--accent);
+    font-weight: 600; letter-spacing: 0.5px;
+  }
+
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 61px); }
+
+  /* Sidebar */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; }
+  .sidebar-section { margin-bottom: 4px; }
+  .sidebar-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; padding: 0 16px 6px; }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 9px; padding: 8px 16px;
+    cursor: pointer; border-radius: 0; transition: background 0.1s; color: var(--muted); font-size: 13px;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .sidebar-item:hover { background: var(--surface2); color: var(--text); }
+  .sidebar-item.active { background: rgba(167,139,250,0.12); color: var(--accent); font-weight: 600; }
+  .sidebar-item .dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-red { background: var(--red); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-orange { background: var(--orange); }
+  .dot-blue { background: var(--blue); }
+  .dot-green { background: var(--green); }
+  .dot-muted { background: var(--muted); }
+  .count-badge {
+    margin-left: auto; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 1px 7px; font-size: 11px; color: var(--muted);
+  }
+
+  /* Main */
+  .main { padding: 24px 28px; overflow-y: auto; }
+
+  /* Stats strip */
+  .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .stat-value { font-size: 28px; font-weight: 700; line-height: 1.1; }
+  .stat-sub { font-size: 11px; color: var(--muted); }
+  .stat-red .stat-value { color: var(--red); }
+  .stat-yellow .stat-value { color: var(--yellow); }
+  .stat-orange .stat-value { color: var(--orange); }
+  .stat-green .stat-value { color: var(--accent); }
+
+  /* Section title */
+  .section-title {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Task list */
+  .task-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
+  .task-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; display: flex; align-items: flex-start; gap: 12px;
+    transition: border-color 0.15s;
+  }
+  .task-item:hover { border-color: var(--accent); }
+  .task-item.done { opacity: 0.45; }
+  .task-checkbox {
+    width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border);
+    flex-shrink: 0; margin-top: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .task-checkbox.checked { background: var(--green); border-color: var(--green); }
+  .task-checkbox.checked::after { content: '✓'; font-size: 10px; color: #0f0f13; font-weight: 800; }
+  .task-content { flex: 1; }
+  .task-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .task-title.done-text { text-decoration: line-through; color: var(--muted); }
+  .task-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  .priority-badge {
+    flex-shrink: 0; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+    letter-spacing: 0.4px; margin-top: 1px;
+  }
+  .p-critical { background: rgba(248,113,113,0.15); color: var(--red); }
+  .p-high { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .p-medium { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .p-backlog { background: rgba(136,136,160,0.12); color: var(--muted); }
+
+  /* Kanban columns */
+  .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+  .kanban-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .kanban-header { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .kanban-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .kanban-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; font-size: 12px; }
+  .kanban-card-title { font-weight: 500; margin-bottom: 3px; line-height: 1.3; }
+  .kanban-card-meta { font-size: 10px; color: var(--muted); }
+
+  /* Roadmap */
+  .roadmap { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .roadmap-phase {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .roadmap-phase-header {
+    padding: 10px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer;
+    user-select: none;
+  }
+  .roadmap-phase-header:hover { background: var(--surface2); }
+  .roadmap-phase-title { font-weight: 600; font-size: 13px; flex: 1; }
+  .roadmap-phase-body { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .roadmap-item { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--muted); }
+  .roadmap-item::before { content: '→'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+  /* Progress bar */
+  .progress-wrap { margin-bottom: 24px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .progress-bar-bg { background: var(--surface2); border-radius: 20px; height: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-bar-fill { height: 100%; border-radius: 20px; background: linear-gradient(90deg, var(--accent), var(--blue)); }
+
+  /* Tech debt */
+  .debt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .debt-table th { text-align: left; padding: 6px 10px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  .debt-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .debt-table tr:last-child td { border-bottom: none; }
+  .debt-table tr:hover td { background: var(--surface2); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--surface2); padding: 4px; border-radius: 9px; border: 1px solid var(--border); width: fit-content; }
+  .tab { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--muted); border: none; background: none; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .note {
+    background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.25);
+    border-radius: var(--radius); padding: 12px 14px; font-size: 12px; color: var(--muted);
+    margin-bottom: 20px; line-height: 1.6;
+  }
+  .note strong { color: var(--accent); }
+
+  .chevron { font-size: 11px; color: var(--muted); transition: transform 0.2s; }
+  .open .chevron { transform: rotate(90deg); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Beauty <span>Marketplace</span></div>
+    <div class="meta">pre-MVP · v0.1 · обновлено 2026-04-24</div>
+  </div>
+  <div class="version-badge">Go + React/TS</div>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Представление</div>
+      <button class="sidebar-item active" onclick="showView('tasks')">
+        <span>📋</span> Задачи
+        <span class="count-badge" id="badge-tasks">—</span>
+      </button>
+      <button class="sidebar-item" onclick="showView('kanban')">
+        <span>🗂</span> Канбан
+      </button>
+      <button class="sidebar-item" onclick="showView('roadmap')">
+        <span>🗺</span> Роадмап
+      </button>
+      <button class="sidebar-item" onclick="showView('debt')">
+        <span>⚠️</span> Техдолг
+      </button>
+    </div>
+    <div class="sidebar-section" style="margin-top:16px;">
+      <div class="sidebar-label">Фильтр</div>
+      <button class="sidebar-item" onclick="filterTasks('all')">
+        <span class="dot dot-muted"></span> Все
+      </button>
+      <button class="sidebar-item" onclick="filterTasks('critical')">
+        <span class="dot dot-red"></span> Критично
+      </button>
+      <button class="sidebar-item" onclick="filterTasks('high')">
+        <span class="dot dot-yellow"></span> Важно
+      </button>
+      <button class="sidebar-item" onclick="filterTasks('medium')">
+        <span class="dot dot-orange"></span> Дашборд
+      </button>
+      <button class="sidebar-item" onclick="filterTasks('backlog')">
+        <span class="dot dot-muted"></span> Backlog
+      </button>
+    </div>
+    <div class="sidebar-section" style="margin-top:16px;">
+      <div class="sidebar-label">Файлы</div>
+      <button class="sidebar-item" onclick="alert('Откройте TASKS.md в редакторе')">
+        <span>📄</span> TASKS.md
+      </button>
+      <button class="sidebar-item" onclick="alert('Откройте docs/vault/product/status.md')">
+        <span>📖</span> Status.md
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- Stats -->
+    <div class="stats-strip">
+      <div class="stat-card stat-red">
+        <div class="stat-label">Критично</div>
+        <div class="stat-value" id="cnt-critical">3</div>
+        <div class="stat-sub">блокируют MVP</div>
+      </div>
+      <div class="stat-card stat-yellow">
+        <div class="stat-label">Важно</div>
+        <div class="stat-value" id="cnt-high">4</div>
+        <div class="stat-sub">до онбординга</div>
+      </div>
+      <div class="stat-card stat-orange">
+        <div class="stat-label">Следующий этап</div>
+        <div class="stat-value" id="cnt-medium">5</div>
+        <div class="stat-sub">UX дашборда</div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-label">Готово</div>
+        <div class="stat-value" id="cnt-done">21</div>
+        <div class="stat-sub">реализовано</div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Прогресс к MVP</span>
+        <span id="progress-pct">—</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Tab views -->
+
+    <!-- TASKS VIEW -->
+    <div id="view-tasks" class="tab-panel active">
+      <div class="note">
+        <strong>Как работать с задачами:</strong> кликайте на чекбокс чтобы отметить выполненным. Для постоянного хранения редактируйте <strong>TASKS.md</strong> напрямую. Скажите Claude "добавь задачу …" или "покажи только критичные".
+      </div>
+      <div class="section-title">Критично — блокеры MVP</div>
+      <div class="task-list" id="list-critical"></div>
+
+      <div class="section-title">Важно — до первого онбординга</div>
+      <div class="task-list" id="list-high"></div>
+
+      <div class="section-title">Дашборд — следующий этап UX</div>
+      <div class="task-list" id="list-medium"></div>
+
+      <div class="section-title">Backlog</div>
+      <div class="task-list" id="list-backlog"></div>
+
+      <div class="section-title">Готово</div>
+      <div class="task-list" id="list-done"></div>
+    </div>
+
+    <!-- KANBAN VIEW -->
+    <div id="view-kanban" class="tab-panel">
+      <div class="note">Канбан — снимок текущего состояния задач. Для командной работы рассмотрите Linear или GitHub Projects.</div>
+      <div class="kanban">
+        <div class="kanban-col">
+          <div class="kanban-header">
+            <span class="dot dot-red"></span> В работе / Критично
+          </div>
+          <div class="kanban-body">
+            <div class="kanban-card">
+              <div class="kanban-card-title">OTP-доставка SMS/Telegram</div>
+              <div class="kanban-card-meta">service/auth.go → OTPSender interface</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">Страница профиля пользователя</div>
+              <div class="kanban-card-meta">CRUD профиля, роли guest/owner/admin</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">Seed московских салонов</div>
+              <div class="kanban-card-meta">cmd/seed/main.go → make seed-moscow</div>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-header">
+            <span class="dot dot-yellow"></span> Очередь (до деплоя)
+          </div>
+          <div class="kanban-body">
+            <div class="kanban-card">
+              <div class="kanban-card-title">Production деплой</div>
+              <div class="kanban-card-meta">VPS + Docker + NGINX + Let's Encrypt</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">Rate limiting на OTP endpoint</div>
+              <div class="kanban-card-meta">Redis + rate limiter middleware</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">Ограничить CORS</div>
+              <div class="kanban-card-meta">* → конкретные домены</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">JWT_SECRET ротация</div>
+              <div class="kanban-card-meta">Перед любым prod-деплоем</div>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-header">
+            <span class="dot dot-green"></span> Готово (последнее)
+          </div>
+          <div class="kanban-body">
+            <div class="kanban-card">
+              <div class="kanban-card-title">Telegram OTP канал</div>
+              <div class="kanban-card-meta">channel: "telegram" в OTP request</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">CRM-модуль клиентов</div>
+              <div class="kanban-card-meta">salon_clients, теги, merge guest→user</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">DnD-перенос записей</div>
+              <div class="kanban-card-meta">@dnd-kit/react, день + неделя</div>
+            </div>
+            <div class="kanban-card">
+              <div class="kanban-card-title">Рефакторинг dashboard.go</div>
+              <div class="kanban-card-meta">God-file → 7 доменных файлов</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROADMAP VIEW -->
+    <div id="view-roadmap" class="tab-panel">
+      <div class="note"><strong>Роадмап по приоритетам</strong> — из docs/vault/product/status.md §5</div>
+      <div class="roadmap">
+        <div class="roadmap-phase open" id="phase1">
+          <div class="roadmap-phase-header" onclick="togglePhase('phase1')">
+            <span class="dot dot-red"></span>
+            <div class="roadmap-phase-title">🔴 Приоритет 1 — MVP для реальных пользователей</div>
+            <span class="chevron">▶</span>
+          </div>
+          <div class="roadmap-phase-body">
+            <div class="roadmap-item">OTP-доставка — подключить SMS-провайдера (SMSc.ru, МТС Exolve) или Telegram Bot API. Интерфейс OTPSender в service/, реализация в infrastructure/.</div>
+            <div class="roadmap-item">Seed реальных московских салонов — скрипт 2GIS → salons + salon_external_ids, make seed-moscow.</div>
+            <div class="roadmap-item">Production деплой — VPS + Docker Compose, NGINX reverse proxy, Let's Encrypt, .env.production.</div>
+            <div class="roadmap-item">Страница профиля пользователя — CRUD, роли, аватар (S3).</div>
+          </div>
+        </div>
+        <div class="roadmap-phase" id="phase2">
+          <div class="roadmap-phase-header" onclick="togglePhase('phase2')">
+            <span class="dot dot-yellow"></span>
+            <div class="roadmap-phase-title">🟡 Приоритет 2 — Ценность для салонов</div>
+            <span class="chevron">▶</span>
+          </div>
+          <div class="roadmap-phase-body">
+            <div class="roadmap-item">Аналитика и уведомления в кабинете — напоминания клиентам, статистика посещений.</div>
+            <div class="roadmap-item">Конфликты слотов — визуальный индикатор + поле в API-ответе.</div>
+            <div class="roadmap-item">Resize длительности и zoom таймлайна в календаре.</div>
+            <div class="roadmap-item">Отзывы и рейтинг — POST /api/v1/appointments/:id/review, агрегация в cached_rating.</div>
+          </div>
+        </div>
+        <div class="roadmap-phase" id="phase3">
+          <div class="roadmap-phase-header" onclick="togglePhase('phase3')">
+            <span class="dot dot-blue"></span>
+            <div class="roadmap-phase-title">🔵 Приоритет 3 — Рост и монетизация</div>
+            <span class="chevron">▶</span>
+          </div>
+          <div class="roadmap-phase-body">
+            <div class="roadmap-item">Подписки и оплата — ЮКасса или СБП, webhook на смену статуса.</div>
+            <div class="roadmap-item">Yandex Maps адаптер — второй PlacesProvider (интерфейс уже готов).</div>
+            <div class="roadmap-item">Telegram-бот — уведомления о записях, напоминания.</div>
+            <div class="roadmap-item">React Native мобильное приложение.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TECH DEBT VIEW -->
+    <div id="view-debt" class="tab-panel">
+      <div class="note"><strong>Технический долг</strong> — из docs/vault/product/status.md §6</div>
+      <table class="debt-table">
+        <thead>
+          <tr>
+            <th>Проблема</th>
+            <th>Критичность</th>
+            <th>Решение</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>JWT_SECRET = "dev-secret-change-me"</td>
+            <td><span class="priority-badge p-critical">🔴 КРИТИЧНО</span></td>
+            <td>Ротировать перед любым prod-деплоем</td>
+          </tr>
+          <tr>
+            <td>OTP не отправляется (только stderr)</td>
+            <td><span class="priority-badge p-critical">🔴 КРИТИЧНО</span></td>
+            <td>Подключить SMS-провайдера или Telegram Bot</td>
+          </tr>
+          <tr>
+            <td>Нет rate limiting на /api/auth/otp/request</td>
+            <td><span class="priority-badge p-high">🟡 ВАЖНО</span></td>
+            <td>Добавить Redis + rate limiter</td>
+          </tr>
+          <tr>
+            <td>CORS разрешает *</td>
+            <td><span class="priority-badge p-high">🟡 ВАЖНО</span></td>
+            <td>Ограничить на конкретные домены</td>
+          </tr>
+          <tr>
+            <td>lat/lon = 0 для части 2GIS-результатов</td>
+            <td><span class="priority-badge p-high">🟡 ВАЖНО</span></td>
+            <td>Дебаггинг запросов к 2GIS API</td>
+          </tr>
+          <tr>
+            <td>Нет error tracking (Sentry и т.п.)</td>
+            <td><span class="priority-badge p-medium">🟠 СРЕДНЕ</span></td>
+            <td>Добавить перед beta</td>
+          </tr>
+          <tr>
+            <td>Гостевой букинг: мастер обязан оказывать выбранную услугу (бэкенд)</td>
+            <td><span class="priority-badge p-medium">🟠 СРЕДНЕ</span></td>
+            <td>Жёсткая проверка в CreateGuestBooking (UI уже фильтрует)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const TASKS = {
+  critical: [
+    { title: 'OTP-доставка — SMS/Telegram', desc: 'Интерфейс OTPSender в service/auth.go, реализация в infrastructure/telegram/ или SMS-провайдер (SMSc.ru, МТС Exolve)', done: false },
+    { title: 'Страница профиля пользователя', desc: 'Показывать профиль после входа: имя, телефон, аватар, форма редактирования, CRUD. Роли: гость / зарегистрированный / владелец / администратор', done: false },
+    { title: 'Seed реальных московских салонов', desc: 'Скрипт cmd/seed/main.go (2GIS → salons + salon_external_ids), команда make seed-moscow', done: false },
+  ],
+  high: [
+    { title: 'Production деплой', desc: 'VPS + Docker Compose, NGINX reverse proxy, Let\'s Encrypt, .env.production', done: false },
+    { title: 'Rate limiting на /api/auth/otp/request', desc: 'Добавить Redis + rate limiter middleware', done: false },
+    { title: 'CORS — ограничить *', desc: 'Ограничить wildcard до конкретных продакшн-доменов', done: false },
+    { title: 'JWT_SECRET — ротация', desc: 'Сменить dev-secret-change-me перед любым prod-деплоем', done: false },
+  ],
+  medium: [
+    { title: 'Resize длительности записи', desc: 'Перетаскивание нижней границы блока в календаре дашборда', done: false },
+    { title: 'Zoom таймлайна', desc: 'Масштаб 08:00–21:59 по вертикали', done: false },
+    { title: 'Конфликты слотов', desc: 'Визуальный индикатор + поле в ответе API при пересечении записей', done: false },
+    { title: 'Кастомные категории услуг на салон', desc: 'Таблица service_categories с salon_id != NULL', done: false },
+    { title: 'Напоминания клиентам', desc: 'Push/SMS за N часов до записи', done: false },
+  ],
+  backlog: [
+    { title: 'Смена телефона через OTP', desc: 'Редкая операция, нетривиальный флоу (OTP на новый + старый номер, logout everywhere)', done: false },
+    { title: 'Загрузка аватара пользователя', desc: 'POST /api/me/avatar, S3-инфраструктура (Yandex Object Storage / MinIO)', done: false },
+    { title: 'Расширить salon_members.role', desc: 'Добавить receptionist и accountant', done: false },
+    { title: 'Super-admin интерфейс', desc: 'Роль admin уже в global_role, нет UI/API (модерация, статистика)', done: false },
+    { title: 'Эндпоинты отзывов', desc: 'Схема в БД есть (reviews), функционал не начат', done: false },
+    { title: 'Подписки и оплата', desc: 'ЮКасса, СБП, webhook на смену статуса', done: false },
+    { title: 'Telegram-бот для уведомлений', desc: 'Уведомления о записях, напоминания', done: false },
+    { title: 'Yandex Maps адаптер', desc: 'Второй PlacesProvider (интерфейс уже есть)', done: false },
+    { title: 'React Native мобильное приложение', desc: '', done: false },
+    { title: 'Bulk-теггинг клиентов + аналитика', desc: 'Массовое назначение тегов, аналитика по клиенту', done: false },
+    { title: 'Записи через Yandex Business', desc: 'Кнопка "Записаться" через Yandex', done: false },
+  ],
+  done: [
+    { title: 'OTP + JWT авторизация', desc: 'access 15 мин, refresh 30 дней', done: true },
+    { title: 'Telegram OTP канал', desc: 'channel: "telegram" в /api/auth/otp/request, миграция 000017', done: true },
+    { title: '2GIS адаптер', desc: 'Поиск и детали работают (подтверждено 2026-04-04)', done: true },
+    { title: 'Unified search', desc: 'GET /api/v1/search + fallback 2GIS', done: true },
+    { title: 'Гостевая запись', desc: 'Wizard: услуга → мастер → слот → контакты', done: true },
+    { title: 'Мульти-услуга в букинге', desc: 'appointment_line_items, миграция 000014', done: true },
+    { title: 'Кабинет салона: записи CRUD + календарь', desc: 'Режимы день/неделя/месяц', done: true },
+    { title: 'DnD-перенос записей в календаре', desc: '@dnd-kit/react, день + неделя', done: true },
+    { title: 'Расписание мастеров, перерывы, NowLine', desc: 'Аватарки в колонках, 8 задач из calendar-upgrade', done: true },
+    { title: 'Мастера: профили, инвайты, оверрайды', desc: 'lookup/invite, salon_master_services', done: true },
+    { title: 'Кабинет мастера', desc: '/api/v1/master-dashboard/, /master-dashboard', done: true },
+    { title: 'Публичный профиль мастера', desc: '/master/:masterProfileId', done: true },
+    { title: 'CRM-модуль клиентов', desc: 'salon_clients, теги, история, merge guest→user', done: true },
+    { title: 'Рефакторинг dashboard.go', desc: 'God-file → 7 доменных файлов', done: true },
+    { title: 'FSD-архитектура фронтенда', desc: 'features/reschedule-appointment/', done: true },
+    { title: 'Страница мастера в дашборде + drawer\'ы', desc: '/dashboard/staff/:staffId', done: true },
+    { title: 'DataGrid + Iconify', desc: 'shared/ui/DataGrid/, shared/ui/iconify/', done: true },
+    { title: 'Семантическая палитра дашборда', desc: 'theme.palette.dashboard, useDashboardPalette()', done: true },
+    { title: 'Bento-сетка SearchResultCard', desc: 'normal / featured-vertical / featured-horizontal', done: true },
+    { title: 'Реальные слоты букинга', desc: 'BookingService.GetAvailableSlots, тесты, SlotPicker', done: true },
+    { title: 'CreateAppointmentDrawer', desc: 'Боковая панель вместо модалки, prefill', done: true },
+  ]
+};
+
+let currentFilter = 'all';
+const doneSets = { critical: new Set(), high: new Set(), medium: new Set(), backlog: new Set(), done: new Set() };
+
+function renderTask(task, idx, group) {
+  const isDone = task.done || doneSets[group].has(idx);
+  const pClass = { critical: 'p-critical', high: 'p-high', medium: 'p-medium', backlog: 'p-backlog', done: '' }[group];
+  const pLabel = { critical: 'Критично', high: 'Важно', medium: 'UX', backlog: 'Backlog', done: '' }[group];
+  return `
+    <div class="task-item${isDone ? ' done' : ''}" id="task-${group}-${idx}">
+      <div class="task-checkbox${isDone ? ' checked' : ''}" onclick="toggleTask('${group}',${idx})"></div>
+      <div class="task-content">
+        <div class="task-title${isDone ? ' done-text' : ''}">${task.title}</div>
+        ${task.desc ? `<div class="task-desc">${task.desc}</div>` : ''}
+      </div>
+      ${pClass ? `<div class="priority-badge ${pClass}">${pLabel}</div>` : ''}
+    </div>`;
+}
+
+function renderAll() {
+  ['critical','high','medium','backlog','done'].forEach(g => {
+    const el = document.getElementById('list-' + g);
+    if (!el) return;
+    const tasks = TASKS[g];
+    const filtered = currentFilter === 'all' || currentFilter === g
+      ? tasks
+      : [];
+    el.innerHTML = filtered.map((t,i) => renderTask(t,i,g)).join('') || '<div style="color:var(--muted);font-size:12px;padding:8px 0;">Нет задач</div>';
+  });
+  updateCounts();
+}
+
+function updateCounts() {
+  const total = Object.values(TASKS).flat().length;
+  const done = TASKS.done.length + Object.keys(doneSets).reduce((a,g) => a + doneSets[g].size, 0);
+  const pct = Math.round(done / total * 100);
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('cnt-critical').textContent = TASKS.critical.length;
+  document.getElementById('cnt-high').textContent = TASKS.high.length;
+  document.getElementById('cnt-medium').textContent = TASKS.medium.length;
+  document.getElementById('cnt-done').textContent = TASKS.done.length;
+  document.getElementById('badge-tasks').textContent = TASKS.critical.length + TASKS.high.length + TASKS.medium.length;
+}
+
+function toggleTask(group, idx) {
+  if (doneSets[group].has(idx)) doneSets[group].delete(idx);
+  else doneSets[group].add(idx);
+  renderAll();
+}
+
+function filterTasks(f) {
+  currentFilter = f;
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  renderAll();
+}
+
+function showView(v) {
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function togglePhase(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  const body = el.querySelector('.roadmap-phase-body');
+  body.style.display = el.classList.contains('open') ? 'flex' : 'none';
+}
+
+// Init
+document.querySelectorAll('.roadmap-phase').forEach(ph => {
+  const body = ph.querySelector('.roadmap-phase-body');
+  body.style.display = ph.classList.contains('open') ? 'flex' : 'none';
+});
+renderAll();
+</script>
+</body>
+</html>

@@ -5,11 +5,13 @@ import { MasterPage } from '@pages/master/ui/MasterPage'
 import { LoginPage } from '@pages/login/ui/LoginPage'
 import { DashboardPage } from '@pages/dashboard/ui/DashboardPage'
 import { MasterDashboardPage } from '@pages/master-dashboard/ui/MasterDashboardPage'
+import { MePage } from '@pages/me'
 import { ROUTES } from '@shared/config/routes'
 import { DeviceLocationSync } from '@features/location/ui/DeviceLocationSync'
 import { GeoLocationStorageWatcher } from '@features/location/ui/GeoLocationStorageWatcher'
 import { LocationBootstrap } from '@features/location/ui/LocationBootstrap'
 import { AuthBootstrap } from './AuthBootstrap'
+import { RequireAuth } from './RequireAuth'
 
 export function App() {
   return (
@@ -24,6 +26,7 @@ export function App() {
         <Route path={ROUTES.PLACE} element={<SalonPage />} />
         <Route path={ROUTES.MASTER} element={<MasterPage />} />
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.ME} element={<RequireAuth><MePage /></RequireAuth>} />
         <Route path={`${ROUTES.DASHBOARD}/*`} element={<DashboardPage />} />
         <Route path={`${ROUTES.MASTER_DASHBOARD}/*`} element={<MasterDashboardPage />} />
       </Routes>

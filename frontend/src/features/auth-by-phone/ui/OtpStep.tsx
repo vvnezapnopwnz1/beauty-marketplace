@@ -10,6 +10,7 @@ import {
   confirmOtp,
   sendOtp,
   selectAuthPhone,
+  selectAuthChannel,
   selectAuthLoading,
   selectAuthError,
 } from '../model/authSlice'
@@ -25,11 +26,12 @@ const schema = yup.object({
 
 type FormValues = { code: string }
 
-export function OtpStep() {
+export function OtpStep({ returnTo }: { returnTo?: string | null }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const phone = useAppSelector(selectAuthPhone)
+  const channel = useAppSelector(selectAuthChannel)
   const loading = useAppSelector(selectAuthLoading)
   const error = useAppSelector(selectAuthError)
 
@@ -41,12 +43,12 @@ export function OtpStep() {
   const onSubmit = async ({ code }: FormValues) => {
     const result = await dispatch(confirmOtp({ phone, code }))
     if (confirmOtp.fulfilled.match(result)) {
-      navigate(ROUTES.HOME)
+      navigate(returnTo || ROUTES.HOME)
     }
   }
 
   const handleResend = () => {
-    dispatch(sendOtp(phone))
+    dispatch(sendOtp({ phone, channel }))
   }
 
   return (

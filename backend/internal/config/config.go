@@ -25,6 +25,9 @@ type Config struct {
 	// DevOTPBypass allows fixed code "1234" on verify when an active OTP exists (local dev only).
 	// Env: DEV_OTP_BYPASS=1 / true.
 	DevOTPBypass bool
+	// Telegram settings for OTP delivery channel.
+	TelegramBotToken    string
+	TelegramBotUsername string
 }
 
 // Load reads configuration from environment variables with defaults for local dev.
@@ -36,11 +39,13 @@ func Load() (*Config, error) {
 			"DATABASE_DSN",
 			"postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable",
 		),
-		TwoGisAPIKey:   twoGisAPIKeyFromEnv(),
-		TwoGisRegionID: getenvIntFirst([]string{"2GIS_REGION_ID", "TWO_GIS_REGION_ID"}, 32),
-		JWTSecret:     getenv("JWT_SECRET", "dev-secret-change-me-in-production"),
-		DevDemoSeed:   getenvBool("DEV_DEMO_SEED", false),
-		DevOTPBypass:  getenvBool("DEV_OTP_BYPASS", false),
+		TwoGisAPIKey:        twoGisAPIKeyFromEnv(),
+		TwoGisRegionID:      getenvIntFirst([]string{"2GIS_REGION_ID", "TWO_GIS_REGION_ID"}, 32),
+		JWTSecret:           getenv("JWT_SECRET", "dev-secret-change-me-in-production"),
+		DevDemoSeed:         getenvBool("DEV_DEMO_SEED", false),
+		DevOTPBypass:        getenvBool("DEV_OTP_BYPASS", false),
+		TelegramBotToken:    getenv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramBotUsername: getenv("TELEGRAM_BOT_USERNAME", ""),
 	}
 	if cfg.HTTPAddr == "" {
 		return nil, fmt.Errorf("HTTP_ADDR must not be empty")

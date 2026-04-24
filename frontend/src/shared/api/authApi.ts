@@ -12,6 +12,14 @@ export interface UserInfo {
   phone: string
   displayName: string | null
   role: string
+  sessionId?: string | null
+  effectiveRoles?: {
+    isClient: boolean
+    isMaster: boolean
+    isPlatformAdmin: boolean
+    ownerOfSalons: Array<{ salonId: string }>
+    adminOfSalons: Array<{ salonId: string }>
+  }
   /** Present when this user owns a master_profiles row (after claiming or registration). */
   masterProfileId?: string | null
 }
@@ -26,8 +34,24 @@ export interface OTPRequestResponse {
   expiresAt: string
 }
 
+export interface TelegramNotLinkedErrorPayload {
+  error: 'telegram_not_linked'
+  botUsername: string
+}
+
+export class TelegramNotLinkedError extends Error {
+  readonly botUsername: string
+
+  constructor(botUsername: string) {
+    super('telegram_not_linked')
+    this.name = 'TelegramNotLinkedError'
+    this.botUsername = botUsername
+  }
+}
+
 const TOKEN_KEY = 'beauty_access_token'
 const REFRESH_KEY = 'beauty_refresh_token'
+const SESSION_ID_KEY = 'beauty_session_id'
 
 export function getStoredAccessToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -42,9 +66,22 @@ export function storeTokens(pair: TokenPair) {
   localStorage.setItem(REFRESH_KEY, pair.refreshToken)
 }
 
+export function storeSessionId(sessionId: string | null | undefined) {
+  if (!sessionId) {
+    localStorage.removeItem(SESSION_ID_KEY)
+    return
+  }
+  localStorage.setItem(SESSION_ID_KEY, sessionId)
+}
+
+export function getStoredSessionId(): string | null {
+  return localStorage.getItem(SESSION_ID_KEY)
+}
+
 export function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_KEY)
+  localStorage.removeItem(SESSION_ID_KEY)
 }
 
 export async function authFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
@@ -52,6 +89,10 @@ export async function authFetch(input: RequestInfo, init?: RequestInit): Promise
   const headers = new Headers(init?.headers)
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
+  }
+  const sessionId = getStoredSessionId()
+  if (sessionId) {
+    headers.set('X-Session-Id', sessionId)
   }
   let res = await fetch(input, { ...init, headers })
 
@@ -65,14 +106,22 @@ export async function authFetch(input: RequestInfo, init?: RequestInit): Promise
   return res
 }
 
-export async function requestOTP(phone: string): Promise<OTPRequestResponse> {
+export async function requestOTP(
+  phone: string,
+  channel: 'sms' | 'telegram' = 'sms',
+): Promise<OTPRequestResponse> {
   const res = await fetch(`${API_BASE}/api/auth/otp/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ phone, channel }),
   })
   if (!res.ok) {
-    const data = await res.json().catch(() => ({ error: 'Network error' }))
+    const data = await res.json().catch(() => ({ error: 'Network error' })) as
+      | { error?: string; botUsername?: string }
+      | TelegramNotLinkedErrorPayload
+    if (data.error === 'telegram_not_linked') {
+      throw new TelegramNotLinkedError(data.botUsername || '')
+    }
     throw new Error(data.error || `HTTP ${res.status}`)
   }
   return res.json()
@@ -115,9 +164,24 @@ export async function refreshTokens(): Promise<TokenPair | null> {
 }
 
 export async function fetchMe(): Promise<UserInfo> {
-  const res = await authFetch(`${API_BASE}/api/auth/me`)
+  const res = await authFetch(`${API_BASE}/api/v1/me`)
   if (!res.ok) throw new Error('unauthorized')
-  return res.json()
+  const data = await res.json() as {
+    id: string
+    phone: string
+    displayName: string | null
+    globalRole: string
+    effectiveRoles?: UserInfo['effectiveRoles']
+    masterProfileId?: string | null
+  }
+  return {
+    id: data.id,
+    phone: data.phone,
+    displayName: data.displayName ?? null,
+    role: data.globalRole,
+    effectiveRoles: data.effectiveRoles,
+    masterProfileId: data.masterProfileId ?? null,
+  }
 }
 
 export async function logout(): Promise<void> {

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@shared/config/routes'
 import { useBrandColors, useThemeMode } from '@shared/theme'
 import { useAppDispatch, useAppSelector } from '@app/store'
-import { logout, selectIsAuthenticated, selectUser } from '@features/auth-by-phone/model/authSlice'
+import { selectIsAuthenticated, selectUser } from '@features/auth-by-phone/model/authSlice'
 import {
   openCityPicker,
   selectActiveCity,
@@ -16,6 +16,7 @@ import {
   setAddressLine,
 } from '@features/location/model/locationSlice'
 import { reverseGeocode } from '@shared/api/geoApi'
+import { UserMenu } from '@features/user-menu/ui/UserMenu'
 
 export function NavBar() {
   const navigate = useNavigate()
@@ -30,7 +31,9 @@ export function NavBar() {
   const addressLine = useAppSelector(selectAddressLine)
   const addressLevel = useAppSelector(selectAddressLevel)
 
-  const cacheRef = useRef<Map<string, { formatted: string; level: 'address' | 'district' | 'city' }>>(new Map())
+  const cacheRef = useRef<
+    Map<string, { formatted: string; level: 'address' | 'district' | 'city' }>
+  >(new Map())
 
   useEffect(() => {
     if (!device.ready || device.source !== 'gps') {
@@ -92,8 +95,9 @@ export function NavBar() {
         justifyContent: 'center',
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 }, minHeight: '58px !important' }}>
-
+      <Toolbar
+        sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 }, minHeight: '58px !important' }}
+      >
         {/* Logo */}
         <Typography
           sx={{
@@ -108,7 +112,10 @@ export function NavBar() {
           }}
           onClick={() => navigate(ROUTES.HOME)}
         >
-          beauti<Box component="span" sx={{ color: colors.accent }}>ca</Box>
+          beauti
+          <Box component="span" sx={{ color: colors.accent }}>
+            ca
+          </Box>
         </Typography>
 
         {/* Nav links */}
@@ -143,7 +150,6 @@ export function NavBar() {
 
         {/* Right side */}
         <Stack direction="row" gap={1} alignItems="center" sx={{ ml: 'auto' }}>
-
           {/* Dark mode toggle — compact, no label */}
           <Switch
             size="small"
@@ -183,59 +189,7 @@ export function NavBar() {
 
           {authed && user ? (
             <>
-              {user.role === 'salon_owner' && (
-                <Button
-                  variant="text"
-                  onClick={() => navigate(ROUTES.DASHBOARD)}
-                  sx={{
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: colors.ink,
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: 100,
-                    textTransform: 'none',
-                    display: 'inline-flex',
-                    '&:hover': { bgcolor: colors.hoverOverlay },
-                  }}
-                >
-                  Кабинет салона
-                </Button>
-              )}
-              {user.masterProfileId && (
-                <Button
-                  variant="text"
-                  onClick={() => navigate(ROUTES.MASTER_DASHBOARD)}
-                  sx={{
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: colors.ink,
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: 100,
-                    textTransform: 'none',
-                    '&:hover': { bgcolor: colors.hoverOverlay },
-                  }}
-                >
-                  Кабинет мастера
-                </Button>
-              )}
-              <Button
-                variant="text"
-                onClick={() => void dispatch(logout())}
-                sx={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: colors.inkSoft,
-                  px: 1,
-                  py: 0.75,
-                  borderRadius: 100,
-                  textTransform: 'none',
-                  '&:hover': { bgcolor: colors.hoverOverlay },
-                }}
-              >
-                Выйти
-              </Button>
+              <UserMenu />
             </>
           ) : (
             <>
@@ -256,7 +210,7 @@ export function NavBar() {
                 {t('nav.login')}
               </Button>
 
-              <Button
+              {/* <Button
                 variant="contained"
                 onClick={() => navigate(ROUTES.DASHBOARD)}
                 sx={{
@@ -274,7 +228,7 @@ export function NavBar() {
                 }}
               >
                 {t('nav.signUp')}
-              </Button>
+              </Button> */}
             </>
           )}
         </Stack>

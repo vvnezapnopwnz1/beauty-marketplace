@@ -3,6 +3,8 @@ import { Box, Typography, Drawer, IconButton, Switch, useMediaQuery, useTheme } 
 import { Route, Routes, useMatch, useNavigate, useSearchParams } from 'react-router-dom'
 import { ROUTES } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
+import { useAppSelector } from '@app/store'
+import { selectUser } from '@features/auth-by-phone/model/authSlice'
 import { useThemeMode } from '@shared/theme'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardCalendar } from './DashboardCalendar'
@@ -68,6 +70,7 @@ function DashboardMainContent({ section }: { section: Section }) {
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const user = useAppSelector(selectUser)
   const { mode, setMode } = useThemeMode()
   const [searchParams] = useSearchParams()
   const staffMatch = useMatch('/dashboard/staff/:staffId')
@@ -90,6 +93,15 @@ export function DashboardPage() {
       navigate(ROUTES.LOGIN, { replace: true, state: { from: ROUTES.DASHBOARD } })
     }
   }, [navigate])
+
+  useEffect(() => {
+    if (!user) return
+    const roles = user.effectiveRoles
+    const canSalon = ((roles?.ownerOfSalons.length ?? 0) + (roles?.adminOfSalons.length ?? 0)) > 0
+    if (!canSalon) {
+      navigate(`${ROUTES.ME}?tab=general`, { replace: true })
+    }
+  }, [navigate, user])
 
   const headerTitle = useMemo(() => {
     if (staffMatch) return 'Мастер'

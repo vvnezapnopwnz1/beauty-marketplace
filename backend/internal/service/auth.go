@@ -27,6 +27,8 @@ const (
 type AuthService struct {
 	repo         repository.AuthRepository
 	masterDash   repository.MasterDashboardRepository
+	smsSender    OTPSender
+	tgSender     OTPSender
 	jwt          *auth.JWTManager
 	logger       *zap.Logger
 	devOTPBypass bool
@@ -35,6 +37,7 @@ type AuthService struct {
 
 func NewAuthService(
 	repo repository.AuthRepository,
+	telegramRepo repository.TelegramLinkRepository,
 	masterDash repository.MasterDashboardRepository,
 	jwt *auth.JWTManager,
 	logger *zap.Logger,
@@ -44,6 +47,8 @@ func NewAuthService(
 	return &AuthService{
 		repo:         repo,
 		masterDash:   masterDash,
+		smsSender:    NewStderrOTPSender(logger),
+		tgSender:     NewTelegramOTPSender(cfg.TelegramBotToken, telegramRepo, logger),
 		jwt:          jwt,
 		logger:       logger,
 		devOTPBypass: cfg.DevOTPBypass,
@@ -55,7 +60,12 @@ type OTPRequestResult struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-func (s *AuthService) RequestOTP(ctx context.Context, phone string) (*OTPRequestResult, error) {
+type OTPRequestParams struct {
+	Phone   string `json:"phone"`
+	Channel string `json:"channel"`
+}
+
+func (s *AuthService) RequestOTP(ctx context.Context, params OTPRequestParams) (*OTPRequestResult, error) {
 	code, err := generateOTP(otpLength)
 	if err != nil {
 		return nil, fmt.Errorf("generate otp: %w", err)
@@ -63,7 +73,7 @@ func (s *AuthService) RequestOTP(ctx context.Context, phone string) (*OTPRequest
 
 	expiresAt := time.Now().Add(otpTTL)
 	otp := &model.OtpCode{
-		PhoneE164: phone,
+		PhoneE164: params.Phone,
 		Code:      code,
 		ExpiresAt: expiresAt,
 	}
@@ -72,9 +82,17 @@ func (s *AuthService) RequestOTP(ctx context.Context, phone string) (*OTPRequest
 		return nil, fmt.Errorf("save otp: %w", err)
 	}
 
-	// TODO: send SMS via provider (e.g. SMS.ru, Twilio)
-	// For dev, log the code
-	s.logger.Info("OTP generated (dev mode)", zap.String("phone", phone), zap.String("code", code))
+	sender := s.smsSender
+	if params.Channel == "telegram" {
+		sender = s.tgSender
+	}
+	if err := sender.Send(ctx, params.Phone, code); err != nil {
+		if errors.Is(err, errs.ErrTelegramNotLinked) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("send otp via %s: %w", sender.Channel(), err)
+	}
+	s.logger.Info("otp sent", zap.String("phone", params.Phone), zap.String("channel", sender.Channel()))
 
 	return &OTPRequestResult{ExpiresAt: expiresAt}, nil
 }
@@ -90,6 +108,7 @@ type UserInfo struct {
 	Phone           string     `json:"phone"`
 	DisplayName     *string    `json:"displayName"`
 	Role            string     `json:"role"`
+	SessionID       *uuid.UUID `json:"sessionId,omitempty"`
 	MasterProfileID *uuid.UUID `json:"masterProfileId,omitempty"`
 }
 
@@ -123,7 +142,7 @@ func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*Verif
 
 	s.tryClaimShadowMasterProfile(ctx, user)
 
-	tokenPair, err := s.issueTokenPair(ctx, user)
+	tokenPair, sessionID, err := s.issueTokenPair(ctx, user)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +156,7 @@ func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*Verif
 			Phone:           user.PhoneE164,
 			DisplayName:     user.DisplayName,
 			Role:            user.GlobalRole,
+			SessionID:       sessionID,
 			MasterProfileID: masterProfID,
 		},
 		IsNew: isNew,
@@ -190,6 +210,9 @@ func (s *AuthService) Logout(ctx context.Context, userID uuid.UUID) error {
 func (s *AuthService) findOrCreateUser(ctx context.Context, phone string) (*model.User, bool, error) {
 	user, err := s.repo.FindUserByPhone(ctx, phone)
 	if err == nil {
+		if user.DeletedAt.Valid {
+			return nil, false, errs.ErrAccountDeleted
+		}
 		return user, false, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -206,15 +229,15 @@ func (s *AuthService) findOrCreateUser(ctx context.Context, phone string) (*mode
 	return newUser, true, nil
 }
 
-func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User) (*auth.TokenPair, error) {
+func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User) (*auth.TokenPair, *uuid.UUID, error) {
 	accessToken, expiresAt, err := s.jwt.GenerateAccessToken(user.ID, user.GlobalRole)
 	if err != nil {
-		return nil, fmt.Errorf("generate access token: %w", err)
+		return nil, nil, fmt.Errorf("generate access token: %w", err)
 	}
 
 	rawRefresh, hashRefresh, err := auth.GenerateRefreshToken()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	rt := &model.RefreshToken{
@@ -223,14 +246,14 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user *model.User) (*au
 		ExpiresAt: time.Now().Add(auth.RefreshTokenTTL),
 	}
 	if err := s.repo.SaveRefreshToken(ctx, rt); err != nil {
-		return nil, fmt.Errorf("save refresh token: %w", err)
+		return nil, nil, fmt.Errorf("save refresh token: %w", err)
 	}
 
 	return &auth.TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: rawRefresh,
 		ExpiresAt:    expiresAt.Unix(),
-	}, nil
+	}, &rt.ID, nil
 }
 
 func (s *AuthService) issueTokenPairByID(ctx context.Context, userID uuid.UUID) (*auth.TokenPair, error) {
@@ -238,7 +261,8 @@ func (s *AuthService) issueTokenPairByID(ctx context.Context, userID uuid.UUID) 
 	if err != nil {
 		return nil, fmt.Errorf("find user by id: %w", err)
 	}
-	return s.issueTokenPair(ctx, user)
+	pair, _, err := s.issueTokenPair(ctx, user)
+	return pair, err
 }
 
 func (s *AuthService) tryClaimShadowMasterProfile(ctx context.Context, user *model.User) {

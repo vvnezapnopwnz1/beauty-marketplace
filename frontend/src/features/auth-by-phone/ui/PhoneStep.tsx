@@ -1,10 +1,17 @@
 import { useForm, Controller } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import { TextField, Button, Typography, Stack, Link, Alert } from '@mui/material'
+import { TextField, Button, Typography, Stack, Link, Alert, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { useAppDispatch, useAppSelector } from '@app/store'
-import { sendOtp, selectAuthLoading, selectAuthError } from '../model/authSlice'
+import {
+  sendOtp,
+  selectAuthLoading,
+  selectAuthError,
+  selectAuthChannel,
+  selectTelegramBotUsername,
+  setAuthChannel,
+} from '../model/authSlice'
 import { formatPhone } from '@shared/lib/formatPhone'
 
 const schema = yup.object({
@@ -21,6 +28,8 @@ export function PhoneStep() {
   const dispatch = useAppDispatch()
   const loading = useAppSelector(selectAuthLoading)
   const error = useAppSelector(selectAuthError)
+  const channel = useAppSelector(selectAuthChannel)
+  const botUsername = useAppSelector(selectTelegramBotUsername) || '@beautica_bot'
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: yupResolver(schema),
@@ -29,7 +38,7 @@ export function PhoneStep() {
 
   const onSubmit = ({ phone }: FormValues) => {
     const e164 = phone.replace(/\D/g, '').replace(/^8/, '7')
-    dispatch(sendOtp(`+${e164}`))
+    dispatch(sendOtp({ phone: `+${e164}`, channel }))
   }
 
   return (
@@ -39,7 +48,16 @@ export function PhoneStep() {
         <Typography color="text.secondary" mt={0.5}>{t('login.subtitle')}</Typography>
       </div>
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && error !== 'telegram_not_linked' && <Alert severity="error">{error}</Alert>}
+      {error === 'telegram_not_linked' && (
+        <Alert severity="info">
+          Сначала откройте{' '}
+          <Link href={`https://t.me/${botUsername.replace(/^@/, '')}`} target="_blank" rel="noreferrer">
+            {botUsername}
+          </Link>{' '}
+          и нажмите "Поделиться номером".
+        </Alert>
+      )}
 
       <Controller
         name="phone"
@@ -59,6 +77,16 @@ export function PhoneStep() {
           />
         )}
       />
+
+      <ToggleButtonGroup
+        value={channel}
+        exclusive
+        onChange={(_, value) => value && dispatch(setAuthChannel(value))}
+        fullWidth
+      >
+        <ToggleButton value="sms">📱 SMS</ToggleButton>
+        <ToggleButton value="telegram">✈️ Telegram</ToggleButton>
+      </ToggleButtonGroup>
 
       <Button type="submit" variant="contained" size="large" fullWidth disabled={loading}>
         {loading ? t('login.submitting') : t('login.submit')}

@@ -49,7 +49,11 @@ func (r *AuthRepository) IncrementOTPAttempts(ctx context.Context, id uuid.UUID)
 
 func (r *AuthRepository) FindUserByPhone(ctx context.Context, phone string) (*model.User, error) {
 	var user model.User
-	err := r.db.WithContext(ctx).Where("phone_e164 = ?", phone).First(&user).Error
+	err := r.db.WithContext(ctx).
+		Unscoped().
+		Where("phone_e164 = ?", phone).
+		Order("deleted_at NULLS FIRST").
+		First(&user).Error
 	if err != nil {
 		return nil, err
 	}

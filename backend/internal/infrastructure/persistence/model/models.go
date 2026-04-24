@@ -25,11 +25,23 @@ func (SalonExternalID) TableName() string {
 
 // User maps to users.
 type User struct {
-	ID          uuid.UUID `gorm:"type:uuid;primaryKey"`
-	PhoneE164   string    `gorm:"column:phone_e164;not null;uniqueIndex"`
-	DisplayName *string   `gorm:"column:display_name"`
-	GlobalRole  string    `gorm:"type:global_role;column:global_role;not null;default:client"`
-	CreatedAt   time.Time `gorm:"column:created_at;not null;autoCreateTime"`
+	ID          uuid.UUID      `gorm:"type:uuid;primaryKey"`
+	PhoneE164   string         `gorm:"column:phone_e164;not null;uniqueIndex"`
+	Username    *string        `gorm:"column:username"`
+	FirstName   *string        `gorm:"column:first_name"`
+	LastName    *string        `gorm:"column:last_name"`
+	BirthDate   *time.Time     `gorm:"column:birth_date;type:date"`
+	Gender      *string        `gorm:"column:gender"`
+	City        *string        `gorm:"column:city"`
+	Bio         *string        `gorm:"column:bio"`
+	Locale      string         `gorm:"column:locale;not null;default:ru"`
+	ThemePref   string         `gorm:"column:theme_pref;not null;default:system"`
+	AvatarURL   *string        `gorm:"column:avatar_url"`
+	DisplayName *string        `gorm:"column:display_name"`
+	GlobalRole  string         `gorm:"type:global_role;column:global_role;not null;default:client"`
+	CreatedAt   time.Time      `gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;not null;autoUpdateTime"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {
@@ -268,11 +280,11 @@ func (SalonDateOverride) TableName() string {
 
 // SalonMasterAbsence maps to salon_master_absences.
 type SalonMasterAbsence struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
-	SalonMasterID   uuid.UUID `gorm:"type:uuid;not null;column:staff_id"`
-	StartsOn        time.Time `gorm:"column:starts_on;type:date;not null"`
-	EndsOn          time.Time `gorm:"column:ends_on;type:date;not null"`
-	Kind            string    `gorm:"column:kind;not null;default:vacation"`
+	ID            uuid.UUID `gorm:"type:uuid;primaryKey"`
+	SalonMasterID uuid.UUID `gorm:"type:uuid;not null;column:staff_id"`
+	StartsOn      time.Time `gorm:"column:starts_on;type:date;not null"`
+	EndsOn        time.Time `gorm:"column:ends_on;type:date;not null"`
+	Kind          string    `gorm:"column:kind;not null;default:vacation"`
 }
 
 func (a *SalonMasterAbsence) BeforeCreate(tx *gorm.DB) error {
@@ -334,14 +346,14 @@ func (a *Appointment) BeforeCreate(tx *gorm.DB) error {
 
 // AppointmentLineItem is a snapshot of one booked service (multi-service guest flow).
 type AppointmentLineItem struct {
-	ID                uuid.UUID `gorm:"type:uuid;primaryKey"`
-	AppointmentID     uuid.UUID `gorm:"type:uuid;not null;column:appointment_id;index:idx_appointment_line_items_appointment_id"`
-	ServiceID         uuid.UUID `gorm:"type:uuid;not null;column:service_id"`
-	ServiceName       string    `gorm:"column:service_name;not null"`
-	DurationMinutes   int       `gorm:"column:duration_minutes;not null"`
-	PriceCents        int64     `gorm:"column:price_cents;not null;default:0"`
-	SortOrder         int       `gorm:"column:sort_order;not null;default:0"`
-	CreatedAt         time.Time `gorm:"column:created_at;not null;autoCreateTime"`
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey"`
+	AppointmentID   uuid.UUID `gorm:"type:uuid;not null;column:appointment_id;index:idx_appointment_line_items_appointment_id"`
+	ServiceID       uuid.UUID `gorm:"type:uuid;not null;column:service_id"`
+	ServiceName     string    `gorm:"column:service_name;not null"`
+	DurationMinutes int       `gorm:"column:duration_minutes;not null"`
+	PriceCents      int64     `gorm:"column:price_cents;not null;default:0"`
+	SortOrder       int       `gorm:"column:sort_order;not null;default:0"`
+	CreatedAt       time.Time `gorm:"column:created_at;not null;autoCreateTime"`
 }
 
 func (l *AppointmentLineItem) BeforeCreate(tx *gorm.DB) error {
@@ -413,6 +425,20 @@ type UserTelegramIdentity struct {
 
 func (UserTelegramIdentity) TableName() string {
 	return "user_telegram_identities"
+}
+
+// TelegramPhoneLink maps to telegram_phone_links.
+type TelegramPhoneLink struct {
+	PhoneE164  string    `gorm:"column:phone_e164;primaryKey"`
+	ChatID     int64     `gorm:"column:chat_id;not null"`
+	TelegramID *int64    `gorm:"column:telegram_id"`
+	FirstName  *string   `gorm:"column:first_name"`
+	LinkedAt   time.Time `gorm:"column:linked_at;not null;autoCreateTime"`
+	UpdatedAt  time.Time `gorm:"column:updated_at;not null;autoUpdateTime"`
+}
+
+func (TelegramPhoneLink) TableName() string {
+	return "telegram_phone_links"
 }
 
 // Review maps to reviews (phase 2 migration).
