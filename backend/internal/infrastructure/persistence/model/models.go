@@ -75,6 +75,7 @@ type Salon struct {
 	CachedRating         *float64          `gorm:"column:cached_rating;default:0"`
 	CachedReviewCount    *int              `gorm:"column:cached_review_count;default:0"`
 	SlotDurationMinutes  int               `gorm:"column:slot_duration_minutes;not null;default:30"`
+	OnboardingCompleted  bool              `gorm:"column:onboarding_completed;not null;default:false"`
 	CreatedAt            time.Time         `gorm:"column:created_at;not null;autoCreateTime"`
 }
 
