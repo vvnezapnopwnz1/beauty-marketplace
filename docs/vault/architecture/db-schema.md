@@ -185,6 +185,26 @@ erDiagram
         timestamp created_at
     }
 
+    salon_claims {
+        uuid id PK
+        uuid user_id FK
+        enum relation_type "owner|manager|representative"
+        text comment
+        string source
+        string external_id
+        text snapshot_name
+        text snapshot_address
+        string snapshot_phone
+        text snapshot_photo
+        enum status "pending|approved|rejected|duplicate"
+        text rejection_reason
+        uuid reviewed_by FK
+        timestamptz reviewed_at
+        uuid salon_id FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
     salons ||--o{ salon_external_ids : "external IDs"
     salons ||--o{ salon_members : "members"
     salons ||--o{ salon_masters : "staff"
@@ -207,6 +227,9 @@ erDiagram
 
     master_profiles ||--o{ master_services : "personal catalog"
     master_profiles ||--o{ salon_masters : "works at"
+
+    users ||--o{ salon_claims : "submits"
+    salons ||--o{ salon_claims : "claimed via"
 ```
 
 ## Ключевые особенности
@@ -215,6 +238,8 @@ erDiagram
 - **AppointmentLineItem** — снапшот услуг на момент бронирования; поддерживает мультисервисный гостевой флоу.
 - **SalonClient** — CRM-запись клиента внутри салона; может быть связан с `users` или существовать независимо.
 - **salon_subscriptions** — тарифный план салона (фаза 2).
+- **SalonClaim** — заявка владельца на привязку 2GIS-места к платформе. `UNIQUE INDEX` на `(user_id, source, external_id) WHERE status IN ('pending','approved')` гарантирует один активный claim на пользователя × место. При approve — атомарная транзакция создаёт `salons` + `salon_external_ids` + `salon_members(owner)` + `salon_subscriptions(free/trial)`. Конкурирующие pending-заявки других пользователей помечаются `duplicate`. Migration: `000020_salon_claims`.
+- **salons.onboarding_completed** — флаг первичного онбординга (добавлен в migration 000020). `false` → редирект на `/dashboard/onboarding` после первого входа.
 
 ## Связанные заметки
 
