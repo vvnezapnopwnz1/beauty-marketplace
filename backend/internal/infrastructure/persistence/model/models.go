@@ -370,14 +370,15 @@ func (AppointmentLineItem) TableName() string {
 
 // SalonClient maps to salon_clients.
 type SalonClient struct {
-	ID          uuid.UUID  `gorm:"type:uuid;primaryKey"`
-	SalonID     uuid.UUID  `gorm:"type:uuid;not null;column:salon_id"`
-	UserID      *uuid.UUID `gorm:"type:uuid;column:user_id"`
-	PhoneE164   *string    `gorm:"column:phone_e164"`
-	DisplayName string     `gorm:"column:display_name;not null"`
-	Notes       *string    `gorm:"column:notes"`
-	CreatedAt   time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
-	UpdatedAt   time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
+	ID          uuid.UUID      `gorm:"type:uuid;primaryKey"`
+	SalonID     uuid.UUID      `gorm:"type:uuid;not null;column:salon_id"`
+	UserID      *uuid.UUID     `gorm:"type:uuid;column:user_id"`
+	PhoneE164   *string        `gorm:"column:phone_e164"`
+	DisplayName string         `gorm:"column:display_name;not null"`
+	Notes       *string        `gorm:"column:notes"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;index"`
+	CreatedAt   time.Time      `gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;not null;autoUpdateTime"`
 }
 
 func (c *SalonClient) BeforeCreate(tx *gorm.DB) error {
