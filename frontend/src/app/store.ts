@@ -5,6 +5,7 @@ import { authSlice } from '@features/auth-by-phone/model/authSlice'
 import { locationSlice } from '@features/location/model/locationSlice'
 import { profileReducer } from '@features/edit-profile/model/profileSlice'
 import { appointmentSlice } from '@entities/appointment/model/appointmentSlice'
+import { clientSlice } from '@entities/client/model/clientSlice'
 import { rtkApi } from '@shared/api/rtkApi'
 
 export const store = configureStore({
@@ -14,6 +15,7 @@ export const store = configureStore({
     location: locationSlice.reducer,
     profile: profileReducer,
     appointment: appointmentSlice.reducer,
+    client: clientSlice.reducer,
     [rtkApi.reducerPath]: rtkApi.reducer,
   },
   middleware: getDefaultMiddleware => getDefaultMiddleware().concat(rtkApi.middleware),
