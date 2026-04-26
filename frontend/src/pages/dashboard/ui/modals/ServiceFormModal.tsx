@@ -75,7 +75,7 @@ export function ServiceFormModal({ open, service, onClose, onSaved }: Props) {
   const [catPayload, setCatPayload] = React.useState<DashboardServiceCategoriesResponse | null>(null)
   const [catFull, setCatFull] = React.useState<DashboardServiceCategoriesResponse | null>(null)
   const [showAllCategories, setShowAllCategories] = React.useState(false)
-  const [salonType, setSalonType] = React.useState<string | null | undefined>(undefined)
+  const [salonCategoryScopes, setSalonCategoryScopes] = React.useState<string[] | null | undefined>(undefined)
   const [saveErr, setSaveErr] = React.useState<string | null>(null)
 
   const {
@@ -108,7 +108,7 @@ export function ServiceFormModal({ open, service, onClose, onSaved }: Props) {
         fetchDashboardServiceCategories(false),
         fetchDashboardServiceCategories(true),
       ])
-      setSalonType(profile.salonType)
+      setSalonCategoryScopes(profile.salonCategoryScopes)
       setCatPayload(filtered)
       setCatFull(full)
       setShowAllCategories(false)
@@ -209,10 +209,10 @@ export function ServiceFormModal({ open, service, onClose, onSaved }: Props) {
             </Box>
           )}
 
-          {!salonType && (
+          {(!salonCategoryScopes || salonCategoryScopes.length === 0) && (
             <Box sx={{ px: 3, pt: 2 }}>
               <Alert severity="info" sx={{ fontSize: 12 }}>
-                Укажите тип салона в профиле — будут показаны только нужные категории
+                Укажите категории салона в профиле — будут показаны только нужные категории
               </Alert>
             </Box>
           )}

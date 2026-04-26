@@ -28,17 +28,30 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import {
   fetchDashboardServices,
   fetchDashboardStaff,
-  patchAppointmentStatus,
   staffListItemsToRows,
-  updateDashboardAppointment,
-  fetchAppointmentDetail,
-  type DashboardAppointment,
   type DashboardServiceRow,
   type DashboardStaffRow,
 } from '@shared/api/dashboardApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import type { DashboardPalette } from '@shared/theme'
+import {
+  useGetAppointmentByIdQuery,
+  usePatchAppointmentStatusMutation,
+  useUpdateAppointmentMutation,
+  type DashboardAppointment,
+} from '@entities/appointment'
+
+type DrawerAppointment = DashboardAppointment & {
+  serviceId?: string
+  serviceName?: string
+  staffName?: string | null
+  guestName?: string | null
+  guestPhone?: string | null
+  clientUserId?: string | null
+  clientNote?: string | null
+  services?: { id: string; name: string; durationMinutes: number; priceCents: number }[]
+}
 
 function statusBadgeCfg(
   pal: DashboardPalette,
@@ -95,14 +108,16 @@ function durationMinutes(startsAt: string, endsAt: string): number {
 
 export type AppointmentDrawerProps = {
   open: boolean
-  appointment: DashboardAppointment | null
+  appointment?: DrawerAppointment | null
+  appointmentId?: string | null
   onClose: () => void
-  onUpdated: () => void
+  onUpdated?: () => void
 }
 
 export function AppointmentDrawer({
   open,
-  appointment,
+  appointment: appointmentFromProps,
+  appointmentId,
   onClose,
   onUpdated,
 }: AppointmentDrawerProps) {
@@ -113,14 +128,22 @@ export function AppointmentDrawer({
   const [err, setErr] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [loadingDetail, setLoadingDetail] = useState(false)
-
   const [serviceIds, setServiceIds] = useState<string[]>([])
   const [salonMasterId, setSalonMasterId] = useState<string>('')
   const [startsLocal, setStartsLocal] = useState('')
   const [clientNote, setClientNote] = useState('')
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
+
+  const resolvedAppointmentId = appointmentId ?? appointmentFromProps?.id ?? null
+  const { data: appointmentDetail, isLoading: isLoadingDetail } = useGetAppointmentByIdQuery(
+    resolvedAppointmentId ?? '',
+    {
+      skip: !resolvedAppointmentId || !open,
+    },
+  )
+  const appointment =
+    (appointmentDetail as DrawerAppointment | undefined) ?? appointmentFromProps ?? undefined
 
   const apptSelectSx = useMemo(
     () => ({
@@ -141,43 +164,7 @@ export function AppointmentDrawer({
 
   const menuItemSx = { fontSize: 13, color: d.text, '&:hover': { bgcolor: d.card } }
 
-  useEffect(() => {
-    if (!open) return
-    const t = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const [s, st] = await Promise.all([fetchDashboardServices(), fetchDashboardStaff()])
-          setServices(s.filter(x => x.isActive))
-          setStaff(staffListItemsToRows(st).filter(x => x.isActive))
-        } catch {
-          /* ignore */
-        }
-      })()
-    }, 0)
-
-    if (appointment?.id) {
-      void (async () => {
-        setLoadingDetail(true)
-        try {
-          const detail = await fetchAppointmentDetail(appointment.id)
-          setServiceIds(detail.services.map(s => s.id))
-          setSalonMasterId(detail.salonMasterId ?? '')
-          setStartsLocal(detail.startsAt)
-          setClientNote(detail.clientNote ?? '')
-          setGuestName(detail.guestName ?? (detail.clientUserId ? detail.clientLabel : ''))
-          setGuestPhone(detail.guestPhone ?? detail.clientPhone ?? '')
-        } catch (e) {
-          console.error('Failed to fetch appointment detail', e)
-        } finally {
-          setLoadingDetail(false)
-        }
-      })()
-    }
-
-    return () => window.clearTimeout(t)
-  }, [open, appointment?.id])
-
-  const resetFromAppt = useCallback((a: DashboardAppointment | null) => {
+  const resetFromAppt = useCallback((a?: DrawerAppointment) => {
     if (!a) {
       setServiceIds([])
       setSalonMasterId('')
@@ -189,7 +176,13 @@ export function AppointmentDrawer({
     }
     setErr(null)
     // Initial sync from simple list data, will be refined by fetchAppointmentDetail
-    if (a.serviceId) setServiceIds([a.serviceId])
+    if (a.services?.length) {
+      setServiceIds(a.services.map(s => s.id))
+    } else if (a.serviceId) {
+      setServiceIds([a.serviceId])
+    } else {
+      setServiceIds([])
+    }
     setSalonMasterId(a.salonMasterId ?? '')
     setStartsLocal(a.startsAt)
     setClientNote(a.clientNote ?? '')
@@ -198,20 +191,34 @@ export function AppointmentDrawer({
   }, [])
 
   useEffect(() => {
-    if (open && appointment) resetFromAppt(appointment)
+    if (open) resetFromAppt(appointment)
   }, [open, appointment, resetFromAppt])
 
-  const showEditForm =
-    appointment && (appointment.status === 'pending' || appointment.status === 'confirmed')
+  useEffect(() => {
+    if (!open) return
+    void (async () => {
+      try {
+        const [svc, st] = await Promise.all([fetchDashboardServices(), fetchDashboardStaff()])
+        setServices(svc.filter(x => x.isActive))
+        setStaff(staffListItemsToRows(st).filter(x => x.isActive))
+      } catch {
+        // ignore staff/services preload errors
+      }
+    })()
+  }, [open])
+
+  const showEditForm = Boolean(
+    appointment && (appointment.status === 'pending' || appointment.status === 'confirmed'),
+  )
   const readOnlyGuest = Boolean(appointment?.clientUserId)
 
   async function patchStatus(status: string) {
-    if (!appointment) return
+    if (!appointment?.id) return
     setErr(null)
     setBusy(true)
     try {
-      await patchAppointmentStatus(appointment.id, status)
-      onUpdated()
+      await patchAppointmentStatusMut({ id: appointment.id, status }).unwrap()
+      onUpdated?.()
       onClose()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
@@ -221,19 +228,16 @@ export function AppointmentDrawer({
   }
 
   async function saveChanges() {
-    if (!appointment) return
-    if (!readOnlyGuest) {
-      const name = guestName.trim()
-      const phone = guestPhone.trim()
-      if (!name) {
-        setErr('Укажите имя гостя')
-        return
-      }
-      if (!/^\+7\d{10}$/.test(phone)) {
-        setErr('Телефон в формате +7XXXXXXXXXX')
-        return
-      }
+    if (!appointment?.id) return
+    if (!startsLocal) {
+      setErr('Выберите дату и время')
+      return
     }
+    if (serviceIds.length === 0) {
+      setErr('Выберите хотя бы одну услугу')
+      return
+    }
+
     setErr(null)
     setInfo(null)
     setBusy(true)
@@ -242,21 +246,25 @@ export function AppointmentDrawer({
       serviceIds.join(',') !== (appointment.serviceId ?? '') ||
       salonMasterId !== (appointment.salonMasterId ?? '') ||
       new Date(startsLocal).toISOString() !== appointment.startsAt ||
-      (!readOnlyGuest && (guestName.trim() !== (appointment.guestName ?? '') ||
-        guestPhone.trim() !== (appointment.guestPhone ?? '')))
+      (!readOnlyGuest &&
+        (guestName.trim() !== (appointment.guestName ?? '') ||
+          guestPhone.trim() !== (appointment.guestPhone ?? '')))
     try {
       const startsAt = new Date(startsLocal).toISOString()
-      await updateDashboardAppointment(appointment.id, {
-        serviceIds,
-        startsAt,
-        clientNote: clientNote.trim(),
-        ...(salonMasterId ? { salonMasterId } : { clearSalonMasterId: true }),
-        ...(!readOnlyGuest ? { guestName: guestName.trim(), guestPhone: guestPhone.trim() } : {}),
-      })
+      await updateAppointmentMut({
+        id: appointment.id,
+        body: {
+          serviceIds,
+          startsAt,
+          clientNote: clientNote.trim(),
+          ...(salonMasterId ? { salonMasterId } : { clearSalonMasterId: true }),
+          ...(!readOnlyGuest ? { guestName: guestName.trim(), guestPhone: guestPhone.trim() } : {}),
+        },
+      }).unwrap()
       if (wasConfirmed && hasStructuralChanges) {
         setInfo('Запись возвращена в статус «Ожидает» и требует повторного подтверждения')
       }
-      onUpdated()
+      onUpdated?.()
       onClose()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
@@ -265,8 +273,11 @@ export function AppointmentDrawer({
     }
   }
 
+  const [patchAppointmentStatusMut] = usePatchAppointmentStatusMutation()
+  const [updateAppointmentMut] = useUpdateAppointmentMutation()
+
   const phoneDisplay = appointment?.clientPhone ?? appointment?.guestPhone ?? '—'
-  const dur = appointment != null ? durationMinutes(appointment.startsAt, appointment.endsAt) : 0
+  const dur = appointment ? durationMinutes(appointment.startsAt, appointment.endsAt) : 0
 
   return (
     <Drawer
@@ -317,7 +328,7 @@ export function AppointmentDrawer({
           <Stack spacing={1}>
             {!appointment ? (
               <Typography sx={{ color: d.muted }}>Нет данных</Typography>
-            ) : loadingDetail ? (
+            ) : isLoadingDetail ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                 <CircularProgress size={32} sx={{ color: d.accent }} />
               </Box>
@@ -360,6 +371,7 @@ export function AppointmentDrawer({
                 </Stack>
 
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Typography sx={{ fontSize: 13, color: d.mutedDark }}>Статус:</Typography>
                   <StatusBadge status={appointment.status} />
 
                   {appointment.status === 'pending' && (
@@ -484,7 +496,10 @@ export function AppointmentDrawer({
                       <Box component="span" sx={{ color: d.mutedDark }}>
                         Услуга:{' '}
                       </Box>
-                      {appointment.serviceName}
+                      {services
+                        .filter(s => serviceIds.includes(s.id))
+                        .map(s => s.name)
+                        .join(', ')}
                     </Typography>
                   </Stack>
 
@@ -501,6 +516,7 @@ export function AppointmentDrawer({
                   {appointment.clientNote?.trim() && (
                     <Stack direction="row" spacing={1.5} alignItems="flex-start">
                       <DescriptionOutlinedIcon sx={{ color: d.mutedDark, fontSize: 18, mt: 0.2 }} />
+                      <Typography sx={{ fontSize: 13, color: d.mutedDark }}>Заметка:</Typography>
                       <Typography sx={{ fontSize: 13, color: d.mutedDark, lineHeight: 1.4 }}>
                         {appointment.clientNote}
                       </Typography>
@@ -617,7 +633,9 @@ export function AppointmentDrawer({
                           ampm={false}
                           format="dd.MM.yyyy HH:mm"
                           views={['year', 'month', 'day', 'hours', 'minutes']}
-                          slotProps={{ textField: { fullWidth: true, size: 'small', sx: inputBaseSx } }}
+                          slotProps={{
+                            textField: { fullWidth: true, size: 'small', sx: inputBaseSx },
+                          }}
                         />
                       </LocalizationProvider>
                     </Box>

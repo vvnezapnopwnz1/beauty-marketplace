@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   Box,
+  ListItemText,
   MenuItem,
   Select,
   Stack,
@@ -9,8 +10,12 @@ import {
   Typography,
   type SelectChangeEvent,
 } from '@mui/material'
-import { fetchSalonProfile, putSalonProfile, type SalonProfile } from '@shared/api/dashboardApi'
-import { SALON_TYPE_OPTIONS } from '@pages/dashboard/lib/salonTypeOptions'
+import {
+  fetchDashboardServiceCategories,
+  fetchSalonProfile,
+  putSalonProfile,
+  type SalonProfile,
+} from '@shared/api/dashboardApi'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import type { DashboardPalette } from '@shared/theme'
@@ -54,6 +59,7 @@ export function DashboardProfile() {
   const [p, setP] = useState<SalonProfile | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
+  const [scopeOptions, setScopeOptions] = useState<Array<{ slug: string; label: string }>>([])
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +74,20 @@ export function DashboardProfile() {
     return () => window.clearTimeout(t)
   }, [load])
 
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const cats = await fetchDashboardServiceCategories(true)
+          setScopeOptions(cats.groups.map((g) => ({ slug: g.parentSlug, label: g.label })))
+        } catch {
+          // keep profile editable even if categories are unavailable
+        }
+      })()
+    }, 0)
+    return () => window.clearTimeout(t)
+  }, [])
+
   async function save() {
     if (!p) return
     setOk(null)
@@ -77,8 +97,7 @@ export function DashboardProfile() {
         description: p.description,
         phonePublic: p.phonePublic,
         categoryId: p.categoryId,
-        salonType: p.salonType,
-        businessType: p.businessType,
+        salonCategoryScopes: p.salonCategoryScopes ?? [],
         onlineBookingEnabled: p.onlineBookingEnabled,
         addressOverride: p.addressOverride,
         address: p.address,
@@ -163,36 +182,36 @@ export function DashboardProfile() {
             />
           </FormField>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <FormField label="Тип заведения">
-              <Select
-                value={p.salonType ?? ''}
-                onChange={(e: SelectChangeEvent<string>) => setP({ ...p, salonType: e.target.value === '' ? null : e.target.value })}
-                displayEmpty
-                MenuProps={selectMenuSx}
-                sx={profileSelectSx(d)}
-              >
-                <MenuItem value="" sx={{ fontSize: 13, color: d.mutedDark, fontStyle: 'italic' }}>
-                  Не выбран
+          <FormField label="Категории салона">
+            <Select<string[]>
+              multiple
+              value={p.salonCategoryScopes ?? []}
+              onChange={(e: SelectChangeEvent<string[]>) =>
+                setP({
+                  ...p,
+                  salonCategoryScopes:
+                    typeof e.target.value === 'string'
+                      ? e.target.value.split(',')
+                      : e.target.value,
+                })
+              }
+              displayEmpty
+              MenuProps={selectMenuSx}
+              renderValue={(selected) => {
+                const arr = selected
+                if (arr.length === 0) return 'Не выбраны'
+                const bySlug = new Map(scopeOptions.map((o) => [o.slug, o.label]))
+                return arr.map((slug) => bySlug.get(slug) ?? slug).join(', ')
+              }}
+              sx={profileSelectSx(d)}
+            >
+              {scopeOptions.map((o) => (
+                <MenuItem key={o.slug} value={o.slug} sx={{ fontSize: 13, color: d.text }}>
+                  <ListItemText primary={o.label} />
                 </MenuItem>
-                {SALON_TYPE_OPTIONS.map(o => (
-                  <MenuItem key={o.slug} value={o.slug} sx={{ fontSize: 13, color: d.text, '&:hover': { bgcolor: d.card } }}>
-                    {o.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormField>
-
-            <FormField label="Формат">
-              <TextField
-                value={p.businessType ?? ''}
-                onChange={e => setP({ ...p, businessType: e.target.value || null })}
-                fullWidth
-                placeholder="venue / individual"
-                sx={inputBaseSx}
-              />
-            </FormField>
-          </Stack>
+              ))}
+            </Select>
+          </FormField>
 
           <FormField label="О салоне">
             <TextField

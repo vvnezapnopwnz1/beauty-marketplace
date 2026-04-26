@@ -30,6 +30,33 @@ export interface PlacesSearchParams {
   clientAction?: string
 }
 
+export async function searchPlaces(params: {
+  q: string
+  pageSize?: number
+  page?: number
+  lat?: number
+  lon?: number
+}): Promise<PlacesSearchResult> {
+  const qs = new URLSearchParams({
+    q: params.q,
+    lat: String(params.lat ?? 55.751244),
+    lon: String(params.lon ?? 37.618423),
+    page: String(params.page ?? 1),
+    page_size: String(params.pageSize ?? 10),
+  })
+  const url = publicApiUrl(`/api/v1/places/search?${qs}`)
+  const res = await fetch(url, {
+    cache: 'no-store',
+    headers: {
+      'X-Client-Request-ID': buildClientRequestId(),
+      'X-Client-Action': 'join_search_place',
+      'X-Client-Request-URL': typeof window !== 'undefined' ? new URL(url, window.location.href).href : url,
+    },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
 export interface PlaceContact {
   type: string
   value: string

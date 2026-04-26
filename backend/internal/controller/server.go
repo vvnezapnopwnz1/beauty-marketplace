@@ -33,6 +33,7 @@ func NewHTTPServer(
 	mh *MasterController,
 	md *MasterDashboardController,
 	uh *UserController,
+	claimCtrl *SalonClaimController,
 ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", hh.Health)
@@ -62,8 +63,13 @@ func NewHTTPServer(
 	mux.HandleFunc("/api/v1/me", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
 	mux.HandleFunc("/api/v1/me/", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
 
-	// Admin-only example
-	// mux.HandleFunc("/api/admin/...", withCORS(auth.RequireRole(jwtMgr, adminHandler, "admin")))
+	// Salon claim (JWT required)
+	mux.HandleFunc("POST /api/v1/salons/claim", withCORS(auth.RequireAuth(jwtMgr, claimCtrl.SubmitClaim)))
+	mux.HandleFunc("GET /api/v1/salons/claim/my-status", withCORS(auth.RequireAuth(jwtMgr, claimCtrl.GetMyStatus)))
+
+	// Admin claims (admin role required)
+	mux.HandleFunc("/api/v1/admin/claims", withCORS(auth.RequireRole(jwtMgr, claimCtrl.AdminClaimsRoutes, "admin")))
+	mux.HandleFunc("/api/v1/admin/claims/", withCORS(auth.RequireRole(jwtMgr, claimCtrl.AdminClaimsRoutes, "admin")))
 
 	srv := &http.Server{
 		Addr:    cfg.HTTPAddr,

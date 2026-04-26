@@ -14,6 +14,7 @@ import {
   type SalonMasterPublic,
 } from '@shared/api/salonApi'
 import { GuestBookingDialog } from '@features/guest-booking/ui/GuestBookingDialog'
+import { ClaimChip } from '@features/claim-salon/ui/ClaimChip'
 import { ROUTES, masterPath } from '@shared/config/routes'
 import { FEATURE_FLAGS } from '@shared/config/featureFlags'
 import { SalonScheduleList } from '@entities/salon/ui/SalonScheduleList'
@@ -184,6 +185,9 @@ export function SalonPage() {
               <Box sx={{ px: 1.2, py: 0.35, borderRadius: 100, bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 12, fontWeight: 600 }}>
                 2GIS карточка
               </Box>
+            )}
+            {view.mode === 'place' && placeExternalId && (
+              <ClaimChip source="2gis" externalId={placeExternalId} />
             )}
           </Stack>
           {view.mode === 'salon' && view.canBookOnline && (

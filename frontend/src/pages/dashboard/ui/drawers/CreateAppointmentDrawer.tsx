@@ -21,7 +21,6 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import { ru } from 'date-fns/locale'
 
 import {
-  createDashboardAppointment,
   fetchDashboardServices,
   fetchDashboardStaff,
   type DashboardServiceRow,
@@ -30,11 +29,13 @@ import {
 } from '@shared/api/dashboardApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
+import { useCreateAppointmentMutation } from '@entities/appointment/model/appointmentApi'
+import { closeAppointmentDrawer } from '@entities/appointment'
+import { useAppDispatch } from '@app/store'
 
 export type CreateAppointmentDrawerProps = {
   open: boolean
   onClose: () => void
-  onCreated: () => void
   initialData?: {
     startsAt?: string
     staffId?: string
@@ -45,15 +46,18 @@ export type CreateAppointmentDrawerProps = {
 export function CreateAppointmentDrawer({
   open,
   onClose,
-  onCreated,
   initialData,
 }: CreateAppointmentDrawerProps) {
   const d = useDashboardPalette()
   const { inputBaseSx, selectMenuSx } = useDashboardFormStyles()
+  const dispatch = useAppDispatch()
+
+  const [
+    createAppointment,
+    { isLoading },
+  ] = useCreateAppointmentMutation()
 
   const [err, setErr] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
   const [form, setForm] = useState({
     guestName: '',
     guestPhone: '',
@@ -72,40 +76,24 @@ export function CreateAppointmentDrawer({
     }
   }, [open])
 
-  useEffect(() => {
-    if (initialData) {
-      setForm({
-        guestName: '',
-        guestPhone: '',
-        note: '',
-        startsAt: initialData.startsAt || '',
-        staffId: initialData.staffId || '',
-        serviceIds: initialData.serviceIds || [],
-      })
-    }
-  }, [initialData])
-
   const handleSubmit = async () => {
     if (form.serviceIds.length === 0) return setErr('Выберите хотя бы одну услугу')
     if (!form.startsAt) return setErr('Выберите время начала')
     if (!form.guestName.trim()) return setErr('Введите имя гостя')
-
     setErr(null)
-    setBusy(true)
     try {
-      await createDashboardAppointment({
+      await createAppointment({
         serviceIds: form.serviceIds,
         salonMasterId: form.staffId || null,
-        startsAt: new Date(form.startsAt).toISOString(),
+        startsAt: form.startsAt,
         guestName: form.guestName.trim(),
         guestPhone: form.guestPhone.trim(),
-      })
-      onCreated()
+        clientNote: form.note.trim() || undefined,
+      }).unwrap()
+      dispatch(closeAppointmentDrawer())
       onClose()
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Ошибка при создании')
-    } finally {
-      setBusy(false)
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : 'Ошибка при создании записи')
     }
   }
 
@@ -184,11 +172,7 @@ export function CreateAppointmentDrawer({
                     setForm(f => ({ ...f, serviceIds: newValue.map(v => v.id) }))
                   }}
                   renderInput={params => (
-                    <TextField
-                      {...params}
-                      placeholder="Выберите услуги"
-                      sx={inputBaseSx}
-                    />
+                    <TextField {...params} placeholder="Выберите услуги" sx={inputBaseSx} />
                   )}
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
@@ -253,7 +237,9 @@ export function CreateAppointmentDrawer({
 
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
               <Box>
-                <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>Дата и время</Typography>
+                <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                  Дата и время
+                </Typography>
                 <DateTimePicker
                   value={form.startsAt ? new Date(form.startsAt) : null}
                   onChange={val => setForm(f => ({ ...f, startsAt: val ? val.toISOString() : '' }))}
@@ -305,7 +291,7 @@ export function CreateAppointmentDrawer({
           <Button
             variant="contained"
             fullWidth
-            disabled={busy}
+            disabled={isLoading}
             onClick={() => void handleSubmit()}
             sx={{
               bgcolor: d.accent,
@@ -324,7 +310,7 @@ export function CreateAppointmentDrawer({
               transition: 'all 0.2s',
             }}
           >
-            {busy ? 'Создание...' : 'Создать запись'}
+            {isLoading ? 'Создание...' : 'Создать запись'}
           </Button>
           <Typography sx={{ textAlign: 'center', mt: 1.5, fontSize: 11, color: d.mutedDark }}>
             Запись будет создана со статусом «Ожидает»

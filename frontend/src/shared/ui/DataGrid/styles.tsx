@@ -156,11 +156,6 @@ const DataGrid = styled(DataGridPremium)<Props>(
       },
       overflow: 'overlay',
       scrollbarGutter: 'auto',
-      '& + div': {
-        // watermark: none
-        display: 'none',
-        // marginTop: "0 !important"
-      },
       '::-webkit-scrollbar': {
         width: '8px',
         height: '8px',
@@ -181,6 +176,13 @@ const DataGrid = styled(DataGridPremium)<Props>(
         borderRadius: '15px',
         border: 'none',
       },
+    },
+    // Hide MUI X license watermark block in grid body.
+    '& .MuiDataGrid-licenseInfo, & [class*="MuiDataGrid-licenseInfo"]': {
+      display: 'none !important',
+    },
+    '& .MuiDataGrid-main > div:last-child:not(.MuiDataGrid-virtualScroller)': {
+      display: 'none',
     },
     '& .cellInputField div, .cellSelectField div': {
       borderRadius: 4,

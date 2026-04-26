@@ -1,4 +1,4 @@
-import type { DashboardAppointment } from '@shared/api/dashboardApi'
+import type { DashboardAppointment } from '@entities/appointment'
 import type { DashboardPalette } from '@shared/theme'
 
 export const CALENDAR_HOUR_START = 8

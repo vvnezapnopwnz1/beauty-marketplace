@@ -27,6 +27,7 @@ export function NavBar() {
   const city = useAppSelector(selectActiveCity)
   const authed = useAppSelector(selectIsAuthenticated)
   const user = useAppSelector(selectUser)
+  const isAdmin = user?.role === 'admin'
   const device = useAppSelector(selectDeviceLocation)
   const addressLine = useAppSelector(selectAddressLine)
   const addressLevel = useAppSelector(selectAddressLevel)
@@ -189,6 +190,24 @@ export function NavBar() {
 
           {authed && user ? (
             <>
+              {isAdmin && (
+                <Button
+                  variant="text"
+                  onClick={() => navigate(ROUTES.ADMIN_CLAIMS)}
+                  sx={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: colors.ink,
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 100,
+                    textTransform: 'none',
+                    '&:hover': { bgcolor: colors.hoverOverlay },
+                  }}
+                >
+                  Заявки
+                </Button>
+              )}
               <UserMenu />
             </>
           ) : (

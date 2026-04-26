@@ -44,23 +44,25 @@ type AppointmentListFilter struct {
 	SalonID   uuid.UUID
 	From      *time.Time
 	To        *time.Time
-	Statuses  []string   // multi-status filter; empty = no status filter
+	Statuses  []string // multi-status filter; empty = no status filter
 	StaffID   *uuid.UUID
 	ServiceID *uuid.UUID
-	SortBy    string     // allowlist-validated in repository: starts_at | service_name | status | client_name
-	SortDir   string     // "asc" | "desc"; default "desc"
-	Search    string     // ILIKE on guest_name, guest_phone_e164, users.display_name
+	SortBy    string // allowlist-validated in repository: starts_at | service_name | status | client_name
+	SortDir   string // "asc" | "desc"; default "desc"
+	Search    string // ILIKE on guest_name, guest_phone_e164, users.display_name
 	Page      int
 	PageSize  int
 }
 
 // AppointmentListRow is one appointment with joined labels for API.
 type AppointmentListRow struct {
-	Appointment model.Appointment
-	ServiceName string
-	StaffName   *string
-	ClientLabel string
-	ClientPhone *string
+	Appointment  model.Appointment
+	ServiceName  string
+	ServiceNames []string
+	ServiceIDs   []uuid.UUID
+	StaffName    *string
+	ClientLabel  string
+	ClientPhone  *string
 }
 
 // DashboardRepository reads/writes salon-owner dashboard data (scoped by salon_id).
@@ -76,6 +78,8 @@ type DashboardRepository interface {
 	ReplaceAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID, items []model.AppointmentLineItem) error
 
 	ListServices(ctx context.Context, salonID uuid.UUID) ([]model.SalonService, error)
+	ListSalonCategoryScopes(ctx context.Context, salonID uuid.UUID) ([]string, error)
+	ReplaceSalonCategoryScopes(ctx context.Context, salonID uuid.UUID, parentSlugs []string) error
 	ListSystemServiceCategories(ctx context.Context) ([]model.ServiceCategory, error)
 	GetSystemServiceCategoryBySlug(ctx context.Context, slug string) (*model.ServiceCategory, error)
 	CreateService(ctx context.Context, s *model.SalonService) error

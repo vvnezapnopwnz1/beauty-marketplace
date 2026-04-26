@@ -6,6 +6,11 @@ import { LoginPage } from '@pages/login/ui/LoginPage'
 import { DashboardPage } from '@pages/dashboard/ui/DashboardPage'
 import { MasterDashboardPage } from '@pages/master-dashboard/ui/MasterDashboardPage'
 import { MePage } from '@pages/me'
+import { ClaimSalonPage } from '@features/claim-salon/ui/ClaimSalonPage'
+import { ClaimStatusPage } from '@features/claim-salon/ui/ClaimStatusPage'
+import { AdminClaimsPage } from '@pages/admin/ui/AdminClaimsPage'
+import { OnboardingWizard } from '@pages/dashboard/ui/OnboardingWizard'
+import { JoinPage } from '@pages/join/ui/JoinPage'
 import { ROUTES } from '@shared/config/routes'
 import { DeviceLocationSync } from '@features/location/ui/DeviceLocationSync'
 import { GeoLocationStorageWatcher } from '@features/location/ui/GeoLocationStorageWatcher'
@@ -29,6 +34,11 @@ export function App() {
         <Route path={ROUTES.ME} element={<RequireAuth><MePage /></RequireAuth>} />
         <Route path={`${ROUTES.DASHBOARD}/*`} element={<DashboardPage />} />
         <Route path={`${ROUTES.MASTER_DASHBOARD}/*`} element={<MasterDashboardPage />} />
+        <Route path={ROUTES.CLAIM_SALON} element={<RequireAuth><ClaimSalonPage /></RequireAuth>} />
+        <Route path={ROUTES.CLAIM_STATUS} element={<RequireAuth><ClaimStatusPage /></RequireAuth>} />
+        <Route path={ROUTES.JOIN} element={<JoinPage />} />
+        <Route path={ROUTES.ADMIN_CLAIMS} element={<RequireAuth><AdminClaimsPage /></RequireAuth>} />
+        <Route path={ROUTES.ONBOARDING} element={<RequireAuth><OnboardingWizard /></RequireAuth>} />
       </Routes>
     </BrowserRouter>
   )

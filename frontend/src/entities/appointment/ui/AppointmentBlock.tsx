@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { Box, Typography, useTheme } from '@mui/material'
-import { DashboardAppointment } from '@shared/api/dashboardApi'
+import { type DashboardAppointment } from '../model/types'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import type { DashboardPalette } from '@shared/theme'
-import { 
-  appointmentStatusVariant, 
-  calendarEventLightTextColors, 
+import {
+  appointmentStatusVariant,
+  calendarEventLightTextColors,
   formatAppointmentTimeRangeWithDuration,
-  type CalendarEventVariant
+  type CalendarEventVariant,
 } from '@pages/dashboard/lib/calendarGridUtils'
 
 function eventVariantSx(d: DashboardPalette): Record<CalendarEventVariant, object> {
@@ -56,22 +56,24 @@ export function AppointmentBlock({
   staffColor,
   dragging,
   onClick,
-  dndRef
+  dndRef,
 }: AppointmentBlockProps) {
   const theme = useTheme()
   const d = useDashboardPalette()
   const VARIANT_SX = useMemo(() => eventVariantSx(d), [d])
   const v = appointmentStatusVariant(apt.status)
   const lightLabels = theme.palette.mode === 'light' ? calendarEventLightTextColors(v, d) : null
-  
-  const variantSx = { ...VARIANT_SX[v] } as Record<string, any>
+  const serviceNamesLabel = Array.isArray(apt.serviceNames) ? apt.serviceNames.join(', ') : ''
+  const blockTitle = serviceNamesLabel ? `${serviceNamesLabel} · ${apt.clientLabel}` : apt.clientLabel
+
+  const variantSx = { ...VARIANT_SX[v] } as Record<string, string>
   if (staffColor) variantSx['borderLeft'] = `3px solid ${staffColor}`
 
   return (
     <Box
       ref={dndRef}
       data-appt-block
-      onClick={(e) => {
+      onClick={e => {
         e.stopPropagation()
         onClick?.()
       }}
@@ -96,7 +98,7 @@ export function AppointmentBlock({
         ...variantSx,
         '&:hover': { filter: 'brightness(1.08)', zIndex: 4 },
       }}
-      title={`${apt.serviceName} · ${apt.clientLabel}`}
+      title={blockTitle}
     >
       <Typography
         sx={{
@@ -109,7 +111,7 @@ export function AppointmentBlock({
           whiteSpace: 'nowrap',
         }}
       >
-        {apt.serviceName}
+        {serviceNamesLabel}
       </Typography>
       <Typography
         sx={{

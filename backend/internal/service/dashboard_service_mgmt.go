@@ -27,11 +27,11 @@ func (s *dashboardService) ListServiceCategories(ctx context.Context, salonID uu
 	if salon == nil {
 		return nil, gorm.ErrRecordNotFound
 	}
-	st := ""
-	if salon.SalonType != nil {
-		st = *salon.SalonType
+	scopes, err := s.salonCategoryScopes(ctx, salon)
+	if err != nil {
+		return nil, err
 	}
-	allowed := servicecategory.ParentSlugsForSalonType(st)
+	allowed := scopes
 	if !fullList && allowed != nil {
 		filtered := make([]model.ServiceCategory, 0, len(rows))
 		for _, r := range rows {
@@ -45,7 +45,11 @@ func (s *dashboardService) ListServiceCategories(ctx context.Context, salonID uu
 	for _, r := range rows {
 		byParent[r.ParentSlug] = append(byParent[r.ParentSlug], r)
 	}
-	out := &ServiceCategoriesResponse{SalonType: salon.SalonType, Groups: make([]ServiceCategoryGroupDTO, 0)}
+	out := &ServiceCategoriesResponse{
+		SalonType:           salon.SalonType,
+		SalonCategoryScopes: normalizeParentSlugs(scopes),
+		Groups:              make([]ServiceCategoryGroupDTO, 0),
+	}
 	for _, ps := range servicecategory.ParentSlugs {
 		items := byParent[ps]
 		if len(items) == 0 {
@@ -93,11 +97,10 @@ func (s *dashboardService) applyServiceCategory(ctx context.Context, salonID uui
 	if err != nil {
 		return err
 	}
-	st := ""
-	if salon != nil && salon.SalonType != nil {
-		st = *salon.SalonType
+	allowed, err := s.salonCategoryScopes(ctx, salon)
+	if err != nil {
+		return err
 	}
-	allowed := servicecategory.ParentSlugsForSalonType(st)
 	if !in.AllowAllCategories && !servicecategory.ParentAllowedForSalonType(cat.ParentSlug, allowed) {
 		return fmt.Errorf("category not allowed for salon type; use allowAllCategories to pick from full list")
 	}
@@ -105,6 +108,45 @@ func (s *dashboardService) applyServiceCategory(ctx context.Context, salonID uui
 	row.CategorySlug = &slug
 	row.Category = &name
 	return nil
+}
+
+func (s *dashboardService) salonCategoryScopes(ctx context.Context, salon *model.Salon) ([]string, error) {
+	if salon == nil {
+		return nil, nil
+	}
+	scopes, err := s.dash.ListSalonCategoryScopes(ctx, salon.ID)
+	if err != nil {
+		return nil, err
+	}
+	scopes = normalizeParentSlugs(scopes)
+	if len(scopes) > 0 {
+		return scopes, nil
+	}
+	st := ""
+	if salon.SalonType != nil {
+		st = *salon.SalonType
+	}
+	return servicecategory.ParentSlugsForSalonType(st), nil
+}
+
+func normalizeParentSlugs(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	known := make(map[string]struct{}, len(in))
+	for _, slug := range in {
+		known[slug] = struct{}{}
+	}
+	out := make([]string, 0, len(in))
+	for _, slug := range servicecategory.ParentSlugs {
+		if _, ok := known[slug]; ok {
+			out = append(out, slug)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func (s *dashboardService) ServiceStaffNamesMap(ctx context.Context, salonID uuid.UUID) (map[uuid.UUID][]string, error) {

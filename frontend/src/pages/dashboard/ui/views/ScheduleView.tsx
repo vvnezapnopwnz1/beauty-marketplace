@@ -922,14 +922,14 @@ export function ScheduleView() {
               >
                 Мастер
               </Box>
-              {WSG_DOW.map((d, j) => {
+              {WSG_DOW.map((dow, j) => {
                 const cell = new Date(weekMonday)
                 cell.setDate(cell.getDate() + j)
                 const today = new Date()
                 const isToday = cell.toDateString() === today.toDateString()
                 return (
                   <Box
-                    key={d}
+                    key={dow}
                     sx={{
                       bgcolor: d.dialog,
                       py: 1.25,
@@ -940,7 +940,7 @@ export function ScheduleView() {
                       color: isToday ? d.accent : d.mutedDark,
                     }}
                   >
-                    {d} {cell.getDate()}
+                    {dow} {cell.getDate()}
                   </Box>
                 )
               })}

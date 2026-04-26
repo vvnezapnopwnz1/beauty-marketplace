@@ -1,6 +1,6 @@
 ---
 title: service categories
-updated: 2026-04-24
+updated: 2026-04-25
 source_of_truth: mirror
 code_pointers: []
 ---
@@ -9,6 +9,13 @@ code_pointers: []
 
 > Версия: 2026-04 | Уровень: средний (как в YCLIENTS — папки для группировки услуг)  
 > Владелец выбирает категорию из этого списка, затем добавляет свои услуги внутрь со своими ценами и длительностью.
+
+## Scope-модель салона (2026-04-25)
+
+- Вместо единственного `salon_type` для фильтрации категорий используется набор scope-родителей в таблице `salon_service_category_scopes (salon_id, parent_slug)`.
+- API профиля салона (`/api/v1/dashboard/salon/profile`) читает/пишет `salonCategoryScopes: string[]`.
+- Для обратной совместимости backend использует fallback из `salon_type`, если scopes у салона ещё не заполнены.
+- Форма услуги по умолчанию показывает scoped-категории, а полный список остаётся доступен через `allowAllCategories`.
 
 ---
 

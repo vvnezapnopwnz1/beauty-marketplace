@@ -16,6 +16,7 @@ import { StaffDetailView } from './views/StaffDetailView'
 import { DashboardProfile } from './DashboardProfile'
 import { ClientsListView } from './ClientsListView'
 import { ClientDetailView } from './ClientDetailView'
+import { fetchSalonProfile } from '@shared/api/dashboardApi'
 
 type Section = 'overview' | 'calendar' | 'appointments' | 'services' | 'staff' | 'schedule' | 'profile' | 'clients'
 
@@ -77,6 +78,7 @@ export function DashboardPage() {
   const clientMatch = useMatch('/dashboard/clients/:clientId')
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | undefined>(undefined)
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
 
@@ -102,6 +104,31 @@ export function DashboardPage() {
       navigate(`${ROUTES.ME}?tab=general`, { replace: true })
     }
   }, [navigate, user])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const profile = await fetchSalonProfile()
+        if (!cancelled) {
+          setOnboardingCompleted(profile.onboardingCompleted)
+        }
+      } catch {
+        // ignore profile preload failures here; page content handles its own errors
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    if (user.role !== 'salon_owner') return
+    if (onboardingCompleted === false) {
+      navigate(ROUTES.ONBOARDING, { replace: true })
+    }
+  }, [navigate, onboardingCompleted, user])
 
   const headerTitle = useMemo(() => {
     if (staffMatch) return 'Мастер'

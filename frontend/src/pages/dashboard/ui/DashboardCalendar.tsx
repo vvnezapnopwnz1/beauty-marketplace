@@ -15,18 +15,16 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import {
-  fetchDashboardAppointments,
   fetchDashboardServices,
   fetchDashboardStaff,
   fetchSalonSchedule,
   fetchStaffSchedule,
   staffListItemsToRows,
-  updateDashboardAppointment,
-  type DashboardAppointment,
   type DashboardServiceRow,
   type DashboardStaffListItem,
   type DashboardStaffRow,
 } from '@shared/api/dashboardApi'
+import { useLazyGetAppointmentsQuery, useUpdateAppointmentMutation } from '@entities/appointment'
 import {
   addDays,
   addMonths,
@@ -41,7 +39,6 @@ import {
   parseHhmmToMins,
   startOfCalendarMonth,
   startOfWeekMonday,
-  toDatetimeLocalInputValue,
   toLocalYMD,
   type StaffScheduleInfo,
 } from '../lib/calendarGridUtils'
@@ -51,6 +48,8 @@ import { CalendarMonthGrid } from './CalendarMonthGrid'
 import { CalendarWeekGrid } from './CalendarWeekGrid'
 import { AppointmentDrawer } from '@pages/dashboard/ui/drawers/AppointmentDrawer'
 import { CreateAppointmentDrawer } from '@pages/dashboard/ui/drawers/CreateAppointmentDrawer'
+
+import { type DashboardAppointment } from '@entities/appointment'
 
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   const d = useDashboardPalette()
@@ -90,6 +89,8 @@ export function DashboardCalendar() {
 
   const [staffSchedules, setStaffSchedules] = useState<Map<string, StaffScheduleInfo>>(new Map())
   const [slotDurationMinutes, setSlotDurationMinutes] = useState(15)
+  const [getAppointments] = useLazyGetAppointmentsQuery()
+  const [updateAppointment] = useUpdateAppointmentMutation()
 
   const weekStart = useMemo(() => startOfWeekMonday(anchor), [anchor])
   const weekDays = useMemo(() => eachDayOfWeek(weekStart), [weekStart])
@@ -137,18 +138,18 @@ export function DashboardCalendar() {
       toExclusive = addDays(from, 7)
     }
     try {
-      const res = await fetchDashboardAppointments({
+      const res = await getAppointments({
         from: toLocalYMD(from),
         to: toLocalYMD(toExclusive),
         pageSize: mode === 'month' ? 500 : 400,
         staffId: filterStaffId || undefined,
         serviceId: filterServiceId || undefined,
-      })
-      setItems(res.items)
+      }).unwrap()
+      setItems(res.items as unknown as DashboardAppointment[])
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
     }
-  }, [anchor, mode, filterStaffId, filterServiceId])
+  }, [anchor, mode, filterStaffId, filterServiceId, getAppointments])
 
   useEffect(() => {
     const t = window.setTimeout(() => void load(), 0)
@@ -252,15 +253,18 @@ export function DashboardCalendar() {
       )
 
       try {
-        await updateDashboardAppointment(update.id, {
-          startsAt: update.startsAt,
-          endsAt: update.endsAt,
-          ...(update.clearSalonMasterId
-            ? { clearSalonMasterId: true }
-            : update.salonMasterId
-              ? { salonMasterId: update.salonMasterId }
-              : {}),
-        })
+        await updateAppointment({
+          id: update.id,
+          body: {
+            startsAt: update.startsAt,
+            endsAt: update.endsAt,
+            ...(update.clearSalonMasterId
+              ? { clearSalonMasterId: true }
+              : update.salonMasterId
+                ? { salonMasterId: update.salonMasterId }
+                : {}),
+          },
+        }).unwrap()
         void load()
       } catch (e) {
         // 2. Rollback on failure
@@ -268,7 +272,7 @@ export function DashboardCalendar() {
         setErr(e instanceof Error ? e.message : 'Не удалось перенести запись')
       }
     },
-    [items, load],
+    [items, load, updateAppointment],
   )
 
   const mockBtnSx = {
@@ -520,11 +524,10 @@ export function DashboardCalendar() {
       <CreateAppointmentDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={() => void load()}
         initialData={
           detail?.id === 'new'
             ? {
-                startsAt: toDatetimeLocalInputValue(new Date(detail.startsAt)),
+                startsAt: detail.startsAt,
                 staffId: detail.salonMasterId ?? undefined,
               }
             : undefined

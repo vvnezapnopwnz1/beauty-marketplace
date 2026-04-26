@@ -50,6 +50,7 @@ type DashboardService interface {
 
 	Stats(ctx context.Context, salonID uuid.UUID, period string) (*DashboardStats, error)
 	GetSalonProfile(ctx context.Context, salonID uuid.UUID) (*model.Salon, error)
+	GetSalonCategoryScopes(ctx context.Context, salonID uuid.UUID) ([]string, error)
 	PutSalonProfile(ctx context.Context, salonID uuid.UUID, in SalonProfileInput) (*model.Salon, error)
 
 	ListServiceCategories(ctx context.Context, salonID uuid.UUID, fullList bool) (*ServiceCategoriesResponse, error)

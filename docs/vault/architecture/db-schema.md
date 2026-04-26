@@ -26,8 +26,8 @@ erDiagram
         string address
         string timezone
         bool online_booking_enabled
-        string salon_type
-        string business_type "venue|freelancer"
+        string salon_type "legacy; fallback for salonCategoryScopes"
+        string business_type "legacy; venue|individual"
         float lat
         float lng
         string photo_url

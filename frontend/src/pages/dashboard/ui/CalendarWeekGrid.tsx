@@ -1,12 +1,12 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 import { Alert, Box, Snackbar, Typography } from '@mui/material'
 import { DragDropProvider, useDraggable, useDroppable } from '@dnd-kit/react'
-import type { DashboardAppointment } from '@shared/api/dashboardApi'
+import type { DashboardAppointment } from '@entities/appointment'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 
 import { AppointmentBlock } from '@entities/appointment/ui/AppointmentBlock'
-import { useReschedule } from '@features/reschedule-appointment/model/useReschedule'
-import { RescheduleDragOverlay } from '@features/reschedule-appointment/ui/RescheduleDragOverlay'
+import { useReschedule } from '@features/appointment/reschedule-appointment/model/useReschedule'
+import { RescheduleDragOverlay } from '@features/appointment/reschedule-appointment/ui/RescheduleDragOverlay'
 
 import {
   aptOverlapsLocalDay,
@@ -22,7 +22,7 @@ import {
 } from '../lib/calendarGridUtils'
 import { canDragAppointmentStatus, dragIdForWeekCell, dropIdWeekDay } from '../lib/dndCalendarUtils'
 import { SxProps, Theme } from '@mui/material'
-import { DropPreviewState } from '@features/reschedule-appointment/model/types'
+import { DropPreviewState } from '@features/appointment/reschedule-appointment/model/types'
 
 type Props = {
   weekDays: Date[]

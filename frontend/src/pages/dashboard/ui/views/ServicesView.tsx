@@ -47,7 +47,7 @@ export function ServicesView() {
       setErr(null)
       const [list, cats] = await Promise.all([
         fetchDashboardServices(),
-        fetchDashboardServiceCategories(true),
+        fetchDashboardServiceCategories(false),
       ])
       setRows(list)
       setCatCatalog(cats)
@@ -75,13 +75,18 @@ export function ServicesView() {
   )
 
   const categories = useMemo(() => {
+    const allowedSlugs = new Set(
+      (catCatalog?.groups ?? []).flatMap((g) => g.items.map((i) => i.slug)),
+    )
     const s = new Set<string>()
     rows.forEach(r => {
       const k = tabKeyForRow(r)
-      if (k) s.add(k)
+      if (!k) return
+      if (k.startsWith('s:') && allowedSlugs.size > 0 && !allowedSlugs.has(k.slice(2))) return
+      s.add(k)
     })
     return ['all', ...Array.from(s).sort((a, b) => tabLabel(a).localeCompare(tabLabel(b), 'ru'))]
-  }, [rows, tabLabel])
+  }, [rows, catCatalog, tabLabel])
 
   const filtered = useMemo(() => {
     if (catTab === 'all') return rows

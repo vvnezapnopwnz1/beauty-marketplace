@@ -1,12 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Box, Typography, Stack, Button, Alert, CircularProgress, useTheme } from '@mui/material'
-import {
-  fetchDashboardStats,
-  fetchDashboardAppointments,
-  patchAppointmentStatus,
-  type DashboardStats,
-  type DashboardAppointment,
-} from '@shared/api/dashboardApi'
+import { fetchDashboardStats, type DashboardStats } from '@shared/api/dashboardApi'
+import { usePatchAppointmentStatusMutation, useGetAppointmentsQuery } from '@entities/appointment'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -24,6 +19,17 @@ export function DashboardOverview() {
   const rowBorder = isLight ? dashboard.borderLight : dashboard.borderHairline
   const actionOutlineColor = isLight ? '#C4703F' : dashboard.yellow
 
+  const { data: appointments } = useGetAppointmentsQuery({
+    from: todayISO(),
+    to: todayISO(),
+    pageSize: 50,
+  })
+  const todayAppointments = useMemo(
+    () => appointments?.items.filter(a => a.startsAt.startsWith(todayISO())),
+    [appointments],
+  )
+  const [patchAppointmentStatus] = usePatchAppointmentStatusMutation()
+
   const cardSx = {
     bgcolor: cardBg,
     border: `1px solid ${cardBorder}`,
@@ -33,7 +39,6 @@ export function DashboardOverview() {
   }
 
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [today, setToday] = useState<DashboardAppointment[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
 
@@ -41,13 +46,8 @@ export function DashboardOverview() {
     setLoading(true)
     setErr(null)
     try {
-      const d = todayISO()
-      const [st, ap] = await Promise.all([
-        fetchDashboardStats('week'),
-        fetchDashboardAppointments({ from: d, to: d, pageSize: 50 }),
-      ])
+      const [st] = await Promise.all([fetchDashboardStats('week')])
       setStats(st)
-      setToday(ap.items)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка загрузки')
     } finally {
@@ -62,7 +62,7 @@ export function DashboardOverview() {
 
   async function quickConfirm(id: string) {
     try {
-      await patchAppointmentStatus(id, 'confirmed')
+      await patchAppointmentStatus({ id, status: 'confirmed' }).unwrap()
       void load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
@@ -88,7 +88,14 @@ export function DashboardOverview() {
       <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mb: 3 }}>
         <Box sx={{ ...cardSx, flex: '1 1 200px', minWidth: 0 }}>
           <Typography sx={{ fontSize: 12, color: mutedColor }}>Записей сегодня</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: titleColor, fontWeight: 500 }}>
+          <Typography
+            sx={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 32,
+              color: titleColor,
+              fontWeight: 500,
+            }}
+          >
             {stats?.appointmentsToday ?? 0}
           </Typography>
           <Typography sx={{ fontSize: 12, color: dashboard.green }}>
@@ -97,29 +104,63 @@ export function DashboardOverview() {
         </Box>
         <Box sx={{ ...cardSx, flex: '1 1 200px', minWidth: 0 }}>
           <Typography sx={{ fontSize: 12, color: mutedColor }}>Новых за 7 дней</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: titleColor, fontWeight: 500 }}>
+          <Typography
+            sx={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 32,
+              color: titleColor,
+              fontWeight: 500,
+            }}
+          >
             {stats?.newAppointmentsWeek ?? 0}
           </Typography>
-          <Typography sx={{ fontSize: 12, color: stats && stats.weekChangePct >= 0 ? dashboard.green : dashboard.red }}>
-            {stats ? `${stats.weekChangePct >= 0 ? '+' : ''}${stats.weekChangePct.toFixed(0)}% к прошлой неделе` : '—'}
+          <Typography
+            sx={{
+              fontSize: 12,
+              color: stats && stats.weekChangePct >= 0 ? dashboard.green : dashboard.red,
+            }}
+          >
+            {stats
+              ? `${stats.weekChangePct >= 0 ? '+' : ''}${stats.weekChangePct.toFixed(0)}% к прошлой неделе`
+              : '—'}
           </Typography>
         </Box>
         <Box sx={{ ...cardSx, flex: '1 1 200px', minWidth: 0 }}>
-          <Typography sx={{ fontSize: 12, color: mutedColor }}>Загрузка (подтв./все сегодня)</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: titleColor, fontWeight: 500 }}>
+          <Typography sx={{ fontSize: 12, color: mutedColor }}>
+            Загрузка (подтв./все сегодня)
+          </Typography>
+          <Typography
+            sx={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 32,
+              color: titleColor,
+              fontWeight: 500,
+            }}
+          >
             {stats ? `${stats.loadPct.toFixed(0)}%` : '0%'}
           </Typography>
         </Box>
         <Box sx={{ ...cardSx, flex: '1 1 200px', minWidth: 0 }}>
           <Typography sx={{ fontSize: 12, color: mutedColor }}>Рейтинг</Typography>
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 32, color: titleColor, fontWeight: 500 }}>
+          <Typography
+            sx={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 32,
+              color: titleColor,
+              fontWeight: 500,
+            }}
+          >
             {stats ? stats.rating.toFixed(1) : '—'}
           </Typography>
-          <Typography sx={{ fontSize: 12, color: mutedColor }}>{stats?.reviewCount ?? 0} отзывов</Typography>
+          <Typography sx={{ fontSize: 12, color: mutedColor }}>
+            {stats?.reviewCount ?? 0} отзывов
+          </Typography>
         </Box>
       </Stack>
 
-      <Typography sx={{ fontSize: 13, fontWeight: 600, color: titleColor, mb: 1.5 }}>Быстрые действия</Typography>
+      <Typography sx={{ fontSize: 13, fontWeight: 600, color: titleColor, mb: 1.5 }}>
+        Быстрые действия
+      </Typography>
       <Stack direction="row" flexWrap="wrap" gap={1.5} sx={{ mb: 4 }}>
         <Button
           variant="outlined"
@@ -134,12 +175,14 @@ export function DashboardOverview() {
         </Typography>
       </Stack>
 
-      <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: titleColor, mb: 2 }}>Сегодня</Typography>
+      <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: titleColor, mb: 2 }}>
+        Сегодня
+      </Typography>
       <Box sx={{ ...cardSx, p: 0, overflow: 'hidden' }}>
-        {today.length === 0 ? (
+        {todayAppointments?.length === 0 ? (
           <Typography sx={{ p: 3, color: mutedColor }}>Нет записей на сегодня</Typography>
         ) : (
-          today.map((a, i) => (
+          todayAppointments?.map((a, i) => (
             <Box
               key={a.id}
               sx={{
@@ -153,17 +196,34 @@ export function DashboardOverview() {
               }}
             >
               <Typography sx={{ color: titleColor, fontSize: 14 }}>{a.clientLabel}</Typography>
-              <Typography sx={{ color: mutedColor, fontSize: 13 }}>{a.serviceName}</Typography>
+              <Typography sx={{ color: mutedColor, fontSize: 13 }}>
+                {Array.isArray((a as { serviceNames?: string[] }).serviceNames)
+                  ? (a as { serviceNames: string[] }).serviceNames.join(', ')
+                  : ((a as { serviceName?: string }).serviceName ?? '—')}
+              </Typography>
               <Typography sx={{ color: mutedColor, fontSize: 12 }}>
-                {new Date(a.startsAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                {new Date(a.startsAt).toLocaleTimeString('ru-RU', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </Typography>
               <Stack direction="row" gap={0.5}>
                 {a.status === 'pending' && (
-                  <Button size="small" sx={{ color: dashboard.green, fontSize: 11 }} onClick={() => void quickConfirm(a.id)}>
+                  <Button
+                    size="small"
+                    sx={{ color: dashboard.green, fontSize: 11 }}
+                    onClick={() => void quickConfirm(a.id)}
+                  >
                     Подтвердить
                   </Button>
                 )}
-                <Typography sx={{ fontSize: 11, color: statusColor(a.status, dashboard), textTransform: 'uppercase' }}>
+                <Typography
+                  sx={{
+                    fontSize: 11,
+                    color: statusColor(a.status, dashboard),
+                    textTransform: 'uppercase',
+                  }}
+                >
                   {a.status}
                 </Typography>
               </Stack>
@@ -175,7 +235,10 @@ export function DashboardOverview() {
   )
 }
 
-function statusColor(s: string, dashboard: { green: string; yellow: string; red: string; muted: string }) {
+function statusColor(
+  s: string,
+  dashboard: { green: string; yellow: string; red: string; muted: string },
+) {
   if (s === 'confirmed') return dashboard.green
   if (s === 'pending') return dashboard.yellow
   if (s.startsWith('cancelled')) return dashboard.red

@@ -1,0 +1,25 @@
+---
+description: Enforce docs/vault as canonical source for Cursor
+alwaysApply: true
+---
+
+# Vault Priority (Claude-aligned)
+
+For any non-trivial task (planning, feature work, bugfixes, refactors, API/schema/dashboard changes), treat `docs/vault/` as the canonical project source of truth.
+
+## Required bootstrap
+
+At task start, read:
+
+1. `docs/vault/README.md`
+2. `docs/vault/product/status.md`
+
+Then use relevant vault notes (`architecture/*`, `entities/*`, `runbooks/*`, `adr/*`) before implementation decisions.
+
+## Conflict resolution
+
+If implementation details conflict with older docs outside vault, prefer `docs/vault/*` and treat non-vault historical docs as archival context only.
+
+## Completion contract
+
+If behavior/contracts/architecture changed, update relevant `docs/vault/*` notes (including `docs/vault/product/status.md` when applicable) in the same task.

@@ -147,14 +147,54 @@ func (r *dashboardRepository) ListAppointments(ctx context.Context, f repository
 	if err := q.Order(sortCol + " " + sortDir).Offset(offset).Limit(ps).Scan(&raw).Error; err != nil {
 		return nil, 0, err
 	}
+	type lineItemRow struct {
+		AppointmentID uuid.UUID `gorm:"column:appointment_id"`
+		ServiceID     uuid.UUID `gorm:"column:service_id"`
+		ServiceName   string    `gorm:"column:service_name"`
+		SortOrder     int       `gorm:"column:sort_order"`
+	}
+	lineItemsByAppointment := make(map[uuid.UUID][]lineItemRow, len(raw))
+	if len(raw) > 0 {
+		apptIDs := make([]uuid.UUID, 0, len(raw))
+		for i := range raw {
+			apptIDs = append(apptIDs, raw[i].Appointment.ID)
+		}
+		var lineRows []lineItemRow
+		if err := r.db.WithContext(ctx).
+			Table("appointment_line_items").
+			Select("appointment_id, service_id, service_name, sort_order").
+			Where("appointment_id IN ?", apptIDs).
+			Order("appointment_id ASC, sort_order ASC").
+			Scan(&lineRows).Error; err != nil {
+			return nil, 0, err
+		}
+		for _, line := range lineRows {
+			lineItemsByAppointment[line.AppointmentID] = append(lineItemsByAppointment[line.AppointmentID], line)
+		}
+	}
 	out := make([]repository.AppointmentListRow, len(raw))
 	for i := range raw {
+		serviceNames := make([]string, 0, 4)
+		serviceIDs := make([]uuid.UUID, 0, 4)
+		lineRows := lineItemsByAppointment[raw[i].Appointment.ID]
+		if len(lineRows) > 0 {
+			for _, line := range lineRows {
+				serviceNames = append(serviceNames, line.ServiceName)
+				serviceIDs = append(serviceIDs, line.ServiceID)
+			}
+		} else {
+			// Legacy appointments may not have line-items yet.
+			serviceNames = append(serviceNames, raw[i].ServiceName)
+			serviceIDs = append(serviceIDs, raw[i].Appointment.ServiceID)
+		}
 		out[i] = repository.AppointmentListRow{
-			Appointment: raw[i].Appointment,
-			ServiceName: raw[i].ServiceName,
-			StaffName:   raw[i].StaffName,
-			ClientLabel: raw[i].ClientLabel,
-			ClientPhone: raw[i].ClientPhone,
+			Appointment:  raw[i].Appointment,
+			ServiceName:  raw[i].ServiceName,
+			ServiceNames: serviceNames,
+			ServiceIDs:   serviceIDs,
+			StaffName:    raw[i].StaffName,
+			ClientLabel:  raw[i].ClientLabel,
+			ClientPhone:  raw[i].ClientPhone,
 		}
 	}
 	return out, total, nil
@@ -180,14 +220,14 @@ func (r *dashboardRepository) UpdateAppointment(ctx context.Context, a *model.Ap
 	return r.db.WithContext(ctx).Model(&model.Appointment{}).
 		Where("id = ? AND salon_id = ?", a.ID, a.SalonID).
 		Updates(map[string]any{
-			"starts_at":         a.StartsAt,
-			"ends_at":           a.EndsAt,
-			"salon_master_id":   a.SalonMasterID,
-			"service_id":        a.ServiceID,
-			"client_note":       a.ClientNote,
-			"guest_name":        a.GuestName,
-			"guest_phone_e164":  a.GuestPhoneE164,
-			"updated_at":        time.Now().UTC(),
+			"starts_at":        a.StartsAt,
+			"ends_at":          a.EndsAt,
+			"salon_master_id":  a.SalonMasterID,
+			"service_id":       a.ServiceID,
+			"client_note":      a.ClientNote,
+			"guest_name":       a.GuestName,
+			"guest_phone_e164": a.GuestPhoneE164,
+			"updated_at":       time.Now().UTC(),
 		}).Error
 }
 
@@ -230,8 +270,41 @@ func (r *dashboardRepository) ReplaceAppointmentLineItems(ctx context.Context, a
 
 func (r *dashboardRepository) ListServices(ctx context.Context, salonID uuid.UUID) ([]model.SalonService, error) {
 	var rows []model.SalonService
-	err := r.db.WithContext(ctx).Where("salon_id = ?", salonID).Order("sort_order ASC, name ASC").Find(&rows).Error
+	err := r.db.WithContext(ctx).Where("salon_id = ? AND is_active = true", salonID).Order("sort_order ASC, name ASC").Find(&rows).Error
 	return rows, err
+}
+
+func (r *dashboardRepository) ListSalonCategoryScopes(ctx context.Context, salonID uuid.UUID) ([]string, error) {
+	var rows []model.SalonCategoryScope
+	if err := r.db.WithContext(ctx).
+		Where("salon_id = ?", salonID).
+		Order("parent_slug ASC").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.ParentSlug)
+	}
+	return out, nil
+}
+
+func (r *dashboardRepository) ReplaceSalonCategoryScopes(ctx context.Context, salonID uuid.UUID, parentSlugs []string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("salon_id = ?", salonID).Delete(&model.SalonCategoryScope{}).Error; err != nil {
+			return err
+		}
+		for _, slug := range parentSlugs {
+			row := model.SalonCategoryScope{
+				SalonID:    salonID,
+				ParentSlug: slug,
+			}
+			if err := tx.Create(&row).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *dashboardRepository) ListSystemServiceCategories(ctx context.Context) ([]model.ServiceCategory, error) {
@@ -310,21 +383,21 @@ func (r *dashboardRepository) UpdateStaff(ctx context.Context, s *model.SalonMas
 	return r.db.WithContext(ctx).Model(&model.SalonMaster{}).
 		Where("id = ? AND salon_id = ?", s.ID, s.SalonID).
 		Updates(map[string]any{
-			"display_name":             s.DisplayName,
-			"master_id":                s.MasterID,
-			"role":                     s.Role,
-			"level":                    s.Level,
-			"bio":                      s.Bio,
-			"phone":                    s.Phone,
-			"telegram_username":        s.TelegramUsername,
-			"email":                    s.Email,
-			"color":                    s.Color,
-			"joined_at":                s.JoinedAt,
-			"left_at":                  s.LeftAt,
-			"dashboard_access":         s.DashboardAccess,
-			"telegram_notifications":   s.TelegramNotifications,
-			"is_active":                s.IsActive,
-			"status":                   s.Status,
+			"display_name":           s.DisplayName,
+			"master_id":              s.MasterID,
+			"role":                   s.Role,
+			"level":                  s.Level,
+			"bio":                    s.Bio,
+			"phone":                  s.Phone,
+			"telegram_username":      s.TelegramUsername,
+			"email":                  s.Email,
+			"color":                  s.Color,
+			"joined_at":              s.JoinedAt,
+			"left_at":                s.LeftAt,
+			"dashboard_access":       s.DashboardAccess,
+			"telegram_notifications": s.TelegramNotifications,
+			"is_active":              s.IsActive,
+			"status":                 s.Status,
 		}).Error
 }
 
@@ -412,7 +485,7 @@ func (r *dashboardRepository) ReplaceStaffWorkingHours(ctx context.Context, staf
 func (r *dashboardRepository) UpdateSalonProfile(ctx context.Context, salon *model.Salon) error {
 	return r.db.WithContext(ctx).Model(&model.Salon{}).Where("id = ?", salon.ID).Updates(map[string]any{
 		"name_override":          salon.NameOverride,
-		"description":          salon.Description,
+		"description":            salon.Description,
 		"phone_public":           salon.PhonePublic,
 		"category_id":            salon.CategoryID,
 		"salon_type":             salon.SalonType,

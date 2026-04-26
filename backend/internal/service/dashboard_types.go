@@ -25,20 +25,20 @@ type AppointmentServiceDTO struct {
 }
 
 type AppointmentDetailDTO struct {
-	ID             uuid.UUID               `json:"id"`
-	SalonID        uuid.UUID               `json:"salonId"`
-	StartsAt       time.Time               `json:"startsAt"`
-	EndsAt         time.Time               `json:"endsAt"`
-	Status         string                  `json:"status"`
-	SalonMasterID  *uuid.UUID              `json:"salonMasterId,omitempty"`
-	StaffName      *string                 `json:"staffName,omitempty"`
-	GuestName      *string                 `json:"guestName,omitempty"`
-	GuestPhone     *string                 `json:"guestPhone,omitempty"`
-	ClientUserID   *uuid.UUID              `json:"clientUserId,omitempty"`
-	ClientNote     *string                 `json:"clientNote,omitempty"`
-	SalonClientID  *uuid.UUID              `json:"salonClientId,omitempty"`
-	Services       []AppointmentServiceDTO `json:"services"`
-	CreatedAt      time.Time               `json:"createdAt"`
+	ID            uuid.UUID               `json:"id"`
+	SalonID       uuid.UUID               `json:"salonId"`
+	StartsAt      time.Time               `json:"startsAt"`
+	EndsAt        time.Time               `json:"endsAt"`
+	Status        string                  `json:"status"`
+	SalonMasterID *uuid.UUID              `json:"salonMasterId,omitempty"`
+	StaffName     *string                 `json:"staffName,omitempty"`
+	GuestName     *string                 `json:"guestName,omitempty"`
+	GuestPhone    *string                 `json:"guestPhone,omitempty"`
+	ClientUserID  *uuid.UUID              `json:"clientUserId,omitempty"`
+	ClientNote    *string                 `json:"clientNote,omitempty"`
+	SalonClientID *uuid.UUID              `json:"salonClientId,omitempty"`
+	Services      []AppointmentServiceDTO `json:"services"`
+	CreatedAt     time.Time               `json:"createdAt"`
 }
 
 type UpdateAppointmentInput struct {
@@ -85,20 +85,22 @@ type StaffWorkingHourInput struct {
 }
 
 type SalonProfileInput struct {
-	NameOverride         *string  `json:"nameOverride"`
-	Description          *string  `json:"description"`
-	PhonePublic          *string  `json:"phonePublic"`
-	CategoryID           *string  `json:"categoryId"`
-	SalonType            *string  `json:"salonType"`
-	BusinessType         *string  `json:"businessType"`
-	OnlineBookingEnabled *bool    `json:"onlineBookingEnabled"`
-	AddressOverride      *string  `json:"addressOverride"`
-	District             *string  `json:"district"`
-	Address              *string  `json:"address"`
-	Lat                  *float64 `json:"lat"`
-	Lng                  *float64 `json:"lng"`
-	PhotoURL             *string  `json:"photoUrl"`
-	Timezone             *string  `json:"timezone"`
+	NameOverride         *string   `json:"nameOverride"`
+	Description          *string   `json:"description"`
+	PhonePublic          *string   `json:"phonePublic"`
+	CategoryID           *string   `json:"categoryId"`
+	SalonType            *string   `json:"salonType"`
+	BusinessType         *string   `json:"businessType"`
+	OnlineBookingEnabled *bool     `json:"onlineBookingEnabled"`
+	AddressOverride      *string   `json:"addressOverride"`
+	District             *string   `json:"district"`
+	Address              *string   `json:"address"`
+	Lat                  *float64  `json:"lat"`
+	Lng                  *float64  `json:"lng"`
+	PhotoURL             *string   `json:"photoUrl"`
+	Timezone             *string   `json:"timezone"`
+	OnboardingCompleted  *bool     `json:"onboardingCompleted"`
+	SalonCategoryScopes  *[]string `json:"salonCategoryScopes"`
 }
 
 type StaffInput struct {
@@ -220,8 +222,8 @@ type StaffAbsenceInput struct {
 }
 
 type SalonSchedulePayload struct {
-	SlotDurationMinutes *int               `json:"slotDurationMinutes,omitempty"`
-	WorkingHours        []WorkingHourInput `json:"workingHours,omitempty"`
+	SlotDurationMinutes *int                `json:"slotDurationMinutes,omitempty"`
+	WorkingHours        []WorkingHourInput  `json:"workingHours,omitempty"`
 	DateOverrides       []DateOverrideInput `json:"dateOverrides,omitempty"`
 }
 
@@ -256,6 +258,7 @@ type ServiceCategoryGroupDTO struct {
 }
 
 type ServiceCategoriesResponse struct {
-	SalonType *string                   `json:"salonType"`
-	Groups    []ServiceCategoryGroupDTO `json:"groups"`
+	SalonType           *string                   `json:"salonType"`
+	SalonCategoryScopes []string                  `json:"salonCategoryScopes"`
+	Groups              []ServiceCategoryGroupDTO `json:"groups"`
 }

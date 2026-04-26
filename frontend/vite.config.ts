@@ -8,6 +8,9 @@ const proxyTarget = process.env.VITE_PROXY_TARGET ?? 'http://localhost:8080'
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    // Pro package can nest a second copy of @mui/x-date-pickers; pickers then
+    // miss LocalizationProvider context (different React context module).
+    dedupe: ['@mui/x-date-pickers'],
     alias: {
       '@app': resolve(__dirname, 'src/app'),
       '@pages': resolve(__dirname, 'src/pages'),

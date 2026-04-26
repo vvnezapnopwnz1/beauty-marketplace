@@ -258,29 +258,31 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 		return
 	}
 	type rowDTO struct {
-		ID              uuid.UUID  `json:"id"`
-		StartsAt        time.Time  `json:"startsAt"`
-		EndsAt          time.Time  `json:"endsAt"`
-		Status          string     `json:"status"`
-		ServiceName     string     `json:"serviceName"`
-		StaffName       *string    `json:"staffName,omitempty"`
-		ClientLabel     string     `json:"clientLabel"`
-		ClientPhone     *string    `json:"clientPhone,omitempty"`
-		GuestName       *string    `json:"guestName,omitempty"`
-		GuestPhone      *string    `json:"guestPhone,omitempty"`
-		ClientUserID    *uuid.UUID `json:"clientUserId,omitempty"`
-		ServiceID       uuid.UUID  `json:"serviceId"`
-		SalonMasterID   *uuid.UUID `json:"salonMasterId,omitempty"`
-		ClientNote      *string    `json:"clientNote,omitempty"`
+		ID            uuid.UUID   `json:"id"`
+		StartsAt      time.Time   `json:"startsAt"`
+		EndsAt        time.Time   `json:"endsAt"`
+		Status        string      `json:"status"`
+		ServiceName   string      `json:"serviceName"` //nolint:tagliatelle // legacy frontend compatibility
+		ServiceNames  []string    `json:"serviceNames"`
+		StaffName     *string     `json:"staffName,omitempty"`
+		ClientLabel   string      `json:"clientLabel"`
+		ClientPhone   *string     `json:"clientPhone,omitempty"`
+		GuestName     *string     `json:"guestName,omitempty"`
+		GuestPhone    *string     `json:"guestPhone,omitempty"`
+		ClientUserID  *uuid.UUID  `json:"clientUserId,omitempty"`
+		ServiceID     uuid.UUID   `json:"serviceId"` //nolint:tagliatelle // legacy frontend compatibility
+		ServiceIDs    []uuid.UUID `json:"serviceIds"`
+		SalonMasterID *uuid.UUID  `json:"salonMasterId,omitempty"`
+		ClientNote    *string     `json:"clientNote,omitempty"`
 	}
 	out := make([]rowDTO, len(rows))
 	for i, row := range rows {
 		a := row.Appointment
 		out[i] = rowDTO{
 			ID: a.ID, StartsAt: a.StartsAt, EndsAt: a.EndsAt, Status: a.Status,
-			ServiceName: row.ServiceName, StaffName: row.StaffName, ClientLabel: row.ClientLabel,
+			ServiceName: row.ServiceName, ServiceNames: row.ServiceNames, StaffName: row.StaffName, ClientLabel: row.ClientLabel,
 			ClientPhone: row.ClientPhone, GuestName: a.GuestName, GuestPhone: a.GuestPhoneE164,
-			ClientUserID: a.ClientUserID, ServiceID: a.ServiceID, SalonMasterID: a.SalonMasterID, ClientNote: a.ClientNote,
+			ClientUserID: a.ClientUserID, ServiceID: a.ServiceID, ServiceIDs: row.ServiceIDs, SalonMasterID: a.SalonMasterID, ClientNote: a.ClientNote,
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -290,12 +292,12 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 type createApptBody struct {
 	ServiceIDs    []uuid.UUID `json:"serviceIds"`
 	SalonMasterID *uuid.UUID  `json:"salonMasterId"`
-	StaffID       *uuid.UUID `json:"staffId"` // deprecated; prefer salonMasterId
-	StartsAt      string     `json:"startsAt"`
-	GuestName     string     `json:"guestName"`
-	GuestPhone    string     `json:"guestPhone"`
-	ClientNote    string     `json:"clientNote,omitempty"`
-	ClientUserID  *uuid.UUID `json:"clientUserId,omitempty"`
+	StaffID       *uuid.UUID  `json:"staffId"` // deprecated; prefer salonMasterId
+	StartsAt      string      `json:"startsAt"`
+	GuestName     string      `json:"guestName"`
+	GuestPhone    string      `json:"guestPhone"`
+	ClientNote    string      `json:"clientNote,omitempty"`
+	ClientUserID  *uuid.UUID  `json:"clientUserId,omitempty"`
 }
 
 func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
@@ -314,30 +316,30 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 		staffRef = body.StaffID
 	}
 	ap, err := h.svc.CreateManualAppointment(r.Context(), salonID, service.ManualAppointmentInput{
-		ServiceIDs:     body.ServiceIDs,
-		StaffID:        staffRef,
-		StartsAt:       st,
-		GuestName:      body.GuestName,
-		GuestPhone:     body.GuestPhone,
-		ClientNote:     body.ClientNote,
-		ClientUserID:   body.ClientUserID,
+		ServiceIDs:   body.ServiceIDs,
+		StaffID:      staffRef,
+		StartsAt:     st,
+		GuestName:    body.GuestName,
+		GuestPhone:   body.GuestPhone,
+		ClientNote:   body.ClientNote,
+		ClientUserID: body.ClientUserID,
 	})
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	type apOut struct {
-		ID              uuid.UUID  `json:"id"`
-		SalonID         uuid.UUID  `json:"salonId"`
-		ServiceID       uuid.UUID  `json:"serviceId"`
-		SalonMasterID   *uuid.UUID `json:"salonMasterId,omitempty"`
-		StartsAt        time.Time  `json:"startsAt"`
-		EndsAt          time.Time  `json:"endsAt"`
-		Status          string     `json:"status"`
-		GuestName       *string    `json:"guestName,omitempty"`
-		GuestPhoneE164  *string    `json:"guestPhone,omitempty"`
-		ClientUserID    *uuid.UUID `json:"clientUserId,omitempty"`
-		ClientNote      *string    `json:"clientNote,omitempty"`
+		ID             uuid.UUID  `json:"id"`
+		SalonID        uuid.UUID  `json:"salonId"`
+		ServiceID      uuid.UUID  `json:"serviceId"`
+		SalonMasterID  *uuid.UUID `json:"salonMasterId,omitempty"`
+		StartsAt       time.Time  `json:"startsAt"`
+		EndsAt         time.Time  `json:"endsAt"`
+		Status         string     `json:"status"`
+		GuestName      *string    `json:"guestName,omitempty"`
+		GuestPhoneE164 *string    `json:"guestPhone,omitempty"`
+		ClientUserID   *uuid.UUID `json:"clientUserId,omitempty"`
+		ClientNote     *string    `json:"clientNote,omitempty"`
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -371,16 +373,16 @@ func (h *DashboardController) patchAppointmentStatus(w http.ResponseWriter, r *h
 }
 
 type putApptBody struct {
-	StartsAt           *string    `json:"startsAt"`
-	EndsAt             *string    `json:"endsAt"`
-	SalonMasterID      *uuid.UUID `json:"salonMasterId"`
-	StaffID            *uuid.UUID `json:"staffId"` // deprecated
-	ClearSalonMasterID *bool      `json:"clearSalonMasterId"`
-	ClearStaffID       *bool      `json:"clearStaffId"` // deprecated
+	StartsAt           *string     `json:"startsAt"`
+	EndsAt             *string     `json:"endsAt"`
+	SalonMasterID      *uuid.UUID  `json:"salonMasterId"`
+	StaffID            *uuid.UUID  `json:"staffId"` // deprecated
+	ClearSalonMasterID *bool       `json:"clearSalonMasterId"`
+	ClearStaffID       *bool       `json:"clearStaffId"` // deprecated
 	ServiceIDs         []uuid.UUID `json:"serviceIds"`
-	ClientNote         *string    `json:"clientNote"`
-	GuestName          *string    `json:"guestName"`
-	GuestPhone         *string    `json:"guestPhone"`
+	ClientNote         *string     `json:"clientNote"`
+	GuestName          *string     `json:"guestName"`
+	GuestPhone         *string     `json:"guestPhone"`
 }
 
 func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Request, salonID, id uuid.UUID) {
@@ -713,23 +715,25 @@ func (h *DashboardController) handleSalonMasters(w http.ResponseWriter, r *http.
 			return
 		}
 		type rowDTO struct {
-			ID            uuid.UUID  `json:"id"`
-			StartsAt      time.Time  `json:"startsAt"`
-			EndsAt        time.Time  `json:"endsAt"`
-			Status        string     `json:"status"`
-			ServiceName   string     `json:"serviceName"`
-			StaffName     *string    `json:"staffName,omitempty"`
-			ClientLabel   string     `json:"clientLabel"`
-			ClientPhone   *string    `json:"clientPhone,omitempty"`
-			ServiceID     uuid.UUID  `json:"serviceId"`
-			SalonMasterID *uuid.UUID `json:"salonMasterId,omitempty"`
+			ID            uuid.UUID   `json:"id"`
+			StartsAt      time.Time   `json:"startsAt"`
+			EndsAt        time.Time   `json:"endsAt"`
+			Status        string      `json:"status"`
+			ServiceName   string      `json:"serviceName"` //nolint:tagliatelle // legacy frontend compatibility
+			ServiceNames  []string    `json:"serviceNames"`
+			StaffName     *string     `json:"staffName,omitempty"`
+			ClientLabel   string      `json:"clientLabel"`
+			ClientPhone   *string     `json:"clientPhone,omitempty"`
+			ServiceID     uuid.UUID   `json:"serviceId"` //nolint:tagliatelle // legacy frontend compatibility
+			ServiceIDs    []uuid.UUID `json:"serviceIds"`
+			SalonMasterID *uuid.UUID  `json:"salonMasterId,omitempty"`
 		}
 		out := make([]rowDTO, len(rows))
 		for i, x := range rows {
 			out[i] = rowDTO{
 				ID: x.Appointment.ID, StartsAt: x.Appointment.StartsAt, EndsAt: x.Appointment.EndsAt,
-				Status: x.Appointment.Status, ServiceName: x.ServiceName, StaffName: x.StaffName,
-				ClientLabel: x.ClientLabel, ClientPhone: x.ClientPhone, ServiceID: x.Appointment.ServiceID,
+				Status: x.Appointment.Status, ServiceName: x.ServiceName, ServiceNames: x.ServiceNames, StaffName: x.StaffName,
+				ClientLabel: x.ClientLabel, ClientPhone: x.ClientPhone, ServiceID: x.Appointment.ServiceID, ServiceIDs: x.ServiceIDs,
 				SalonMasterID: x.Appointment.SalonMasterID,
 			}
 		}
@@ -953,43 +957,9 @@ func (h *DashboardController) getSalonProfile(w http.ResponseWriter, r *http.Req
 		jsonError(w, "not found", http.StatusNotFound)
 		return
 	}
-	type out struct {
-		ID                     uuid.UUID `json:"id"`
-		NameOverride           *string   `json:"nameOverride"`
-		Description            *string   `json:"description"`
-		PhonePublic            *string   `json:"phonePublic"`
-		CategoryID             *string   `json:"categoryId"`
-		SalonType              *string   `json:"salonType"`
-		BusinessType           *string   `json:"businessType"`
-		OnlineBookingEnabled   bool      `json:"onlineBookingEnabled"`
-		AddressOverride        *string   `json:"addressOverride"`
-		Address                *string   `json:"address"`
-		District               *string   `json:"district"`
-		Lat                    *float64  `json:"lat"`
-		Lng                    *float64  `json:"lng"`
-		PhotoURL               *string   `json:"photoUrl"`
-		Timezone               string    `json:"timezone"`
-		CachedRating           *float64  `json:"cachedRating"`
-		CachedReviewCount      *int      `json:"cachedReviewCount"`
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out{
-		ID: s.ID, NameOverride: s.NameOverride, Description: s.Description, PhonePublic: s.PhonePublic,
-		CategoryID: s.CategoryID, SalonType: s.SalonType, BusinessType: s.BusinessType, OnlineBookingEnabled: s.OnlineBookingEnabled,
-		AddressOverride: s.AddressOverride, Address: s.Address, District: s.District, Lat: s.Lat, Lng: s.Lng,
-		PhotoURL: s.PhotoURL, Timezone: s.Timezone, CachedRating: s.CachedRating, CachedReviewCount: s.CachedReviewCount,
-	})
-}
-
-func (h *DashboardController) putSalonProfile(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
-	var in service.SalonProfileInput
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		jsonError(w, "invalid json", http.StatusBadRequest)
-		return
-	}
-	s, err := h.svc.PutSalonProfile(r.Context(), salonID, in)
+	scopes, err := h.svc.GetSalonCategoryScopes(r.Context(), salonID)
 	if err != nil {
-		jsonError(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	type out struct {
@@ -1010,6 +980,8 @@ func (h *DashboardController) putSalonProfile(w http.ResponseWriter, r *http.Req
 		Timezone             string    `json:"timezone"`
 		CachedRating         *float64  `json:"cachedRating"`
 		CachedReviewCount    *int      `json:"cachedReviewCount"`
+		OnboardingCompleted  bool      `json:"onboardingCompleted"`
+		SalonCategoryScopes  []string  `json:"salonCategoryScopes"`
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out{
@@ -1017,6 +989,56 @@ func (h *DashboardController) putSalonProfile(w http.ResponseWriter, r *http.Req
 		CategoryID: s.CategoryID, SalonType: s.SalonType, BusinessType: s.BusinessType, OnlineBookingEnabled: s.OnlineBookingEnabled,
 		AddressOverride: s.AddressOverride, Address: s.Address, District: s.District, Lat: s.Lat, Lng: s.Lng,
 		PhotoURL: s.PhotoURL, Timezone: s.Timezone, CachedRating: s.CachedRating, CachedReviewCount: s.CachedReviewCount,
+		OnboardingCompleted: s.OnboardingCompleted,
+		SalonCategoryScopes: scopes,
+	})
+}
+
+func (h *DashboardController) putSalonProfile(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	var in service.SalonProfileInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		jsonError(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	s, err := h.svc.PutSalonProfile(r.Context(), salonID, in)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	scopes, err := h.svc.GetSalonCategoryScopes(r.Context(), salonID)
+	if err != nil {
+		jsonError(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	type out struct {
+		ID                   uuid.UUID `json:"id"`
+		NameOverride         *string   `json:"nameOverride"`
+		Description          *string   `json:"description"`
+		PhonePublic          *string   `json:"phonePublic"`
+		CategoryID           *string   `json:"categoryId"`
+		SalonType            *string   `json:"salonType"`
+		BusinessType         *string   `json:"businessType"`
+		OnlineBookingEnabled bool      `json:"onlineBookingEnabled"`
+		AddressOverride      *string   `json:"addressOverride"`
+		Address              *string   `json:"address"`
+		District             *string   `json:"district"`
+		Lat                  *float64  `json:"lat"`
+		Lng                  *float64  `json:"lng"`
+		PhotoURL             *string   `json:"photoUrl"`
+		Timezone             string    `json:"timezone"`
+		CachedRating         *float64  `json:"cachedRating"`
+		CachedReviewCount    *int      `json:"cachedReviewCount"`
+		OnboardingCompleted  bool      `json:"onboardingCompleted"`
+		SalonCategoryScopes  []string  `json:"salonCategoryScopes"`
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out{
+		ID: s.ID, NameOverride: s.NameOverride, Description: s.Description, PhonePublic: s.PhonePublic,
+		CategoryID: s.CategoryID, SalonType: s.SalonType, BusinessType: s.BusinessType, OnlineBookingEnabled: s.OnlineBookingEnabled,
+		AddressOverride: s.AddressOverride, Address: s.Address, District: s.District, Lat: s.Lat, Lng: s.Lng,
+		PhotoURL: s.PhotoURL, Timezone: s.Timezone, CachedRating: s.CachedRating, CachedReviewCount: s.CachedReviewCount,
+		OnboardingCompleted: s.OnboardingCompleted,
+		SalonCategoryScopes: scopes,
 	})
 }
 

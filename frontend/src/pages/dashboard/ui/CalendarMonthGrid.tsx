@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Box, Typography, useTheme } from '@mui/material'
-import type { DashboardAppointment } from '@shared/api/dashboardApi'
+import type { DashboardAppointment } from '@entities/appointment/model/types'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import type { DashboardPalette } from '@shared/theme'
 import {
@@ -46,7 +46,11 @@ function monthEventVariantSx(d: DashboardPalette): Record<CalendarEventVariant, 
       color: d.accent,
       borderLeft: `2px solid ${d.accent}`,
     },
-    blocked: { bgcolor: 'rgba(255,107,107,.08)', color: '#ff8a8a', borderLeft: '2px solid #ff6b6b' },
+    blocked: {
+      bgcolor: 'rgba(255,107,107,.08)',
+      color: '#ff8a8a',
+      borderLeft: '2px solid #ff6b6b',
+    },
   }
 }
 
@@ -133,6 +137,9 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
                   hour: '2-digit',
                   minute: '2-digit',
                 })
+                const serviceNamesLabel = Array.isArray(a.serviceNames) ? a.serviceNames.join(', ') : ''
+                const rowLabel = serviceNamesLabel ? `${t} ${serviceNamesLabel}` : t
+                const rowTitle = serviceNamesLabel ? `${t} ${serviceNamesLabel} · ${a.clientLabel}` : `${t} · ${a.clientLabel}`
                 return (
                   <Box
                     key={a.id}
@@ -154,9 +161,9 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
                       ...(isLight ? { color: calendarEventLightTextColors(v, d).service } : {}),
                       '&:hover': { filter: 'brightness(1.08)' },
                     }}
-                    title={`${t} ${a.serviceName} · ${a.clientLabel}`}
+                    title={rowTitle}
                   >
-                    {t} {a.serviceName}
+                    {rowLabel}
                   </Box>
                 )
               })}

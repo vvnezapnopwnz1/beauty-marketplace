@@ -21,19 +21,22 @@ import {
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   deleteDashboardStaff,
-  fetchDashboardAppointments,
   fetchStaffDetail,
   fetchStaffSchedule,
   specializationLabel,
-  type DashboardAppointment,
   type DashboardStaffFull,
   type StaffWorkingHourRow,
 } from '@shared/api/dashboardApi'
+import { useLazyGetAppointmentsQuery, type DashboardAppointment } from '@entities/appointment'
 import { StaffFormModal } from '../modals/StaffFormModal'
 import { ScheduleDrawer } from '../drawers/ScheduleDrawer'
 import { AppointmentDrawer } from '../drawers/AppointmentDrawer'
 
 const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+type StaffAppointment = DashboardAppointment & {
+  serviceName?: string
+}
 
 function localDateISO(d = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -112,13 +115,14 @@ export function StaffDetailView() {
   const isLight = theme.palette.mode === 'light'
   const [staff, setStaff] = useState<DashboardStaffFull | null>(null)
   const [scheduleRows, setScheduleRows] = useState<StaffWorkingHourRow[]>([])
-  const [appts, setAppts] = useState<DashboardAppointment[]>([])
+  const [appts, setAppts] = useState<StaffAppointment[]>([])
   const [err, setErr] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [deactivateOpen, setDeactivateOpen] = useState(false)
   const [deactivateBusy, setDeactivateBusy] = useState(false)
-  const [selectedAppt, setSelectedAppt] = useState<DashboardAppointment | null>(null)
+  const [selectedAppt, setSelectedAppt] = useState<StaffAppointment | null>(null)
+  const [getAppointments] = useLazyGetAppointmentsQuery()
 
   const load = useCallback(async () => {
     if (!staffId) return
@@ -128,15 +132,15 @@ export function StaffDetailView() {
       const [st, sch, list] = await Promise.all([
         fetchStaffDetail(staffId),
         fetchStaffSchedule(staffId),
-        fetchDashboardAppointments({ staffId, from, pageSize: 5, page: 1 }),
+        getAppointments({ staffId, from, pageSize: 5, page: 1 }).unwrap(),
       ])
       setStaff(st)
       setScheduleRows(mergeSevenDays(sch.rows))
-      setAppts(list.items)
+      setAppts(list.items as unknown as StaffAppointment[])
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
     }
-  }, [staffId])
+  }, [staffId, getAppointments])
 
   useEffect(() => {
     queueMicrotask(() => {

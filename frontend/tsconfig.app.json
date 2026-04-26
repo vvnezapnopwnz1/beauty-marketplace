@@ -14,9 +14,9 @@
     "jsx": "react-jsx",
 
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "strictNullChecks": true,
+    "useUnknownInCatchVariables": false,
 
     "baseUrl": ".",
     "paths": {

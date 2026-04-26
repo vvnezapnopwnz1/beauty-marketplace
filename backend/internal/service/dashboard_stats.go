@@ -215,6 +215,14 @@ func (s *dashboardService) GetSalonProfile(ctx context.Context, salonID uuid.UUI
 	return s.dash.FindSalonModel(ctx, salonID)
 }
 
+func (s *dashboardService) GetSalonCategoryScopes(ctx context.Context, salonID uuid.UUID) ([]string, error) {
+	salon, err := s.dash.FindSalonModel(ctx, salonID)
+	if err != nil {
+		return nil, err
+	}
+	return s.salonCategoryScopes(ctx, salon)
+}
+
 func (s *dashboardService) PutSalonProfile(ctx context.Context, salonID uuid.UUID, in SalonProfileInput) (*model.Salon, error) {
 	salon, err := s.dash.FindSalonModel(ctx, salonID)
 	if err != nil {
@@ -248,6 +256,15 @@ func (s *dashboardService) PutSalonProfile(ctx context.Context, salonID uuid.UUI
 	if in.BusinessType != nil {
 		salon.BusinessType = in.BusinessType
 	}
+	if in.SalonCategoryScopes != nil {
+		scopes, err := validateSalonCategoryScopes(*in.SalonCategoryScopes)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.dash.ReplaceSalonCategoryScopes(ctx, salonID, scopes); err != nil {
+			return nil, err
+		}
+	}
 	if in.OnlineBookingEnabled != nil {
 		salon.OnlineBookingEnabled = *in.OnlineBookingEnabled
 	}
@@ -272,8 +289,38 @@ func (s *dashboardService) PutSalonProfile(ctx context.Context, salonID uuid.UUI
 	if in.Timezone != nil && trimSpace(*in.Timezone) != "" {
 		salon.Timezone = trimSpace(*in.Timezone)
 	}
+	if in.OnboardingCompleted != nil && *in.OnboardingCompleted {
+		salon.OnboardingCompleted = true
+	}
 	if err := s.dash.UpdateSalonProfile(ctx, salon); err != nil {
 		return nil, err
 	}
 	return s.dash.FindSalonModel(ctx, salonID)
+}
+
+func validateSalonCategoryScopes(raw []string) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	allowed := make(map[string]struct{}, len(servicecategory.ParentSlugs))
+	for _, slug := range servicecategory.ParentSlugs {
+		allowed[slug] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		slug := trimSpace(item)
+		if slug == "" {
+			continue
+		}
+		if _, ok := allowed[slug]; !ok {
+			return nil, fmt.Errorf("invalid salon category scope: %s", slug)
+		}
+		if _, ok := seen[slug]; ok {
+			continue
+		}
+		seen[slug] = struct{}{}
+		out = append(out, slug)
+	}
+	return out, nil
 }
