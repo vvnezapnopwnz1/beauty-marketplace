@@ -224,16 +224,20 @@ func (r *salonClientRepository) Update(ctx context.Context, c *model.SalonClient
 }
 
 func (r *salonClientRepository) SoftDelete(ctx context.Context, salonID, clientID uuid.UUID) error {
-	result := r.db.WithContext(ctx).
+	var c model.SalonClient
+	err := r.db.WithContext(ctx).Unscoped().
 		Where("id = ? AND salon_id = ?", clientID, salonID).
-		Delete(&model.SalonClient{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
+		First(&c).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("client not found")
 	}
-	return nil
+	if err != nil {
+		return err
+	}
+	if c.DeletedAt.Valid {
+		return fmt.Errorf("client already deleted")
+	}
+	return r.db.WithContext(ctx).Delete(&c).Error
 }
 
 func (r *salonClientRepository) Restore(ctx context.Context, salonID, clientID uuid.UUID) (*repository.SalonClientRow, error) {
