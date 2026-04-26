@@ -32,10 +32,7 @@ func NewSalonClientRepository(db *gorm.DB) repository.SalonClientRepository {
 }
 
 func (r *salonClientRepository) ListBysalon(ctx context.Context, salonID uuid.UUID, f repository.SalonClientListFilter) ([]repository.SalonClientRow, int64, error) {
-	page := f.Page
-	if page < 1 {
-		page = 1
-	}
+	page := max(f.Page, 1)
 	ps := f.PageSize
 	if ps < 1 {
 		ps = 50
