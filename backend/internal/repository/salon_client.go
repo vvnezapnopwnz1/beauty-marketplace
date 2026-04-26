@@ -10,10 +10,11 @@ import (
 
 // SalonClientListFilter filters the salon client list.
 type SalonClientListFilter struct {
-	Search string
-	TagIDs []uuid.UUID
-	Page   int
-	PageSize int
+	Search         string
+	TagIDs         []uuid.UUID
+	Page           int
+	PageSize       int
+	IncludeDeleted bool
 }
 
 // SalonClientRow is one client with computed visit stats.
@@ -33,6 +34,8 @@ type SalonClientRepository interface {
 	GetByID(ctx context.Context, salonID, clientID uuid.UUID) (*SalonClientRow, error)
 	Create(ctx context.Context, c *model.SalonClient) error
 	Update(ctx context.Context, c *model.SalonClient) error
+	SoftDelete(ctx context.Context, salonID, clientID uuid.UUID) error
+	Restore(ctx context.Context, salonID, clientID uuid.UUID) (*SalonClientRow, error)
 
 	GetOrCreateByPhone(ctx context.Context, salonID uuid.UUID, phone, displayName string) (*model.SalonClient, error)
 	GetOrCreateByUserID(ctx context.Context, salonID, userID uuid.UUID, displayName string) (*model.SalonClient, error)

@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,7 +45,11 @@ func (r *salonClientRepository) ListBysalon(ctx context.Context, salonID uuid.UU
 	}
 	offset := (page - 1) * ps
 
-	base := r.db.WithContext(ctx).Model(&model.SalonClient{}).Where("salon_id = ?", salonID)
+	q := r.db.WithContext(ctx).Model(&model.SalonClient{})
+	if f.IncludeDeleted {
+		q = q.Unscoped()
+	}
+	base := q.Where("salon_id = ?", salonID)
 	if f.Search != "" {
 		s := "%" + f.Search + "%"
 		base = base.Where("(display_name ILIKE ? OR phone_e164 LIKE ?)", s, s)
@@ -219,6 +224,36 @@ func (r *salonClientRepository) Create(ctx context.Context, c *model.SalonClient
 
 func (r *salonClientRepository) Update(ctx context.Context, c *model.SalonClient) error {
 	return r.db.WithContext(ctx).Save(c).Error
+}
+
+func (r *salonClientRepository) SoftDelete(ctx context.Context, salonID, clientID uuid.UUID) error {
+	result := r.db.WithContext(ctx).
+		Where("id = ? AND salon_id = ?", clientID, salonID).
+		Delete(&model.SalonClient{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("client not found")
+	}
+	return nil
+}
+
+func (r *salonClientRepository) Restore(ctx context.Context, salonID, clientID uuid.UUID) (*repository.SalonClientRow, error) {
+	var c model.SalonClient
+	err := r.db.WithContext(ctx).Unscoped().
+		Where("id = ? AND salon_id = ? AND deleted_at IS NOT NULL", clientID, salonID).
+		First(&c).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("client not found or not deleted")
+		}
+		return nil, err
+	}
+	if err := r.db.WithContext(ctx).Unscoped().Model(&c).Update("deleted_at", nil).Error; err != nil {
+		return nil, err
+	}
+	return r.GetByID(ctx, salonID, clientID)
 }
 
 func (r *salonClientRepository) GetOrCreateByPhone(ctx context.Context, salonID uuid.UUID, phone, displayName string) (*model.SalonClient, error) {
