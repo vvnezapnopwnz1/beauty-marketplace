@@ -4,8 +4,8 @@ import type { DashboardPalette } from '@shared/theme'
 export const CALENDAR_HOUR_START = 8
 export const CALENDAR_HOUR_END = 21
 
-/** Высота одного часа в таймлайне (px). */
-export const CALENDAR_HOUR_HEIGHT_PX = 48
+/** Высота одного часа в таймлайне (px) — крупнее, как в дизайн-референсе. */
+export const CALENDAR_HOUR_HEIGHT_PX = 60
 
 /** Пикселей на минуту по вертикали. */
 export const CALENDAR_PX_PER_MINUTE = CALENDAR_HOUR_HEIGHT_PX / 60

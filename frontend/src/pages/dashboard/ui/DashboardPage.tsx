@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Typography, Drawer, IconButton, Switch, useMediaQuery, useTheme } from '@mui/material'
+import { Box, Typography, Drawer, IconButton, Switch, useMediaQuery, useTheme, Avatar, Menu, MenuItem } from '@mui/material'
 import { Route, Routes, useMatch, useNavigate, useSearchParams } from 'react-router-dom'
 import { ROUTES } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
-import { useAppSelector } from '@app/store'
-import { selectUser } from '@features/auth-by-phone/model/authSlice'
+import { useAppSelector, useAppDispatch } from '@app/store'
+import { selectUser, logout } from '@features/auth-by-phone/model/authSlice'
 import { useThemeMode } from '@shared/theme'
 import { UserMenu } from '@features/user-menu/ui/UserMenu'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardCalendar } from './DashboardCalendar'
 import { DashboardAppointments } from './DashboardAppointments'
 import { ServicesView } from './views/ServicesView'
-import { StaffListView } from './views/StaffListView'
+import { StaffTabsView } from './views/StaffTabsView'
 import { ScheduleView } from './views/ScheduleView'
-import { StaffDetailView } from './views/StaffDetailView'
 import { DashboardProfile } from './DashboardProfile'
 import { ClientsListView } from './ClientsListView'
 import { fetchSalonProfile } from '@shared/api/dashboardApi'
@@ -46,6 +45,14 @@ function isSection(s: string | null): s is Section {
   return s === 'overview' || s === 'calendar' || s === 'appointments' || s === 'services' || s === 'staff' || s === 'schedule' || s === 'profile' || s === 'clients'
 }
 
+function initials(name?: string | null): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+}
+
 function DashboardMainContent({ section }: { section: Section }) {
   switch (section) {
     case 'overview':
@@ -59,7 +66,7 @@ function DashboardMainContent({ section }: { section: Section }) {
     case 'services':
       return <ServicesView />
     case 'staff':
-      return <StaffListView />
+      return <StaffTabsView />
     case 'schedule':
       return <ScheduleView />
     case 'profile':
@@ -72,7 +79,9 @@ function DashboardMainContent({ section }: { section: Section }) {
 export function DashboardPage() {
   const navigate = useNavigate()
   const user = useAppSelector(selectUser)
+  const dispatch = useAppDispatch()
   const { mode, setMode } = useThemeMode()
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchParams] = useSearchParams()
   const staffMatch = useMatch('/dashboard/staff/:staffId')
   const narrow = useMediaQuery('(max-width:899px)')
@@ -144,7 +153,7 @@ export function DashboardPage() {
   const content = (
     <Routes>
       <Route index element={<DashboardMainContent section={section} />} />
-      <Route path="staff/:staffId" element={<StaffDetailView />} />
+      <Route path="staff/*" element={<StaffTabsView />} />
     </Routes>
   )
 
@@ -152,7 +161,7 @@ export function DashboardPage() {
     <Box
       sx={{
         width: 220,
-        height: '100%',
+        height: '100vh',
         display: 'flex',
         flexDirection: 'column',
         bgcolor: dashboard.sidebar,
@@ -165,7 +174,7 @@ export function DashboardPage() {
         </Typography>
         <Typography sx={{ fontSize: 11, color: dashboard.muted, mt: 0.5 }}>Панель салона</Typography>
       </Box>
-      <Box component="nav" sx={{ flex: 1, py: 1, overflow: 'auto' }}>
+      <Box component="nav" sx={{ flex: 1, minHeight: 0, py: 1, overflow: 'auto' }}>
         {NAV.map(item => {
           const on = item.id === section
           return (
@@ -197,10 +206,25 @@ export function DashboardPage() {
           )
         })}
       </Box>
-      <Box sx={{ p: 2, borderTop: `1px solid ${dashboard.borderSubtle}` }}>
-        <Typography onClick={() => navigate(ROUTES.HOME)} sx={{ fontSize: 13, color: dashboard.muted, cursor: 'pointer' }}>
-          ← На сайт
-        </Typography>
+      <Box sx={{ p: 2, borderTop: `1px solid ${dashboard.borderSubtle}`, mt: 'auto' }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+          onClick={(e) => setUserMenuAnchor(e.currentTarget as HTMLElement)}
+        >
+          <Avatar sx={{ width: 40, height: 40, bgcolor: dashboard.accent, color: dashboard.onAccent, fontWeight: 700 }}>
+            {initials(user?.displayName)}
+          </Avatar>
+          <Box>
+            <Typography sx={{ fontSize: 13, color: dashboard.text, fontWeight: 600 }}>{user?.displayName ? user.displayName.split(' ')[0] : 'Пользователь'}</Typography>
+            <Typography sx={{ fontSize: 11, color: dashboard.muted }}>Владелец</Typography>
+          </Box>
+        </Box>
+        <Menu anchorEl={userMenuAnchor} open={!!userMenuAnchor} onClose={() => setUserMenuAnchor(null)}>
+          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.HOME) }}>Главная</MenuItem>
+          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.ME) }}>Профиль</MenuItem>
+          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.DASHBOARD) }}>Кабинет салона</MenuItem>
+          <MenuItem onClick={() => { setUserMenuAnchor(null); void dispatch(logout()) }}>Выйти</MenuItem>
+        </Menu>
       </Box>
     </Box>
   )
@@ -210,9 +234,14 @@ export function DashboardPage() {
       {!narrow && sidebar}
       {narrow && (
         <>
-          <Drawer anchor="left" open={drawer} onClose={() => setDrawer(false)} PaperProps={{ sx: { bgcolor: dashboard.sidebar } }}>
-            {sidebar}
-          </Drawer>
+          <Drawer
+        anchor="left"
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        PaperProps={{ sx: { bgcolor: dashboard.sidebar, height: '100vh', width: 220 } }}
+      >
+        {sidebar}
+      </Drawer>
         </>
       )}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -244,9 +273,6 @@ export function DashboardPage() {
               '& .MuiSwitch-thumb': { bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark },
             }}
           />
-          <Box sx={{ ml: 0.5 }}>
-            <UserMenu />
-          </Box>
         </Box>
         <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflow: 'auto' }}>{content}</Box>
       </Box>

@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-04-25
+updated: 2026-04-27
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -13,9 +13,13 @@ code_pointers:
 
 ### Последние изменения (2026-04-27)
 
+- **Календарь (режим «Неделя») — DnD-перенос на соседние недели через edge-gutter:** вместо узких боковых drop-зон добавлены внешние edge-гаттеры, соприкасающиеся с сеткой недели. При перетаскивании записи и удержании курсора в гаттере выполняется автолистание на `-7/+7` дней; первый и последний день недели остаются безопасными для обычного drop внутри сетки.
+- **Staff detail — ближайшие записи мастера:** в `StaffDetailView` список «Ближайшие записи» переведён на выборку ближайших 10 визитов (`pageSize=10`) с явной сортировкой `starts_at asc` и фильтром по активным статусам (`pending`, `confirmed`), чтобы в карточке мастера отображались именно предстоящие записи.
 - **CRM клиенты — CRUD через drawer + soft-delete/restore:** в dashboard-клиентах добавлены `POST /api/v1/dashboard/clients` (создание), `DELETE /api/v1/dashboard/clients/:id` (soft-delete) и `POST /api/v1/dashboard/clients/:id/restore` (восстановление). Список клиентов получил фильтр `include_deleted=true`; удалённые клиенты возвращаются с `deletedAt` и неактивны в гриде.
 - **CRM клиенты — доп. контакты и редактирование телефона:** миграция `000023_salon_clients_extra_contact` добавила `salon_clients.extra_contact`. Для зарегистрированных клиентов доступно поле `extraContact`; для гостевых разрешено редактирование `phoneE164` (с валидацией формата), для привязанных к `user_id` телефон редактировать нельзя.
 - **Dashboard UI клиентов:** вместо отдельной страницы детали используется `ClientDetailDrawer`; добавлен `CreateClientDrawer`, действия merge/tagging/удаление/восстановление, и расширение RTK Query API в entity-слое `entities/client`.
+- **Staff в entity-слое + табы в dashboard:** логика мастеров перенесена в `frontend/src/entities/staff/` (RTK Query endpoints + `staffSlice`, подключен в `app/store.ts`), в `shared/api/rtkApi.ts` добавлен `tagTypes: ['Staff']`. В `DashboardPage.tsx` секция staff теперь рендерит `StaffTabsView`, а роут обновлен с `staff/:staffId` на `staff/*` для вложенной таб-навигации списка/детали. `StaffListView` переведен на `useGetStaffListQuery` + `RenderTable` с action-колонкой, `StaffFormModal` — на entity-хуки (`useCreate/Update/DeleteStaffMutation`, `useCreateMasterInviteMutation`, `useLazyGetStaffByIdQuery`, `useLazyLookupMasterByPhoneQuery`) и `.unwrap()`.
+- **Dashboard shell polish:** в sidebar добавлен пользовательский блок с аватаром/меню (`Главная`, `Профиль`, `Кабинет салона`, `Выйти`), улучшена адаптивность drawer и стили навигации.
 
 ### Последние изменения (2026-04-26)
 
@@ -348,7 +352,7 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 ### Стек фронтенда
 
 - **React + Vite** (dev server: localhost:5173/5174)
-- **Redux Toolkit** — `searchSlice` (категория, сортировка, чипы фильтров), `authSlice`, `locationSlice` (город, геолокация устройства)
+- **Redux Toolkit** — `searchSlice` (категория, сортировка, чипы фильтров), `authSlice`, `locationSlice` (город, геолокация устройства), `appointmentSlice`, `clientSlice`, `staffSlice`, плюс RTK Query `rtkApi`
 - **Material-UI** — UI-компоненты, кастомная тема (бренд: ink, accent, sage, blush, cream; для `/dashboard` — `palette.dashboard` и хук `useDashboardPalette`)
 - **react-hook-form + yup** — формы с валидацией
 - **react-i18next** — i18n (ru_RU)
@@ -512,10 +516,10 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 ### Мастера и профили (Этап 2)
 
 - **Бэкенд:** `GET/POST/PUT/DELETE /api/v1/dashboard/salon-masters` (deprecated-алиасы `/api/v1/dashboard/staff` и `/staff/:id`), `PUT .../salon-masters/:id/services` (полная замена `salon_master_services` с оверрайдами), `GET /api/v1/dashboard/masters/lookup?phone=`, `POST /api/v1/dashboard/master-invites` (создаёт `salon_masters` со `status=pending`). Миграция `000013_salon_master_status`. В ответах списка и карточки: вложенный `masterProfile`, массив `services` с `salonPriceCents` / оверрайдами. Записи: в JSON поле `salonMasterId`.
-- **Фронт:** [StaffFormModal.tsx](../../../frontend/src/pages/dashboard/ui/modals/StaffFormModal.tsx), [StaffListView.tsx](../../../frontend/src/pages/dashboard/ui/views/StaffListView.tsx), [StaffDetailView.tsx](../../../frontend/src/pages/dashboard/ui/views/StaffDetailView.tsx), [dashboardApi.ts](../../../frontend/src/shared/api/dashboardApi.ts).
+- **Фронт:** таб-обёртка [StaffTabsView.tsx](../../../frontend/src/pages/dashboard/ui/views/StaffTabsView.tsx) (роут `/dashboard/staff/*`), [StaffFormModal.tsx](../../../frontend/src/pages/dashboard/ui/modals/StaffFormModal.tsx), [StaffListView.tsx](../../../frontend/src/pages/dashboard/ui/views/StaffListView.tsx), [StaffDetailView.tsx](../../../frontend/src/pages/dashboard/ui/views/StaffDetailView.tsx), entity API [staffApi.ts](../../../frontend/src/entities/staff/model/staffApi.ts), базовый RTK API [rtkApi.ts](../../../frontend/src/shared/api/rtkApi.ts).
 - **Концепция:** [master_profiles_salon_masters.md](../entities/master-profiles-salon-masters.md), постановка: [agent-prompt-stage2-master-dashboard.md](../../archive/vault-plans-2026-04-24/agent-prompt-stage2-master-dashboard.md).
 
 ### Общие файлы API
 
-- [dashboardApi.ts](../../../frontend/src/shared/api/dashboardApi.ts) — единая точка для кабинета; [clientsApi.ts](../../../frontend/src/shared/api/clientsApi.ts) — клиентский модуль.
+- [dashboardApi.ts](../../../frontend/src/shared/api/dashboardApi.ts) — legacy helper-функции дашборда и shared типы; [rtkApi.ts](../../../frontend/src/shared/api/rtkApi.ts) — базовый `createApi` с auth headers/tagTypes; [clientsApi.ts](../../../frontend/src/shared/api/clientsApi.ts) — legacy CRM helper API; [staffApi.ts](../../../frontend/src/entities/staff/model/staffApi.ts) — staff endpoints в RTK Query entity-слое.
 - **Бэкенд:** [dashboard_controller.go](../../../backend/internal/controller/dashboard_controller.go); сервис разбит на `service/dashboard_appointment.go`, `dashboard_schedule.go`, `dashboard_service_mgmt.go`, `dashboard_staff.go`, `dashboard_stats.go`, `dashboard_helpers.go`, `dashboard_types.go`; [`dashboard_repository.go`](../../../backend/internal/infrastructure/persistence/dashboard_repository.go).

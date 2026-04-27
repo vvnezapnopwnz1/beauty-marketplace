@@ -21,6 +21,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@iconify/react": "^5.0.4",
     "@mui/icons-material": "^7.3.9",
+    "@mui/lab": "^9.0.0-beta.2",
     "@mui/material": "^7.3.9",
     "@mui/x-data-grid-premium": "^9.0.2",
     "@mui/x-date-pickers": "^9.0.2",

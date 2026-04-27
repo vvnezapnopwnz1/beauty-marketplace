@@ -22,6 +22,7 @@ export const rtkApi = createApi({
     tagTypes: [
         'Appointments',
         'Clients',
+        'Staff',
     ],
     endpoints: () => ({}),
 });

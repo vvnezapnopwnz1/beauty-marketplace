@@ -11,6 +11,14 @@ import (
 	"gorm.io/gorm"
 )
 
+func calculateDurationBasedEnd(start time.Time, overrideStart *time.Time, totalDurationMinutes int) time.Time {
+	baseStart := start
+	if overrideStart != nil {
+		baseStart = overrideStart.UTC()
+	}
+	return baseStart.Add(time.Duration(totalDurationMinutes) * time.Minute).UTC()
+}
+
 func (s *dashboardService) Membership(ctx context.Context, userID uuid.UUID) (*repository.SalonMembership, error) {
 	return s.dash.FindMembershipForUser(ctx, userID)
 }
@@ -261,7 +269,7 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 
 		// Recalculate duration-based EndsAt if not explicitly provided
 		if in.EndsAt == nil {
-			a.EndsAt = a.StartsAt.Add(time.Duration(totalDuration) * time.Minute).UTC()
+			a.EndsAt = calculateDurationBasedEnd(a.StartsAt, in.StartsAt, totalDuration)
 		}
 		servicesUpdated = true
 	}

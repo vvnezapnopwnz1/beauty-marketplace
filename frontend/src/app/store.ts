@@ -6,6 +6,7 @@ import { locationSlice } from '@features/location/model/locationSlice'
 import { profileReducer } from '@features/edit-profile/model/profileSlice'
 import { appointmentSlice } from '@entities/appointment/model/appointmentSlice'
 import { clientSlice } from '@entities/client/model/clientSlice'
+import { staffSlice } from '@entities/staff/model/staffSlice'
 import { rtkApi } from '@shared/api/rtkApi'
 
 export const store = configureStore({
@@ -16,6 +17,7 @@ export const store = configureStore({
     profile: profileReducer,
     appointment: appointmentSlice.reducer,
     client: clientSlice.reducer,
+    staff: staffSlice.reducer,
     [rtkApi.reducerPath]: rtkApi.reducer,
   },
   middleware: getDefaultMiddleware => getDefaultMiddleware().concat(rtkApi.middleware),

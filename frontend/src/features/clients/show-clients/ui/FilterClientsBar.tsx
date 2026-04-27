@@ -2,6 +2,7 @@ import { ChangeEvent, JSX, useRef, useState } from 'react'
 import { Box, Button, FormControlLabel, Switch } from '@mui/material'
 import { V } from '@shared/theme/palettes'
 import { TagsAutocomplete, type ClientTag, type ClientFilterState } from '@entities/client'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 
 interface Props {
   filters: ClientFilterState
@@ -11,7 +12,14 @@ interface Props {
   onAddClient: () => void
 }
 
-export function FilterClientsBar({ filters, tags, setFilters, onAddTag, onAddClient }: Props): JSX.Element {
+export function FilterClientsBar({
+  filters,
+  tags,
+  setFilters,
+  onAddTag,
+  onAddClient,
+}: Props): JSX.Element {
+  const d = useDashboardPalette()
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [localSearch, setLocalSearch] = useState(filters.search)
 
@@ -119,7 +127,7 @@ export function FilterClientsBar({ filters, tags, setFilters, onAddTag, onAddCli
           onClick={onAddClient}
           sx={{
             ml: 'auto',
-            bgcolor: V.accent,
+            bgcolor: d.accent,
             color: '#fff',
             fontSize: 12,
             fontWeight: 600,

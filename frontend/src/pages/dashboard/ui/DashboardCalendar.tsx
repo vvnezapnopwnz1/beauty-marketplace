@@ -297,6 +297,16 @@ export function DashboardCalendar() {
     },
   }
 
+  const calendarViewportSx = {
+    mt: 0.5,
+    maxHeight: { xs: '60vh', md: '68vh' },
+    overflowX: 'auto',
+    overflowY: 'auto',
+    borderRadius: 1.5,
+    border: `1px solid ${d.grid}`,
+    bgcolor: d.card,
+  }
+
   return (
     <Box>
       {err && (
@@ -444,60 +454,51 @@ export function DashboardCalendar() {
         </Stack>
       </Stack>
 
-      {mode === 'week' ? (
-        <CalendarWeekGrid
-          weekDays={weekDays}
-          items={items}
-          timeColWidth={timeColWidth}
-          onEventClick={a => setDetail(a)}
-          onEmptyClick={(_day, slotStart) => openCreateAtSlot(slotStart, null)}
-          onDayHeaderClick={d => {
-            setAnchor(d)
-            setMode('day')
-          }}
-          slotDurationMinutes={slotDurationMinutes}
-          onAppointmentMoved={p =>
-            handleAppointmentMoved({
-              id: p?.id ?? '',
-              startsAt: p?.ymd ?? '',
-              endsAt: p?.ymd ?? '',
-              salonMasterId: p?.columnId ?? '',
-              clearSalonMasterId: false,
-            })
-          }
-        />
-      ) : mode === 'day' ? (
-        <CalendarDayStaffGrid
-          day={dayStart}
-          staffColumns={staffColumns}
-          items={items}
-          timeColWidth={timeColWidth}
-          onEventClick={a => setDetail(a)}
-          onEmptyClick={(staffId, slotStart) => openCreateAtSlot(slotStart, staffId)}
-          staffSchedules={staffSchedules}
-          slotDurationMinutes={slotDurationMinutes}
-          onAppointmentMoved={p =>
-            handleAppointmentMoved({
-              id: p?.id ?? '',
-              startsAt: p?.ymd ?? '',
-              endsAt: p?.ymd ?? '',
-              salonMasterId: p?.columnId ?? '',
-              clearSalonMasterId: false,
-            })
-          }
-        />
-      ) : (
-        <CalendarMonthGrid
-          matrixDays={monthMatrix}
-          items={items}
-          inMonth={d => isSameCalendarMonth(d, anchor)}
-          onPickDay={d => {
-            setAnchor(d)
-            setMode('day')
-          }}
-          onEventClick={a => setDetail(a)}
-        />
-      )}
+      <Box sx={calendarViewportSx}>
+        {mode === 'week' ? (
+          <CalendarWeekGrid
+            weekDays={weekDays}
+            items={items}
+            timeColWidth={timeColWidth}
+            onEventClick={a => setDetail(a)}
+            onEmptyClick={(_day, slotStart) => openCreateAtSlot(slotStart, null)}
+            onDayHeaderClick={d => {
+              setAnchor(d)
+              setMode('day')
+            }}
+            slotDurationMinutes={slotDurationMinutes}
+            onAppointmentMoved={p => handleAppointmentMoved(p)}
+            onWeekNavigateByDrag={direction =>
+              setAnchor(d =>
+                new Date(d.getTime() + (direction === 'next' ? 7 * 864e5 : -7 * 864e5)),
+              )
+            }
+          />
+        ) : mode === 'day' ? (
+          <CalendarDayStaffGrid
+            day={dayStart}
+            staffColumns={staffColumns}
+            items={items}
+            timeColWidth={timeColWidth}
+            onEventClick={a => setDetail(a)}
+            onEmptyClick={(staffId, slotStart) => openCreateAtSlot(slotStart, staffId)}
+            staffSchedules={staffSchedules}
+            slotDurationMinutes={slotDurationMinutes}
+            onAppointmentMoved={p => handleAppointmentMoved(p)}
+          />
+        ) : (
+          <CalendarMonthGrid
+            matrixDays={monthMatrix}
+            items={items}
+            inMonth={d => isSameCalendarMonth(d, anchor)}
+            onPickDay={d => {
+              setAnchor(d)
+              setMode('day')
+            }}
+            onEventClick={a => setDetail(a)}
+          />
+        )}
+      </Box>
 
       <Stack direction="row" flexWrap="wrap" gap={2} sx={{ mt: 1 }}>
         <LegendSwatch color="#6bcb77" label="Подтверждена" />

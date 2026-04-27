@@ -159,24 +159,30 @@ export function useColumns({
             sx={{ display: 'flex', gap: '6px', alignItems: 'center' }}
             onClick={e => e.stopPropagation()}
           >
-            <ActionBtn
-              label="Подтвердить"
-              color={d.green}
-              bg={alpha(d.green, 0.12)}
-              disabled={
-                row.status === 'confirmed' ||
-                row.status === 'completed' ||
-                row.status === 'cancelled_by_salon'
-              }
-              onClick={() => void setApptStatus(row.id, 'confirmed', onStatusChange)}
-            />
-            <ActionBtn
-              label="Отменить"
-              color={d.red}
-              bg={alpha(d.red, 0.12)}
-              disabled={row.status === 'cancelled_by_salon' || row.status === 'completed'}
-              onClick={() => void setApptStatus(row.id, 'cancelled_by_salon', onStatusChange)}
-            />
+            {row.status !== 'confirmed' &&
+              row.status !== 'completed' &&
+              row.status !== 'cancelled_by_salon' && (
+                <ActionBtn
+                  label="Подтвердить"
+                  color={d.green}
+                  bg={alpha(d.green, 0.12)}
+                  disabled={
+                    row.status === 'confirmed' ||
+                    row.status === 'completed' ||
+                    row.status === 'cancelled_by_salon'
+                  }
+                  onClick={() => void setApptStatus(row.id, 'confirmed', onStatusChange)}
+                />
+              )}
+            {row.status !== 'cancelled_by_salon' && row.status !== 'completed' && (
+              <ActionBtn
+                label="Отменить"
+                color={d.red}
+                bg={alpha(d.red, 0.12)}
+                disabled={row.status === 'cancelled_by_salon' || row.status === 'completed'}
+                onClick={() => void setApptStatus(row.id, 'cancelled_by_salon', onStatusChange)}
+              />
+            )}
           </Box>
         )
       },

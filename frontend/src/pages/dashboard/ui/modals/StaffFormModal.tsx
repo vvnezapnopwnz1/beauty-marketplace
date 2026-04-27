@@ -19,16 +19,18 @@ import * as yup from 'yup'
 import {
   STAFF_COLOR_SWATCHES,
   SPECIALIZATION_PRESETS,
-  createDashboardStaff,
-  createMasterInvite,
-  deleteDashboardStaff,
   fetchDashboardServices,
-  fetchStaffDetail,
-  lookupMasterByPhone,
-  updateDashboardStaffFull,
   type DashboardServiceRow,
   type StaffFormPayload,
 } from '@shared/api/dashboardApi'
+import {
+  useCreateMasterInviteMutation,
+  useCreateStaffMutation,
+  useDeleteStaffMutation,
+  useLazyGetStaffByIdQuery,
+  useLazyLookupMasterByPhoneQuery,
+  useUpdateStaffMutation,
+} from '@entities/staff'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import {
@@ -154,6 +156,12 @@ export function StaffFormModal(props: {
   const firstName = useWatch({ control, name: 'firstName' })
   const lastName  = useWatch({ control, name: 'lastName' })
   const color     = useWatch({ control, name: 'color' })
+  const [fetchStaff] = useLazyGetStaffByIdQuery()
+  const [createStaff] = useCreateStaffMutation()
+  const [updateStaff] = useUpdateStaffMutation()
+  const [deleteStaff] = useDeleteStaffMutation()
+  const [lookupMaster] = useLazyLookupMasterByPhoneQuery()
+  const [createMasterInvite] = useCreateMasterInviteMutation()
 
   useEffect(() => {
     if (!open) return
@@ -185,7 +193,7 @@ export function StaffFormModal(props: {
         return
       }
       try {
-        const st = await fetchStaffDetail(staffId)
+        const st = await fetchStaff(staffId).unwrap()
         const { firstName: fn, lastName: ln } = splitDisplayName(st.displayName)
         const profBio = st.masterProfile?.bio ?? st.bio ?? ''
         const specs = st.masterProfile?.specializations ?? []
@@ -214,7 +222,7 @@ export function StaffFormModal(props: {
         })
       } catch { /* ignore */ }
     })()
-  }, [open, staffId, reset])
+  }, [open, staffId, reset, fetchStaff])
 
   function rubToCents(s: string): number | null {
     const t = s.trim().replace(',', '.')
@@ -259,9 +267,9 @@ export function StaffFormModal(props: {
     }
     try {
       if (!staffId) {
-        await createDashboardStaff(body)
+        await createStaff(body).unwrap()
       } else {
-        await updateDashboardStaffFull(staffId, body)
+        await updateStaff({ id: staffId, body }).unwrap()
       }
       onSaved()
     } catch (e) {
@@ -274,7 +282,7 @@ export function StaffFormModal(props: {
     if (!confirm('Деактивировать мастера? Это действие нельзя отменить из формы.')) return
     setSaveErr(null)
     try {
-      await deleteDashboardStaff(staffId)
+      await deleteStaff(staffId).unwrap()
       onSaved()
       onClose()
     } catch (e) {
@@ -290,7 +298,7 @@ export function StaffFormModal(props: {
     setInviteNotFound(false)
     setInviteLookupLoading(true)
     try {
-      const res = await lookupMasterByPhone(invitePhone)
+      const res = await lookupMaster(invitePhone).unwrap()
       if (!res.found || !res.profile) {
         setInviteNotFound(true)
         return
@@ -312,7 +320,7 @@ export function StaffFormModal(props: {
     if (!inviteProfile) return
     setSaveErr(null)
     try {
-      await createMasterInvite(inviteProfile.id)
+      await createMasterInvite(inviteProfile.id).unwrap()
       onSaved()
       onClose()
     } catch (e) {

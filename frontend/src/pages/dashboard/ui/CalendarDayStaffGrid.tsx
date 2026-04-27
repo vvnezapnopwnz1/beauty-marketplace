@@ -34,6 +34,13 @@ import { DropPreviewState } from '@features/appointment/reschedule-appointment/m
 import { SxProps, Theme } from '@mui/material'
 
 export type StaffColumn = { id: string; label: string; color?: string | null }
+type AppointmentMoveUpdate = {
+  id: string
+  startsAt: string
+  endsAt: string
+  salonMasterId?: string
+  clearSalonMasterId?: boolean
+}
 
 type Props = {
   day: Date
@@ -44,7 +51,7 @@ type Props = {
   onEmptyClick: (staffId: string | null, slotStart: Date) => void
   staffSchedules?: Map<string, StaffScheduleInfo>
   slotDurationMinutes?: number
-  onAppointmentMoved?: (update: DropPreviewState) => Promise<void>
+  onAppointmentMoved?: (update: AppointmentMoveUpdate) => Promise<void>
 }
 
 const HATCH_OVERLAY = `repeating-linear-gradient(
@@ -214,7 +221,7 @@ export function CalendarDayStaffGrid({
   const ymd = toLocalYMD(day)
   const timelineH = calendarTimelineTotalHeightPx()
   const hours = hourRange()
-  const template = `${timeColWidth}px repeat(${staffColumns.length}, minmax(100px, 1fr))`
+  const template = `${timeColWidth}px repeat(${staffColumns.length}, minmax(160px, 1fr))`
   const gridStartMins = CALENDAR_HOUR_START * 60
   const gridEndMins = (CALENDAR_HOUR_END + 1) * 60
 
@@ -248,11 +255,20 @@ export function CalendarDayStaffGrid({
         gridTemplateRows: `auto ${timelineH}px`,
         gap: '1px',
         bgcolor: d.grid,
-        minWidth: { xs: Math.max(400, 120 + staffColumns.length * 100), sm: 560 },
+        minWidth: { xs: Math.max(520, 140 + staffColumns.length * 160), sm: 760 },
       }}
     >
       {/* Time column header */}
-      <Box sx={{ bgcolor: d.gridHeader, p: 1, minHeight: 44 }} />
+      <Box
+        sx={{
+          bgcolor: d.gridHeader,
+          p: 1,
+          minHeight: 44,
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+        }}
+      />
 
       {/* Staff column headers */}
       {staffColumns.map(c => {
@@ -271,6 +287,9 @@ export function CalendarDayStaffGrid({
               alignItems: 'center',
               gap: 0.5,
               minHeight: 44,
+              position: 'sticky',
+              top: 0,
+              zIndex: 20,
             }}
           >
             {!isSpecial && (
@@ -491,7 +510,7 @@ export function CalendarDayStaffGrid({
   )
 
   return (
-    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
+    <Box sx={{ borderRadius: 1, border: `1px solid ${d.grid}` }}>
       <DragDropProvider
         sensors={sensors}
         onDragStart={handleDragStart}

@@ -1,6 +1,6 @@
 ---
 title: Указатели концепция → код
-updated: 2026-04-24
+updated: 2026-04-27
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -24,6 +24,7 @@ code_pointers:
 | Роуты SPA | — | `frontend/src/app/App.tsx` |
 | Unified search | `backend/internal/service/search.go`, `controller/search_controller.go` | `frontend/src/features/` + `entities/search/` |
 | CRM клиенты салона | `backend/internal/service/salon_client_service.go`, `controller/salon_client_controller.go` | `frontend/src/shared/api/clientsApi.ts`, `pages/dashboard/ui/ClientsListView.tsx` |
+| Staff entity (RTK Query + slice) | `backend/internal/service/dashboard_staff.go`, `controller/dashboard_controller.go` | `frontend/src/entities/staff/model/staffApi.ts`, `frontend/src/entities/staff/model/staffSlice.ts`, `frontend/src/pages/dashboard/ui/views/StaffTabsView.tsx` |
 | DnD перенос записи | `PUT .../appointments/:id` (см. dashboard) | `frontend/src/features/reschedule-appointment/`, `pages/dashboard/lib/dndCalendarUtils.ts` |
 
 ## Связанные заметки

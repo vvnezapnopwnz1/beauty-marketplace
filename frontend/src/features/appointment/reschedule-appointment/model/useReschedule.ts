@@ -11,7 +11,7 @@ import {
   parseDragAppointmentId, 
   parseStaffDropId,
   parseWeekCellDragId,
-  parseWeekDropId
+  parseWeekDropId,
 } from '@pages/dashboard/lib/dndCalendarUtils'
 import { 
   CALENDAR_DAY_COMBINED_COLUMN, 
@@ -40,7 +40,7 @@ export function useReschedule({
   pxPerMinute,
   hourStart,
   staffSchedules,
-  viewMode
+  viewMode,
 }: UseRescheduleProps) {
   const [activeDragApt, setActiveDragApt] = useState<DashboardAppointment | null>(null)
   const [dropHighlightId, setDropHighlightId] = useState<string | null>(null)
@@ -108,6 +108,7 @@ export function useReschedule({
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      const activeDragAptSnapshot = activeDragApt
       setDropHighlightId(null)
       setDropPreview(null)
       setActiveDragApt(null)
@@ -148,19 +149,32 @@ export function useReschedule({
         const parsedSource = parseWeekCellDragId(op.source?.id)
         if (!parsedSource || !targetId) return
         const { appointmentId: aptId, columnYmd: sourceYmd } = parsedSource
+        const aptFromItems = items.find(a => a.id === aptId)
+        const aptFromSnapshot =
+          !aptFromItems && activeDragAptSnapshot?.id === aptId ? activeDragAptSnapshot : null
+        const apt = aptFromItems ?? aptFromSnapshot
+        if (!apt) return
         const targetYmd = parseWeekDropId(targetId)
         if (!targetYmd) return
-        const apt = items.find(a => a.id === aptId)
-        if (!apt) return
 
         const draft = targetEl
           ? buildWeekViewRescheduleFromPointer(aptId, apt, pointerY, targetEl, pxPerMinute, slotDurationMinutes, targetYmd)
           : buildWeekViewReschedule(aptId, apt, op.transform?.y ?? 0, pxPerMinute, slotDurationMinutes, sourceYmd, targetYmd)
-        
         if (draft) await onAppointmentMoved(draft)
       }
     },
-    [viewMode, items, day, ymd, onAppointmentMoved, slotDurationMinutes, pxPerMinute, hourStart, staffSchedules]
+    [
+      viewMode,
+      items,
+      day,
+      ymd,
+      onAppointmentMoved,
+      slotDurationMinutes,
+      pxPerMinute,
+      hourStart,
+      staffSchedules,
+      activeDragApt,
+    ]
   )
 
   return {

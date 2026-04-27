@@ -1,35 +1,44 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, Box, Button, Chip, Stack, Tab, Tabs, Typography } from '@mui/material'
 import {
-  deleteDashboardService,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  FormControl,
+  InputLabel,
+  ListSubheader,
+  MenuItem,
+  Select,
+  Stack,
+  Typography,
+  useTheme,
+  type SelectChangeEvent,
+} from '@mui/material'
+import { GridColDef } from '@mui/x-data-grid-premium'
+import {
   fetchDashboardServiceCategories,
   fetchDashboardServices,
   type DashboardServiceCategoriesResponse,
+  type DashboardServiceCategoryItem,
   type DashboardServiceRow,
 } from '@shared/api/dashboardApi'
-import { useDashboardListCardSurface, useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import RenderTable from '@shared/ui/DataGrid/RenderTable'
+import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
+import { getDataGridDashboardSx } from '@shared/ui/DataGrid/dataGridDashboardSx'
 import { ServiceFormModal } from '../modals/ServiceFormModal'
 import { useTranslation } from 'react-i18next'
 
-/** Stable tab value: slug-based or legacy free-text category. */
-function tabKeyForRow(r: DashboardServiceRow): string | null {
-  const slug = r.categorySlug?.trim()
-  if (slug) return `s:${slug}`
-  const c = r.category?.trim()
-  if (c) return `c:${c}`
-  return null
-}
-
 export function ServicesView() {
+  const theme = useTheme()
   const d = useDashboardPalette()
-  const listCard = useDashboardListCardSurface()
   const { t } = useTranslation()
   const [rows, setRows] = useState<DashboardServiceRow[]>([])
   const [catCatalog, setCatCatalog] = useState<DashboardServiceCategoriesResponse | null>(null)
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>('')
   const [err, setErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [edit, setEdit] = useState<DashboardServiceRow | null>(null)
-  const [catTab, setCatTab] = useState<string>('all')
 
   const slugToRu = useMemo(() => {
     const m = new Map<string, string>()
@@ -45,6 +54,7 @@ export function ServicesView() {
   const load = useCallback(async () => {
     try {
       setErr(null)
+      setLoading(true)
       const [list, cats] = await Promise.all([
         fetchDashboardServices(),
         fetchDashboardServiceCategories(false),
@@ -53,6 +63,8 @@ export function ServicesView() {
       setCatCatalog(cats)
     } catch (e) {
       setErr(e instanceof Error ? e.message : t('dashboard.services.errorLoad'))
+    } finally {
+      setLoading(false)
     }
   }, [t])
 
@@ -61,37 +73,17 @@ export function ServicesView() {
     return () => window.clearTimeout(timer)
   }, [load])
 
-  const tabLabel = useCallback(
-    (key: string) => {
-      if (key === 'all') return t('dashboard.services.all')
-      if (key.startsWith('s:')) {
-        const slug = key.slice(2)
-        return slugToRu.get(slug) ?? slug
-      }
-      if (key.startsWith('c:')) return key.slice(2)
-      return key
-    },
-    [slugToRu, t],
-  )
+  const categories = useMemo(() => catCatalog?.groups ?? [], [catCatalog])
 
-  const categories = useMemo(() => {
-    const allowedSlugs = new Set(
-      (catCatalog?.groups ?? []).flatMap((g) => g.items.map((i) => i.slug)),
-    )
-    const s = new Set<string>()
-    rows.forEach(r => {
-      const k = tabKeyForRow(r)
-      if (!k) return
-      if (k.startsWith('s:') && allowedSlugs.size > 0 && !allowedSlugs.has(k.slice(2))) return
-      s.add(k)
+  const filteredRows = useMemo(() => {
+    if (!selectedCategorySlug) return rows
+    return rows.filter(r => {
+      const slug = r.categorySlug?.trim()
+      if (slug) return slug === selectedCategorySlug
+      const fallbackName = slugToRu.get(selectedCategorySlug)
+      return r.category?.trim() === fallbackName
     })
-    return ['all', ...Array.from(s).sort((a, b) => tabLabel(a).localeCompare(tabLabel(b), 'ru'))]
-  }, [rows, catCatalog, tabLabel])
-
-  const filtered = useMemo(() => {
-    if (catTab === 'all') return rows
-    return rows.filter(r => tabKeyForRow(r) === catTab)
-  }, [rows, catTab])
+  }, [rows, selectedCategorySlug, slugToRu])
 
   const labelForServiceCategory = useCallback(
     (r: DashboardServiceRow): string | null => {
@@ -102,6 +94,110 @@ export function ServicesView() {
     [slugToRu],
   )
 
+  const columns = useMemo<GridColDef<DashboardServiceRow>[]>(
+    () => [
+      {
+        field: 'name',
+        headerName: 'Название',
+        flex: 1,
+        minWidth: 220,
+        sortable: true,
+        renderCell: ({ value }) => (
+          <Typography sx={{ fontSize: 13, color: d.text, fontWeight: 500 }}>
+            {value as string}
+          </Typography>
+        ),
+      },
+      {
+        field: 'category',
+        headerName: 'Категория',
+        width: 200,
+        sortable: false,
+        renderCell: ({ row }) => (
+          <Typography sx={{ fontSize: 13, color: d.mutedDark }}>
+            {labelForServiceCategory(row) ?? '—'}
+          </Typography>
+        ),
+      },
+      {
+        field: 'durationMinutes',
+        headerName: 'Длительность',
+        width: 140,
+        sortable: true,
+        renderCell: ({ value }) => (
+          <Typography sx={{ fontSize: 13, color: d.text }}>{value as number} мин</Typography>
+        ),
+      },
+      {
+        field: 'priceCents',
+        headerName: 'Цена',
+        width: 120,
+        sortable: true,
+        renderCell: ({ value }) => (
+          <Typography sx={{ fontSize: 13, color: d.text }}>
+            {value != null ? `${((value as number) / 100).toFixed(0)} ₽` : '—'}
+          </Typography>
+        ),
+      },
+      {
+        field: 'staffNames',
+        headerName: 'Мастера',
+        width: 260,
+        sortable: false,
+        renderCell: ({ row }) => (
+          <Stack direction="row" flexWrap="wrap" gap={0.5}>
+            {(row.staffNames ?? []).slice(0, 3).map(name => (
+              <Chip
+                key={name}
+                label={name}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(216,149,107,0.12)',
+                  color: d.accent,
+                  border: '1px solid rgba(216,149,107,0.3)',
+                }}
+              />
+            ))}
+            {(row.staffNames ?? []).length > 3 && (
+              <Chip
+                label={`+${(row.staffNames ?? []).length - 3}`}
+                size="small"
+                sx={{ bgcolor: d.input, color: d.mutedDark, border: `1px solid ${d.inputBorder}` }}
+              />
+            )}
+          </Stack>
+        ),
+      },
+      {
+        field: 'isActive',
+        headerName: 'Статус',
+        width: 120,
+        sortable: false,
+        renderCell: ({ value }) => (
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              px: 1,
+              height: 28,
+              lineHeight: 1,
+              py: 0.25,
+              borderRadius: 1,
+              border: `1px solid ${d.inputBorder}`,
+              fontSize: 12,
+              fontWeight: 600,
+              bgcolor: value ? 'rgba(107,203,119,0.14)' : 'rgba(255,97,97,0.12)',
+              color: value ? '#2F7A4A' : '#B02020',
+            }}
+          >
+            {value ? 'Активный' : 'Неактивный'}
+          </Box>
+        ),
+      },
+    ],
+    [d.accent, d.input, d.inputBorder, d.mutedDark, d.text, labelForServiceCategory],
+  )
+
   return (
     <Box>
       {err && (
@@ -109,16 +205,40 @@ export function ServicesView() {
           {err}
         </Alert>
       )}
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}
+
+      <Box
+        sx={{
+          mb: 2,
+          display: 'flex',
+          gap: 1,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+        }}
       >
-        <Typography sx={{ color: d.mutedDark, fontSize: 13 }}>
-          {t('dashboard.services.countOf', { filtered: filtered.length, total: rows.length })}
-        </Typography>
+        <FormControl size="small" sx={{ minWidth: 240 }}>
+          <InputLabel id="services-category-filter-label">Категория</InputLabel>
+          <Select
+            labelId="services-category-filter-label"
+            value={selectedCategorySlug}
+            label="Категория"
+            onChange={(event: SelectChangeEvent<string>) => {
+              setSelectedCategorySlug(event.target.value)
+            }}
+          >
+            <MenuItem value="">Все категории</MenuItem>
+            {categories.flatMap(group => [
+              <ListSubheader key={`h-${group.parentSlug}`}>{group.label}</ListSubheader>,
+              ...group.items.map((item: DashboardServiceCategoryItem) => (
+                <MenuItem key={item.slug} value={item.slug}>
+                  {item.nameRu}
+                </MenuItem>
+              )),
+            ])}
+          </Select>
+        </FormControl>
         <Button
+          size="small"
           sx={{ bgcolor: d.accent, color: d.onAccent }}
           onClick={() => {
             setEdit(null)
@@ -127,115 +247,30 @@ export function ServicesView() {
         >
           {t('dashboard.services.addService')}
         </Button>
-      </Stack>
+      </Box>
 
-      <Tabs
-        value={catTab}
-        onChange={(_, v) => setCatTab(v)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{
-          mb: 2,
-          minHeight: 40,
-          '& .MuiTab-root': { color: d.mutedDark, minHeight: 40 },
-          '& .Mui-selected': { color: d.accent },
+      <RenderTable
+        tableName="services"
+        rows={filteredRows}
+        loading={loading}
+        error={err ? { status: 500 } : undefined}
+        checkboxSelection={false}
+        heightOffset={140}
+        dashboardPalette={theme.palette.dashboard}
+        sx={getDataGridDashboardSx}
+        minHeight={600}
+        columns={columns}
+        getRowId={r => r.id}
+        density="comfortable"
+        sortingOrder={['asc', 'desc']}
+        disableColumnMenu
+        disableRowSelectionOnClick
+        emptyStateTitle="Нет услуг"
+        onRowClick={({ row }) => {
+          setEdit(row)
+          setModalOpen(true)
         }}
-      >
-        {categories.map(c => (
-          <Tab key={c} value={c} label={tabLabel(c)} />
-        ))}
-      </Tabs>
-
-      <Stack spacing={1}>
-        {filtered.map(r => {
-          const catLabel = labelForServiceCategory(r)
-          return (
-            <Box
-              key={r.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 2,
-                p: 2,
-                bgcolor: listCard.bg,
-                borderRadius: 2,
-                border: `1px solid ${listCard.border}`,
-                boxShadow: listCard.shadow,
-                flexWrap: 'wrap',
-                transition: 'box-shadow .15s, background .15s',
-                '&:hover': { bgcolor: listCard.hoverBg },
-              }}
-            >
-              <Box sx={{ flex: 1, minWidth: 200 }}>
-                <Typography sx={{ color: d.text, fontWeight: 600 }}>{r.name}</Typography>
-                <Typography sx={{ color: d.mutedDark, fontSize: 13 }}>
-                  {r.durationMinutes} {t('dashboard.services.minutes')} ·{' '}
-                  {r.priceCents != null
-                    ? `${(r.priceCents / 100).toFixed(0)} ₽`
-                    : t('dashboard.services.priceUnknown')}{' '}
-                  · {r.isActive ? t('dashboard.services.active') : t('dashboard.services.inactive')}
-                </Typography>
-                {r.description && (
-                  <Typography
-                    sx={{ color: d.mutedDark, fontSize: 12, mt: 0.5 }}
-                    noWrap
-                    title={r.description}
-                  >
-                    {r.description}
-                  </Typography>
-                )}
-                <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 1 }}>
-                  {catLabel && (
-                    <Chip
-                      size="small"
-                      label={catLabel}
-                      sx={{
-                        bgcolor: d.input,
-                        color: d.mutedDark,
-                        border: `1px solid ${d.inputBorder}`,
-                      }}
-                    />
-                  )}
-                  {(r.staffNames ?? []).slice(0, 8).map(n => (
-                    <Chip
-                      key={n}
-                      size="small"
-                      label={n}
-                      sx={{
-                        bgcolor: 'rgba(216,149,107,0.12)',
-                        color: d.accent,
-                        border: '1px solid rgba(216,149,107,0.3)',
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-              <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setEdit(r)
-                    setModalOpen(true)
-                  }}
-                >
-                  {t('dashboard.services.edit')}
-                </Button>
-                <Button
-                  size="small"
-                  color="error"
-                  onClick={() => {
-                    if (!confirm(t('dashboard.services.deactivateConfirm'))) return
-                    void deleteDashboardService(r.id).then(load)
-                  }}
-                >
-                  {t('dashboard.services.deactivate')}
-                </Button>
-              </Stack>
-            </Box>
-          )
-        })}
-      </Stack>
+      />
 
       <ServiceFormModal
         open={modalOpen}

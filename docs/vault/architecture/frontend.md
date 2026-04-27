@@ -1,6 +1,6 @@
 ---
 title: Frontend — структура компонентов
-updated: 2026-04-24
+updated: 2026-04-27
 source_of_truth: true
 code_pointers:
   - frontend/src/app/App.tsx
@@ -64,7 +64,7 @@ graph TD
     DashboardPage --> DashOverview["DashboardOverview\n(stats + today)"]
     DashboardPage --> DashCalendar["DashboardCalendar"]
     DashboardPage --> DashAppointments["DashboardAppointments\n(таблица)"]
-    DashboardPage --> DashStaff["DashboardStaff"]
+    DashboardPage --> StaffTabs["StaffTabsView\n(list + detail tabs, route staff/*)"]
     DashboardPage --> DashServices["DashboardServices"]
     DashboardPage --> DashSchedule["DashboardSchedule"]
     DashboardPage --> DashProfile["DashboardProfile"]
@@ -73,9 +73,9 @@ graph TD
     DashCalendar --> CalWeek["CalendarWeekGrid"]
     DashCalendar --> CalMonth["CalendarMonthGrid"]
 
-    DashStaff --> StaffListView
-    DashStaff --> StaffDetailView
-    DashStaff --> StaffFormModal
+    StaffTabs --> StaffListView
+    StaffTabs --> StaffDetailView
+    StaffDetailView --> StaffFormModal
 
     DashServices --> ServicesView
     DashServices --> ServiceFormModal
@@ -115,6 +115,8 @@ graph LR
         Place["place\n(PlaceCard)"]
         Search["search\n(SearchResultCard)"]
         Appointment["appointment\n(AppointmentBlock)"]
+        Client["client\n(CRM entity api/slice)"]
+        Staff["staff\n(RTK Query endpoints + slice)"]
     end
 
     subgraph shared
@@ -139,6 +141,10 @@ graph LR
 graph LR
     Store["Redux Store"] --> AuthSlice["auth\n(user, token, status)"]
     Store --> LocationSlice["location\n(coords, city, source)"]
+    Store --> AppointmentSlice["appointment\n(calendar/ui state)"]
+    Store --> ClientSlice["client\n(crm ui state)"]
+    Store --> StaffSlice["staff\n(selected staff id)"]
+    Store --> RtkApi["api\n(RTK Query cache)"]
 ```
 
 ---
@@ -151,6 +157,8 @@ graph LR
 | `salonApi.ts` | `/api/v1/salons/*` | SalonPage, GuestBooking |
 | `searchApi.ts` | `/api/v1/search` | SearchPage |
 | `dashboardApi.ts` | `/api/v1/dashboard/*` | DashboardPage |
+| `rtkApi.ts` | `/api/v1/dashboard/*` (base query + auth headers) | entities/* RTK Query |
+| `entities/staff/model/staffApi.ts` | `/salon-masters`, `/masters/lookup`, `/master-invites` | DashboardPage → StaffTabsView |
 | `masterDashboardApi.ts` | `/api/v1/master-dashboard/*` | MasterDashboardPage |
 | `geoApi.ts` | `/api/v1/geo/*` | location feature |
 | `placesApi.ts` | `/api/v1/places/*` | SearchPage |

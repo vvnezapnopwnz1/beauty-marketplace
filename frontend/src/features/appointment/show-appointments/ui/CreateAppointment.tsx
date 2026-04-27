@@ -14,7 +14,7 @@ export default function CreateAppointmentBtn({ onClick }: CreateAppointmentBtnPr
       sx={{
         px: '14px',
         py: '7px',
-        borderRadius: 14,
+        borderRadius: '10px',
         fontSize: 12,
         fontWeight: 600,
         border: 'none',
