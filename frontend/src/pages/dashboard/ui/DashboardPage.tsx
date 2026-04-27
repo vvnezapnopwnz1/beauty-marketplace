@@ -6,6 +6,7 @@ import { getStoredAccessToken } from '@shared/api/authApi'
 import { useAppSelector } from '@app/store'
 import { selectUser } from '@features/auth-by-phone/model/authSlice'
 import { useThemeMode } from '@shared/theme'
+import { UserMenu } from '@features/user-menu/ui/UserMenu'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardCalendar } from './DashboardCalendar'
 import { DashboardAppointments } from './DashboardAppointments'
@@ -15,7 +16,6 @@ import { ScheduleView } from './views/ScheduleView'
 import { StaffDetailView } from './views/StaffDetailView'
 import { DashboardProfile } from './DashboardProfile'
 import { ClientsListView } from './ClientsListView'
-import { ClientDetailView } from './ClientDetailView'
 import { fetchSalonProfile } from '@shared/api/dashboardApi'
 
 type Section = 'overview' | 'calendar' | 'appointments' | 'services' | 'staff' | 'schedule' | 'profile' | 'clients'
@@ -75,7 +75,6 @@ export function DashboardPage() {
   const { mode, setMode } = useThemeMode()
   const [searchParams] = useSearchParams()
   const staffMatch = useMatch('/dashboard/staff/:staffId')
-  const clientMatch = useMatch('/dashboard/clients/:clientId')
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | undefined>(undefined)
@@ -84,11 +83,10 @@ export function DashboardPage() {
 
   const section = useMemo((): Section => {
     if (staffMatch) return 'staff'
-    if (clientMatch) return 'clients'
     const s = searchParams.get('section')
     if (isSection(s)) return s
     return 'overview'
-  }, [staffMatch, clientMatch, searchParams])
+  }, [staffMatch, searchParams])
 
   useEffect(() => {
     if (!getStoredAccessToken()) {
@@ -132,9 +130,8 @@ export function DashboardPage() {
 
   const headerTitle = useMemo(() => {
     if (staffMatch) return 'Мастер'
-    if (clientMatch) return 'Клиент'
     return TITLES[section]
-  }, [staffMatch, clientMatch, section])
+  }, [staffMatch, section])
 
   function goSection(id: Section) {
     if (id === 'overview') {
@@ -148,7 +145,6 @@ export function DashboardPage() {
     <Routes>
       <Route index element={<DashboardMainContent section={section} />} />
       <Route path="staff/:staffId" element={<StaffDetailView />} />
-      <Route path="clients/:clientId" element={<ClientDetailView />} />
     </Routes>
   )
 
@@ -248,6 +244,9 @@ export function DashboardPage() {
               '& .MuiSwitch-thumb': { bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark },
             }}
           />
+          <Box sx={{ ml: 0.5 }}>
+            <UserMenu />
+          </Box>
         </Box>
         <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflow: 'auto' }}>{content}</Box>
       </Box>

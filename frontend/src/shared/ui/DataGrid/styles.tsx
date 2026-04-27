@@ -21,15 +21,17 @@ const DataGrid = styled(DataGridPremium)<Props>(
     minHeight = 0,
     extraHeaderOffset = 0,
     dashboardPalette,
-  }) => ({
-    border: `1px solid ${dashboardPalette?.border}`,
+  }) => {
+    const d = dashboardPalette ?? theme.palette.dashboard
+    return {
+    border: `1px solid ${d.border}`,
     borderRadius: '10px',
-    backgroundColor: dashboardPalette?.card,
-    color: dashboardPalette?.text,
+    backgroundColor: d.card,
+    color: d.text,
     fontFamily: 'inherit',
     '& .MuiDataGrid-columnHeaders': {
-      backgroundColor: dashboardPalette?.gridHeader,
-      borderBottom: `1px solid ${dashboardPalette?.border}`,
+      backgroundColor: d.gridHeader,
+      borderBottom: `1px solid ${d.border}`,
       borderRadius: '10px 10px 0 0',
     },
     '& .MuiDataGrid-columnHeaderTitle': {
@@ -37,7 +39,7 @@ const DataGrid = styled(DataGridPremium)<Props>(
       fontSize: 11,
       textTransform: 'uppercase',
       letterSpacing: '.4px',
-      color: dashboardPalette?.muted,
+      color: d.muted,
     },
     '& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within': {
       outline: 'none',
@@ -275,23 +277,31 @@ const DataGrid = styled(DataGridPremium)<Props>(
       paddingLeft: 0,
       paddingRight: 0,
     },
-    '& .MuiDataGrid-columnSeparator': { color: dashboardPalette?.border },
+    '& .MuiDataGrid-columnSeparator': { color: d.border },
+    '& .MuiDataGrid-iconButtonContainer': {
+      borderLeft: 'none !important',
+      borderRight: 'none !important',
+    },
     '& .MuiDataGrid-row': {
-      borderBottom: `1px solid ${dashboardPalette?.borderSubtle}`,
+      borderBottom: `1px solid ${d.borderSubtle}`,
       cursor: 'pointer',
-      transition: 'background .12s',
-      '&:hover': { backgroundColor: dashboardPalette?.controlHover },
-      '&.Mui-selected': { backgroundColor: `${dashboardPalette?.accent}14` },
-      '&.Mui-selected:hover': { backgroundColor: `${dashboardPalette?.accent}1e` },
+      transition: 'background-color 0.14s ease',
+      '&:hover': { backgroundColor: d.controlHover },
+      '&.Mui-selected': { backgroundColor: `${d.accent}14` },
+      '&.Mui-selected:hover': { backgroundColor: `${d.accent}1e` },
+    },
+    '& .MuiDataGrid-row:hover .MuiDataGrid-cell': {
+      backgroundColor: d.controlHover,
     },
     '& .MuiDataGrid-cell': {
       // borderBottom: 'none',
-      color: dashboardPalette?.text,
+      color: d.text,
       display: 'flex',
       alignItems: 'center',
       '&:focus, &:focus-within': { outline: 'none' },
     },
-  }),
+  }
+  }
 )
 
 export default DataGrid

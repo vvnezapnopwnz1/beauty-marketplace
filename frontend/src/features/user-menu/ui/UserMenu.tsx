@@ -35,6 +35,7 @@ export function UserMenu() {
         </Avatar>
       </IconButton>
       <Menu anchorEl={anchor} open={!!anchor} onClose={() => setAnchor(null)}>
+        <MenuItem onClick={() => { setAnchor(null); navigate(ROUTES.HOME) }}>Главная</MenuItem>
         <MenuItem onClick={() => { setAnchor(null); navigate(ROUTES.ME) }}>Профиль</MenuItem>
         {canSalon && <MenuItem onClick={() => { setAnchor(null); navigate(ROUTES.DASHBOARD) }}>Кабинет салона</MenuItem>}
         {canMaster && <MenuItem onClick={() => { setAnchor(null); navigate(ROUTES.MASTER_DASHBOARD) }}>Кабинет мастера</MenuItem>}

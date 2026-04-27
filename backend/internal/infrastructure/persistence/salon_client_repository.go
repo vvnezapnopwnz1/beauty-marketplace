@@ -162,7 +162,7 @@ func (r *salonClientRepository) ListBysalon(ctx context.Context, salonID uuid.UU
 
 func (r *salonClientRepository) GetByID(ctx context.Context, salonID, clientID uuid.UUID) (*repository.SalonClientRow, error) {
 	var c model.SalonClient
-	err := r.db.WithContext(ctx).Where("id = ? AND salon_id = ?", clientID, salonID).First(&c).Error
+	err := r.db.WithContext(ctx).Unscoped().Where("id = ? AND salon_id = ?", clientID, salonID).First(&c).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

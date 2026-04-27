@@ -15,9 +15,9 @@ import (
 
 // SalonClientController handles /api/v1/dashboard/clients/*.
 type SalonClientController struct {
-	svc    service.SalonClientService
-	dash   service.DashboardService
-	log    *zap.Logger
+	svc  service.SalonClientService
+	dash service.DashboardService
+	log  *zap.Logger
 }
 
 // NewSalonClientController constructs SalonClientController.
@@ -32,6 +32,8 @@ func (h *SalonClientController) HandleClients(w http.ResponseWriter, r *http.Req
 		switch r.Method {
 		case http.MethodGet:
 			h.listClients(w, r, salonID)
+		case http.MethodPost:
+			h.createClient(w, r, salonID)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -67,6 +69,8 @@ func (h *SalonClientController) HandleClients(w http.ResponseWriter, r *http.Req
 			h.getClient(w, r, salonID, clientID)
 		case http.MethodPut:
 			h.updateClient(w, r, salonID, clientID)
+		case http.MethodDelete:
+			h.deleteClient(w, r, salonID, clientID)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -98,6 +102,11 @@ func (h *SalonClientController) HandleClients(w http.ResponseWriter, r *http.Req
 			h.mergeToUser(w, r, salonID, clientID)
 			return
 		}
+	case "restore":
+		if len(parts) == 3 && r.Method == http.MethodPost {
+			h.restoreClient(w, r, salonID, clientID)
+			return
+		}
 	}
 	http.NotFound(w, r)
 }
@@ -114,6 +123,7 @@ type clientOut struct {
 	SalonID         uuid.UUID      `json:"salonId"`
 	UserID          *uuid.UUID     `json:"userId,omitempty"`
 	PhoneE164       *string        `json:"phoneE164,omitempty"`
+	ExtraContact    *string        `json:"extraContact,omitempty"`
 	DisplayName     string         `json:"displayName"`
 	Notes           *string        `json:"notes,omitempty"`
 	Tags            []clientTagOut `json:"tags"`
@@ -121,6 +131,7 @@ type clientOut struct {
 	LastVisitAt     *time.Time     `json:"lastVisitAt,omitempty"`
 	UserPhone       *string        `json:"userPhone,omitempty"`
 	UserDisplayName *string        `json:"userDisplayName,omitempty"`
+	DeletedAt       *time.Time     `json:"deletedAt,omitempty"`
 	CreatedAt       time.Time      `json:"createdAt"`
 }
 
@@ -129,11 +140,12 @@ func toClientOut(row repository.SalonClientRow) clientOut {
 	for i, t := range row.Tags {
 		tags[i] = clientTagOut{ID: t.ID, SalonID: t.SalonID, Name: t.Name, Color: t.Color}
 	}
-	return clientOut{
+	out := clientOut{
 		ID:              row.Client.ID,
 		SalonID:         row.Client.SalonID,
 		UserID:          row.Client.UserID,
 		PhoneE164:       row.Client.PhoneE164,
+		ExtraContact:    row.Client.ExtraContact,
 		DisplayName:     row.Client.DisplayName,
 		Notes:           row.Client.Notes,
 		Tags:            tags,
@@ -143,6 +155,11 @@ func toClientOut(row repository.SalonClientRow) clientOut {
 		UserDisplayName: row.UserDisplayName,
 		CreatedAt:       row.Client.CreatedAt,
 	}
+	if row.Client.DeletedAt.Valid {
+		t := row.Client.DeletedAt.Time
+		out.DeletedAt = &t
+	}
+	return out
 }
 
 func (h *SalonClientController) listClients(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
@@ -166,6 +183,7 @@ func (h *SalonClientController) listClients(w http.ResponseWriter, r *http.Reque
 			f.PageSize = n
 		}
 	}
+	f.IncludeDeleted = q.Get("include_deleted") == "true"
 
 	rows, total, err := h.svc.ListClients(r.Context(), salonID, f)
 	if err != nil {
@@ -198,14 +216,16 @@ func (h *SalonClientController) getClient(w http.ResponseWriter, r *http.Request
 
 func (h *SalonClientController) updateClient(w http.ResponseWriter, r *http.Request, salonID, clientID uuid.UUID) {
 	var body struct {
-		DisplayName *string `json:"displayName"`
-		Notes       *string `json:"notes"`
+		DisplayName  *string `json:"displayName"`
+		Notes        *string `json:"notes"`
+		PhoneE164    *string `json:"phoneE164"`
+		ExtraContact *string `json:"extraContact"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonError(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	row, err := h.svc.UpdateClient(r.Context(), salonID, clientID, body.DisplayName, body.Notes)
+	row, err := h.svc.UpdateClient(r.Context(), salonID, clientID, body.DisplayName, body.Notes, body.PhoneE164, body.ExtraContact)
 	if err != nil {
 		if err.Error() == "client not found" {
 			jsonError(w, "not found", http.StatusNotFound)
@@ -219,15 +239,65 @@ func (h *SalonClientController) updateClient(w http.ResponseWriter, r *http.Requ
 	_ = json.NewEncoder(w).Encode(toClientOut(*row))
 }
 
+func (h *SalonClientController) createClient(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	var body struct {
+		DisplayName string `json:"displayName"`
+		PhoneE164   string `json:"phoneE164"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	row, err := h.svc.CreateClient(r.Context(), salonID, body.DisplayName, body.PhoneE164)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(toClientOut(*row))
+}
+
+func (h *SalonClientController) deleteClient(w http.ResponseWriter, r *http.Request, salonID, clientID uuid.UUID) {
+	if err := h.svc.DeleteClient(r.Context(), salonID, clientID); err != nil {
+		switch err.Error() {
+		case "client not found":
+			jsonError(w, "not found", http.StatusNotFound)
+		case "client already deleted":
+			jsonError(w, "client already deleted", http.StatusConflict)
+		default:
+			h.log.Error("delete client", zap.Error(err))
+			jsonError(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *SalonClientController) restoreClient(w http.ResponseWriter, r *http.Request, salonID, clientID uuid.UUID) {
+	row, err := h.svc.RestoreClient(r.Context(), salonID, clientID)
+	if err != nil {
+		if err.Error() == "client not found or not deleted" {
+			jsonError(w, "not found", http.StatusNotFound)
+			return
+		}
+		h.log.Error("restore client", zap.Error(err))
+		jsonError(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(toClientOut(*row))
+}
+
 type apptRowOut struct {
-	ID          uuid.UUID  `json:"id"`
-	StartsAt    time.Time  `json:"startsAt"`
-	EndsAt      time.Time  `json:"endsAt"`
-	Status      string     `json:"status"`
-	ServiceName string     `json:"serviceName"`
-	StaffName   *string    `json:"staffName,omitempty"`
-	ClientLabel string     `json:"clientLabel"`
-	ClientPhone *string    `json:"clientPhone,omitempty"`
+	ID          uuid.UUID `json:"id"`
+	StartsAt    time.Time `json:"startsAt"`
+	EndsAt      time.Time `json:"endsAt"`
+	Status      string    `json:"status"`
+	ServiceName string    `json:"serviceName"`
+	StaffName   *string   `json:"staffName,omitempty"`
+	ClientLabel string    `json:"clientLabel"`
+	ClientPhone *string   `json:"clientPhone,omitempty"`
 }
 
 func (h *SalonClientController) listClientAppointments(w http.ResponseWriter, r *http.Request, salonID, clientID uuid.UUID) {

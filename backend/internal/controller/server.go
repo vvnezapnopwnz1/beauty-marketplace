@@ -58,6 +58,10 @@ func NewHTTPServer(
 	mux.HandleFunc("/api/auth/me", withCORS(auth.RequireAuth(jwtMgr, ac.Me)))
 	mux.HandleFunc("/api/auth/logout", withCORS(auth.RequireAuth(jwtMgr, ac.Logout)))
 
+	// Method+path specific routes must register before the /api/v1/dashboard/ subtree so net/http's
+	// ServeMux matches POST/DELETE for client collection and by-id (avoids 405 from ambiguous routing).
+	mux.HandleFunc("POST /api/v1/dashboard/clients", withCORS(auth.RequireAuth(jwtMgr, dh.PostDashboardClientCreate)))
+	mux.HandleFunc("DELETE /api/v1/dashboard/clients/{id}", withCORS(auth.RequireAuth(jwtMgr, dh.DeleteDashboardClient)))
 	mux.HandleFunc("/api/v1/dashboard/", withCORS(auth.RequireAuth(jwtMgr, dh.DashboardRoutes)))
 	mux.HandleFunc("/api/v1/master-dashboard/", withCORS(auth.RequireAuth(jwtMgr, md.MasterDashboardRoutes)))
 	mux.HandleFunc("/api/v1/me", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))

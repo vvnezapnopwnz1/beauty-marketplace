@@ -11,6 +11,12 @@ code_pointers:
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
+### Последние изменения (2026-04-27)
+
+- **CRM клиенты — CRUD через drawer + soft-delete/restore:** в dashboard-клиентах добавлены `POST /api/v1/dashboard/clients` (создание), `DELETE /api/v1/dashboard/clients/:id` (soft-delete) и `POST /api/v1/dashboard/clients/:id/restore` (восстановление). Список клиентов получил фильтр `include_deleted=true`; удалённые клиенты возвращаются с `deletedAt` и неактивны в гриде.
+- **CRM клиенты — доп. контакты и редактирование телефона:** миграция `000023_salon_clients_extra_contact` добавила `salon_clients.extra_contact`. Для зарегистрированных клиентов доступно поле `extraContact`; для гостевых разрешено редактирование `phoneE164` (с валидацией формата), для привязанных к `user_id` телефон редактировать нельзя.
+- **Dashboard UI клиентов:** вместо отдельной страницы детали используется `ClientDetailDrawer`; добавлен `CreateClientDrawer`, действия merge/tagging/удаление/восстановление, и расширение RTK Query API в entity-слое `entities/client`.
+
 ### Последние изменения (2026-04-26)
 
 - **Профиль салона — убраны устаревшие поля из формы:** `salonType` и `businessType` больше не отправляются при `PUT /api/v1/dashboard/salon/profile` из UI дашборда. Бэкенд не сломается — `PutSalonProfile` использует nil-проверки на входе и не трогает поля, не пришедшие в теле запроса (значения сохраняются в БД). `salon_type` по-прежнему используется как fallback при вычислении `salonCategoryScopes` на бэкенде (см. `salonCategoryScopes` → `ParentSlugsForSalonType`). Типы `SalonProfile.salonType` и `SalonProfile.businessType` в `dashboardApi.ts` помечены `@deprecated`.
@@ -187,7 +193,7 @@ DB constraint: либо `client_user_id`, либо `(guest_name + guest_phone_e1
 
 #### SalonClient (таблица `salon_clients`) / SalonClientTag
 
-- **SalonClient** — CRM-профиль клиента в салоне: `id`, `salon_id` (FK → salons), `user_id` (FK → users, nullable), `phone_e164` (nullable), `display_name`, `notes`, `created_at`, `updated_at`. Уникальные индексы: `(salon_id, user_id) WHERE user_id IS NOT NULL` и `(salon_id, phone_e164) WHERE phone_e164 IS NOT NULL`.
+- **SalonClient** — CRM-профиль клиента в салоне: `id`, `salon_id` (FK → salons), `user_id` (FK → users, nullable), `phone_e164` (nullable), `extra_contact` (nullable), `display_name`, `notes`, `created_at`, `updated_at`, `deleted_at` (soft-delete). Уникальные индексы: `(salon_id, user_id) WHERE user_id IS NOT NULL` и `(salon_id, phone_e164) WHERE phone_e164 IS NOT NULL`.
 - **SalonClientTag** — теги: `id`, `salon_id` (nullable — системные теги), `name`, `color`. Системные теги (5 штук: VIP, Постоянный, Проблемный, Новый, Требует внимания) создаются миграцией `000016` с `salon_id = NULL` (видны всем салонам).
 - **SalonClientTagAssignment** — N:M-связь: `(salon_client_id, tag_id)` composite PK.
 
@@ -499,7 +505,7 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 ### Клиенты (CRM)
 
 - **Бэкенд:** миграции `000015` (`salon_clients`, `salon_client_tags`, `salon_client_tag_assignments`, колонка `appointments.salon_client_id`) и `000016` (seed системных тегов + backfill). API: `SalonClientRepository` + `SalonClientService` + `SalonClientController` под `/api/v1/dashboard/clients/`.
-- **Эндпоинты:** `GET /clients` (список с поиском + фильтр по тегам + пагинация), `GET /clients/:id`, `PUT /clients/:id`, `GET /clients/:id/appointments`, `GET /clients/tags`, `POST /clients/tags`, `POST /clients/:id/tags`, `DELETE /clients/:id/tags/:tagId`, `POST /clients/:id/merge` (слияние guest → user).
+- **Эндпоинты:** `GET /clients` (список с поиском + фильтр по тегам + пагинация, `include_deleted=true`), `POST /clients`, `GET /clients/:id`, `PUT /clients/:id`, `DELETE /clients/:id` (soft-delete), `POST /clients/:id/restore`, `GET /clients/:id/appointments`, `GET /clients/tags`, `POST /clients/tags`, `POST /clients/:id/tags`, `DELETE /clients/:id/tags/:tagId`, `POST /clients/:id/merge` (слияние guest → user).
 - **Фронт:** [`clientsApi.ts`](../../../frontend/src/shared/api/clientsApi.ts) — типы и функции; [`ClientsListView.tsx`](../../../frontend/src/pages/dashboard/ui/ClientsListView.tsx) — таблица клиентов; [`ClientDetailView.tsx`](../../../frontend/src/pages/dashboard/ui/ClientDetailView.tsx) — профиль + история записей; секция `clients` в `DashboardPage.tsx` + маршрут `/dashboard/clients/:clientId`.
 - **Идеи задач:** добавление заметок из записи, bulk-теггинг, аналитика по клиенту.
 

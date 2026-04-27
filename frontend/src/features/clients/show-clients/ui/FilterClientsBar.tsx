@@ -1,15 +1,17 @@
 import { ChangeEvent, JSX, useRef, useState } from 'react'
-import { Box, Chip, Stack } from '@mui/material'
+import { Box, Button, FormControlLabel, Switch } from '@mui/material'
 import { V } from '@shared/theme/palettes'
-import type { ClientTag, ClientFilterState } from '@entities/client'
+import { TagsAutocomplete, type ClientTag, type ClientFilterState } from '@entities/client'
 
 interface Props {
   filters: ClientFilterState
   tags: ClientTag[]
   setFilters: (f: ClientFilterState) => void
+  onAddTag: () => void
+  onAddClient: () => void
 }
 
-export function FilterClientsBar({ filters, tags, setFilters }: Props): JSX.Element {
+export function FilterClientsBar({ filters, tags, setFilters, onAddTag, onAddClient }: Props): JSX.Element {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [localSearch, setLocalSearch] = useState(filters.search)
 
@@ -18,13 +20,6 @@ export function FilterClientsBar({ filters, tags, setFilters }: Props): JSX.Elem
     setLocalSearch(v)
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => setFilters({ ...filters, search: v }), 300)
-  }
-
-  function toggleTag(id: string) {
-    const next = filters.tagIds.includes(id)
-      ? filters.tagIds.filter(x => x !== id)
-      : [...filters.tagIds, id]
-    setFilters({ ...filters, tagIds: next })
   }
 
   const hasActive = filters.tagIds.length > 0
@@ -55,6 +50,47 @@ export function FilterClientsBar({ filters, tags, setFilters }: Props): JSX.Elem
           }}
         />
 
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={filters.includeDead}
+              onChange={(_, checked) => setFilters({ ...filters, includeDead: checked })}
+            />
+          }
+          label={
+            <Box component="span" sx={{ fontSize: 12, color: V.textMuted }}>
+              Показать неактивные
+            </Box>
+          }
+          sx={{ ml: 0.5, mr: 0 }}
+        />
+
+        <TagsAutocomplete
+          tags={tags}
+          selectedTagIds={filters.tagIds}
+          onChange={nextTagIds => setFilters({ ...filters, tagIds: nextTagIds })}
+        />
+
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={onAddTag}
+          sx={{
+            borderColor: V.border,
+            color: V.text,
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: 'none',
+            borderRadius: '8px',
+            px: 1.25,
+            py: 0.5,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Добавить тег
+        </Button>
+
         {hasActive && (
           <Box
             component="button"
@@ -76,31 +112,26 @@ export function FilterClientsBar({ filters, tags, setFilters }: Props): JSX.Elem
             Сбросить теги ×
           </Box>
         )}
-      </Box>
 
-      {tags.length > 0 && (
-        <Stack direction="row" flexWrap="wrap" gap={1}>
-          {tags.map(tag => {
-            const on = filters.tagIds.includes(tag.id)
-            return (
-              <Chip
-                key={tag.id}
-                label={tag.name}
-                size="small"
-                onClick={() => toggleTag(tag.id)}
-                sx={{
-                  bgcolor: on ? tag.color : 'transparent',
-                  color: on ? '#fff' : V.text,
-                  border: `1px solid ${tag.color}`,
-                  fontWeight: on ? 600 : 400,
-                  cursor: 'pointer',
-                  fontSize: 12,
-                }}
-              />
-            )
-          })}
-        </Stack>
-      )}
+        <Button
+          size="small"
+          variant="contained"
+          onClick={onAddClient}
+          sx={{
+            ml: 'auto',
+            bgcolor: V.accent,
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: 'none',
+            borderRadius: '8px',
+            px: 1.5,
+            py: 0.5,
+          }}
+        >
+          + Добавить клиента
+        </Button>
+      </Box>
     </Box>
   )
 }

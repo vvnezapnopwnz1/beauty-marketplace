@@ -32,6 +32,7 @@ import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import { useCreateAppointmentMutation } from '@entities/appointment/model/appointmentApi'
 import { closeAppointmentDrawer } from '@entities/appointment'
 import { useAppDispatch } from '@app/store'
+import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 
 export type CreateAppointmentDrawerProps = {
   open: boolean
@@ -57,7 +58,6 @@ export function CreateAppointmentDrawer({
     { isLoading },
   ] = useCreateAppointmentMutation()
 
-  const [err, setErr] = useState<string | null>(null)
   const [form, setForm] = useState({
     guestName: '',
     guestPhone: '',
@@ -77,14 +77,14 @@ export function CreateAppointmentDrawer({
   }, [open])
 
   const handleSubmit = async () => {
-    if (form.serviceIds.length === 0) return setErr('Выберите хотя бы одну услугу')
-    if (!form.startsAt) return setErr('Выберите время начала')
-    if (!form.guestName.trim()) return setErr('Введите имя гостя')
-    setErr(null)
+    if (form.serviceIds.length === 0) return enqueueFormSnackbar('Выберите хотя бы одну услугу', 'Error')
+    if (!form.startsAt) return enqueueFormSnackbar('Выберите время начала', 'Error')
+    if (!form.staffId) return enqueueFormSnackbar('Выберите мастера', 'Error')
+    if (!form.guestName.trim()) return enqueueFormSnackbar('Введите имя гостя', 'Error')
     try {
       await createAppointment({
         serviceIds: form.serviceIds,
-        salonMasterId: form.staffId || null,
+        salonMasterId: form.staffId,
         startsAt: form.startsAt,
         guestName: form.guestName.trim(),
         guestPhone: form.guestPhone.trim(),
@@ -93,7 +93,7 @@ export function CreateAppointmentDrawer({
       dispatch(closeAppointmentDrawer())
       onClose()
     } catch (error) {
-      setErr(error instanceof Error ? error.message : 'Ошибка при создании записи')
+      enqueueFormSnackbar(error instanceof Error ? error.message : 'Ошибка при создании записи', 'Error')
     }
   }
 
@@ -144,22 +144,6 @@ export function CreateAppointmentDrawer({
 
         <Box sx={{ flex: 1, overflow: 'auto', px: 3, py: 3 }}>
           <Stack spacing={1}>
-            {err && (
-              <Box
-                sx={{
-                  bgcolor: `${d.red}15`,
-                  color: d.red,
-                  px: 2,
-                  py: 1.5,
-                  borderRadius: '12px',
-                  fontSize: 13,
-                  border: `1px solid ${d.red}30`,
-                }}
-              >
-                {err}
-              </Box>
-            )}
-
             <Box>
               <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>Услуги</Typography>
               <Stack spacing={1.5}>
@@ -225,7 +209,6 @@ export function CreateAppointmentDrawer({
                   SelectProps={{ MenuProps: selectMenuSx }}
                   sx={inputBaseSx}
                 >
-                  <MenuItem value="">Любой свободный мастер</MenuItem>
                   {staff.map(s => (
                     <MenuItem key={s.id} value={s.id} sx={{ py: 1 }}>
                       {s.displayName}

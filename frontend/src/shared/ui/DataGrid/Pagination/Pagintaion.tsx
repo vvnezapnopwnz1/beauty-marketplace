@@ -1,12 +1,11 @@
-import { Button, TablePaginationProps, PaginationItem, useTheme } from '@mui/material';
+import { TablePaginationProps, PaginationItem, useTheme } from '@mui/material';
 import {
   gridPaginationModelSelector,
+  gridPaginationRowCountSelector,
   useGridApiContext,
   useGridSelector,
 } from '@mui/x-data-grid-premium';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MuiPagination from '@mui/material/Pagination';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import Iconify from '@shared/ui/iconify';
 
 function directionButtonBack() {
@@ -22,7 +21,7 @@ const Pagintaion = (props: Pick<TablePaginationProps, 'page' | 'onPageChange' | 
   const theme = useTheme();
 
   const apiRef = useGridApiContext();
-  const rowsCount = apiRef.current.getRowsCount();
+  const rowsCount = useGridSelector(apiRef, gridPaginationRowCountSelector);
   const { pageSize } = useGridSelector(apiRef, gridPaginationModelSelector);
   const pagesCount = Math.ceil(rowsCount / pageSize);
   return (
@@ -67,7 +66,6 @@ const Pagintaion = (props: Pick<TablePaginationProps, 'page' | 'onPageChange' | 
       // }}
 
       renderItem={(item) => (
-        // @ts-ignore
         <PaginationItem
           slots={{
             previous: directionButtonBack,

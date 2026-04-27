@@ -1,5 +1,6 @@
 import { memo, ReactNode } from 'react'
 import { CircularProgress } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   DataGridPremiumProps,
   GRID_CHECKBOX_SELECTION_COL_DEF,
@@ -74,9 +75,12 @@ const RenderTable = (props: Props) => {
     defaultColumnVisibilityModel,
     emptyStateTitle,
     forceExtendedHeader = false,
-    dashboardPalette,
+    dashboardPalette: dashboardPaletteProp,
     ...other
   } = props
+
+  const theme = useTheme()
+  const dashboardPalette = dashboardPaletteProp ?? theme.palette.dashboard
 
   const {
     columns: rawColumns = [],

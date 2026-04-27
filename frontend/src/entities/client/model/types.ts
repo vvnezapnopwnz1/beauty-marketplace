@@ -12,6 +12,7 @@ export interface SalonClient {
   salonId: string
   userId?: string | null
   phoneE164?: string | null
+  extraContact?: string | null
   displayName: string
   notes?: string | null
   tags: ClientTag[]
@@ -19,6 +20,7 @@ export interface SalonClient {
   lastVisitAt?: string | null
   userPhone?: string | null
   userDisplayName?: string | null
+  deletedAt?: string | null
   createdAt: string
 }
 
@@ -34,9 +36,27 @@ export interface ClientListRequest {
   sortDir?: 'asc' | 'desc'
   page?: number
   pageSize?: number
+  includeDead?: boolean
 }
 
 export interface ClientFilterState {
   search: string
   tagIds: string[]
+  includeDead: boolean
+}
+
+export interface ClientAppointmentRow {
+  id: string
+  startsAt: string
+  endsAt: string
+  status: string
+  serviceName: string
+  staffName?: string | null
+  clientLabel: string
+  clientPhone?: string | null
+}
+
+export interface ClientAppointmentListResponse {
+  items: ClientAppointmentRow[]
+  total: number
 }

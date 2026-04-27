@@ -30,24 +30,55 @@ func NewDashboardController(svc service.DashboardService, booking service.Bookin
 	return &DashboardController{svc: svc, booking: booking, clients: clients, log: log}
 }
 
-// DashboardRoutes dispatches under /api/v1/dashboard/ (caller strips prefix or full path).
-func (h *DashboardController) DashboardRoutes(w http.ResponseWriter, r *http.Request) {
+// resolveSalonMembership validates auth context and salon membership. Writes JSON errors on failure.
+func (h *DashboardController) resolveSalonMembership(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	uid, ok := auth.UserIDFromCtx(r.Context())
 	if !ok {
 		jsonError(w, "unauthorized", http.StatusUnauthorized)
-		return
+		return uuid.Nil, false
 	}
 	mem, err := h.svc.Membership(r.Context(), uid)
 	if err != nil {
 		h.log.Error("dashboard membership", zap.Error(err))
 		jsonError(w, "internal error", http.StatusInternalServerError)
-		return
+		return uuid.Nil, false
 	}
 	if mem == nil {
 		jsonError(w, "no salon access", http.StatusForbidden)
+		return uuid.Nil, false
+	}
+	return mem.SalonID, true
+}
+
+// PostDashboardClientCreate handles POST /api/v1/dashboard/clients (explicit mux route; see server wiring).
+func (h *DashboardController) PostDashboardClientCreate(w http.ResponseWriter, r *http.Request) {
+	salonID, ok := h.resolveSalonMembership(w, r)
+	if !ok {
 		return
 	}
-	salonID := mem.SalonID
+	h.clients.HandleClients(w, r, salonID, []string{"clients"})
+}
+
+// DeleteDashboardClient handles DELETE /api/v1/dashboard/clients/{id} (explicit mux route; see server wiring).
+func (h *DashboardController) DeleteDashboardClient(w http.ResponseWriter, r *http.Request) {
+	salonID, ok := h.resolveSalonMembership(w, r)
+	if !ok {
+		return
+	}
+	id := strings.TrimSpace(r.PathValue("id"))
+	if id == "" {
+		jsonError(w, "invalid client id", http.StatusBadRequest)
+		return
+	}
+	h.clients.HandleClients(w, r, salonID, []string{"clients", id})
+}
+
+// DashboardRoutes dispatches under /api/v1/dashboard/ (caller strips prefix or full path).
+func (h *DashboardController) DashboardRoutes(w http.ResponseWriter, r *http.Request) {
+	salonID, ok := h.resolveSalonMembership(w, r)
+	if !ok {
+		return
+	}
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/dashboard")
 	path = strings.Trim(path, "/")

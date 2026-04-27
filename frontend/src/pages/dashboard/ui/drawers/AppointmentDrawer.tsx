@@ -41,6 +41,7 @@ import {
   useUpdateAppointmentMutation,
   type DashboardAppointment,
 } from '@entities/appointment'
+import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 
 type DrawerAppointment = DashboardAppointment & {
   serviceId?: string
@@ -125,7 +126,6 @@ export function AppointmentDrawer({
   const { inputBaseSx, textareaSx, selectMenuSx } = useDashboardFormStyles()
   const [services, setServices] = useState<DashboardServiceRow[]>([])
   const [staff, setStaff] = useState<DashboardStaffRow[]>([])
-  const [err, setErr] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [serviceIds, setServiceIds] = useState<string[]>([])
@@ -174,7 +174,6 @@ export function AppointmentDrawer({
       setGuestPhone('')
       return
     }
-    setErr(null)
     // Initial sync from simple list data, will be refined by fetchAppointmentDetail
     if (a.services?.length) {
       setServiceIds(a.services.map(s => s.id))
@@ -214,14 +213,13 @@ export function AppointmentDrawer({
 
   async function patchStatus(status: string) {
     if (!appointment?.id) return
-    setErr(null)
     setBusy(true)
     try {
       await patchAppointmentStatusMut({ id: appointment.id, status }).unwrap()
       onUpdated?.()
       onClose()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Ошибка')
+      enqueueFormSnackbar(e instanceof Error ? e.message : 'Ошибка', 'Error')
     } finally {
       setBusy(false)
     }
@@ -230,15 +228,18 @@ export function AppointmentDrawer({
   async function saveChanges() {
     if (!appointment?.id) return
     if (!startsLocal) {
-      setErr('Выберите дату и время')
+      enqueueFormSnackbar('Выберите дату и время', 'Error')
       return
     }
     if (serviceIds.length === 0) {
-      setErr('Выберите хотя бы одну услугу')
+      enqueueFormSnackbar('Выберите хотя бы одну услугу', 'Error')
+      return
+    }
+    if (!salonMasterId) {
+      enqueueFormSnackbar('Выберите мастера', 'Error')
       return
     }
 
-    setErr(null)
     setInfo(null)
     setBusy(true)
     const wasConfirmed = appointment.status === 'confirmed'
@@ -257,7 +258,7 @@ export function AppointmentDrawer({
           serviceIds,
           startsAt,
           clientNote: clientNote.trim(),
-          ...(salonMasterId ? { salonMasterId } : { clearSalonMasterId: true }),
+          salonMasterId,
           ...(!readOnlyGuest ? { guestName: guestName.trim(), guestPhone: guestPhone.trim() } : {}),
         },
       }).unwrap()
@@ -267,7 +268,7 @@ export function AppointmentDrawer({
       onUpdated?.()
       onClose()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Ошибка')
+      enqueueFormSnackbar(e instanceof Error ? e.message : 'Ошибка', 'Error')
     } finally {
       setBusy(false)
     }
@@ -334,7 +335,6 @@ export function AppointmentDrawer({
               </Box>
             ) : (
               <Stack spacing={3}>
-                {err && <Typography sx={{ color: d.red, fontSize: 13 }}>{err}</Typography>}
                 {info && <Typography sx={{ color: d.accent, fontSize: 13 }}>{info}</Typography>}
 
                 <Stack direction="row" spacing={2} alignItems="center">
@@ -542,9 +542,6 @@ export function AppointmentDrawer({
                         MenuProps={selectMenuSx}
                         sx={apptSelectSx}
                       >
-                        <MenuItem value="" sx={menuItemSx}>
-                          Не назначен
-                        </MenuItem>
                         {staff.map(s => (
                           <MenuItem key={s.id} value={s.id} sx={menuItemSx}>
                             {s.displayName}

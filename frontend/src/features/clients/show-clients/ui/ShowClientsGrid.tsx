@@ -1,6 +1,6 @@
 import { JSX, useCallback, useMemo, useState } from 'react'
-import { Box, CircularProgress } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   GridColDef,
   GridPaginationModel,
@@ -10,12 +10,17 @@ import {
   GridValidRowModel,
 } from '@mui/x-data-grid-premium'
 import RenderTable from '@shared/ui/DataGrid/RenderTable'
-import { VELA_IVORY_PALETTE, V } from '@shared/theme/palettes'
+import { getDataGridDashboardSx } from '@shared/ui/DataGrid/dataGridDashboardSx'
 import { useAppDispatch, useAppSelector } from '@app/store'
-import { setClientFilters, useGetClientsQuery, useGetClientTagsQuery } from '@entities/client'
+import {
+  openClientDrawer,
+  useCreateClientTagMutation,
+  setClientFilters,
+  useGetClientTagsQuery,
+  useGetClientsQuery,
+} from '@entities/client'
 import type { SalonClient } from '@entities/client'
 import { clientColumns } from '../model/columns'
-import { showClientsGridSx } from './style'
 import { FilterClientsBar } from './FilterClientsBar'
 
 function ClientsToolbar(): JSX.Element {
@@ -28,7 +33,7 @@ function ClientsToolbar(): JSX.Element {
 }
 
 export function ShowClientsGrid(): JSX.Element {
-  const navigate = useNavigate()
+  const theme = useTheme()
   const dispatch = useAppDispatch()
 
   const filters = useAppSelector(state => state.client.filters)
@@ -50,9 +55,14 @@ export function ShowClientsGrid(): JSX.Element {
     sortDir: sortModel[0]?.sort === 'asc' ? 'asc' : 'desc',
     page: paginationModel.page + 1,
     pageSize: paginationModel.pageSize,
+    includeDead: filters.includeDead || undefined,
   })
 
   const { data: tags = [] } = useGetClientTagsQuery()
+  const [createClientTag, { isLoading: createTagBusy }] = useCreateClientTagMutation()
+  const [createTagOpen, setCreateTagOpen] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+  const [newTagColor, setNewTagColor] = useState('#6366F1')
 
   const onSortModelChange = useCallback(
     (next: GridSortModel) => {
@@ -64,7 +74,26 @@ export function ShowClientsGrid(): JSX.Element {
   const cols = useMemo(() => clientColumns as GridColDef<GridValidRowModel>[], [])
 
   const handleRowClick = (params: GridRowParams<SalonClient>) => {
-    navigate(`/dashboard/clients/${params.row.id}`)
+    dispatch(openClientDrawer({ mode: 'view', id: params.row.id }))
+  }
+
+  const handleAddClient = () => {
+    dispatch(openClientDrawer({ mode: 'create', id: null }))
+  }
+
+  const handleOpenAddTag = () => setCreateTagOpen(true)
+
+  const handleCloseAddTag = () => {
+    if (createTagBusy) return
+    setCreateTagOpen(false)
+    setNewTagName('')
+    setNewTagColor('#6366F1')
+  }
+
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return
+    await createClientTag({ name: newTagName.trim(), color: newTagColor }).unwrap()
+    handleCloseAddTag()
   }
 
   return (
@@ -73,6 +102,8 @@ export function ShowClientsGrid(): JSX.Element {
         filters={filters}
         tags={tags}
         setFilters={next => dispatch(setClientFilters(next))}
+        onAddTag={handleOpenAddTag}
+        onAddClient={handleAddClient}
       />
       <RenderTable
         tableName="clients"
@@ -80,8 +111,8 @@ export function ShowClientsGrid(): JSX.Element {
         error={error}
         checkboxSelection={false}
         heightOffset={160}
-        dashboardPalette={VELA_IVORY_PALETTE}
-        sx={showClientsGridSx}
+        dashboardPalette={theme.palette.dashboard}
+        sx={getDataGridDashboardSx}
         minHeight={500}
         columns={cols}
         getRowId={r => r.id}
@@ -100,6 +131,7 @@ export function ShowClientsGrid(): JSX.Element {
         disableColumnMenu
         disableRowSelectionOnClick
         onRowClick={handleRowClick}
+        isRowDisabled={(params: GridRowParams<SalonClient>) => !!params.row.deletedAt}
         slots={{
           toolbar: () => <ClientsToolbar />,
           loadingOverlay: () => (
@@ -111,7 +143,7 @@ export function ShowClientsGrid(): JSX.Element {
                 height: '100%',
               }}
             >
-              <CircularProgress size={32} sx={{ color: V.accent }} />
+              <CircularProgress size={32} sx={{ color: theme.palette.dashboard.accent }} />
             </Box>
           ),
           noRowsOverlay: () => (
@@ -121,7 +153,7 @@ export function ShowClientsGrid(): JSX.Element {
                 alignItems: 'center',
                 justifyContent: 'center',
                 height: '100%',
-                color: V.textMuted,
+                color: theme.palette.dashboard.muted,
                 fontSize: 13,
               }}
             >
@@ -130,6 +162,35 @@ export function ShowClientsGrid(): JSX.Element {
           ),
         }}
       />
+      <Dialog open={createTagOpen} onClose={handleCloseAddTag} fullWidth maxWidth="xs">
+        <DialogTitle>Добавить тег</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', pt: 0.5 }}>
+            <TextField
+              autoFocus
+              fullWidth
+              size="small"
+              label="Название"
+              value={newTagName}
+              onChange={e => setNewTagName(e.target.value)}
+            />
+            <input
+              type="color"
+              value={newTagColor}
+              onChange={e => setNewTagColor(e.target.value)}
+              style={{ width: 40, height: 40, border: 'none', background: 'transparent', cursor: 'pointer' }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAddTag} disabled={createTagBusy}>
+            Отмена
+          </Button>
+          <Button variant="contained" onClick={() => void handleCreateTag()} disabled={!newTagName.trim() || createTagBusy}>
+            Добавить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

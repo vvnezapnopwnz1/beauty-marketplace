@@ -1,24 +1,30 @@
 import { JSX, useCallback, useMemo, useState } from 'react'
 import { Box } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { type DashboardAppointment } from '@entities/appointment'
 import RenderTable from '@shared/ui/DataGrid/RenderTable'
-import { VELA_IVORY_PALETTE, V } from '@shared/theme/palettes'
 import {
   GridPaginationModel,
   GridSortModel,
   GridToolbarColumnsButton,
-  GridValidRowModel,
 } from '@mui/x-data-grid-premium'
-import { GridColDef } from '@mui/x-data-grid-premium'
 import { GridRowParams } from '@mui/x-data-grid-premium'
 import { CircularProgress } from '@mui/material'
-import { showAppointmentsGridSx } from './style'
+import { getShowAppointmentsGridSx } from './styles'
 import CreateAppointmentBtn from './CreateAppointment'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import { openAppointmentDrawer } from '@entities/appointment'
 import { useGetAppointmentsQuery } from '@entities/appointment/model/appointmentApi'
 import { usePatchAppointmentStatusMutation } from '@entities/appointment'
-import { columns } from '../model/columns'
+import { useColumns } from '../model/columns'
+
+const SORT_FIELD_TO_API: Record<string, string> = {
+  startsAt: 'starts_at',
+  clientLabel: 'client_name',
+  serviceName: 'service_name',
+  staffName: 'master_name',
+  status: 'status',
+}
 
 // ─── toolbar ───────────────────────────────────────────────────────────────
 
@@ -39,9 +45,52 @@ function AppointmentsToolbar(): JSX.Element {
   )
 }
 
+function LoadingOverlay(): JSX.Element {
+  const theme = useTheme()
+  const accent = theme.palette.dashboard.accent
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+      }}
+    >
+      <CircularProgress size={32} sx={{ color: accent }} />
+    </Box>
+  )
+}
+
+function NoRowsOverlay(): JSX.Element {
+  const theme = useTheme()
+  const muted = theme.palette.dashboard.muted
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        color: muted,
+        fontSize: 13,
+      }}
+    >
+      Нет записей
+    </Box>
+  )
+}
+
+const GRID_SLOTS = {
+  toolbar: AppointmentsToolbar,
+  loadingOverlay: LoadingOverlay,
+  noRowsOverlay: NoRowsOverlay,
+}
+
 // ─── RenderTable sx ───────────────────────────────────────────────────────────
 
 export function ShowAppointmentsGrid(): JSX.Element | null {
+  const theme = useTheme()
   const fallbackSortModel = useMemo<GridSortModel>(() => [{ field: 'startsAt', sort: 'desc' }], [])
 
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
@@ -51,6 +100,9 @@ export function ShowAppointmentsGrid(): JSX.Element | null {
   const [sortModel, setSortModel] = useState<GridSortModel>(fallbackSortModel)
 
   const filters = useAppSelector(state => state.appointment.filters)
+  const activeSort = sortModel[0]
+  const sortByApi = activeSort ? (SORT_FIELD_TO_API[activeSort.field] ?? 'starts_at') : 'starts_at'
+  const sortDirApi = activeSort?.sort === 'asc' ? 'asc' : 'desc'
 
   const { data, isLoading, error, refetch } = useGetAppointmentsQuery({
     from: filters.from,
@@ -58,8 +110,9 @@ export function ShowAppointmentsGrid(): JSX.Element | null {
     statuses: filters.statuses,
     staffId: filters.staffId,
     serviceId: filters.serviceId,
-    sortBy: sortModel[0]?.field,
-    sortDir: sortModel[0]?.sort === 'asc' ? 'asc' : 'desc',
+    search: filters.search.trim() || undefined,
+    sortBy: sortByApi,
+    sortDir: sortDirApi,
     page: paginationModel.page + 1,
     pageSize: paginationModel.pageSize,
   })
@@ -70,6 +123,7 @@ export function ShowAppointmentsGrid(): JSX.Element | null {
   const onSortModelChange = useCallback(
     (next: GridSortModel) => {
       setSortModel(next.length > 0 ? next : fallbackSortModel)
+      setPaginationModel(prev => ({ ...prev, page: 0 }))
     },
     [fallbackSortModel],
   )
@@ -80,10 +134,7 @@ export function ShowAppointmentsGrid(): JSX.Element | null {
     },
     [patchAppointmentStatus, load],
   )
-  const cols = useMemo(
-    () => columns({ onStatusChange: handleStatusChange }) as GridColDef<GridValidRowModel>[],
-    [handleStatusChange],
-  )
+  const cols = useColumns({ onStatusChange: handleStatusChange })
 
   const dispatch = useAppDispatch()
 
@@ -97,9 +148,9 @@ export function ShowAppointmentsGrid(): JSX.Element | null {
       rows={(data?.items as unknown as DashboardAppointment[]) ?? []}
       error={error}
       checkboxSelection={false}
-      heightOffset={130}
-      dashboardPalette={VELA_IVORY_PALETTE}
-      sx={showAppointmentsGridSx}
+      heightOffset={140}
+      dashboardPalette={theme.palette.dashboard}
+      sx={getShowAppointmentsGridSx}
       minHeight={600}
       columns={cols}
       getRowId={r => r.id}
@@ -121,38 +172,11 @@ export function ShowAppointmentsGrid(): JSX.Element | null {
       onSortModelChange={onSortModelChange}
       pageSizeOptions={[25, 50, 100]}
       density="comfortable"
+      sortingOrder={['asc', 'desc']}
       disableColumnMenu
       disableRowSelectionOnClick
       onRowClick={handleRowClick}
-      slots={{
-        toolbar: () => <AppointmentsToolbar />,
-        loadingOverlay: () => (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-            }}
-          >
-            <CircularProgress size={32} sx={{ color: V.accent }} />
-          </Box>
-        ),
-        noRowsOverlay: () => (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              color: V.textMuted,
-              fontSize: 13,
-            }}
-          >
-            Нет записей
-          </Box>
-        ),
-      }}
+      slots={GRID_SLOTS}
     />
   )
 }

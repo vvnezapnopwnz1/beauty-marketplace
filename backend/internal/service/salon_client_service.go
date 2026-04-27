@@ -14,7 +14,10 @@ import (
 type SalonClientService interface {
 	ListClients(ctx context.Context, salonID uuid.UUID, f repository.SalonClientListFilter) ([]repository.SalonClientRow, int64, error)
 	GetClient(ctx context.Context, salonID, clientID uuid.UUID) (*repository.SalonClientRow, error)
-	UpdateClient(ctx context.Context, salonID, clientID uuid.UUID, displayName *string, notes *string) (*repository.SalonClientRow, error)
+	CreateClient(ctx context.Context, salonID uuid.UUID, displayName, phoneE164 string) (*repository.SalonClientRow, error)
+	UpdateClient(ctx context.Context, salonID, clientID uuid.UUID, displayName *string, notes *string, phoneE164 *string, extraContact *string) (*repository.SalonClientRow, error)
+	DeleteClient(ctx context.Context, salonID, clientID uuid.UUID) error
+	RestoreClient(ctx context.Context, salonID, clientID uuid.UUID) (*repository.SalonClientRow, error)
 	MergeToUser(ctx context.Context, salonID, clientID, userID uuid.UUID) (*model.SalonClient, error)
 
 	GetOrCreateByPhone(ctx context.Context, salonID uuid.UUID, phone, name string) (*model.SalonClient, error)
@@ -52,7 +55,25 @@ func (s *salonClientService) GetClient(ctx context.Context, salonID, clientID uu
 	return row, nil
 }
 
-func (s *salonClientService) UpdateClient(ctx context.Context, salonID, clientID uuid.UUID, displayName *string, notes *string) (*repository.SalonClientRow, error) {
+func (s *salonClientService) CreateClient(ctx context.Context, salonID uuid.UUID, displayName, phoneE164 string) (*repository.SalonClientRow, error) {
+	displayName = strings.TrimSpace(displayName)
+	if displayName == "" {
+		return nil, fmt.Errorf("display_name is required")
+	}
+	c := &model.SalonClient{
+		SalonID:     salonID,
+		DisplayName: displayName,
+	}
+	if p := strings.TrimSpace(phoneE164); p != "" {
+		c.PhoneE164 = &p
+	}
+	if err := s.repo.Create(ctx, c); err != nil {
+		return nil, err
+	}
+	return s.repo.GetByID(ctx, salonID, c.ID)
+}
+
+func (s *salonClientService) UpdateClient(ctx context.Context, salonID, clientID uuid.UUID, displayName *string, notes *string, phoneE164 *string, extraContact *string) (*repository.SalonClientRow, error) {
 	row, err := s.repo.GetByID(ctx, salonID, clientID)
 	if err != nil {
 		return nil, err
@@ -71,10 +92,39 @@ func (s *salonClientService) UpdateClient(ctx context.Context, salonID, clientID
 	if notes != nil {
 		c.Notes = notes
 	}
+	if phoneE164 != nil {
+		if c.UserID != nil {
+			return nil, fmt.Errorf("phone cannot be edited for registered client")
+		}
+		normalized := normalizePhoneE164Ptr(phoneE164)
+		if normalized == nil {
+			return nil, fmt.Errorf("invalid phone format")
+		}
+		c.PhoneE164 = normalized
+	}
+	if extraContact != nil {
+		v := strings.TrimSpace(*extraContact)
+		if c.UserID == nil && v != "" {
+			return nil, fmt.Errorf("extra_contact is available only for registered client")
+		}
+		if v == "" {
+			c.ExtraContact = nil
+		} else {
+			c.ExtraContact = &v
+		}
+	}
 	if err := s.repo.Update(ctx, &c); err != nil {
 		return nil, err
 	}
 	return s.repo.GetByID(ctx, salonID, clientID)
+}
+
+func (s *salonClientService) DeleteClient(ctx context.Context, salonID, clientID uuid.UUID) error {
+	return s.repo.SoftDelete(ctx, salonID, clientID)
+}
+
+func (s *salonClientService) RestoreClient(ctx context.Context, salonID, clientID uuid.UUID) (*repository.SalonClientRow, error) {
+	return s.repo.Restore(ctx, salonID, clientID)
 }
 
 func (s *salonClientService) MergeToUser(ctx context.Context, salonID, clientID, userID uuid.UUID) (*model.SalonClient, error) {
