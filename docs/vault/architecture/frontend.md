@@ -27,7 +27,7 @@ graph TD
     App --> PPlace["/place/:id → PlacePage"]
     App --> PMaster["/master/:id → MasterPage"]
     App --> PLogin["/login → LoginPage"]
-    App --> PDash["/dashboard → DashboardPage"]
+    App --> PDash["/dashboard/:salonId → DashboardPage"]
     App --> PMDash["/master-dashboard → MasterDashboardPage"]
 
     style App fill:#e8f4fd,stroke:#2196f3
@@ -57,16 +57,20 @@ graph TD
 
 ## DashboardPage — управление салоном
 
+Маршрут: **`/dashboard/:salonId`** (`?section=…` для вкладок; деталь мастера — **`/dashboard/:salonId/staff/:staffId`**). Заголовок **`X-Salon-Id`** для запросов к `/api/v1/dashboard/*` задаётся через `getActiveSalonId()` / `setActiveSalonId()` (`shared/lib/activeSalon.ts`).
+
 ```mermaid
 graph TD
-    DashboardPage["DashboardPage\n(tabs: overview | calendar | appointments |\n staff | services | schedule | clients | profile)"]
+    DashboardPage["DashboardPage\n(sections: overview | calendar | appointments |\n clients | services | staff | schedule | personnel | profile)"]
 
     DashboardPage --> DashOverview["DashboardOverview\n(stats + today)"]
     DashboardPage --> DashCalendar["DashboardCalendar"]
     DashboardPage --> DashAppointments["DashboardAppointments\n(таблица)"]
-    DashboardPage --> StaffTabs["StaffTabsView\n(list + detail tabs, route staff/*)"]
-    DashboardPage --> DashServices["DashboardServices"]
-    DashboardPage --> DashSchedule["DashboardSchedule"]
+    DashboardPage --> ClientsList["ClientsListView"]
+    DashboardPage --> StaffTabs["StaffTabsView\n(list + detail, route staff/:staffId)"]
+    DashboardPage --> Personnel["PersonnelView\n(owner only)"]
+    DashboardPage --> DashServices["ServicesView"]
+    DashboardPage --> DashSchedule["ScheduleView"]
     DashboardPage --> DashProfile["DashboardProfile"]
 
     DashCalendar --> CalDay["CalendarDayStaffGrid\n(drag-and-drop)"]
@@ -77,10 +81,10 @@ graph TD
     StaffTabs --> StaffDetailView
     StaffDetailView --> StaffFormModal
 
-    DashServices --> ServicesView
+    Personnel --> InviteDrawer["InviteStaffDrawer"]
+
     DashServices --> ServiceFormModal
 
-    DashSchedule --> ScheduleView
     DashSchedule --> ScheduleDrawer
 
     DashAppointments --> AppointmentDrawer
@@ -88,6 +92,7 @@ graph TD
 
     style DashboardPage fill:#e8fdf0,stroke:#4caf50
     style DashCalendar fill:#fffde8,stroke:#ffc107
+    style Personnel fill:#e3f2fd,stroke:#1976d2
 ```
 
 ---
@@ -116,7 +121,8 @@ graph LR
         Search["search\n(SearchResultCard)"]
         Appointment["appointment\n(AppointmentBlock)"]
         Client["client\n(CRM entity api/slice)"]
-        Staff["staff\n(RTK Query endpoints + slice)"]
+        Staff["staff\n(RTK Query + slice)"]
+        SalonInvite["salon-invite\n(personnel RTK)"]
     end
 
     subgraph shared
@@ -157,8 +163,10 @@ graph LR
 | `salonApi.ts` | `/api/v1/salons/*` | SalonPage, GuestBooking |
 | `searchApi.ts` | `/api/v1/search` | SearchPage |
 | `dashboardApi.ts` | `/api/v1/dashboard/*` | DashboardPage |
-| `rtkApi.ts` | `/api/v1/dashboard/*` (base query + auth headers) | entities/* RTK Query |
+| `rtkApi.ts` | `/api/v1/dashboard/*` (base query + **Authorization**, **X-Session-Id**, **X-Salon-Id**) | entities/* RTK Query |
 | `entities/staff/model/staffApi.ts` | `/salon-masters`, `/masters/lookup`, `/master-invites` | DashboardPage → StaffTabsView |
+| `entities/salon-invite/model/personnelApi.ts` | `/salon-members`, `/staff-invites` | `PersonnelView`, `InviteStaffDrawer` |
+| `meApi.ts` | `/api/v1/me`, `/api/v1/me/salon-invites`, accept/decline | `MePage` → `SalonInvitesSection` |
 | `masterDashboardApi.ts` | `/api/v1/master-dashboard/*` | MasterDashboardPage |
 | `geoApi.ts` | `/api/v1/geo/*` | location feature |
 | `placesApi.ts` | `/api/v1/places/*` | SearchPage |

@@ -10,7 +10,7 @@ import (
 
 // DashboardService is the salon-owner dashboard API logic.
 type DashboardService interface {
-	Membership(ctx context.Context, userID uuid.UUID) (*repository.SalonMembership, error)
+	Membership(ctx context.Context, userID, salonID uuid.UUID) (*repository.SalonMembership, error)
 
 	ListAppointments(ctx context.Context, salonID uuid.UUID, f repository.AppointmentListFilter) ([]repository.AppointmentListRow, int64, error)
 	GetAppointment(ctx context.Context, salonID, appointmentID uuid.UUID) (*AppointmentDetailDTO, error)
@@ -54,14 +54,30 @@ type DashboardService interface {
 	PutSalonProfile(ctx context.Context, salonID uuid.UUID, in SalonProfileInput) (*model.Salon, error)
 
 	ListServiceCategories(ctx context.Context, salonID uuid.UUID, fullList bool) (*ServiceCategoriesResponse, error)
+
+	ListSalonMemberUsers(ctx context.Context, salonID uuid.UUID) ([]repository.SalonMemberUserRow, error)
+	RemoveSalonMember(ctx context.Context, salonID, targetUserID uuid.UUID) (bool, error)
+	UpdateSalonMemberRole(ctx context.Context, salonID, targetUserID uuid.UUID, role string) (bool, error)
+
+	ListStaffInvites(ctx context.Context, salonID uuid.UUID) ([]repository.SalonMemberInviteListRow, error)
+	CreateStaffInvite(ctx context.Context, salonID, invitedBy uuid.UUID, phoneE164, role string) (*repository.SalonMemberInviteListRow, error)
+	RevokeStaffInvite(ctx context.Context, salonID, inviteID uuid.UUID) (bool, error)
+	ListMySalonInvites(ctx context.Context, userID uuid.UUID) ([]repository.SalonMemberInviteListRow, error)
+	AcceptMySalonInvite(ctx context.Context, userID, inviteID uuid.UUID) error
+	DeclineMySalonInvite(ctx context.Context, userID, inviteID uuid.UUID) (bool, error)
 }
 
 type dashboardService struct {
 	dash    repository.DashboardRepository
 	clients repository.SalonClientRepository
+	invites repository.SalonMemberInviteRepository
 }
 
 // NewDashboardService constructs DashboardService.
-func NewDashboardService(dash repository.DashboardRepository, clients repository.SalonClientRepository) DashboardService {
-	return &dashboardService{dash: dash, clients: clients}
+func NewDashboardService(
+	dash repository.DashboardRepository,
+	clients repository.SalonClientRepository,
+	invites repository.SalonMemberInviteRepository,
+) DashboardService {
+	return &dashboardService{dash: dash, clients: clients, invites: invites}
 }

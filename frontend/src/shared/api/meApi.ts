@@ -2,16 +2,18 @@ import { authFetch } from '@shared/api/authApi'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
-export interface SalonRef {
+export interface SalonMembershipRef {
   salonId: string
+  salonName: string
+  role: 'owner' | 'admin' | 'receptionist'
 }
 
 export interface EffectiveRoles {
   isClient: boolean
   isMaster: boolean
   isPlatformAdmin: boolean
-  ownerOfSalons: SalonRef[]
-  adminOfSalons: SalonRef[]
+  salonMemberships: SalonMembershipRef[]
+  pendingInvites: number
 }
 
 export interface UserProfile {
@@ -117,6 +119,45 @@ export async function revokeAllSessions(): Promise<{ revoked: number }> {
     throw new Error(e.error)
   }
   return res.json()
+}
+
+export interface MySalonInviteRow {
+  id: string
+  salonId: string
+  salonName?: string
+  phoneE164: string
+  role: string
+  status: string
+  invitedBy: string
+  userId?: string | null
+  createdAt: string
+  expiresAt: string
+}
+
+export async function fetchMySalonInvites(): Promise<MySalonInviteRow[]> {
+  const res = await authFetch(`${API_BASE}/api/v1/me/salon-invites`)
+  if (!res.ok) {
+    const e = await parseError(res)
+    throw new Error(e.error)
+  }
+  const data = (await res.json()) as { items?: MySalonInviteRow[] }
+  return data.items ?? []
+}
+
+export async function acceptMySalonInvite(inviteId: string): Promise<void> {
+  const res = await authFetch(`${API_BASE}/api/v1/me/salon-invites/${inviteId}/accept`, { method: 'POST' })
+  if (!res.ok) {
+    const e = await parseError(res)
+    throw new Error(e.error)
+  }
+}
+
+export async function declineMySalonInvite(inviteId: string): Promise<void> {
+  const res = await authFetch(`${API_BASE}/api/v1/me/salon-invites/${inviteId}/decline`, { method: 'POST' })
+  if (!res.ok) {
+    const e = await parseError(res)
+    throw new Error(e.error)
+  }
 }
 
 export async function deleteMyAccount(): Promise<void> {

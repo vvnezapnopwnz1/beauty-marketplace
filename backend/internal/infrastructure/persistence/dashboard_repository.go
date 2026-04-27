@@ -22,15 +22,15 @@ func NewDashboardRepository(db *gorm.DB) repository.DashboardRepository {
 	return &dashboardRepository{db: db}
 }
 
-func (r *dashboardRepository) FindMembershipForUser(ctx context.Context, userID uuid.UUID) (*repository.SalonMembership, error) {
+func (r *dashboardRepository) FindMembershipForUserAndSalon(ctx context.Context, userID, salonID uuid.UUID) (*repository.SalonMembership, error) {
 	var m model.SalonMember
 	err := r.db.WithContext(ctx).
-		Where("user_id = ? AND role IN ?", userID, []string{"owner", "admin"}).
+		Where("user_id = ? AND salon_id = ?", userID, salonID).
 		First(&m).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &repository.SalonMembership{SalonID: m.SalonID, Role: m.Role}, nil
@@ -862,4 +862,37 @@ func (r *dashboardRepository) UpdateMasterProfile(ctx context.Context, p *model.
 			"is_active":        p.IsActive,
 			"updated_at":       time.Now().UTC(),
 		}).Error
+}
+
+func (r *dashboardRepository) ListSalonMemberUsers(ctx context.Context, salonID uuid.UUID) ([]repository.SalonMemberUserRow, error) {
+	var rows []repository.SalonMemberUserRow
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT sm.user_id, u.phone_e164, u.display_name, sm.role::text AS role
+		FROM salon_members sm
+		INNER JOIN users u ON u.id = sm.user_id
+		WHERE sm.salon_id = ?
+		ORDER BY
+			CASE sm.role::text WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+			u.display_name NULLS LAST`, salonID).Scan(&rows).Error
+	return rows, err
+}
+
+func (r *dashboardRepository) DeleteSalonMember(ctx context.Context, salonID, targetUserID uuid.UUID) (bool, error) {
+	res := r.db.WithContext(ctx).
+		Where("salon_id = ? AND user_id = ? AND role::text <> ?", salonID, targetUserID, "owner").
+		Delete(&model.SalonMember{})
+	if res.Error != nil {
+		return false, res.Error
+	}
+	return res.RowsAffected > 0, nil
+}
+
+func (r *dashboardRepository) UpdateSalonMemberRole(ctx context.Context, salonID, targetUserID uuid.UUID, role string) (bool, error) {
+	res := r.db.WithContext(ctx).Model(&model.SalonMember{}).
+		Where("salon_id = ? AND user_id = ? AND role::text <> ?", salonID, targetUserID, "owner").
+		Update("role", role)
+	if res.Error != nil {
+		return false, res.Error
+	}
+	return res.RowsAffected > 0, nil
 }

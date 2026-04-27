@@ -53,6 +53,10 @@ func New() *fx.App {
 				fx.As(new(repository.UserRolesRepository)),
 			),
 			fx.Annotate(
+				persistence.NewSalonMemberInviteRepository,
+				fx.As(new(repository.SalonMemberInviteRepository)),
+			),
+			fx.Annotate(
 				twogis.NewCatalogAdapter,
 				fx.As(new(service.PlacesProvider)),
 			),

@@ -1,14 +1,18 @@
 ---
 title: "Управление персоналом и RBAC — спецификация"
-updated: 2026-04-27
+updated: 2026-04-28
 source_of_truth: true
 status: approved
 code_pointers:
   - backend/internal/controller/dashboard_controller.go
+  - backend/internal/controller/dashboard_personnel_handlers.go
   - backend/internal/repository/dashboard.go
+  - backend/internal/repository/salon_member_invite.go
   - backend/internal/repository/user_roles.go
+  - backend/internal/service/dashboard_personnel.go
   - backend/internal/service/user_roles_service.go
   - frontend/src/pages/dashboard/ui/DashboardPage.tsx
+  - frontend/src/entities/salon-invite/
   - frontend/src/shared/api/rtkApi.ts
   - frontend/src/shared/config/routes.ts
 ---

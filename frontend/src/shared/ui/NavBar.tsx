@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import { AppBar, Toolbar, Typography, Button, Box, Stack, Switch } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ROUTES } from '@shared/config/routes'
+import { ROUTES, dashboardPath } from '@shared/config/routes'
+import { getActiveSalonId } from '@shared/lib/activeSalon'
 import { useBrandColors, useThemeMode } from '@shared/theme'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import { selectIsAuthenticated, selectUser } from '@features/auth-by-phone/model/authSlice'
@@ -75,6 +76,12 @@ export function NavBar() {
     }
   }, [dispatch, device.ready, device.source, device.lat, device.lon])
 
+  const salonDashboardTarget = useMemo(() => {
+    const fromLs = getActiveSalonId()
+    const first = user?.effectiveRoles?.salonMemberships?.[0]?.salonId
+    return fromLs ?? first ?? null
+  }, [user?.effectiveRoles?.salonMemberships])
+
   const locationText = useMemo(() => {
     if (device.ready && device.source === 'gps' && addressLine && addressLevel === 'address') {
       return addressLine
@@ -128,7 +135,11 @@ export function NavBar() {
         >
           {[
             { label: t('nav.services'), onClick: undefined },
-            { label: t('nav.forBusinesses'), onClick: () => navigate(ROUTES.DASHBOARD) },
+            {
+              label: t('nav.forBusinesses'),
+              onClick: () =>
+                salonDashboardTarget ? navigate(dashboardPath(salonDashboardTarget)) : navigate(ROUTES.JOIN),
+            },
             { label: t('nav.giftCards'), onClick: undefined },
           ].map(({ label, onClick }) => (
             <Box

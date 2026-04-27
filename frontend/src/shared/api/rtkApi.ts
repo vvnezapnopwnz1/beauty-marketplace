@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { HOST_API_KEY_MIDDLEWARE } from '@shared/config/config-global';
 import { publicApiUrl } from '@shared/lib/apiPublicUrl';
 import { getStoredAccessToken, getStoredSessionId } from './authApi';
+import { getActiveSalonId } from '@shared/lib/activeSalon';
 
 export const rtkApi = createApi({
     reducerPath: 'api',
@@ -16,6 +17,10 @@ export const rtkApi = createApi({
             if (sessionId) {
                 headers.set('X-Session-Id', sessionId);
             }
+            const salonId = getActiveSalonId();
+            if (salonId) {
+                headers.set('X-Salon-Id', salonId);
+            }
             return headers;
         },
     }),
@@ -23,6 +28,7 @@ export const rtkApi = createApi({
         'Appointments',
         'Clients',
         'Staff',
+        'Personnel',
     ],
     endpoints: () => ({}),
 });

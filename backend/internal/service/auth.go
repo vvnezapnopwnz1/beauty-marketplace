@@ -27,6 +27,7 @@ const (
 type AuthService struct {
 	repo         repository.AuthRepository
 	masterDash   repository.MasterDashboardRepository
+	salonInvites repository.SalonMemberInviteRepository
 	smsSender    OTPSender
 	tgSender     OTPSender
 	jwt          *auth.JWTManager
@@ -39,6 +40,7 @@ func NewAuthService(
 	repo repository.AuthRepository,
 	telegramRepo repository.TelegramLinkRepository,
 	masterDash repository.MasterDashboardRepository,
+	salonInvites repository.SalonMemberInviteRepository,
 	jwt *auth.JWTManager,
 	logger *zap.Logger,
 	cfg *config.Config,
@@ -47,6 +49,7 @@ func NewAuthService(
 	return &AuthService{
 		repo:         repo,
 		masterDash:   masterDash,
+		salonInvites: salonInvites,
 		smsSender:    NewStderrOTPSender(logger),
 		tgSender:     NewTelegramOTPSender(cfg.TelegramBotToken, telegramRepo, logger),
 		jwt:          jwt,
@@ -138,6 +141,10 @@ func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*Verif
 	user, isNew, err := s.findOrCreateUser(ctx, phone)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := s.salonInvites.LinkPendingByPhone(ctx, user.ID, phone); err != nil {
+		s.logger.Warn("link salon member invites", zap.Error(err))
 	}
 
 	s.tryClaimShadowMasterProfile(ctx, user)

@@ -19,6 +19,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
+import { dashboardSectionPath } from '@shared/config/routes'
 import { useDeleteStaffMutation, useGetStaffByIdQuery } from '@entities/staff'
 import { useLazyGetAppointmentsQuery, type DashboardAppointment } from '@entities/appointment'
 import {
@@ -110,8 +111,8 @@ type StaffDetailViewProps = {
 }
 
 export function StaffDetailView(props: StaffDetailViewProps) {
-  const params = useParams<{ staffId?: string; '*': string }>()
-  const staffId = props.staffId ?? params.staffId ?? params['*']?.split('/')?.[0]
+  const params = useParams<{ salonId?: string; staffId?: string }>()
+  const staffId = props.staffId ?? params.staffId
   const navigate = useNavigate()
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
@@ -208,7 +209,8 @@ export function StaffDetailView(props: StaffDetailViewProps) {
     try {
       await deleteStaff(staffId).unwrap()
       setDeactivateOpen(false)
-      navigate('/dashboard?section=staff')
+      if (params.salonId) navigate(dashboardSectionPath(params.salonId, 'staff'))
+      else navigate('/')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
     } finally {

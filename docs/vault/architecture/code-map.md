@@ -25,6 +25,9 @@ code_pointers:
 | Unified search | `backend/internal/service/search.go`, `controller/search_controller.go` | `frontend/src/features/` + `entities/search/` |
 | CRM клиенты салона | `backend/internal/service/salon_client_service.go`, `controller/salon_client_controller.go` | `frontend/src/shared/api/clientsApi.ts`, `pages/dashboard/ui/ClientsListView.tsx` |
 | Staff entity (RTK Query + slice) | `backend/internal/service/dashboard_staff.go`, `controller/dashboard_controller.go` | `frontend/src/entities/staff/model/staffApi.ts`, `frontend/src/entities/staff/model/staffSlice.ts`, `frontend/src/pages/dashboard/ui/views/StaffTabsView.tsx` |
+| Персонал салона, инвайты членов (`salon_member_invites`) | `repository/salon_member_invite.go`, `persistence/salon_member_invite_repository.go`, `service/dashboard_personnel.go`, `controller/dashboard_personnel_handlers.go`, `service/auth.go` (привязка инвайтов по телефону после OTP) | `frontend/src/entities/salon-invite/`, `pages/dashboard/ui/views/PersonnelView.tsx`, `drawers/InviteStaffDrawer.tsx` |
+| Multi-salon дашборд (`X-Salon-Id`, маршрут `/dashboard/:salonId`) | `controller/dashboard_controller.go` (`resolveSalonMembership`) | `shared/lib/activeSalon.ts`, `shared/config/routes.ts`, `App.tsx`, `DashboardPage.tsx`, `features/user-menu/ui/UserMenu.tsx` |
+| Приглашения в салон (принятие пользователем) | `controller/user_controller.go` (`/api/v1/me/salon-invites/*`) | `shared/api/meApi.ts`, `pages/me/ui/sections/SalonInvitesSection.tsx` |
 | DnD перенос записи | `PUT .../appointments/:id` (см. dashboard) | `frontend/src/features/reschedule-appointment/`, `pages/dashboard/lib/dndCalendarUtils.ts` |
 
 ## Связанные заметки

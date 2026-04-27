@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Typography, Drawer, IconButton, Switch, useMediaQuery, useTheme, Avatar, Menu, MenuItem } from '@mui/material'
-import { Route, Routes, useMatch, useNavigate, useSearchParams } from 'react-router-dom'
-import { ROUTES } from '@shared/config/routes'
+import { Route, Routes, useMatch, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ROUTES, dashboardPath, dashboardSectionPath, salonRoleLabelRu } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
 import { useAppSelector, useAppDispatch } from '@app/store'
 import { selectUser, logout } from '@features/auth-by-phone/model/authSlice'
 import { useThemeMode } from '@shared/theme'
-import { UserMenu } from '@features/user-menu/ui/UserMenu'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardCalendar } from './DashboardCalendar'
 import { DashboardAppointments } from './DashboardAppointments'
@@ -15,9 +14,21 @@ import { StaffTabsView } from './views/StaffTabsView'
 import { ScheduleView } from './views/ScheduleView'
 import { DashboardProfile } from './DashboardProfile'
 import { ClientsListView } from './ClientsListView'
+import { PersonnelView } from './views/PersonnelView'
 import { fetchSalonProfile } from '@shared/api/dashboardApi'
+import { setActiveSalonId } from '@shared/lib/activeSalon'
+import { rtkApi } from '@shared/api/rtkApi'
 
-type Section = 'overview' | 'calendar' | 'appointments' | 'services' | 'staff' | 'schedule' | 'profile' | 'clients'
+type Section =
+  | 'overview'
+  | 'calendar'
+  | 'appointments'
+  | 'services'
+  | 'staff'
+  | 'schedule'
+  | 'profile'
+  | 'clients'
+  | 'personnel'
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'overview', label: 'Обзор', icon: '◈' },
@@ -27,6 +38,7 @@ const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'services', label: 'Услуги', icon: '✦' },
   { id: 'staff', label: 'Мастера', icon: '👤' },
   { id: 'schedule', label: 'Расписание', icon: '🕐' },
+  { id: 'personnel', label: 'Персонал', icon: '🔑' },
   { id: 'profile', label: 'Профиль', icon: '🏪' },
 ]
 
@@ -38,11 +50,22 @@ const TITLES: Record<Section, string> = {
   services: 'Услуги',
   staff: 'Мастера',
   schedule: 'Расписание',
+  personnel: 'Персонал',
   profile: 'Профиль салона',
 }
 
 function isSection(s: string | null): s is Section {
-  return s === 'overview' || s === 'calendar' || s === 'appointments' || s === 'services' || s === 'staff' || s === 'schedule' || s === 'profile' || s === 'clients'
+  return (
+    s === 'overview' ||
+    s === 'calendar' ||
+    s === 'appointments' ||
+    s === 'services' ||
+    s === 'staff' ||
+    s === 'schedule' ||
+    s === 'profile' ||
+    s === 'clients' ||
+    s === 'personnel'
+  )
 }
 
 function initials(name?: string | null): string {
@@ -71,6 +94,8 @@ function DashboardMainContent({ section }: { section: Section }) {
       return <ScheduleView />
     case 'profile':
       return <DashboardProfile />
+    case 'personnel':
+      return <PersonnelView />
     default:
       return null
   }
@@ -83,19 +108,21 @@ export function DashboardPage() {
   const { mode, setMode } = useThemeMode()
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [searchParams] = useSearchParams()
-  const staffMatch = useMatch('/dashboard/staff/:staffId')
+  const staffDetailMatch = useMatch('/dashboard/:salonId/staff/:staffId')
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | undefined>(undefined)
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
 
+  const { salonId } = useParams<{ salonId: string }>()
+
   const section = useMemo((): Section => {
-    if (staffMatch) return 'staff'
+    if (staffDetailMatch) return 'staff'
     const s = searchParams.get('section')
     if (isSection(s)) return s
     return 'overview'
-  }, [staffMatch, searchParams])
+  }, [staffDetailMatch, searchParams])
 
   useEffect(() => {
     if (!getStoredAccessToken()) {
@@ -103,14 +130,34 @@ export function DashboardPage() {
     }
   }, [navigate])
 
+  // Validate membership + set active salon
   useEffect(() => {
-    if (!user) return
-    const roles = user.effectiveRoles
-    const canSalon = ((roles?.ownerOfSalons.length ?? 0) + (roles?.adminOfSalons.length ?? 0)) > 0
-    if (!canSalon) {
-      navigate(`${ROUTES.ME}?tab=general`, { replace: true })
+    if (!user || !salonId) return
+    const memberships = user.effectiveRoles?.salonMemberships ?? []
+    const membership = memberships.find(m => m.salonId === salonId)
+    if (!membership) {
+      if (memberships.length > 0) {
+        navigate(dashboardPath(memberships[0].salonId), { replace: true })
+      } else {
+        navigate(`${ROUTES.ME}?tab=general`, { replace: true })
+      }
+      return
     }
-  }, [navigate, user])
+    setActiveSalonId(salonId)
+  }, [user, salonId, navigate])
+
+  const role = useMemo(() => {
+    const memberships = user?.effectiveRoles?.salonMemberships ?? []
+    return memberships.find(m => m.salonId === salonId)?.role
+  }, [user, salonId])
+
+  const prevSalonRef = useRef<string | undefined>(salonId)
+  useEffect(() => {
+    if (prevSalonRef.current && prevSalonRef.current !== salonId) {
+      dispatch(rtkApi.util.resetApiState())
+    }
+    prevSalonRef.current = salonId
+  }, [salonId, dispatch])
 
   useEffect(() => {
     let cancelled = false
@@ -133,27 +180,44 @@ export function DashboardPage() {
     if (!user) return
     if (user.role !== 'salon_owner') return
     if (onboardingCompleted === false) {
-      navigate(ROUTES.ONBOARDING, { replace: true })
+      navigate(salonId ? `/dashboard/${salonId}/onboarding` : ROUTES.ME, { replace: true })
     }
-  }, [navigate, onboardingCompleted, user])
+  }, [navigate, onboardingCompleted, user, salonId])
 
   const headerTitle = useMemo(() => {
-    if (staffMatch) return 'Мастер'
+    if (staffDetailMatch) return 'Мастер'
     return TITLES[section]
-  }, [staffMatch, section])
+  }, [staffDetailMatch, section])
+
+  const salonRoleSubtitle = useMemo(() => salonRoleLabelRu(role), [role])
+
+  const visibleNav = useMemo(() => {
+    let items = NAV
+    if (role !== 'owner') {
+      items = items.filter(item => item.id !== 'personnel')
+    }
+    if (role === 'receptionist') {
+      return items.filter(item => ['overview', 'calendar', 'appointments', 'clients'].includes(item.id))
+    }
+    if (role === 'admin') {
+      return items.filter(item => item.id !== 'profile')
+    }
+    return items
+  }, [role])
 
   function goSection(id: Section) {
+    if (!salonId) return
     if (id === 'overview') {
-      navigate('/dashboard')
+      navigate(dashboardPath(salonId))
       return
     }
-    navigate(`/dashboard?section=${id}`)
+    navigate(dashboardSectionPath(salonId, id))
   }
 
   const content = (
     <Routes>
       <Route index element={<DashboardMainContent section={section} />} />
-      <Route path="staff/*" element={<StaffTabsView />} />
+      <Route path="staff/:staffId" element={<StaffTabsView />} />
     </Routes>
   )
 
@@ -175,7 +239,7 @@ export function DashboardPage() {
         <Typography sx={{ fontSize: 11, color: dashboard.muted, mt: 0.5 }}>Панель салона</Typography>
       </Box>
       <Box component="nav" sx={{ flex: 1, minHeight: 0, py: 1, overflow: 'auto' }}>
-        {NAV.map(item => {
+        {visibleNav.map(item => {
           const on = item.id === section
           return (
             <Box
@@ -216,13 +280,15 @@ export function DashboardPage() {
           </Avatar>
           <Box>
             <Typography sx={{ fontSize: 13, color: dashboard.text, fontWeight: 600 }}>{user?.displayName ? user.displayName.split(' ')[0] : 'Пользователь'}</Typography>
-            <Typography sx={{ fontSize: 11, color: dashboard.muted }}>Владелец</Typography>
+            <Typography sx={{ fontSize: 11, color: dashboard.muted }}>{salonRoleSubtitle}</Typography>
           </Box>
         </Box>
         <Menu anchorEl={userMenuAnchor} open={!!userMenuAnchor} onClose={() => setUserMenuAnchor(null)}>
           <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.HOME) }}>Главная</MenuItem>
           <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.ME) }}>Профиль</MenuItem>
-          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.DASHBOARD) }}>Кабинет салона</MenuItem>
+          {salonId ? (
+            <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(dashboardPath(salonId)) }}>Обзор салона</MenuItem>
+          ) : null}
           <MenuItem onClick={() => { setUserMenuAnchor(null); void dispatch(logout()) }}>Выйти</MenuItem>
         </Menu>
       </Box>

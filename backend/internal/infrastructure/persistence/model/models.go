@@ -97,6 +97,28 @@ func (SalonMember) TableName() string {
 	return "salon_members"
 }
 
+// SalonMemberInvite maps to salon_member_invites (dashboard staff invitations).
+type SalonMemberInvite struct {
+	ID        uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SalonID   uuid.UUID  `gorm:"type:uuid;not null;column:salon_id"`
+	PhoneE164 string     `gorm:"column:phone_e164;not null"`
+	Role      string     `gorm:"type:salon_member_role;not null;column:role"`
+	Status    string     `gorm:"type:salon_member_invite_status;not null;column:status"`
+	InvitedBy uuid.UUID  `gorm:"type:uuid;not null;column:invited_by"`
+	UserID    *uuid.UUID `gorm:"type:uuid;column:user_id"`
+	CreatedAt time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+	ExpiresAt time.Time  `gorm:"column:expires_at;not null"`
+}
+
+func (SalonMemberInvite) TableName() string { return "salon_member_invites" }
+
+func (m *SalonMemberInvite) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == uuid.Nil {
+		m.ID = uuid.New()
+	}
+	return nil
+}
+
 // MasterProfile is an independent master profile.
 // Lives outside any salon context.
 // UserID nullable: NULL = "shadow" profile created by a salon.

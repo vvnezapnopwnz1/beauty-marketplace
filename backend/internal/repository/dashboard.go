@@ -14,6 +14,14 @@ type SalonMembership struct {
 	Role    string
 }
 
+// SalonMemberUserRow is one salon member with user fields for personnel UI.
+type SalonMemberUserRow struct {
+	UserID      uuid.UUID `json:"userId" gorm:"column:user_id"`
+	PhoneE164   string    `json:"phoneE164" gorm:"column:phone_e164"`
+	DisplayName *string   `json:"displayName,omitempty" gorm:"column:display_name"`
+	Role        string    `json:"role" gorm:"column:role"`
+}
+
 // StaffServiceLine is one master–service link with service name for dashboard lists.
 type StaffServiceLine struct {
 	SalonMasterID uuid.UUID `gorm:"column:staff_id" db:"staff_id"`
@@ -67,7 +75,7 @@ type AppointmentListRow struct {
 
 // DashboardRepository reads/writes salon-owner dashboard data (scoped by salon_id).
 type DashboardRepository interface {
-	FindMembershipForUser(ctx context.Context, userID uuid.UUID) (*SalonMembership, error)
+	FindMembershipForUserAndSalon(ctx context.Context, userID, salonID uuid.UUID) (*SalonMembership, error)
 
 	ListAppointments(ctx context.Context, f AppointmentListFilter) ([]AppointmentListRow, int64, error)
 	GetAppointment(ctx context.Context, salonID, appointmentID uuid.UUID) (*model.Appointment, error)
@@ -132,4 +140,8 @@ type DashboardRepository interface {
 
 	// CountAppointments counts rows for stats (status empty = all).
 	CountAppointments(ctx context.Context, salonID uuid.UUID, from, to *time.Time, status string) (int64, error)
+
+	ListSalonMemberUsers(ctx context.Context, salonID uuid.UUID) ([]SalonMemberUserRow, error)
+	DeleteSalonMember(ctx context.Context, salonID, targetUserID uuid.UUID) (bool, error)
+	UpdateSalonMemberRole(ctx context.Context, salonID, targetUserID uuid.UUID, role string) (bool, error)
 }

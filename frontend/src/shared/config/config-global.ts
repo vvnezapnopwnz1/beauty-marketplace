@@ -27,7 +27,8 @@ export const ICONIFY_API_URL =
 // APP
 
 export const RELEASE_VERSION = import.meta.env.VITE_VERSION || '1.2.1';
-export const PATH_AFTER_LOGIN = ROUTES.DASHBOARD;
+/** Prefer resolving a concrete salon via `dashboardPath` + `effectiveRoles.salonMemberships` after auth. */
+export const PATH_AFTER_LOGIN = ROUTES.HOME;
 
 // LAYOUT
 

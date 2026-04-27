@@ -17,6 +17,7 @@ import { GeoLocationStorageWatcher } from '@features/location/ui/GeoLocationStor
 import { LocationBootstrap } from '@features/location/ui/LocationBootstrap'
 import { AuthBootstrap } from './AuthBootstrap'
 import { RequireAuth } from './RequireAuth'
+import '@entities/salon-invite'
 
 export function App() {
   return (
@@ -32,7 +33,7 @@ export function App() {
         <Route path={ROUTES.MASTER} element={<MasterPage />} />
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.ME} element={<RequireAuth><MePage /></RequireAuth>} />
-        <Route path={`${ROUTES.DASHBOARD}/*`} element={<DashboardPage />} />
+        <Route path="/dashboard/:salonId/*" element={<DashboardPage />} />
         <Route path={`${ROUTES.MASTER_DASHBOARD}/*`} element={<MasterDashboardPage />} />
         <Route path={ROUTES.CLAIM_SALON} element={<RequireAuth><ClaimSalonPage /></RequireAuth>} />
         <Route path={ROUTES.CLAIM_STATUS} element={<RequireAuth><ClaimStatusPage /></RequireAuth>} />

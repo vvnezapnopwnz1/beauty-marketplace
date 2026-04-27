@@ -1,6 +1,6 @@
 ---
 title: API flows
-updated: 2026-04-24
+updated: 2026-04-27
 source_of_truth: true
 code_pointers:
   - backend/internal/controller/server.go
@@ -31,6 +31,7 @@ sequenceDiagram
     DB-->>API: otp record
     API->>DB: UPDATE otp_codes SET used=true
     API->>DB: UPSERT users (phone_e164)
+    API->>DB: UPDATE salon_member_invites SET user_id\nWHERE pending AND phone_e164 matches
     API->>DB: INSERT refresh_tokens
     API-->>FE: {access_token, refresh_token, user}
 
@@ -98,16 +99,21 @@ sequenceDiagram
 
 ## 4. Дашборд салона (авторизованный)
 
+Все запросы к **`/api/v1/dashboard/*`** (кроме явных исключений в коде) требуют:
+
+- заголовок **`Authorization: Bearer <access>`**;
+- заголовок **`X-Salon-Id: <uuid>`** — салон, в котором проверяется членство (`salon_members`) и роль (`owner` | `admin` | `receptionist`) для RBAC.
+
 ```mermaid
 sequenceDiagram
     participant FE as Frontend
     participant API as Backend API
     participant DB as PostgreSQL
 
-    Note over FE: RequireAuth middleware проверяет JWT
+    Note over FE: JWT + X-Salon-Id (из activeSalon / выбранного салона)
 
-    FE->>API: GET /api/v1/dashboard/overview\nAuthorization: Bearer <token>
-    API->>DB: SELECT appointments + stats WHERE salon_id
+    FE->>API: GET /api/v1/dashboard/overview\nAuthorization + X-Salon-Id
+    API->>DB: resolve membership + SELECT stats WHERE salon_id
     API-->>FE: {today_appointments, revenue, staff_load}
 
     FE->>API: GET /api/v1/dashboard/appointments?date=
@@ -116,6 +122,34 @@ sequenceDiagram
     FE->>API: PATCH /api/v1/dashboard/appointments/{id}\n{status: confirmed}
     API->>DB: UPDATE appointments SET status=confirmed
     API-->>FE: updated appointment
+```
+
+---
+
+## 5. Персонал салона и инвайты членов
+
+Инвайты в **`salon_member_invites`** (миграция **`000024_staff_management`**). После **`POST /api/auth/otp/verify`** pending-строки с тем же `phone_e164` получают **`user_id`** (пользователь всё равно принимает приглашение явно).
+
+```mermaid
+sequenceDiagram
+    participant Owner as Owner UI
+    participant API as Dashboard API
+    participant DB as PostgreSQL
+
+    Owner->>API: POST /api/v1/dashboard/staff-invites\n{phoneE164, role}\n(owner + X-Salon-Id)
+    API->>DB: INSERT salon_member_invites pending
+    API-->>Owner: 201 invite
+
+    participant User as Invitee UI
+    User->>API: GET /api/v1/me/salon-invites
+    API-->>User: {items: pending rows}
+
+    User->>API: POST /api/v1/me/salon-invites/{id}/accept
+    API->>DB: INSERT salon_members + UPDATE invite accepted
+    API-->>User: 204
+
+    Owner->>API: GET /api/v1/dashboard/salon-members
+    API-->>Owner: {items: members with phone, role}
 ```
 
 ---
@@ -135,7 +169,8 @@ sequenceDiagram
 | Search | `GET /api/v1/search` | — |
 | Geo | `GET /api/v1/geo/region\|cities\|reverse` | — |
 | Places | `GET /api/v1/places/search` | — |
-| Dashboard | `/api/v1/dashboard/*` | JWT |
+| Dashboard | `/api/v1/dashboard/*` | JWT + **X-Salon-Id** |
+| Me | `/api/v1/me`, `/api/v1/me/sessions/*`, **`/api/v1/me/salon-invites`** (GET; `.../accept` / `.../decline` POST) | JWT |
 | Master Dashboard | `/api/v1/master-dashboard/*` | JWT |
 
 ## Связанные заметки

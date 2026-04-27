@@ -1,6 +1,7 @@
 import { SyntheticEvent, useMemo, useState } from 'react'
 import { Box, Button, IconButton, Stack, Tab, useTheme } from '@mui/material'
-import { useMatch, useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { dashboardPath, dashboardSectionPath } from '@shared/config/routes'
 import { useGetStaffByIdQuery } from '@entities/staff'
 import { StaffListView } from './StaffListView'
 import { StaffDetailView } from './StaffDetailView'
@@ -12,8 +13,8 @@ export function StaffTabsView() {
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
   const navigate = useNavigate()
-  const staffMatch = useMatch('/dashboard/staff/:staffId')
-  const staffId = staffMatch?.params.staffId ?? null
+  const { salonId, staffId: staffIdParam } = useParams<{ salonId: string; staffId?: string }>()
+  const staffId = staffIdParam ?? null
   const { data: staff } = useGetStaffByIdQuery(staffId ?? '', {
     skip: !staffId,
     refetchOnMountOrArgChange: true,
@@ -23,12 +24,13 @@ export function StaffTabsView() {
   const detailLabel = useMemo(() => staff?.displayName ?? 'Мастер', [staff])
 
   const handleTabChange = (_: SyntheticEvent, value: 'list' | 'details') => {
+    if (!salonId) return
     if (value === 'list') {
-      navigate('/dashboard?section=staff')
+      navigate(dashboardSectionPath(salonId, 'staff'))
       return
     }
     if (staffId) {
-      navigate(`/dashboard/staff/${staffId}`)
+      navigate(`${dashboardPath(salonId)}/staff/${staffId}`)
     }
   }
 
@@ -61,7 +63,7 @@ export function StaffTabsView() {
                         bgcolor: dashboard.control,
                       }}
                       size="small"
-                      onClick={() => navigate('/dashboard?section=staff')}
+                      onClick={() => salonId && navigate(dashboardSectionPath(salonId, 'staff'))}
                     >
                       <CloseIcon sx={{ fontSize: 12 }} />
                     </IconButton>
@@ -90,7 +92,12 @@ export function StaffTabsView() {
           )}
         </Box>
         <TabPanel value="list">
-          <StaffListView onSelectStaff={(id: string) => navigate(`/dashboard/staff/${id}`)} />
+          <StaffListView
+            onSelectStaff={id => {
+              if (!salonId) return
+              navigate(`${dashboardPath(salonId)}/staff/${id}`)
+            }}
+          />
         </TabPanel>
         <TabPanel value="details">
           {staffId ? <StaffDetailView staffId={staffId} /> : null}

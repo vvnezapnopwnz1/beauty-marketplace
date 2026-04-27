@@ -29,8 +29,9 @@ const (
 type SalonMemberRole string
 
 const (
-	SalonRoleOwner SalonMemberRole = "owner"
-	SalonRoleAdmin SalonMemberRole = "admin"
+	SalonRoleOwner        SalonMemberRole = "owner"
+	SalonRoleAdmin        SalonMemberRole = "admin"
+	SalonRoleReceptionist SalonMemberRole = "receptionist"
 )
 
 // SubscriptionPlan matches PostgreSQL enum subscription_plan.

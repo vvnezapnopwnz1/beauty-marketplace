@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { Box, Typography, useTheme } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { dashboardPath } from '@shared/config/routes'
 import { type DashboardStaffListItem } from '@shared/api/dashboardApi'
 import { useGetStaffListQuery } from '@entities/staff'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
@@ -13,6 +14,7 @@ export function StaffListView(props: { onSelectStaff?: (staffId: string) => void
   const theme = useTheme()
   const d = useDashboardPalette()
   const navigate = useNavigate()
+  const { salonId } = useParams<{ salonId: string }>()
   const { data, isLoading, isFetching, isError } = useGetStaffListQuery(undefined, {
     refetchOnMountOrArgChange: true,
   })
@@ -25,9 +27,9 @@ export function StaffListView(props: { onSelectStaff?: (staffId: string) => void
         onSelectStaff(staffId)
         return
       }
-      navigate(`/dashboard/staff/${staffId}`)
+      if (salonId) navigate(`${dashboardPath(salonId)}/staff/${staffId}`)
     },
-    [navigate, onSelectStaff],
+    [navigate, onSelectStaff, salonId],
   )
 
   const columns = useMemo<GridColDef<DashboardStaffListItem>[]>(

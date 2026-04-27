@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -16,11 +16,12 @@ import {
   Typography,
 } from '@mui/material'
 
-import { ROUTES } from '@shared/config/routes'
+import { ROUTES, dashboardPath } from '@shared/config/routes'
 import { fetchDashboardServiceCategories, putSalonProfile } from '@shared/api/dashboardApi'
 
 export function OnboardingWizard() {
   const navigate = useNavigate()
+  const { salonId } = useParams<{ salonId: string }>()
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
   const [scopeOptions, setScopeOptions] = useState<Array<{ slug: string; label: string }>>([])
@@ -65,7 +66,7 @@ export function OnboardingWizard() {
           salonCategoryScopes: selectedScopes,
         })
       }
-      navigate(ROUTES.DASHBOARD, { replace: true })
+      navigate(salonId ? dashboardPath(salonId) : ROUTES.ME, { replace: true })
     } catch {
       setError('Не удалось сохранить. Попробуйте еще раз.')
     } finally {

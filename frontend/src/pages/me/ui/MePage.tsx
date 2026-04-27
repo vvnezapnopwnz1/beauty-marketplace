@@ -1,16 +1,17 @@
 import { useEffect } from 'react'
-import { Alert, Box, CircularProgress, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Alert, Badge, Box, CircularProgress, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { useSearchParams } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import { loadProfile, selectProfile, selectProfileError, selectProfileStatus } from '@features/edit-profile/model/profileSlice'
 import { GeneralSection } from './sections/GeneralSection'
 import { SecuritySection } from './sections/SecuritySection'
 import { DangerSection } from './sections/DangerSection'
+import { SalonInvitesSection } from './sections/SalonInvitesSection'
 
-type TabKey = 'general' | 'security' | 'danger'
+type TabKey = 'general' | 'security' | 'danger' | 'invites'
 
 function asTab(value: string | null): TabKey {
-  if (value === 'security' || value === 'danger') return value
+  if (value === 'security' || value === 'danger' || value === 'invites') return value
   return 'general'
 }
 
@@ -22,6 +23,7 @@ export function MePage() {
   const [params, setParams] = useSearchParams()
 
   const currentTab = asTab(params.get('tab'))
+  const pendingInvites = profile?.effectiveRoles?.pendingInvites ?? 0
 
   useEffect(() => {
     if (!profile && status === 'idle') {
@@ -41,6 +43,18 @@ export function MePage() {
       >
         <Tab value="general" label="Общее" />
         <Tab value="security" label="Безопасность" />
+        <Tab
+          value="invites"
+          label={
+            pendingInvites > 0 ? (
+              <Badge color="error" badgeContent={pendingInvites} max={99}>
+                Приглашения
+              </Badge>
+            ) : (
+              'Приглашения'
+            )
+          }
+        />
         <Tab value="danger" label="Опасная зона" />
       </Tabs>
 
@@ -55,6 +69,7 @@ export function MePage() {
         <>
           {currentTab === 'general' && <GeneralSection key={profile?.updatedAt ?? 'empty'} />}
           {currentTab === 'security' && <SecuritySection />}
+          {currentTab === 'invites' && <SalonInvitesSection />}
           {currentTab === 'danger' && <DangerSection />}
         </>
       )}

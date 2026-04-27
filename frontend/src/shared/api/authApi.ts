@@ -1,4 +1,6 @@
 /* global RequestInfo, RequestInit */
+import { getActiveSalonId } from '@shared/lib/activeSalon'
+
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
 export interface TokenPair {
@@ -17,8 +19,8 @@ export interface UserInfo {
     isClient: boolean
     isMaster: boolean
     isPlatformAdmin: boolean
-    ownerOfSalons: Array<{ salonId: string }>
-    adminOfSalons: Array<{ salonId: string }>
+    salonMemberships: Array<{ salonId: string; salonName: string; role: 'owner' | 'admin' | 'receptionist' }>
+    pendingInvites: number
   }
   /** Present when this user owns a master_profiles row (after claiming or registration). */
   masterProfileId?: string | null
@@ -93,6 +95,10 @@ export async function authFetch(input: RequestInfo, init?: RequestInit): Promise
   const sessionId = getStoredSessionId()
   if (sessionId) {
     headers.set('X-Session-Id', sessionId)
+  }
+  const salonId = getActiveSalonId()
+  if (salonId) {
+    headers.set('X-Salon-Id', salonId)
   }
   let res = await fetch(input, { ...init, headers })
 

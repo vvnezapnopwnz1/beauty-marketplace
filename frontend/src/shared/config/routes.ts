@@ -5,7 +5,7 @@ export const ROUTES = {
   MASTER: '/master/:masterProfileId',
   LOGIN: '/login',
   ME: '/me',
-  DASHBOARD: '/dashboard',
+  DASHBOARD: '/dashboard/:salonId',
   MASTER_DASHBOARD: '/master-dashboard',
   MASTER_DASHBOARD_INVITES: '/master-dashboard?section=invites',
   MASTER_DASHBOARD_PROFILE: '/master-dashboard?section=profile',
@@ -13,7 +13,7 @@ export const ROUTES = {
   CLAIM_STATUS: '/claim-salon/status',
   JOIN: '/join',
   ADMIN_CLAIMS: '/admin/claims',
-  ONBOARDING: '/dashboard/onboarding',
+  ONBOARDING: '/dashboard/:salonId/onboarding',
 } as const
 
 export const salonPath = (id: string) => `/salon/${id}`
@@ -28,3 +28,16 @@ export const claimSalonPath = (source: string, extId: string) =>
 
 export const claimStatusPath = (source: string, extId: string) =>
   `/claim-salon/status?source=${source}&externalId=${encodeURIComponent(extId)}`
+
+export const dashboardPath = (salonId: string) => `/dashboard/${salonId}`
+
+export const dashboardSectionPath = (salonId: string, section: string) =>
+  `/dashboard/${salonId}?section=${section}`
+
+/** Short Russian label for salon membership role (header / menus). */
+export function salonRoleLabelRu(role: 'owner' | 'admin' | 'receptionist' | string | undefined): string {
+  if (role === 'owner') return 'Владелец'
+  if (role === 'admin') return 'Администратор'
+  if (role === 'receptionist') return 'Ресепшн'
+  return 'Сотрудник'
+}

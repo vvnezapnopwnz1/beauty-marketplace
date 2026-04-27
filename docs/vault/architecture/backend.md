@@ -1,6 +1,6 @@
 ---
 title: Backend — детальная архитектура
-updated: 2026-04-24
+updated: 2026-04-27
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -32,6 +32,7 @@ graph TD
         R_SALON["NewSalonRepository"]
         R_APPT["NewAppointmentRepository"]
         R_DASH["NewDashboardRepository"]
+        R_INVITES["NewSalonMemberInviteRepository"]
         R_MASTER_PUB["NewMasterPublicRepository"]
         R_MASTER_DASH["NewMasterDashboardRepository"]
         R_CLIENT["NewSalonClientRepository"]
@@ -67,7 +68,7 @@ graph TD
         SERVER["NewHTTPServer"]
     end
 
-    DB --> R_HEALTH & R_SALON & R_APPT & R_DASH
+    DB --> R_HEALTH & R_SALON & R_APPT & R_DASH & R_INVITES
     DB --> R_MASTER_PUB & R_MASTER_DASH & R_CLIENT & R_AUTH & R_SLOTS
 
     R_HEALTH --> S_HEALTH
@@ -79,6 +80,8 @@ graph TD
     R_SLOTS --> S_BOOKING
     R_APPT --> S_BOOKING
     R_DASH --> S_DASH
+    R_INVITES --> S_DASH
+    R_INVITES --> S_AUTH
     R_MASTER_PUB --> S_MASTER_PUB
     R_MASTER_DASH --> S_MASTER_DASH
     R_CLIENT --> S_CLIENT
@@ -106,7 +109,7 @@ graph TD
 
 ## Структура пакета service/ (разбивка god-file)
 
-DashboardService разбит на 7 доменных файлов (рефакторинг 2026-04-21):
+DashboardService разбит на доменные файлы (рефакторинг 2026-04-21 + персонал 2026-04-27):
 
 ```mermaid
 graph LR
@@ -115,7 +118,8 @@ graph LR
     DS --> DA["dashboard_appointment.go\nCRUD записей\nмашина состояний"]
     DS --> DSC["dashboard_schedule.go\nрасписание\nслоты"]
     DS --> DSM["dashboard_service_mgmt.go\nуслуги\nкатегории"]
-    DS --> DST["dashboard_staff.go\nмастера\ninvite-flow"]
+    DS --> DST["dashboard_staff.go\nмастера\nmaster-invites"]
+    DS --> DP["dashboard_personnel.go\nsalon-members\nstaff-invites\n/me invites"]
     DS --> DSTAT["dashboard_stats.go\nстатистика"]
     DS --> DH["dashboard_helpers.go\nобщие хелперы"]
     DS --> DTP["dashboard_types.go\nDTO и типы"]
@@ -201,8 +205,9 @@ graph LR
     subgraph JWT["JWT Required"]
         R15["GET /api/auth/me"]
         R16["POST /api/auth/logout"]
-        R17["ANY /api/v1/dashboard/*"]
+        R17["ANY /api/v1/dashboard/*\n(+ X-Salon-Id)"]
         R18["ANY /api/v1/master-dashboard/*"]
+        R19["GET|POST /api/v1/me/salon-invites*"]
     end
 
     subgraph DASH["Dashboard sub-routes"]
@@ -224,6 +229,8 @@ graph LR
         D16["GET|POST /clients/tags"]
         D17["POST|DELETE /clients/{id}/tags"]
         D18["POST /clients/{id}/merge"]
+        D19["GET|PATCH|DELETE /salon-members\n(owner)"]
+        D20["GET|POST|DELETE /staff-invites\n(owner)"]
     end
 
     R17 --> DASH

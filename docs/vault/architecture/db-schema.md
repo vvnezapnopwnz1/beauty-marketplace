@@ -1,6 +1,6 @@
 ---
 title: Схема базы данных
-updated: 2026-04-24
+updated: 2026-04-27
 source_of_truth: true
 code_pointers:
   - backend/internal/infrastructure/persistence/model/models.go
@@ -16,7 +16,7 @@ erDiagram
         uuid id PK
         string phone_e164 UK
         string display_name
-        enum global_role "client|admin"
+        enum global_role "client|salon_owner|master|advertiser|admin"
         timestamp created_at
     }
 
@@ -47,7 +47,19 @@ erDiagram
     salon_members {
         uuid salon_id FK
         uuid user_id FK
-        enum role "owner|admin|staff"
+        enum role "owner|admin|receptionist"
+    }
+
+    salon_member_invites {
+        uuid id PK
+        uuid salon_id FK
+        string phone_e164
+        enum role "admin|receptionist"
+        enum status "pending|accepted|declined|expired"
+        uuid invited_by FK
+        uuid user_id FK
+        timestamptz created_at
+        timestamptz expires_at
     }
 
     master_profiles {
@@ -207,6 +219,7 @@ erDiagram
 
     salons ||--o{ salon_external_ids : "external IDs"
     salons ||--o{ salon_members : "members"
+    salons ||--o{ salon_member_invites : "member invites"
     salons ||--o{ salon_masters : "staff"
     salons ||--o{ services : "catalog"
     salons ||--o{ working_hours : "schedule"
@@ -222,6 +235,7 @@ erDiagram
     appointments ||--o| reviews : "review"
 
     users ||--o{ salon_members : "member of"
+    users ||--o{ salon_member_invites : "invited_by / linked"
     users ||--o{ appointments : "books"
     users ||--o{ refresh_tokens : "sessions"
 
@@ -239,7 +253,8 @@ erDiagram
 - **SalonClient** — CRM-запись клиента внутри салона; может быть связан с `users` или существовать независимо.
 - **salon_subscriptions** — тарифный план салона (фаза 2).
 - **SalonClaim** — заявка владельца на привязку 2GIS-места к платформе. `UNIQUE INDEX` на `(user_id, source, external_id) WHERE status IN ('pending','approved')` гарантирует один активный claim на пользователя × место. При approve — атомарная транзакция создаёт `salons` + `salon_external_ids` + `salon_members(owner)` + `salon_subscriptions(free/trial)`. Конкурирующие pending-заявки других пользователей помечаются `duplicate`. Migration: `000020_salon_claims`.
-- **salons.onboarding_completed** — флаг первичного онбординга (добавлен в migration 000020). `false` → редирект на `/dashboard/onboarding` после первого входа.
+- **salon_member_invites** — приглашение в `salon_members` по телефону; роль не может быть `owner` (CHECK). После OTP для существующего пользователя строки с тем же `phone_e164` могут получить `user_id` для списка «Мои приглашения»; принятие — отдельный вызов API. Migration: **`000024_staff_management`**.
+- **salons.onboarding_completed** — флаг первичного онбординга (добавлен в migration 000020). Для владельца: `false` → редирект на **`/dashboard/:salonId/onboarding`** (см. фронт `OnboardingWizard`).
 
 ## Связанные заметки
 

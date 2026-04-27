@@ -1,6 +1,6 @@
 ---
 title: Архитектура системы (обзор)
-updated: 2026-04-24
+updated: 2026-04-27
 source_of_truth: true
 code_pointers:
   - backend/internal/controller/server.go
@@ -29,7 +29,7 @@ graph TB
         TWOGIS["2GIS API\n(geo / places)"]
     end
 
-    FE -->|"REST /api/v1"| API
+    FE -->|"REST /api/v1\n+ JWT + X-Salon-Id для дашборда"| API
     API --> AUTH
     AUTH --> SVC
     SVC --> REPO

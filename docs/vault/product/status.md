@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-04-27
+updated: 2026-04-28
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -11,8 +11,15 @@ code_pointers:
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
+### Последние изменения (2026-04-28)
+
+- **Релиз в `master`:** код и волт синхронизированы с описанным ниже блоком 2026-04-27 (персонал, инвайты, multi-salon UI). Миграция `000024_staff_management`, модуль `dashboard_personnel`, entity `frontend/src/entities/salon-invite/`, `shared/lib/activeSalon.ts`, удалён устаревший корневой `LINTING_TYPECHECK_SPEC.md`, в репозиторий добавлен skill `.claude/skills/frontend-react-fsd/SKILL.md` (проверки — по `AGENTS.md`).
+
 ### Последние изменения (2026-04-27)
 
+- **Персонал салона (staff-management, фаза 3–4):** бэкенд — `GET/POST/DELETE /api/v1/dashboard/staff-invites`, `GET/PATCH/DELETE /api/v1/dashboard/salon-members`, `GET /api/v1/me/salon-invites`, `POST .../accept|decline`, привязка телефона к pending-инвайтам после `VerifyOTP` (`LinkPendingByPhone`); модель `SalonMemberInvite`, репозиторий `SalonMemberInviteRepository`, расширение `DashboardRepository` и `DashboardService`. Фронт — секция «Персонал» (только owner) в `DashboardPage`, `PersonnelView` + `InviteStaffDrawer`, RTK `entities/salon-invite`, вкладка «Приглашения» на `/me` с бейджем `pendingInvites`.
+- **Документация (vault) под персонал и роли:** обновлены [`architecture/backend.md`](../architecture/backend.md) (Fx `SalonMemberInviteRepository`, `dashboard_personnel`, маршруты), [`architecture/api-flows.md`](../architecture/api-flows.md) (`X-Salon-Id`, сценарий инвайтов, шаг OTP), [`architecture/db-schema.md`](../architecture/db-schema.md) (`salon_member_invites`, роли `salon_members`, `global_role`, онбординг по `salonId`), [`entities/user-roles.md`](../entities/user-roles.md) (`salonMemberships`, `pendingInvites`, `receptionist`, гейты UI).
+- **Multi-salon дашборд — доводка UI:** `UserMenu` переведён на `effectiveRoles.salonMemberships` (одна кнопка «Кабинет салона» или список салонов с подписью роли); сайдбар `DashboardPage` фильтрует пункты через `visibleNav`, подпись роли из `salonRoleLabelRu`, вложенный маршрут мастера — `staff/:staffId` под `/dashboard/:salonId`; навигация в `StaffTabsView` / `StaffListView` / `StaffDetailView` / `OnboardingWizard` и пункт «Для бизнеса» в `NavBar` используют `dashboardPath` / `dashboardSectionPath` и при необходимости `getActiveSalonId()`.
 - **Календарь (режим «Неделя») — DnD-перенос на соседние недели через edge-gutter:** вместо узких боковых drop-зон добавлены внешние edge-гаттеры, соприкасающиеся с сеткой недели. При перетаскивании записи и удержании курсора в гаттере выполняется автолистание на `-7/+7` дней; первый и последний день недели остаются безопасными для обычного drop внутри сетки.
 - **Staff detail — ближайшие записи мастера:** в `StaffDetailView` список «Ближайшие записи» переведён на выборку ближайших 10 визитов (`pageSize=10`) с явной сортировкой `starts_at asc` и фильтром по активным статусам (`pending`, `confirmed`), чтобы в карточке мастера отображались именно предстоящие записи.
 - **CRM клиенты — CRUD через drawer + soft-delete/restore:** в dashboard-клиентах добавлены `POST /api/v1/dashboard/clients` (создание), `DELETE /api/v1/dashboard/clients/:id` (soft-delete) и `POST /api/v1/dashboard/clients/:id/restore` (восстановление). Список клиентов получил фильтр `include_deleted=true`; удалённые клиенты возвращаются с `deletedAt` и неактивны в гриде.

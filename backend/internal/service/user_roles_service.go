@@ -32,21 +32,25 @@ func (s *userRolesService) Resolve(ctx context.Context, userID uuid.UUID) (repos
 	if err != nil {
 		return repository.EffectiveRoles{}, err
 	}
-
-	out := repository.EffectiveRoles{
-		IsClient:        true,
-		IsMaster:        isMaster,
-		IsPlatformAdmin: role == "admin",
-		OwnerOfSalons:   make([]repository.SalonRef, 0),
-		AdminOfSalons:   make([]repository.SalonRef, 0),
+	pendingInvites, err := s.repo.CountPendingInvitesByUserID(ctx, userID)
+	if err != nil {
+		return repository.EffectiveRoles{}, err
 	}
+
+	refs := make([]repository.SalonMembershipRef, 0, len(memberships))
 	for _, m := range memberships {
-		switch m.Role {
-		case "owner":
-			out.OwnerOfSalons = append(out.OwnerOfSalons, repository.SalonRef{SalonID: m.SalonID})
-		case "admin":
-			out.AdminOfSalons = append(out.AdminOfSalons, repository.SalonRef{SalonID: m.SalonID})
-		}
+		refs = append(refs, repository.SalonMembershipRef{
+			SalonID:   m.SalonID,
+			SalonName: m.SalonName,
+			Role:      m.Role,
+		})
+	}
+	out := repository.EffectiveRoles{
+		IsClient:         true,
+		IsMaster:         isMaster,
+		IsPlatformAdmin:  role == "admin",
+		SalonMemberships: refs,
+		PendingInvites:   pendingInvites,
 	}
 	return out, nil
 }

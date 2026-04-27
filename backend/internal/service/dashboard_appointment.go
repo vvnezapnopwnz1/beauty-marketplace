@@ -19,8 +19,8 @@ func calculateDurationBasedEnd(start time.Time, overrideStart *time.Time, totalD
 	return baseStart.Add(time.Duration(totalDurationMinutes) * time.Minute).UTC()
 }
 
-func (s *dashboardService) Membership(ctx context.Context, userID uuid.UUID) (*repository.SalonMembership, error) {
-	return s.dash.FindMembershipForUser(ctx, userID)
+func (s *dashboardService) Membership(ctx context.Context, userID, salonID uuid.UUID) (*repository.SalonMembership, error) {
+	return s.dash.FindMembershipForUserAndSalon(ctx, userID, salonID)
 }
 
 func (s *dashboardService) GetAppointment(ctx context.Context, salonID, appointmentID uuid.UUID) (*AppointmentDetailDTO, error) {

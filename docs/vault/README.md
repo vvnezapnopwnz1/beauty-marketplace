@@ -1,6 +1,6 @@
 ---
 title: Beauty Marketplace — Vault MOC
-updated: 2026-04-24
+updated: 2026-04-28
 source_of_truth: true
 code_pointers: []
 ---
@@ -15,6 +15,7 @@ code_pointers: []
 |--------|--------|
 | [`product/context.md`](product/context.md) | Рынок, MVP, монетизация, стратегия запуска, кабинет салона (обзор) |
 | [`product/status.md`](product/status.md) | Что сделано, эндпоинты, техдолг, приоритеты, §7 кабинет для ТЗ |
+| [`product/staff-management-spec.md`](product/staff-management-spec.md) | Multi-salon, `salon_members` / инвайты персонала, RBAC-матрица (живая спека) |
 
 ## Архитектура
 
@@ -79,7 +80,7 @@ code_pointers: []
 
 ## Прочее
 
-- [`glossary.md`](glossary.md) — термины RU/EN  
+- [`glossary.md`](glossary.md) — термины RU/EN (при появлении новых доменных терминов — дополнять)  
 - [`CLAUDE.md`](CLAUDE.md) — Session Protocol для волта в Obsidian  
 - [`../multi-service-booking-rollout-summary.md`](../multi-service-booking-rollout-summary.md) — сводка по мульти-услуге (вне волта, соседний файл)
 

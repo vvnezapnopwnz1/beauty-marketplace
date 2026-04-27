@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/auth"
 	"github.com/yourusername/beauty-marketplace/internal/errs"
+	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"github.com/yourusername/beauty-marketplace/internal/service"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -16,11 +17,12 @@ import (
 
 type UserController struct {
 	profiles service.UserProfileService
+	dash     service.DashboardService
 	log      *zap.Logger
 }
 
-func NewUserController(profiles service.UserProfileService, log *zap.Logger) *UserController {
-	return &UserController{profiles: profiles, log: log}
+func NewUserController(profiles service.UserProfileService, dash service.DashboardService, log *zap.Logger) *UserController {
+	return &UserController{profiles: profiles, dash: dash, log: log}
 }
 
 func (h *UserController) MeRoutes(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +102,15 @@ func (h *UserController) MeRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserController) handleMeSubroutes(w http.ResponseWriter, r *http.Request, userID uuid.UUID, parts []string) {
-	if len(parts) == 0 || parts[0] != "sessions" {
+	if len(parts) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	if parts[0] == "salon-invites" {
+		h.handleMeSalonInvites(w, r, userID, parts[1:])
+		return
+	}
+	if parts[0] != "sessions" {
 		http.NotFound(w, r)
 		return
 	}
@@ -154,6 +164,64 @@ func (h *UserController) handleMeSubroutes(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	http.NotFound(w, r)
+}
+
+func (h *UserController) handleMeSalonInvites(w http.ResponseWriter, r *http.Request, userID uuid.UUID, tail []string) {
+	ctx := r.Context()
+	if len(tail) == 0 && r.Method == http.MethodGet {
+		items, err := h.dash.ListMySalonInvites(ctx, userID)
+		if err != nil {
+			h.log.Error("list my salon invites", zap.Error(err))
+			writeMachineError(w, "internal_error", http.StatusInternalServerError, "", "")
+			return
+		}
+		jsonOK(w, map[string]any{"items": items})
+		return
+	}
+	if len(tail) == 2 {
+		inviteID, err := uuid.Parse(tail[0])
+		if err != nil {
+			writeMachineError(w, "validation_failed", http.StatusBadRequest, "invalid invite id", "")
+			return
+		}
+		if tail[1] == "accept" && r.Method == http.MethodPost {
+			err := h.dash.AcceptMySalonInvite(ctx, userID, inviteID)
+			if err != nil {
+				if errors.Is(err, repository.ErrSalonMemberInviteNotFound) {
+					writeMachineError(w, "not_found", http.StatusNotFound, "", "")
+					return
+				}
+				if errors.Is(err, repository.ErrSalonMemberInviteForbidden) || errors.Is(err, repository.ErrSalonMemberInviteExpired) {
+					writeMachineError(w, "validation_failed", http.StatusBadRequest, err.Error(), "")
+					return
+				}
+				if errors.Is(err, repository.ErrSalonMemberInviteAlreadyMember) {
+					writeMachineError(w, "conflict", http.StatusConflict, "", "")
+					return
+				}
+				h.log.Error("accept salon invite", zap.Error(err))
+				writeMachineError(w, "internal_error", http.StatusInternalServerError, "", "")
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if tail[1] == "decline" && r.Method == http.MethodPost {
+			ok, err := h.dash.DeclineMySalonInvite(ctx, userID, inviteID)
+			if err != nil {
+				h.log.Error("decline salon invite", zap.Error(err))
+				writeMachineError(w, "internal_error", http.StatusInternalServerError, "", "")
+				return
+			}
+			if !ok {
+				writeMachineError(w, "not_found", http.StatusNotFound, "", "")
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+	}
 	http.NotFound(w, r)
 }
 
