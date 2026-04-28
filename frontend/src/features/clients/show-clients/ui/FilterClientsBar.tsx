@@ -85,8 +85,8 @@ export function FilterClientsBar({
           variant="outlined"
           onClick={onAddTag}
           sx={{
-            borderColor: V.border,
-            color: V.text,
+            borderColor: d.border,
+            color: d.text,
             fontSize: 12,
             fontWeight: 600,
             textTransform: 'none',
@@ -106,15 +106,15 @@ export function FilterClientsBar({
             sx={{
               px: '10px',
               py: '5px',
-              border: `1px solid ${V.error}55`,
+              border: `1px solid ${d.warningBg}55`,
               borderRadius: V.rMd,
-              bgcolor: V.errorSoft,
-              color: V.error,
+              bgcolor: d.warningBg,
+              color: d.text,
               fontSize: 11,
               fontFamily: 'inherit',
               cursor: 'pointer',
               transition: 'all 0.15s',
-              '&:hover': { bgcolor: `${V.error}18` },
+              '&:hover': { bgcolor: `${d.warningBg}18` },
             }}
           >
             Сбросить теги ×

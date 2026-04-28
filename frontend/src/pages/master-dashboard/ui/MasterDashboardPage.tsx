@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Drawer,
   IconButton,
+  Menu,
   MenuItem,
   Paper,
   Stack,
@@ -20,10 +22,10 @@ import {
   useTheme,
 } from '@mui/material'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
-import { ROUTES } from '@shared/config/routes'
+import { ROUTES, dashboardPath } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
-import { useAppSelector } from '@app/store'
-import { selectUser } from '@features/auth-by-phone/model/authSlice'
+import { useAppDispatch, useAppSelector } from '@app/store'
+import { logout, selectUser } from '@features/auth-by-phone/model/authSlice'
 import { useThemeMode } from '@shared/theme'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { ChipMultiSelect } from '@pages/dashboard/ui/components/formComponents'
@@ -490,11 +492,13 @@ function AppointmentsSection() {
 
 export function MasterDashboardPage() {
   const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const user = useAppSelector(selectUser)
   const { mode, setMode } = useThemeMode()
   const [searchParams, setSearchParams] = useSearchParams()
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
   const d = useDashboardPalette()
@@ -562,11 +566,15 @@ export function MasterDashboardPage() {
     return !(bioOk && specOk)
   }, [profile])
 
+  const memberships = user?.effectiveRoles?.salonMemberships ?? []
+  const avatarName = profile?.displayName ?? user?.displayName ?? 'Мастер'
+
   const sidebar = (
     <Box
       sx={{
         width: 220,
-        height: '100%',
+        height: '100vh',
+        minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         bgcolor: dashboard.sidebar,
@@ -627,13 +635,53 @@ export function MasterDashboardPage() {
           )
         })}
       </Stack>
-      <Box sx={{ p: 2, borderTop: `1px solid ${dashboard.borderSubtle}` }}>
-        <Typography
-          onClick={() => navigate(ROUTES.HOME)}
-          sx={{ fontSize: 13, color: dashboard.muted, cursor: 'pointer' }}
+      <Box sx={{ px: 1, py: 2, borderTop: `1px solid ${dashboard.borderSubtle}`, mt: 'auto' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 1,
+            cursor: 'pointer',
+            width: '100%',
+            textAlign: 'right',
+          }}
+          onClick={e => setUserMenuAnchor(e.currentTarget as HTMLElement)}
         >
-          ← На сайт
-        </Typography>
+          <Avatar
+            sx={{
+              width: 40,
+              height: 40,
+              bgcolor: dashboard.accent,
+              color: dashboard.onAccent,
+              fontWeight: 700,
+            }}
+          >
+            {initials(avatarName)}
+          </Avatar>
+          <Box>
+            <Typography sx={{ fontSize: 13, color: dashboard.text, fontWeight: 600 }}>
+              {avatarName.split(' ')[0] || 'Мастер'}
+            </Typography>
+            <Typography sx={{ fontSize: 11, color: dashboard.muted }}>Учетная запись</Typography>
+          </Box>
+        </Box>
+        <Menu anchorEl={userMenuAnchor} open={!!userMenuAnchor} onClose={() => setUserMenuAnchor(null)}>
+          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.HOME) }}>Главная</MenuItem>
+          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(`${ROUTES.ME}?tab=general`) }}>Профиль</MenuItem>
+          {memberships.length === 1 && (
+            <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(dashboardPath(memberships[0].salonId)) }}>
+              Кабинет салона
+            </MenuItem>
+          )}
+          {memberships.length > 1 &&
+            memberships.map(m => (
+              <MenuItem key={m.salonId} onClick={() => { setUserMenuAnchor(null); navigate(dashboardPath(m.salonId)) }}>
+                {m.salonName || 'Салон'}
+              </MenuItem>
+            ))}
+          <MenuItem onClick={() => { setUserMenuAnchor(null); void dispatch(logout()) }}>Выйти</MenuItem>
+        </Menu>
       </Box>
     </Box>
   )
@@ -683,7 +731,7 @@ export function MasterDashboardPage() {
           anchor="left"
           open={drawer}
           onClose={() => setDrawer(false)}
-          PaperProps={{ sx: { bgcolor: dashboard.sidebar } }}
+          PaperProps={{ sx: { bgcolor: dashboard.sidebar, width: 220, height: '100vh' } }}
         >
           {sidebar}
         </Drawer>

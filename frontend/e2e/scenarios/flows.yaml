@@ -1,0 +1,677 @@
+# ============================================================
+# Beauty Marketplace — E2E Flow Scenarios
+# ============================================================
+# Seed strategy:
+# - Базовый backend seed поднимается через `make backend-local` (DEV_DEMO_SEED=1).
+# - Для flow с claim/2GIS используется externalId из dev-сида: 70000001087152985.
+# - Шаги, требующие предданных, подготавливаются через actions + ApiHelpers,
+#   поэтому flow НЕ гарантируют независимость при произвольном порядке запуска.
+# Каждый flow — пользовательский сценарий от начала до конца.
+# Структура:
+#   name        — человекочитаемое название (оно же имя теста)
+#   tags        — для фильтрации: smoke, regression, critical-path
+#   roles       — какие роли участвуют (guest, client, salon_owner, master, admin)
+#   preconditions — что должно быть готово ДО запуска (seed, auth state и т.д.)
+#   steps       — массив шагов (action → функция из actions/)
+# ============================================================
+
+flows:
+  # ──────────────────────────────────────────────────────────
+  # 1. ОНБОРДИНГ САЛОНА (claim → onboarding → dashboard)
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Claim салона + онбординг + первая настройка'
+    tags: [critical-path, p1]
+    roles: [guest, salon_owner]
+    preconditions:
+      - 'Пользователь не авторизован'
+      - 'В БД есть salon с external_id из 2GIS (seed)'
+    steps:
+      - action: auth.login
+        data: { phone: '+79001112233' }
+
+      - action: join.searchSalon
+        data: { query: 'Салон Красоты Тест' }
+
+      - action: join.claimSalon
+        data: { source: '2gis', externalId: '70000001087152985' }
+
+      - action: claim.checkStatus
+        assert: { status: 'pending' }
+
+      # Admin approves (API shortcut)
+      - action: admin.approveClaim
+        data: { source: '2gis', externalId: '70000001087152985' }
+
+      - action: claim.checkStatus
+        assert: { status: 'approved' }
+
+      - action: claim.goToDashboard
+
+      - action: onboarding.fillProfile
+        data:
+          salonName: 'Салон Красоты Тест'
+          categoryScopes: ['hair', 'nails']
+
+      - action: onboarding.complete
+
+      - action: assert.onPage
+        data: { section: 'overview' }
+
+  # ──────────────────────────────────────────────────────────
+  # 2. ПОЛНЫЙ ЦИКЛ: создание мастера → услуги → запись
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Создание мастера → услуга → запись из дашборда'
+    tags: [critical-path, p1]
+    roles: [salon_owner]
+    preconditions:
+      - 'Авторизован как salon_owner'
+      - 'Салон прошёл онбординг'
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'staff' }
+
+      - action: staff.create
+        data:
+          displayName: 'Анна Мастер'
+          phone: '+79001112244'
+          specialization: 'Парикмахер'
+          color: '#E91E63'
+
+      - action: assert.staffInList
+        data: { name: 'Анна Мастер', status: 'active' }
+
+      - action: dashboard.navigate
+        data: { section: 'services' }
+
+      - action: services.create
+        data:
+          name: 'Женская стрижка'
+          categorySlug: 'women-haircut'
+          durationMinutes: 60
+          priceCents: 250000
+          description: 'Стрижка любой сложности'
+
+      - action: assert.serviceInList
+        data: { name: 'Женская стрижка', price: '2 500 ₽' }
+
+      - action: dashboard.navigate
+        data: { section: 'staff' }
+
+      - action: staff.assignServices
+        data:
+          staffName: 'Анна Мастер'
+          services: ['Женская стрижка']
+
+      - action: dashboard.navigate
+        data: { section: 'schedule' }
+
+      - action: schedule.setWorkingHours
+        data:
+          staffName: 'Анна Мастер'
+          monday: { opens: '09:00', closes: '18:00' }
+          tuesday: { opens: '09:00', closes: '18:00' }
+          wednesday: { opens: '09:00', closes: '18:00' }
+          thursday: { opens: '09:00', closes: '18:00' }
+          friday: { opens: '09:00', closes: '18:00' }
+
+      - action: dashboard.navigate
+        data: { section: 'appointments' }
+
+      - action: appointments.createFromDashboard
+        data:
+          serviceName: 'Женская стрижка'
+          staffName: 'Анна Мастер'
+          clientName: 'Елена Клиент'
+          clientPhone: '+79009998877'
+          date: 'tomorrow'
+          time: '10:00'
+
+      - action: assert.appointmentCreated
+        data:
+          clientName: 'Елена Клиент'
+          serviceName: 'Женская стрижка'
+          status: 'pending'
+
+  # ──────────────────────────────────────────────────────────
+  # 3. ГОСТЕВАЯ ЗАПИСЬ с публичной страницы салона
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Гостевая мульти-услуга запись со страницы салона'
+    tags: [critical-path, p1]
+    roles: [guest]
+    preconditions:
+      - 'Салон настроен: есть мастера, услуги, расписание'
+    steps:
+      - action: navigation.goto
+        data: { path: '/salon/{salonId}' }
+
+      - action: salonPage.openBookingWizard
+
+      - action: booking.selectServices
+        data:
+          services: ['Женская стрижка', 'Укладка']
+
+      - action: booking.selectMaster
+        data: { masterName: 'Анна Мастер' }
+
+      - action: booking.selectSlot
+        data: { date: 'tomorrow', preferTime: '11:00' }
+
+      - action: booking.fillGuestContacts
+        data:
+          name: 'Мария Гость'
+          phone: '+79005554433'
+          note: 'Первый визит'
+
+      - action: booking.confirm
+
+      - action: assert.bookingSuccess
+        data:
+          services: ['Женская стрижка', 'Укладка']
+          masterName: 'Анна Мастер'
+
+  # ──────────────────────────────────────────────────────────
+  # 4. ЖИЗНЕННЫЙ ЦИКЛ ЗАПИСИ (статусы)
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Жизненный цикл записи: pending → confirmed → completed'
+    tags: [critical-path, p1]
+    roles: [salon_owner]
+    preconditions:
+      - 'Есть запись в статусе pending'
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'appointments' }
+
+      - action: appointments.findByClient
+        data: { clientName: 'Елена Клиент' }
+
+      - action: appointments.changeStatus
+        data: { newStatus: 'confirmed' }
+
+      - action: assert.appointmentStatus
+        data: { status: 'confirmed' }
+
+      - action: appointments.changeStatus
+        data: { newStatus: 'completed' }
+
+      - action: assert.appointmentStatus
+        data: { status: 'completed' }
+
+  - name: 'Отмена записи клиентом'
+    tags: [regression, p1]
+    roles: [salon_owner]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'appointments' }
+
+      - action: appointments.findByClient
+        data: { clientName: 'Мария Гость' }
+
+      - action: appointments.changeStatus
+        data: { newStatus: 'cancelled_by_client' }
+
+      - action: assert.appointmentStatus
+        data: { status: 'cancelled_by_client' }
+
+  # ──────────────────────────────────────────────────────────
+  # 5. РЕДАКТИРОВАНИЕ ЗАПИСИ (перенос, смена мастера)
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Редактирование записи: перенос времени и смена мастера'
+    tags: [regression, p1]
+    roles: [salon_owner]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'appointments' }
+
+      - action: appointments.findByClient
+        data: { clientName: 'Елена Клиент' }
+
+      - action: appointments.edit
+        data:
+          newDate: 'day-after-tomorrow'
+          newTime: '14:00'
+          newStaffName: 'Другой Мастер'
+
+      - action: assert.appointmentUpdated
+        data:
+          time: '14:00'
+          staffName: 'Другой Мастер'
+
+  # ──────────────────────────────────────────────────────────
+  # 6. КАЛЕНДАРЬ: DnD перенос записи
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Drag-and-drop перенос записи в календаре (день)'
+    tags: [regression, p2]
+    roles: [salon_owner]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'calendar' }
+
+      - action: calendar.switchMode
+        data: { mode: 'day' }
+
+      - action: calendar.dragAppointment
+        data:
+          clientName: 'Елена Клиент'
+          fromTime: '14:00'
+          toTime: '16:00'
+          toStaff: 'Анна Мастер'
+
+      - action: assert.appointmentMoved
+        data: { newTime: '16:00', staffName: 'Анна Мастер' }
+
+  # ──────────────────────────────────────────────────────────
+  # 7. УПРАВЛЕНИЕ УСЛУГАМИ
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'CRUD услуг: создание → редактирование → деактивация'
+    tags: [regression, p1]
+    roles: [salon_owner]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'services' }
+
+      - action: services.create
+        data:
+          name: 'Маникюр классический'
+          categorySlug: 'classic-manicure'
+          durationMinutes: 45
+          priceCents: 150000
+
+      - action: assert.serviceInList
+        data: { name: 'Маникюр классический' }
+
+      - action: services.edit
+        data:
+          oldName: 'Маникюр классический'
+          newName: 'Маникюр классический (обновлённый)'
+          newPriceCents: 180000
+
+      - action: assert.serviceInList
+        data: { name: 'Маникюр классический (обновлённый)', price: '1 800 ₽' }
+
+      - action: services.delete
+        data: { name: 'Маникюр классический (обновлённый)' }
+
+      - action: assert.serviceNotInList
+        data: { name: 'Маникюр классический (обновлённый)' }
+
+  # ──────────────────────────────────────────────────────────
+  # 8. CRM: КЛИЕНТЫ
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'CRM клиенты: создание → тегирование → soft-delete → restore'
+    tags: [regression, p1]
+    roles: [salon_owner]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'clients' }
+
+      - action: clients.create
+        data:
+          displayName: 'Тестовый Клиент'
+          phone: '+79001231234'
+
+      - action: assert.clientInList
+        data: { name: 'Тестовый Клиент' }
+
+      - action: clients.assignTag
+        data:
+          clientName: 'Тестовый Клиент'
+          tag: 'VIP'
+
+      - action: assert.clientHasTag
+        data: { clientName: 'Тестовый Клиент', tag: 'VIP' }
+
+      - action: clients.delete
+        data: { clientName: 'Тестовый Клиент' }
+
+      - action: assert.clientNotInList
+        data: { name: 'Тестовый Клиент' }
+
+      - action: clients.showDeleted
+
+      - action: clients.restore
+        data: { clientName: 'Тестовый Клиент' }
+
+      - action: assert.clientInList
+        data: { name: 'Тестовый Клиент' }
+
+  # ──────────────────────────────────────────────────────────
+  # 9. ПЕРСОНАЛ: инвайты
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Инвайт сотрудника → принятие → появление в списке'
+    tags: [regression, p1]
+    roles: [salon_owner, master]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'personnel' }
+
+      - action: personnel.invite
+        data:
+          phone: '+79001112255'
+          role: 'admin'
+
+      - action: assert.inviteInList
+        data: { phone: '+79001112255', status: 'pending' }
+
+      # Switch to invited user
+      - action: auth.logout
+      - action: auth.login
+        data: { phone: '+79001112255' }
+
+      - action: me.goToInvites
+
+      - action: me.acceptInvite
+        data: { salonName: 'Салон Красоты Тест' }
+
+      # Verify in dashboard
+      - action: auth.logout
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'personnel' }
+
+      - action: assert.memberInList
+        data: { phone: '+79001112255', role: 'admin' }
+
+  # ──────────────────────────────────────────────────────────
+  # 10. ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Профиль пользователя: редактирование + управление сессиями'
+    tags: [regression, p1]
+    roles: [client]
+    steps:
+      - action: auth.login
+        data: { phone: '+79009876543' }
+
+      - action: me.navigate
+
+      - action: me.editProfile
+        data:
+          displayName: 'Иван Тестов'
+          username: 'ivan_testov'
+
+      - action: assert.profileUpdated
+        data: { displayName: 'Иван Тестов' }
+
+      - action: me.goToSecurity
+
+      - action: assert.sessionsList
+        data: { minCount: 1 }
+
+  # ──────────────────────────────────────────────────────────
+  # 11. ПОИСК САЛОНОВ
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Поиск салонов: текстовый + переход на страницу'
+    tags: [smoke, p0]
+    roles: [guest]
+    steps:
+      - action: navigation.goto
+        data: { path: '/' }
+
+      - action: search.type
+        data: { query: 'Маникюр' }
+
+      - action: search.submit
+
+      - action: assert.searchResults
+        data: { minCount: 1 }
+
+      - action: search.clickFirstResult
+
+      - action: assert.onSalonPage
+
+  # ──────────────────────────────────────────────────────────
+  # 12. ПРОФИЛЬ САЛОНА (dashboard)
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Редактирование профиля салона'
+    tags: [regression, p1]
+    roles: [salon_owner]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'profile' }
+
+      - action: profile.edit
+        data:
+          nameOverride: 'Салон Красоты Обновлённый'
+          slotDuration: 30
+          categoryScopes: ['hair', 'nails', 'spa']
+
+      - action: profile.save
+
+      - action: assert.profileSaved
+        data: { name: 'Салон Красоты Обновлённый' }
+
+  # ──────────────────────────────────────────────────────────
+  # 13. МАСТЕР-КАБИНЕТ
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Кабинет мастера: профиль + просмотр записей'
+    tags: [regression, p1]
+    roles: [master]
+    steps:
+      - action: auth.loginAsMaster
+
+      - action: masterDashboard.navigate
+        data: { section: 'profile' }
+
+      - action: masterDashboard.editProfile
+        data:
+          bio: 'Мастер-стилист с 5-летним опытом'
+          specializations: ['Стрижки', 'Окрашивание']
+
+      - action: masterDashboard.navigate
+        data: { section: 'appointments' }
+
+      - action: assert.masterAppointmentsList
+        data: { minCount: 0 }
+
+      - action: masterDashboard.navigate
+        data: { section: 'salons' }
+
+      - action: assert.masterSalonsList
+        data: { minCount: 1 }
+
+  # ──────────────────────────────────────────────────────────
+  # 14. РАСПИСАНИЕ МАСТЕРА
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Настройка расписания мастера с перерывами'
+    tags: [regression, p1]
+    roles: [salon_owner]
+    steps:
+      - action: auth.loginAsSalonOwner
+
+      - action: dashboard.navigate
+        data: { section: 'staff' }
+
+      - action: staff.openDetail
+        data: { name: 'Анна Мастер' }
+
+      - action: staff.editSchedule
+        data:
+          monday:
+            opens: '09:00'
+            closes: '19:00'
+            breakStart: '13:00'
+            breakEnd: '14:00'
+          saturday:
+            opens: '10:00'
+            closes: '16:00'
+          sunday: 'dayOff'
+
+      - action: assert.scheduleUpdated
+        data:
+          monday: { opens: '09:00', closes: '19:00', hasBreak: true }
+          sunday: { isDayOff: true }
+
+  # ──────────────────────────────────────────────────────────
+  # 15. ПОЛНЫЙ E2E: от claim до первой гостевой записи
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Полный путь: claim → onboarding → мастер → услуга → расписание → гостевая запись'
+    tags: [critical-path, full-e2e, p2]
+    roles: [salon_owner, guest]
+    preconditions:
+      - 'Чистая БД с seed-данными 2GIS'
+    steps:
+      # 1. Claim
+      - action: auth.login
+        data: { phone: '+79001112233' }
+      - action: join.searchSalon
+        data: { query: 'Салон Красоты Тест' }
+      - action: join.claimSalon
+        data: { source: '2gis', externalId: '70000001087152985' }
+      - action: admin.approveClaim
+        data: { source: '2gis', externalId: '70000001087152985' }
+      - action: claim.goToDashboard
+
+      # 2. Onboarding
+      - action: onboarding.fillProfile
+        data:
+          salonName: 'Салон Красоты Тест'
+          categoryScopes: ['hair']
+      - action: onboarding.complete
+
+      # 3. Создание мастера
+      - action: dashboard.navigate
+        data: { section: 'staff' }
+      - action: staff.create
+        data:
+          displayName: 'Ольга Стилист'
+          phone: '+79001112266'
+          color: '#9C27B0'
+
+      # 4. Создание услуги
+      - action: dashboard.navigate
+        data: { section: 'services' }
+      - action: services.create
+        data:
+          name: 'Окрашивание волос'
+          categorySlug: 'hair-coloring'
+          durationMinutes: 120
+          priceCents: 500000
+
+      # 5. Привязка услуги к мастеру
+      - action: dashboard.navigate
+        data: { section: 'staff' }
+      - action: staff.assignServices
+        data:
+          staffName: 'Ольга Стилист'
+          services: ['Окрашивание волос']
+
+      # 6. Настройка расписания
+      - action: dashboard.navigate
+        data: { section: 'schedule' }
+      - action: schedule.setWorkingHours
+        data:
+          staffName: 'Ольга Стилист'
+          monday: { opens: '10:00', closes: '20:00' }
+          tuesday: { opens: '10:00', closes: '20:00' }
+          wednesday: { opens: '10:00', closes: '20:00' }
+
+      # 7. Гостевая запись (в другом браузерном контексте)
+      - action: auth.logout
+      - action: navigation.goto
+        data: { path: '/salon/{salonId}' }
+      - action: salonPage.openBookingWizard
+      - action: booking.selectServices
+        data: { services: ['Окрашивание волос'] }
+      - action: booking.selectMaster
+        data: { masterName: 'Ольга Стилист' }
+      - action: booking.selectSlot
+        data: { date: 'tomorrow', preferTime: '10:00' }
+      - action: booking.fillGuestContacts
+        data:
+          name: 'Клиент Новый'
+          phone: '+79005550011'
+      - action: booking.confirm
+      - action: assert.bookingSuccess
+        data:
+          services: ['Окрашивание волос']
+          masterName: 'Ольга Стилист'
+
+      # 8. Проверяем в дашборде
+      - action: auth.login
+        data: { phone: '+79001112233' }
+      - action: dashboard.navigate
+        data: { section: 'appointments' }
+      - action: assert.appointmentInList
+        data:
+          clientName: 'Клиент Новый'
+          serviceName: 'Окрашивание волос'
+          status: 'pending'
+
+  # ──────────────────────────────────────────────────────────
+  # 16. ADMIN: модерация заявок
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Админ: просмотр и модерация заявок claim'
+    tags: [regression, p2]
+    roles: [admin]
+    steps:
+      - action: auth.loginAsAdmin
+
+      - action: navigation.goto
+        data: { path: '/admin/claims' }
+
+      - action: admin.viewClaims
+        assert: { minCount: 1 }
+
+      - action: admin.approveClaim
+        data: { index: 0 }
+
+      - action: assert.claimStatus
+        data: { index: 0, status: 'approved' }
+
+  # ──────────────────────────────────────────────────────────
+  # 17. АВТОРИЗАЦИЯ: edge cases
+  # ──────────────────────────────────────────────────────────
+
+  - name: 'Авторизация: логин → refresh → logout'
+    tags: [smoke, auth, p0]
+    roles: [client]
+    steps:
+      - action: auth.login
+        data: { phone: '+79001110000' }
+
+      - action: assert.isLoggedIn
+
+      - action: auth.waitForTokenRefresh
+
+      - action: assert.isLoggedIn
+
+      - action: auth.logout
+
+      - action: assert.isLoggedOut
+
+      - action: assert.redirectToLogin
+        data: { path: '/me' }

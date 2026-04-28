@@ -13,6 +13,15 @@ code_pointers:
 
 ### Последние изменения (2026-04-28)
 
+- **Auth bootstrap after OTP (owner menu/dashboard fix):** после `POST /api/auth/otp/verify` фронтенд теперь сразу запрашивает `GET /api/v1/me` и кладёт в `auth.user` полный `effectiveRoles` (включая `salonMemberships`). Это убирает гонку, когда в аватар-меню не показывался «Кабинет салона» до любого дополнительного действия, и предотвращает ложный редирект из `/dashboard/:salonId` на `/me` при ранней проверке membership.
+- **Onboarding fixes (dashboard CTA + categories select):** в `ClaimStatusPage` кнопка «Открыть салон» после `approved` теперь ведёт в кабинет салона (`/dashboard/:salonId`), а не на публичную страницу. В `OnboardingWizard` добавлена фиксация `activeSalonId` из роута (`/dashboard/:salonId/onboarding`), чтобы `authFetch` передавал `X-Salon-Id` и список категорий в первом шаге загружался корректно.
+- **Onboarding redirect race fix (salon-scoped profile fetch):** в `DashboardPage` проверка `onboardingCompleted` теперь привязана к текущему `salonId` из URL и выполняется после явной установки `activeSalonId`; это убирает возврат на шаг 1, когда после `PUT /api/v1/dashboard/salon/profile` страница дашборда успевала прочитать профиль другого салона по устаревшему `X-Salon-Id`.
+- **Onboarding hardening (`X-Salon-Id` priority):** `authFetch` больше не перезаписывает явно переданный `X-Salon-Id` значением из `localStorage`; `OnboardingWizard` и `DashboardPage` передают `salonId` из роута прямо в `PUT/GET /api/v1/dashboard/salon/profile`. Это фиксирует кейс «Пропустить все»/«Перейти в кабинет», когда запрос мог сохранять или читать онбординг не того салона.
+- **Onboarding persistence bugfix (backend):** в `dashboard_repository.UpdateSalonProfile` добавлено обновление колонки `onboarding_completed`. Ранее `PUT /api/v1/dashboard/salon/profile` возвращал `200 OK`, но флаг завершения онбординга не сохранялся в БД, из-за чего владелец после «Пропустить все» снова попадал на шаг 1.
+- **Dev auth/e2e bootstrap endpoints:** добавлены dev-флаги `DEV_OTP_BYPASS_ANY` (логин с любым номером/кодом без сохранённого OTP) и `DEV_ENDPOINTS` (роуты `POST /api/dev/claim/by-external`, `POST /api/dev/e2e/seed-salon`). Dev-роуты выполняют fast-claim салона по `source/externalId`, создают/назначают owner-membership для указанного телефона и возвращают `salonId` + `dashboardUrl` + `tokenPair` для e2e setup. Конфиг защищён от включения dev-флагов в production.
+- **Auth TTL update:** `accessToken` увеличен с 15 минут до 2 часов (`backend/internal/auth/jwt.go`), `refreshToken` оставлен 30 дней; ротация refresh при `/api/auth/refresh` и revoke на `/api/auth/logout` без изменений.
+- **E2E flow-runner (Playwright + YAML):** в `frontend/e2e/` добавлена декларативная инфраструктура сценариев (`scenarios/flows.yaml`, `tests/flow-runner.spec.ts`, доменные `actions/*`, `helpers/*`, `playwright.config.ts`, `README.md`) с фильтрацией по тегам (`E2E_TAG`) и `ApiHelpers`-подготовкой данных через dev endpoint `/api/dev/e2e/seed-salon`.
+- **Makefile dev/e2e tooling:** добавлены цели `backend-local-e2e`, `db-reset` (`MODE=data|full`), `e2e-test`, `e2e-test-reseed` для локального воспроизводимого запуска e2e и быстрого сброса тестовых данных БД.
 - **Релиз в `master`:** код и волт синхронизированы с описанным ниже блоком 2026-04-27 (персонал, инвайты, multi-salon UI). Миграция `000024_staff_management`, модуль `dashboard_personnel`, entity `frontend/src/entities/salon-invite/`, `shared/lib/activeSalon.ts`, удалён устаревший корневой `LINTING_TYPECHECK_SPEC.md`, в репозиторий добавлен skill `.claude/skills/frontend-react-fsd/SKILL.md` (проверки — по `AGENTS.md`).
 
 ### Последние изменения (2026-04-27)
@@ -375,7 +384,7 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 
 - БД: PostgreSQL, миграции `000001` и далее (в т.ч. `000009` dashboard/staff/services, `000010` service_categories + `salon_type`, `000011` sync), schema production-ready
 - Архитектура: Clean Architecture с Uber Fx DI
-- Auth: OTP (4 цифры, 5 мин) + JWT (access 15 мин, refresh 30 дней)
+- Auth: OTP (4 цифры, 5 мин) + JWT (access 2 часа, refresh 30 дней)
 - 2GIS: поиск и детали работают (подтверждено тестом 2026-04-04)
 - Salon API: `GET /v1/salons`, `GET /v1/salons/{id}`, `GET /v1/salons/{id}/masters`, `GET /v1/salons/{id}/slots`, `POST /v1/salons/{id}/bookings`
 - Гостевые записи: без регистрации (имя + телефон)

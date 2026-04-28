@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/mcp.json",
+  "_comment": "Конфигурация Playwright MCP для Claude Code / Cursor. Скопируй в .claude/mcp.json или .cursor/mcp.json",
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@anthropic-ai/mcp-playwright",
+        "--browser", "chromium",
+        "--headless"
+      ],
+      "env": {
+        "PLAYWRIGHT_BASE_URL": "http://localhost:5173"
+      }
+    }
+  }
+}

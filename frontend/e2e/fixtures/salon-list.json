@@ -1,0 +1,181 @@
+{
+    "items": [
+        {
+            "externalId": "70000001087152985",
+            "name": "Roksi, студия колористики",
+            "address": "Москва, Измайловский бульвар, 54",
+            "lat": 55.796299,
+            "lon": 37.81016,
+            "rating": 5,
+            "reviewCount": 8,
+            "rubricNames": [
+                "Парикмахерские"
+            ],
+            "distanceKm": 0.6,
+            "category": "hair",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "70000001053947436",
+            "name": "Green Line, салон красоты",
+            "address": "Москва, Первомайская улица, 99",
+            "lat": 55.793616,
+            "lon": 37.809303,
+            "rating": 3.7,
+            "reviewCount": 3,
+            "rubricNames": [
+                "Парикмахерские",
+                "Ногтевые студии"
+            ],
+            "distanceKm": 0.6,
+            "category": "hair",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "4504127917541129",
+            "name": "19/49, студия красоты",
+            "address": "Москва, Первомайская улица, 105",
+            "lat": 55.793622,
+            "lon": 37.809674,
+            "rating": 5,
+            "reviewCount": 4,
+            "rubricNames": [
+                "Парикмахерские",
+                "Ногтевые студии",
+                "Косметолог"
+            ],
+            "distanceKm": 0.6,
+            "category": "hair",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "70000001090521177",
+            "name": "Точка Красоты, салон красоты",
+            "address": "Москва, Первомайская улица, 93",
+            "lat": 55.793908,
+            "lon": 37.806749,
+            "rating": 4.7,
+            "reviewCount": 7,
+            "rubricNames": [
+                "Парикмахерские",
+                "Ногтевые студии",
+                "Оформление бровей и ресниц"
+            ],
+            "distanceKm": 0.8,
+            "category": "hair",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "70000001061642015",
+            "name": "NewLookStudio",
+            "address": "Москва, Измайловский бульвар, 54",
+            "lat": 55.796299,
+            "lon": 37.81016,
+            "rating": 5,
+            "reviewCount": 3,
+            "rubricNames": [
+                "Парикмахерские",
+                "Массажист"
+            ],
+            "distanceKm": 0.6,
+            "category": "hair",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "4504127908530098",
+            "name": "Бвв, парикмахерская",
+            "address": "Москва, 11-я Парковая улица, 24",
+            "lat": 55.794744,
+            "lon": 37.807015,
+            "rating": 3.4,
+            "reviewCount": 3,
+            "rubricNames": [
+                "Парикмахерские",
+                "Ногтевые студии"
+            ],
+            "distanceKm": 0.8,
+            "category": "hair",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "4504127915207135",
+            "name": "Поли эстетика, салон красоты",
+            "address": "Москва, Измайловский бульвар, 50",
+            "lat": 55.796265,
+            "lon": 37.807623,
+            "rating": 4.8,
+            "reviewCount": 4,
+            "rubricNames": [
+                "Парикмахерские",
+                "Косметолог",
+                "Ногтевые студии",
+                "Эпиляция",
+                "Массажист",
+                "Перманентный макияж"
+            ],
+            "distanceKm": 0.8,
+            "category": "hair_removal",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "70000001041743010",
+            "name": "Дуэт, студия маникюра и кофе, парикмахерская",
+            "address": "Москва, 11-я Парковая улица, 9/35",
+            "lat": 55.791402,
+            "lon": 37.805407,
+            "rating": 4.8,
+            "reviewCount": 118,
+            "rubricNames": [
+                "Парикмахерские",
+                "Ногтевые студии",
+                "Оформление бровей и ресниц",
+                "Эпиляция",
+                "Детские парикмахерские",
+                "Перманентный макияж"
+            ],
+            "distanceKm": 0.9,
+            "category": "hair_removal",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "4504127908797611",
+            "name": "Африка, студия красоты",
+            "address": "Москва, Первомайская улица, 89",
+            "lat": 55.793565,
+            "lon": 37.804713,
+            "rating": 5,
+            "reviewCount": 1,
+            "rubricNames": [
+                "Парикмахерские",
+                "Ногтевые студии",
+                "Косметолог",
+                "Студии загара",
+                "Массажист",
+                "Эпиляция",
+                "Оформление бровей и ресниц"
+            ],
+            "distanceKm": 0.9,
+            "category": "hair_removal",
+            "onlineBooking": false
+        },
+        {
+            "externalId": "70000001080379750",
+            "name": "Betone Woman, студия красоты",
+            "address": "Москва, Измайловский бульвар, 55",
+            "lat": 55.79735,
+            "lon": 37.803773,
+            "rating": 5,
+            "reviewCount": 507,
+            "rubricNames": [
+                "Парикмахерские",
+                "Ногтевые студии",
+                "Оформление бровей и ресниц",
+                "Визажисты"
+            ],
+            "distanceKm": 1,
+            "category": "hair",
+            "onlineBooking": false
+        }
+    ],
+    "total": 672
+}
