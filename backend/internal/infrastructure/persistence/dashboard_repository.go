@@ -491,6 +491,7 @@ func (r *dashboardRepository) UpdateSalonProfile(ctx context.Context, salon *mod
 		"salon_type":             salon.SalonType,
 		"business_type":          salon.BusinessType,
 		"online_booking_enabled": salon.OnlineBookingEnabled,
+		"onboarding_completed":   salon.OnboardingCompleted,
 		"address_override":       salon.AddressOverride,
 		"district":               salon.District,
 		"address":                salon.Address,

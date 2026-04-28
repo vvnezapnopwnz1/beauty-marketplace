@@ -33,6 +33,7 @@ type AuthService struct {
 	jwt          *auth.JWTManager
 	logger       *zap.Logger
 	devOTPBypass bool
+	devOTPAny    bool
 	devOTPMagic  string // fixed code accepted when devOTPBypass is true (e.g. "1234")
 }
 
@@ -55,6 +56,7 @@ func NewAuthService(
 		jwt:          jwt,
 		logger:       logger,
 		devOTPBypass: cfg.DevOTPBypass,
+		devOTPAny:    cfg.DevOTPBypassAny,
 		devOTPMagic:  magic,
 	}
 }
@@ -69,6 +71,12 @@ type OTPRequestParams struct {
 }
 
 func (s *AuthService) RequestOTP(ctx context.Context, params OTPRequestParams) (*OTPRequestResult, error) {
+	if s.devOTPAny {
+		expiresAt := time.Now().Add(otpTTL)
+		s.logger.Info("otp request: dev bypass-any enabled", zap.String("phone", params.Phone))
+		return &OTPRequestResult{ExpiresAt: expiresAt}, nil
+	}
+
 	code, err := generateOTP(otpLength)
 	if err != nil {
 		return nil, fmt.Errorf("generate otp: %w", err)
@@ -116,6 +124,35 @@ type UserInfo struct {
 }
 
 func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*VerifyOTPResult, error) {
+	if s.devOTPAny {
+		s.logger.Info("OTP verify: dev bypass-any", zap.String("phone", phone))
+		user, isNew, err := s.findOrCreateUser(ctx, phone)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.salonInvites.LinkPendingByPhone(ctx, user.ID, phone); err != nil {
+			s.logger.Warn("link salon member invites", zap.Error(err))
+		}
+		s.tryClaimShadowMasterProfile(ctx, user)
+		tokenPair, sessionID, err := s.issueTokenPair(ctx, user)
+		if err != nil {
+			return nil, err
+		}
+		masterProfID := s.lookupMasterProfileID(ctx, user.ID)
+		return &VerifyOTPResult{
+			TokenPair: *tokenPair,
+			User: UserInfo{
+				ID:              user.ID,
+				Phone:           user.PhoneE164,
+				DisplayName:     user.DisplayName,
+				Role:            user.GlobalRole,
+				SessionID:       sessionID,
+				MasterProfileID: masterProfID,
+			},
+			IsNew: isNew,
+		}, nil
+	}
+
 	otp, err := s.repo.FindActiveOTP(ctx, phone)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

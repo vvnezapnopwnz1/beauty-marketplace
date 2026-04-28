@@ -25,6 +25,12 @@ type Config struct {
 	// DevOTPBypass allows fixed code "1234" on verify when an active OTP exists (local dev only).
 	// Env: DEV_OTP_BYPASS=1 / true.
 	DevOTPBypass bool
+	// DevOTPBypassAny allows auth without persisted OTP in local/dev test scenarios.
+	// Env: DEV_OTP_BYPASS_ANY=1 / true.
+	DevOTPBypassAny bool
+	// DevEndpoints enables /api/dev/* helpers for local/e2e setup.
+	// Env: DEV_ENDPOINTS=1 / true.
+	DevEndpoints bool
 	// Telegram settings for OTP delivery channel.
 	TelegramBotToken    string
 	TelegramBotUsername string
@@ -44,6 +50,8 @@ func Load() (*Config, error) {
 		JWTSecret:           getenv("JWT_SECRET", "dev-secret-change-me-in-production"),
 		DevDemoSeed:         getenvBool("DEV_DEMO_SEED", false),
 		DevOTPBypass:        getenvBool("DEV_OTP_BYPASS", false),
+		DevOTPBypassAny:     getenvBool("DEV_OTP_BYPASS_ANY", false),
+		DevEndpoints:        getenvBool("DEV_ENDPOINTS", false),
 		TelegramBotToken:    getenv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramBotUsername: getenv("TELEGRAM_BOT_USERNAME", ""),
 	}
@@ -52,6 +60,11 @@ func Load() (*Config, error) {
 	}
 	if cfg.DSN == "" {
 		return nil, fmt.Errorf("DATABASE_DSN must not be empty")
+	}
+	if strings.EqualFold(strings.TrimSpace(cfg.LogLevel), "production") {
+		if cfg.DevOTPBypass || cfg.DevOTPBypassAny || cfg.DevEndpoints {
+			return nil, fmt.Errorf("dev auth/dev endpoints flags are forbidden in production")
+		}
 	}
 	return cfg, nil
 }

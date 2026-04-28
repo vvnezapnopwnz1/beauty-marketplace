@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local backend-local-no-seed db-migrate seed-salon-page-dev vault-update docs-check
+.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local backend-local-no-seed backend-local-e2e db-migrate db-reset seed-salon-page-dev vault-update docs-check e2e-test e2e-test-reseed
 
 up:
 	@docker compose up -d --build
@@ -16,6 +16,32 @@ rebuild:
 # DSN как у бэкенда: `DATABASE_DSN='...' make db-migrate`
 db-migrate:
 	@migrate -path backend/migrations -database "$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" up
+
+# Сброс БД одной командой:
+# - MODE=data (по умолчанию): очистить данные, оставить схему (таблицы/миграции)
+# - MODE=full: удалить схему полностью и накатить миграции заново
+# Примеры:
+#   make db-reset
+#   MODE=full make db-reset
+db-reset:
+	@mode="$${MODE:-data}"; \
+	dsn="$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}"; \
+	if [ "$$mode" = "data" ]; then \
+		echo "db-reset: MODE=data -> truncating all public tables except schema_migrations and service_categories"; \
+		if command -v psql >/dev/null 2>&1; then \
+			psql "$$dsn" -v ON_ERROR_STOP=1 -c "DO LANGUAGE plpgsql 'DECLARE r RECORD; BEGIN FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = ''public'' AND tablename NOT IN (''schema_migrations'', ''service_categories'') LOOP EXECUTE ''TRUNCATE TABLE public.'' || quote_ident(r.tablename) || '' RESTART IDENTITY CASCADE''; END LOOP; END';"; \
+		else \
+			echo "psql not found locally, using docker compose exec postgres..."; \
+			docker compose exec -T postgres psql -U beauty -d beauty -v ON_ERROR_STOP=1 -c "DO LANGUAGE plpgsql 'DECLARE r RECORD; BEGIN FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = ''public'' AND tablename NOT IN (''schema_migrations'', ''service_categories'') LOOP EXECUTE ''TRUNCATE TABLE public.'' || quote_ident(r.tablename) || '' RESTART IDENTITY CASCADE''; END LOOP; END';"; \
+		fi; \
+	elif [ "$$mode" = "full" ]; then \
+		echo "db-reset: MODE=full -> dropping DB objects and re-running migrations"; \
+		migrate -path backend/migrations -database "$$dsn" drop -f; \
+		migrate -path backend/migrations -database "$$dsn" up; \
+	else \
+		echo "Unknown MODE='$$mode'. Use MODE=data or MODE=full"; \
+		exit 1; \
+	fi
 
 # Точечный seed для проверки SalonPage dual-mode сценариев:
 # - /salon/11111111-1111-1111-1111-111111111111
@@ -94,3 +120,42 @@ vault-update:
 smoke-logs:
 	@curl -fsS "http://localhost:8080/api/v1/search?category=hair&lat=55.7558&lon=37.6176&page_size=5" >/dev/null && \
 	echo "Generated backend + 2GIS log chain. Open http://localhost:5080 and filter by component."
+
+
+backend-local-e2e:
+	@cd backend && \
+	HTTP_ADDR=:8080 \
+	LOG_LEVEL=development \
+	DEV_DEMO_SEED=0 \
+	DEV_OTP_BYPASS=0 \
+	DEV_OTP_BYPASS_ANY=1 \
+	DEV_ENDPOINTS=1 \
+	DATABASE_DSN="$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" \
+	go run ./cmd/api
+
+# E2E (как сейчас): запуск без принудительного reset БД.
+# Примеры:
+#   make e2e-test
+#   E2E_TAG=smoke make e2e-test
+#   PW_GREP="Claim салона" make e2e-test
+e2e-test:
+	@cd frontend && \
+	if [ -n "$$PW_GREP" ]; then \
+		E2E_HEADED="$${E2E_HEADED:-1}" E2E_TAG="$${E2E_TAG}" npx playwright test --config=e2e/playwright.config.ts -g "$$PW_GREP"; \
+	else \
+		E2E_HEADED="$${E2E_HEADED:-1}" E2E_TAG="$${E2E_TAG}" npx playwright test --config=e2e/playwright.config.ts; \
+	fi
+
+# E2E с reseed: сначала чистим данные БД (schema сохраняется),
+# затем запускаем Playwright. Полезно для "чистого" прогона.
+# Примеры:
+#   make e2e-test-reseed
+#   E2E_TAG=smoke make e2e-test-reseed
+#   PW_GREP="Claim салона" make e2e-test-reseed
+e2e-test-reseed: db-reset
+	@cd frontend && \
+	if [ -n "$$PW_GREP" ]; then \
+		E2E_HEADED="$${E2E_HEADED:-1}" E2E_TAG="$${E2E_TAG}" npx playwright test --config=e2e/playwright.config.ts -g "$$PW_GREP"; \
+	else \
+		E2E_HEADED="$${E2E_HEADED:-1}" E2E_TAG="$${E2E_TAG}" npx playwright test --config=e2e/playwright.config.ts; \
+	fi

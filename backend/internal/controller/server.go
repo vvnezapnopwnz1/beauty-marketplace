@@ -34,6 +34,7 @@ func NewHTTPServer(
 	md *MasterDashboardController,
 	uh *UserController,
 	claimCtrl *SalonClaimController,
+	devCtrl *DevController,
 ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", hh.Health)
@@ -74,6 +75,10 @@ func NewHTTPServer(
 	// Admin claims (admin role required)
 	mux.HandleFunc("/api/v1/admin/claims", withCORS(auth.RequireRole(jwtMgr, claimCtrl.AdminClaimsRoutes, "admin")))
 	mux.HandleFunc("/api/v1/admin/claims/", withCORS(auth.RequireRole(jwtMgr, claimCtrl.AdminClaimsRoutes, "admin")))
+	if cfg.DevEndpoints {
+		mux.HandleFunc("POST /api/dev/claim/by-external", withCORS(devCtrl.ClaimByExternal))
+		mux.HandleFunc("POST /api/dev/e2e/seed-salon", withCORS(devCtrl.SeedSalon))
+	}
 
 	srv := &http.Server{
 		Addr:    cfg.HTTPAddr,

@@ -87,6 +87,7 @@ func New() *fx.App {
 			controller.NewMasterController,
 			controller.NewMasterDashboardController,
 			controller.NewUserController,
+			controller.NewDevController,
 			controller.NewHTTPServer,
 		),
 		fx.Invoke(func(*http.Server) {}),
