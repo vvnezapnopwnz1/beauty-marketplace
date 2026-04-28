@@ -111,7 +111,10 @@ export function DashboardPage() {
   const staffDetailMatch = useMatch('/dashboard/:salonId/staff/:staffId')
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | undefined>(undefined)
+  const [onboardingStatus, setOnboardingStatus] = useState<{
+    salonId: string
+    completed: boolean | undefined
+  } | null>(null)
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
 
@@ -160,12 +163,14 @@ export function DashboardPage() {
   }, [salonId, dispatch])
 
   useEffect(() => {
+    if (!salonId) return
     let cancelled = false
+    setActiveSalonId(salonId)
     void (async () => {
       try {
-        const profile = await fetchSalonProfile()
+        const profile = await fetchSalonProfile(salonId)
         if (!cancelled) {
-          setOnboardingCompleted(profile.onboardingCompleted)
+          setOnboardingStatus({ salonId, completed: profile.onboardingCompleted })
         }
       } catch {
         // ignore profile preload failures here; page content handles its own errors
@@ -174,15 +179,16 @@ export function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [salonId])
 
   useEffect(() => {
     if (!user) return
     if (user.role !== 'salon_owner') return
-    if (onboardingCompleted === false) {
+    if (onboardingStatus?.salonId !== salonId) return
+    if (onboardingStatus.completed === false) {
       navigate(salonId ? `/dashboard/${salonId}/onboarding` : ROUTES.ME, { replace: true })
     }
-  }, [navigate, onboardingCompleted, user, salonId])
+  }, [navigate, onboardingStatus, user, salonId])
 
   const headerTitle = useMemo(() => {
     if (staffDetailMatch) return 'Мастер'

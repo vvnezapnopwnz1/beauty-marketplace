@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material'
 
 import { fetchMyClaimStatus, type ClaimStatus } from '@shared/api/claimApi'
-import { ROUTES, salonPath } from '@shared/config/routes'
+import { ROUTES, dashboardPath } from '@shared/config/routes'
 import { NavBar } from '@shared/ui/NavBar'
 
 const STATUS_TEXT: Record<ClaimStatus, string> = {
@@ -82,7 +82,7 @@ export function ClaimStatusPage() {
 
             <Stack direction="row" gap={1.5}>
               {status === 'approved' && salonId ? (
-                <Button variant="contained" onClick={() => navigate(salonPath(salonId))}>
+                <Button variant="contained" onClick={() => navigate(dashboardPath(salonId))}>
                   Открыть салон
                 </Button>
               ) : (

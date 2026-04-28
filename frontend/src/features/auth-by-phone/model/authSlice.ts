@@ -62,10 +62,15 @@ export const sendOtp = createAsyncThunk(
 export const confirmOtp = createAsyncThunk(
   'auth/confirmOtp',
   async ({ phone, code }: { phone: string; code: string }) => {
-    const result = await verifyOTP(phone, code)
-    storeTokens(result.tokenPair)
-    storeSessionId(result.user.sessionId)
-    return result
+    const verifyResult = await verifyOTP(phone, code)
+    storeTokens(verifyResult.tokenPair)
+    storeSessionId(verifyResult.user.sessionId)
+    const me = await fetchMe()
+    return {
+      tokenPair: verifyResult.tokenPair,
+      user: me,
+      isNew: verifyResult.isNew,
+    }
   },
 )
 

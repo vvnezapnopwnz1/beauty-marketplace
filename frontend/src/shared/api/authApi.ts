@@ -97,7 +97,7 @@ export async function authFetch(input: RequestInfo, init?: RequestInit): Promise
     headers.set('X-Session-Id', sessionId)
   }
   const salonId = getActiveSalonId()
-  if (salonId) {
+  if (salonId && !headers.has('X-Salon-Id')) {
     headers.set('X-Salon-Id', salonId)
   }
   let res = await fetch(input, { ...init, headers })

@@ -639,15 +639,24 @@ export async function putStaffScheduleBundle(
   }
 }
 
-export async function fetchSalonProfile(): Promise<SalonProfile> {
-  const res = await authFetch(`${base()}/salon/profile`)
+export async function fetchSalonProfile(salonId?: string): Promise<SalonProfile> {
+  const res = await authFetch(`${base()}/salon/profile`, {
+    headers: salonId ? { 'X-Salon-Id': salonId } : undefined,
+  })
   return parseJson<SalonProfile>(res)
 }
 
-export async function putSalonProfile(partial: Partial<SalonProfile>): Promise<SalonProfile> {
+export async function putSalonProfile(
+  partial: Partial<SalonProfile>,
+  options?: { salonId?: string },
+): Promise<SalonProfile> {
+  const headers = new Headers({ 'Content-Type': 'application/json' })
+  if (options?.salonId) {
+    headers.set('X-Salon-Id', options.salonId)
+  }
   const res = await authFetch(`${base()}/salon/profile`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(partial),
   })
   return parseJson<SalonProfile>(res)

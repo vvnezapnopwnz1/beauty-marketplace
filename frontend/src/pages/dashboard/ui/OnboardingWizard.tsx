@@ -18,6 +18,7 @@ import {
 
 import { ROUTES, dashboardPath } from '@shared/config/routes'
 import { fetchDashboardServiceCategories, putSalonProfile } from '@shared/api/dashboardApi'
+import { setActiveSalonId } from '@shared/lib/activeSalon'
 
 export function OnboardingWizard() {
   const navigate = useNavigate()
@@ -30,6 +31,11 @@ export function OnboardingWizard() {
   const [error, setError] = useState<string | null>(null)
 
   const steps = ['Профиль', 'Услуги', 'Расписание']
+
+  useEffect(() => {
+    if (!salonId) return
+    setActiveSalonId(salonId)
+  }, [salonId])
 
   useEffect(() => {
     void (async () => {
@@ -58,13 +64,13 @@ export function OnboardingWizard() {
           onlineBookingEnabled: true,
           onboardingCompleted: true,
           salonCategoryScopes: selectedScopes,
-        })
+        }, { salonId })
       } else {
         await putSalonProfile({
           onlineBookingEnabled: true,
           onboardingCompleted: true,
           salonCategoryScopes: selectedScopes,
-        })
+        }, { salonId })
       }
       navigate(salonId ? dashboardPath(salonId) : ROUTES.ME, { replace: true })
     } catch {
