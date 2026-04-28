@@ -1,6 +1,6 @@
 ---
 title: API flows
-updated: 2026-04-27
+updated: 2026-04-28
 source_of_truth: true
 code_pointers:
   - backend/internal/controller/server.go
@@ -34,6 +34,8 @@ sequenceDiagram
     API->>DB: UPDATE salon_member_invites SET user_id\nWHERE pending AND phone_e164 matches
     API->>DB: INSERT refresh_tokens
     API-->>FE: {access_token, refresh_token, user}
+
+    Note over FE: После verify фронт делает GET /api/v1/me,\nчтобы получить актуальные effectiveRoles/salonMemberships
 
     Note over FE: Хранит токены в памяти/localStorage
 
@@ -104,6 +106,9 @@ sequenceDiagram
 - заголовок **`Authorization: Bearer <access>`**;
 - заголовок **`X-Salon-Id: <uuid>`** — салон, в котором проверяется членство (`salon_members`) и роль (`owner` | `admin` | `receptionist`) для RBAC.
 
+> Важно: `salonId` в браузерном маршруте и `salonId` в API передаются по-разному.  
+> Пользователь видит URL вида `/dashboard/:salonId/...`, но запросы идут на `/api/v1/dashboard/...` (без `salonId` в path), а выбранный салон передаётся в заголовке `X-Salon-Id`.
+
 ```mermaid
 sequenceDiagram
     participant FE as Frontend
@@ -123,6 +128,16 @@ sequenceDiagram
     API->>DB: UPDATE appointments SET status=confirmed
     API-->>FE: updated appointment
 ```
+
+### 4.1 Дебаг: route URL vs API URL
+
+Пример нормального поведения:
+
+- браузерный URL: `/dashboard/abc-123/appointments`
+- запрос в Network: `GET /api/v1/dashboard/appointments`
+- обязательный заголовок: `X-Salon-Id: abc-123`
+
+Если в DevTools кажется, что запрос «без салона», проверь вкладку **Request Headers**: для dashboard-эндпоинтов салон должен быть именно в `X-Salon-Id`.
 
 ---
 
@@ -154,6 +169,28 @@ sequenceDiagram
 
 ---
 
+## 6. Dev/e2e bootstrap (локальная среда)
+
+Роуты доступны только при `DEV_ENDPOINTS=1` и предназначены для локального e2e setup.
+
+```mermaid
+sequenceDiagram
+    participant E2E as Playwright ApiHelpers
+    participant API as Backend API
+    participant DB as PostgreSQL
+
+    E2E->>API: POST /api/dev/e2e/seed-salon\n{phone, source, externalId, snapshotName}
+    API->>DB: UPSERT user by phone
+    API->>DB: Ensure salon by external id (claim/bootstrap)
+    API->>DB: Ensure owner membership (salon_members)
+    API->>DB: Issue token pair
+    API-->>E2E: {salonId, dashboardUrl, tokenPair}
+
+    Note over E2E: Дальше тесты используют dashboard URL\nи auth-токены как precondition
+```
+
+---
+
 ## Маршруты API (сводка)
 
 | Группа | Путь | Auth |
@@ -172,6 +209,7 @@ sequenceDiagram
 | Dashboard | `/api/v1/dashboard/*` | JWT + **X-Salon-Id** |
 | Me | `/api/v1/me`, `/api/v1/me/sessions/*`, **`/api/v1/me/salon-invites`** (GET; `.../accept` / `.../decline` POST) | JWT |
 | Master Dashboard | `/api/v1/master-dashboard/*` | JWT |
+| Dev (локально) | `/api/dev/claim/by-external`, `/api/dev/e2e/seed-salon` | Только при `DEV_ENDPOINTS=1` |
 
 ## Связанные заметки
 

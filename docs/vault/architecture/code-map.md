@@ -1,6 +1,6 @@
 ---
 title: Указатели концепция → код
-updated: 2026-04-27
+updated: 2026-04-28
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -29,6 +29,8 @@ code_pointers:
 | Multi-salon дашборд (`X-Salon-Id`, маршрут `/dashboard/:salonId`) | `controller/dashboard_controller.go` (`resolveSalonMembership`) | `shared/lib/activeSalon.ts`, `shared/config/routes.ts`, `App.tsx`, `DashboardPage.tsx`, `features/user-menu/ui/UserMenu.tsx` |
 | Приглашения в салон (принятие пользователем) | `controller/user_controller.go` (`/api/v1/me/salon-invites/*`) | `shared/api/meApi.ts`, `pages/me/ui/sections/SalonInvitesSection.tsx` |
 | DnD перенос записи | `PUT .../appointments/:id` (см. dashboard) | `frontend/src/features/reschedule-appointment/`, `pages/dashboard/lib/dndCalendarUtils.ts` |
+| Dev auth/e2e bootstrap (`DEV_OTP_BYPASS_ANY`, `/api/dev/*`) | `backend/internal/config/config.go`, `backend/internal/service/auth.go`, `backend/internal/controller/dev_controller.go`, `backend/internal/controller/server.go` | `frontend/e2e/helpers/api-helpers.ts`, `frontend/e2e/playwright.config.ts`, `frontend/e2e/tests/flow-runner.spec.ts` |
+| E2E flow-runner (YAML сценарии + action registry) | — | `frontend/e2e/scenarios/flows.yaml`, `frontend/e2e/actions/index.ts`, `frontend/e2e/helpers/flow-loader.ts` |
 
 ## Связанные заметки
 

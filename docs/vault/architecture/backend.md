@@ -1,6 +1,6 @@
 ---
 title: Backend — детальная архитектура
-updated: 2026-04-27
+updated: 2026-04-28
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -65,6 +65,7 @@ graph TD
         C_MASTER["NewMasterController"]
         C_MASTER_DASH["NewMasterDashboardController"]
         C_CLIENT["NewSalonClientController"]
+        C_DEV["NewDevController"]
         SERVER["NewHTTPServer"]
     end
 
@@ -101,7 +102,7 @@ graph TD
     S_MASTER_PUB --> C_MASTER
     S_MASTER_DASH --> C_MASTER_DASH
 
-    C_HEALTH & C_SALON & C_PLACES & C_SEARCH & C_GEO & C_AUTH & C_DASH & C_MASTER & C_MASTER_DASH & C_CLIENT --> SERVER
+    C_HEALTH & C_SALON & C_PLACES & C_SEARCH & C_GEO & C_AUTH & C_DASH & C_MASTER & C_MASTER_DASH & C_CLIENT & C_DEV --> SERVER
     JWT --> SERVER
 ```
 
@@ -210,6 +211,11 @@ graph LR
         R19["GET|POST /api/v1/me/salon-invites*"]
     end
 
+    subgraph DEV["Dev-only (DEV_ENDPOINTS=1)"]
+        R20["POST /api/dev/claim/by-external"]
+        R21["POST /api/dev/e2e/seed-salon"]
+    end
+
     subgraph DASH["Dashboard sub-routes"]
         D1["GET|POST /appointments"]
         D2["PUT|PATCH /appointments/{id}"]
@@ -283,6 +289,11 @@ graph LR
 | `2GIS_API_KEY` | — | Обязателен |
 | `2GIS_REGION_ID` | `32` (Москва) | ID региона |
 | `LOG_LEVEL` | `development` | zap log level |
+| `DEV_OTP_BYPASS` | `false` | Dev-mode: принимает фиксированный OTP при наличии активной записи |
+| `DEV_OTP_BYPASS_ANY` | `false` | Dev-mode: логин без сохранённого OTP (любая пара phone/code) |
+| `DEV_ENDPOINTS` | `false` | Включает dev helper-роуты `/api/dev/*` для e2e/bootstrap |
+
+> В production (`LOG_LEVEL=production`) включение `DEV_OTP_BYPASS`, `DEV_OTP_BYPASS_ANY` и `DEV_ENDPOINTS` запрещено в конфиге и приводит к ошибке старта.
 
 ## Связанные заметки
 

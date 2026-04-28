@@ -1,6 +1,6 @@
 ---
 title: Frontend — структура компонентов
-updated: 2026-04-27
+updated: 2026-04-28
 source_of_truth: true
 code_pointers:
   - frontend/src/app/App.tsx
@@ -58,6 +58,19 @@ graph TD
 ## DashboardPage — управление салоном
 
 Маршрут: **`/dashboard/:salonId`** (`?section=…` для вкладок; деталь мастера — **`/dashboard/:salonId/staff/:staffId`**). Заголовок **`X-Salon-Id`** для запросов к `/api/v1/dashboard/*` задаётся через `getActiveSalonId()` / `setActiveSalonId()` (`shared/lib/activeSalon.ts`).
+
+Механика контекста салона:
+
+- роут (`/dashboard/:salonId/...`) — источник салона для UI-навигации;
+- `setActiveSalonId(salonId)` синхронизирует выбранный салон в runtime/local storage;
+- API-запросы идут на `/api/v1/dashboard/*` и несут `X-Salon-Id` в заголовке;
+- если запрос передаёт `X-Salon-Id` явно (через `headers`), `authFetch` не должен перетирать его значением из `activeSalonId`.
+
+Практика дебага в Network tab:
+
+- URL запроса может не содержать `salonId` (`/api/v1/dashboard/appointments`);
+- фактический контекст салона смотри в `Request Headers -> X-Salon-Id`;
+- при расследовании «не тот салон в ответе» первым делом сверяй пару: `route salonId` vs `X-Salon-Id`.
 
 ```mermaid
 graph TD
@@ -171,6 +184,18 @@ graph LR
 | `geoApi.ts` | `/api/v1/geo/*` | location feature |
 | `placesApi.ts` | `/api/v1/places/*` | SearchPage |
 | `clientsApi.ts` | `/api/v1/dashboard/clients/*` | DashboardPage → Clients |
+
+---
+
+## E2E инфраструктура (Playwright flow-runner)
+
+В репозитории есть отдельный контур `frontend/e2e/` с декларативными сценариями:
+
+- `scenarios/flows.yaml` — сценарии и шаги;
+- `tests/flow-runner.spec.ts` — генератор тестов из YAML;
+- `actions/index.ts` + `actions/*.actions.ts` — реестр и реализации действий;
+- `helpers/api-helpers.ts` — подготовка данных через `/api/dev/e2e/seed-salon`;
+- `playwright.config.ts` — webServer-подъём backend/frontend для e2e.
 
 ## Связанные заметки
 

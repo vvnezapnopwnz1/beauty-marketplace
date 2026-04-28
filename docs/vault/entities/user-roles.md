@@ -1,6 +1,6 @@
 ---
 title: Роли пользователей
-updated: 2026-04-27
+updated: 2026-04-28
 source_of_truth: true
 ---
 
@@ -78,6 +78,13 @@ type EffectiveRoles struct {
 - **`/master-dashboard`** — если `isMaster === true` (и соответствующие маршруты в приложении).
 - **`UserMenu` / навбар** — ссылки на кабинеты строятся по `effectiveRoles` (`salonMemberships`, `isMaster`).
 - **Приглашения в салон** — список и accept/decline: **`GET|POST /api/v1/me/salon-invites`**; счётчик **`pendingInvites`** для бейджа на вкладке «Мой профиль».
+
+### Route salonId vs API salonId (важно для поддержки)
+
+- В UI салон задаётся маршрутом (`/dashboard/:salonId/...`).
+- В API салон задаётся заголовком `X-Salon-Id` (URL `/api/v1/dashboard/*` без `salonId` в path).
+- Это намеренная архитектура, но она добавляет когнитивную нагрузку при дебаге: в Network нужно смотреть не только URL, но и headers.
+- Для корректности запросов фронт синхронизирует `activeSalonId` из route и не должен перетирать явно заданный `X-Salon-Id`.
 
 ## 5) Вне текущего скоупа / backlog
 
