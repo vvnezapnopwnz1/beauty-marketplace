@@ -109,3 +109,25 @@ func (r *dashboardRepository) GetService(ctx context.Context, salonID, serviceID
 	}
 	return &s, nil
 }
+
+func (r *dashboardRepository) ServiceStaffNamesMap(ctx context.Context, salonID uuid.UUID) (map[uuid.UUID][]string, error) {
+	type row struct {
+		ServiceID uuid.UUID `gorm:"column:service_id"`
+		Name      string    `gorm:"column:display_name"`
+	}
+	var raw []row
+	err := r.db.WithContext(ctx).Table("salon_master_services").
+		Select("salon_master_services.service_id, salon_masters.display_name").
+		Joins("JOIN salon_masters ON salon_masters.id = salon_master_services.staff_id AND salon_masters.salon_id = ?", salonID).
+		Where("salon_masters.salon_id = ?", salonID).
+		Order("salon_masters.display_name ASC").
+		Scan(&raw).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID][]string)
+	for _, r0 := range raw {
+		out[r0.ServiceID] = append(out[r0.ServiceID], r0.Name)
+	}
+	return out, nil
+}

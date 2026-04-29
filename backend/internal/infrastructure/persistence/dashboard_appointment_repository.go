@@ -242,3 +242,19 @@ func (r *dashboardRepository) ReplaceAppointmentLineItems(ctx context.Context, a
 		return nil
 	})
 }
+
+func (r *dashboardRepository) CountAppointments(ctx context.Context, salonID uuid.UUID, from, to *time.Time, status string) (int64, error) {
+	q := r.db.WithContext(ctx).Model(&model.Appointment{}).Where("salon_id = ?", salonID)
+	if from != nil {
+		q = q.Where("starts_at >= ?", *from)
+	}
+	if to != nil {
+		q = q.Where("starts_at < ?", *to)
+	}
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	var c int64
+	err := q.Count(&c).Error
+	return c, err
+}

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
@@ -215,81 +216,50 @@ func (r *dashboardRepository) StaffServiceLines(ctx context.Context, salonID uui
 	return raw, err
 }
 
-func (r *dashboardRepository) ServiceStaffNamesMap(ctx context.Context, salonID uuid.UUID) (map[uuid.UUID][]string, error) {
-	type row struct {
-		ServiceID uuid.UUID `gorm:"column:service_id"`
-		Name      string    `gorm:"column:display_name"`
-	}
-	var raw []row
-	err := r.db.WithContext(ctx).Table("salon_master_services").
-		Select("salon_master_services.service_id, salon_masters.display_name").
-		Joins("JOIN salon_masters ON salon_masters.id = salon_master_services.staff_id AND salon_masters.salon_id = ?", salonID).
-		Where("salon_masters.salon_id = ?", salonID).
-		Order("salon_masters.display_name ASC").
-		Scan(&raw).Error
+func (r *dashboardRepository) StaffAvgRating(ctx context.Context, salonID, staffID uuid.UUID) (*float64, int64, error) {
+	var avg sql.NullFloat64
+	var n int64
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT AVG(reviews.rating::float8), COUNT(*)
+		FROM reviews
+		INNER JOIN appointments ON appointments.id = reviews.appointment_id
+		WHERE appointments.salon_id = ? AND appointments.salon_master_id = ?
+	`, salonID, staffID).Row().Scan(&avg, &n)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	out := make(map[uuid.UUID][]string)
-	for _, r0 := range raw {
-		out[r0.ServiceID] = append(out[r0.ServiceID], r0.Name)
+	if !avg.Valid {
+		return nil, n, nil
 	}
-	return out, nil
+	v := avg.Float64
+	return &v, n, nil
 }
 
-func (r *dashboardRepository) GetMasterProfile(ctx context.Context, masterID uuid.UUID) (*model.MasterProfile, error) {
-	var profile model.MasterProfile
-	err := r.db.WithContext(ctx).First(&profile, "id = ?", masterID).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
+func (r *dashboardRepository) CountStaffAppointments(ctx context.Context, salonID, staffID uuid.UUID, from, to *time.Time, statuses []string) (int64, error) {
+	q := r.db.WithContext(ctx).Model(&model.Appointment{}).
+		Where("salon_id = ? AND salon_master_id = ?", salonID, staffID)
+	if from != nil {
+		q = q.Where("starts_at >= ?", *from)
 	}
-	return &profile, err
+	if to != nil {
+		q = q.Where("starts_at < ?", *to)
+	}
+	if len(statuses) > 0 {
+		q = q.Where("status IN ?", statuses)
+	}
+	var c int64
+	err := q.Count(&c).Error
+	return c, err
 }
 
-func (r *dashboardRepository) GetMasterProfileBySalonMaster(ctx context.Context, salonMasterID uuid.UUID) (*model.MasterProfile, error) {
-	var sm model.SalonMaster
-	if err := r.db.WithContext(ctx).First(&sm, "id = ?", salonMasterID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	if sm.MasterID == nil {
-		return nil, nil
-	}
-	return r.GetMasterProfile(ctx, *sm.MasterID)
-}
-
-func (r *dashboardRepository) GetMasterProfileByPhoneE164(ctx context.Context, phoneE164 string) (*model.MasterProfile, error) {
-	var p model.MasterProfile
-	err := r.db.WithContext(ctx).Where("phone_e164 = ?", phoneE164).First(&p).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &p, nil
-}
-
-func (r *dashboardRepository) CreateMasterProfile(ctx context.Context, p *model.MasterProfile) error {
-	if p.ID == uuid.Nil {
-		p.ID = uuid.New()
-	}
-	return r.db.WithContext(ctx).Create(p).Error
-}
-
-func (r *dashboardRepository) UpdateMasterProfile(ctx context.Context, p *model.MasterProfile) error {
-	return r.db.WithContext(ctx).Model(&model.MasterProfile{}).
-		Where("id = ?", p.ID).
-		Updates(map[string]any{
-			"display_name":     p.DisplayName,
-			"avatar_url":       p.AvatarURL,
-			"bio":              p.Bio,
-			"specializations":  p.Specializations,
-			"years_experience": p.YearsExperience,
-			"phone_e164":       p.PhoneE164,
-			"is_active":        p.IsActive,
-			"updated_at":       time.Now().UTC(),
-		}).Error
+func (r *dashboardRepository) SumStaffRevenueCents(ctx context.Context, salonID, staffID uuid.UUID, from, to time.Time) (int64, error) {
+	var sum int64
+	err := r.db.WithContext(ctx).Table("appointments").
+		Select("COALESCE(SUM(services.price_cents), 0)").
+		Joins("JOIN services ON services.id = appointments.service_id AND services.salon_id = appointments.salon_id").
+		Where("appointments.salon_id = ? AND appointments.salon_master_id = ?", salonID, staffID).
+		Where("appointments.starts_at >= ? AND appointments.starts_at < ?", from, to).
+		Where("appointments.status = ?", "completed").
+		Scan(&sum).Error
+	return sum, err
 }

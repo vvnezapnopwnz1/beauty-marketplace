@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
@@ -54,6 +55,63 @@ func (r *dashboardRepository) FindSalonModel(ctx context.Context, salonID uuid.U
 		return nil, err
 	}
 	return &s, nil
+}
+
+func (r *dashboardRepository) GetMasterProfile(ctx context.Context, masterID uuid.UUID) (*model.MasterProfile, error) {
+	var profile model.MasterProfile
+	err := r.db.WithContext(ctx).First(&profile, "id = ?", masterID).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &profile, err
+}
+
+func (r *dashboardRepository) GetMasterProfileBySalonMaster(ctx context.Context, salonMasterID uuid.UUID) (*model.MasterProfile, error) {
+	var sm model.SalonMaster
+	if err := r.db.WithContext(ctx).First(&sm, "id = ?", salonMasterID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if sm.MasterID == nil {
+		return nil, nil
+	}
+	return r.GetMasterProfile(ctx, *sm.MasterID)
+}
+
+func (r *dashboardRepository) GetMasterProfileByPhoneE164(ctx context.Context, phoneE164 string) (*model.MasterProfile, error) {
+	var p model.MasterProfile
+	err := r.db.WithContext(ctx).Where("phone_e164 = ?", phoneE164).First(&p).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &p, nil
+}
+
+func (r *dashboardRepository) CreateMasterProfile(ctx context.Context, p *model.MasterProfile) error {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	return r.db.WithContext(ctx).Create(p).Error
+}
+
+func (r *dashboardRepository) UpdateMasterProfile(ctx context.Context, p *model.MasterProfile) error {
+	return r.db.WithContext(ctx).Model(&model.MasterProfile{}).
+		Where("id = ?", p.ID).
+		Updates(map[string]any{
+			"display_name":     p.DisplayName,
+			"avatar_url":       p.AvatarURL,
+			"bio":              p.Bio,
+			"specializations":  p.Specializations,
+			"years_experience": p.YearsExperience,
+			"phone_e164":       p.PhoneE164,
+			"is_active":        p.IsActive,
+			"updated_at":       time.Now().UTC(),
+		}).Error
 }
 
 func (r *dashboardRepository) ListSalonMemberUsers(ctx context.Context, salonID uuid.UUID) ([]repository.SalonMemberUserRow, error) {
