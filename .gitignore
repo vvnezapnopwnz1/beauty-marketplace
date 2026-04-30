@@ -1,25 +1,486 @@
-# Environment variables
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+dist/
+build/
+target/
+
+# Dependencies
+node_modules/
+venv/
+.venv/
 .env
 .env.local
-.env.*.local
+.env.*
 
-# Go
-backend/vendor/
-backend/bin/
+# Logs and temp files
+*.log
+*.tmp
+*.swp
 
-# Node / Frontend
-frontend/node_modules/
-frontend/.next/
-frontend/dist/
-frontend/build/
-vela
+# Editors
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
 # OS
 .DS_Store
 Thumbs.db
 
-# IDE
-.idea/
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+
+# Python specific
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Java specific
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+
+# C/C++ specific
+*.a
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go specific
+*.exe
+*.test
+*.prof
+
+# Ruby specific
+*.gem
+*.rbc
+capybara-*.html
+
+# Rust specific
+*.dll
+*.dylib
+*.so
+target/
+
+# Gradle
+.gradle/
+build/
+
+# MyPy
+.mypy_cache/
+__pycache__/
+
+# PyTest
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary folders
+tmp/
+temp/
+
+# Sensitive files
+config/secrets.yml
+secrets.json
+
+# Build outputs
+out/
+dist/
+release/
+*.min.js
+*.min.css
+
+# IDE specific
+.vs/
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+nbproject/
+
+# Database
+*.db
+*.db-journal
+
+# Backup files
+*~
+*.bak
 *.swp
 *.swo
 
-Beautica 2 (1)
+# Log files
+*.log
+*.out
+*.pid
+
+# Environment specific
+.envrc
+.env.local
+.env.production
+.env.development
+.env.test
+
+# Docker
+.dockerenv
+.dockerinit
+
+# Vagrant
+.vagrant/
+
+# Bower
+bower_components/
+
+# Composer
+vendor/
+
+# Maven
+target/
+
+# SBT
+target/
+lib_managed/
+src_managed/
+project_target/
+
+# Leiningen
+target/
+test-results/
+*.results
+
+# Haskell
+dist-newstyle/
+.cabal-sandbox/
+*.o
+*.hi
+*.chi
+*.chs.h
+*.dyn_o
+
+# Erlang
+.eunit
+*.beam
+*.plt
+.erlang.cookie
+
+# Elixir
+*.beam
+*.ez
+.eex.swp
+.plt
+mix.lock
+
+# Clojure
+target/
+*.class
+*.clj-eval-history
+
+# Scala
+.classpath
+.project
+.scala_dependencies
+.worksheet
+
+# PHP
+vendor/
+composer.lock
+
+# Perl
+blib/
+Makefile
+pm_to_blib/
+*.tar.gz
+.lwpcookies
+
+# Objective-C
+*.dSYM
+*.xcworkspace
+*.xcodeproj
+
+# Swift
+*.xcodeproj
+*.xcworkspace
+
+# Android
+*.apk
+*.ap_
+local.properties
+captures/
+.externalNativeBuild
+
+# Unity
+Library/
+Temp/
+Obj/
+Build/
+Logs/
+*.unitypackage
+
+# C#
+bin/
+obj/
+*.userprefs
+*.csproj.user
+*.userosscache
+*.sln.docstates
+
+# Qt
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+*.moc.cpp
+*.qm
+
+# Autotools
+autom4te.cache/
+.libs/
+*.la
+*.lai
+aclocal.m4
+config.h.in
+configure
+Makefile.in
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.manifest
+install_manifest.txt
+*.cmake
+
+# Meson
+meson-private/
+meson.build
+
+# Meson
+meson-private/
+meson.build
+
+# PlatformIO
+.platformio/
+pioenvs/
+piolibdeps/
+
+# Arduino
+*.hex
+*.elf
+*.bin
+*.eep
+*.map
+*.lst
+*.sym
+
+# PlatformIO
+.platformio/
+pioenvs/
+piolibdeps/
+
+# Julia
+.julia/
+*.ji
+*.res
+
+# Zig
+zig-cache/
+zig-out/
+
+# Dart
+.dart_tool/
+.pub/
+build/
+
+# Flutter
+.dart_tool/
+.pub/
+build/
+flutter_assets/
+
+# NativeScript
+hooks/
+platforms/
+node_modules/
+
+# Ionic
+ionic.config.json
+.io-config.json
+
+# Cordova
+config.xml
+merges/
+plugins/
+platforms/
+
+# Electron
+electron/
+electron-builder/
+dist-electron/
+
+# Webpack
+webpack.config.js
+webpack-stats.json
+
+# Gatsby
+public/
+.cache/
+
+# Next.js
+.next/
+out/
+
+# Nuxt.js
+.nuxt/
+dist/
+
+# Vue
+dist/
+
+# Angular
+dist/
+.tmp/
+
+# Ember
+dist/
+tmp/
+.ember-cli
+.travis.yml
+node_modules/
+
+# Meteor
+.meteor/local/
+
+# Grunt
+.grunt/
+grunt/
+Gruntfile.js
+
+# Gulp
+.gulp/
+gulp/
+Gulpfile.js
+
+# Brunch
+.brunch/
+brunch-config.js
+
+# Browserify
+.browserify/
+
+# RequireJS
+.requirejs/
+
+# Babel
+.babelrc
+babel.config.js
+
+# ESLint
+.eslintcache
+.eslintignore
+
+# Prettier
+.prettierrc
+prettier.config.js
+.prettierignore
+
+# Jest
+coverage/
+junit.xml
+*.lcov
+
+# Mocha
+mochawesome-report/
+*.log
+
+# Karma
+karma.conf.js
+.karma/
+
+# Protractor
+protractor.conf.js
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+
+# Selenium
+selenium-server-standalone-*.jar
+
+# Test results
+test-results/
+TEST-*.xml
+
+# Documentation
+docs/_build/
+.sphinx/
+
+# Sphinx
+_sphinx/
+.sphinx/
+
+# MkDocs
+site/
+
+# Jekyll
+_site/
+.jekyll-metadata
+.jekyll-cache
+
+# Hugo
+public/
+resources/
+
+# Middleman
+/build/
+/.sass-cache/
+.sass-cache/
+.middleman
+
+# Metalsmith
+._*
+._*
+~*
+
+# DocPad
+.out/
+output/
+docpad.
