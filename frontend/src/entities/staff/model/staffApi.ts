@@ -72,7 +72,7 @@ const staffApi = rtkApi.injectEndpoints({
               { type: 'Staff' as const, id: 'LIST' },
             ]
           : [{ type: 'Staff' as const, id: 'LIST' }],
-      query: () => ({ url: '/salon-masters' }),
+      query: () => ({ url: '/api/v1/dashboard/salon-masters' }),
       transformResponse: (response: SalonMasterListApiRow[]) =>
         response.map(row => ({
           staff: rowToStaffFull(row),
@@ -86,32 +86,32 @@ const staffApi = rtkApi.injectEndpoints({
     }),
     getStaffById: builder.query<DashboardStaffFull, string>({
       providesTags: (result, error, id) => [{ type: 'Staff' as const, id }],
-      query: id => ({ url: `/salon-masters/${id}` }),
+      query: id => ({ url: `/api/v1/dashboard/salon-masters/${id}` }),
     }),
     createStaff: builder.mutation<DashboardStaffFull, StaffFormPayload>({
       invalidatesTags: [{ type: 'Staff' as const, id: 'LIST' }],
-      query: body => ({ method: 'POST', url: '/salon-masters', body: staffPayloadJson(body) }),
+      query: body => ({ method: 'POST', url: '/api/v1/dashboard/salon-masters', body: staffPayloadJson(body) }),
     }),
     updateStaff: builder.mutation<DashboardStaffFull, { id: string; body: StaffFormPayload }>({
       invalidatesTags: (result, error, { id }) => [
         { type: 'Staff' as const, id },
         { type: 'Staff' as const, id: 'LIST' },
       ],
-      query: ({ id, body }) => ({ method: 'PUT', url: `/salon-masters/${id}`, body: staffPayloadJson(body) }),
+      query: ({ id, body }) => ({ method: 'PUT', url: `/api/v1/dashboard/salon-masters/${id}`, body: staffPayloadJson(body) }),
     }),
     deleteStaff: builder.mutation<void, string>({
       invalidatesTags: (result, error, id) => [
         { type: 'Staff' as const, id },
         { type: 'Staff' as const, id: 'LIST' },
       ],
-      query: id => ({ method: 'DELETE', url: `/salon-masters/${id}` }),
+      query: id => ({ method: 'DELETE', url: `/api/v1/dashboard/salon-masters/${id}` }),
     }),
     lookupMasterByPhone: builder.query<StaffLookupResponse, string>({
-      query: phone => ({ url: `/masters/lookup`, params: { phone } }),
+      query: phone => ({ url: `/api/v1/dashboard/masters/lookup`, params: { phone } }),
     }),
     createMasterInvite: builder.mutation<DashboardStaffFull, string>({
       invalidatesTags: [{ type: 'Staff' as const, id: 'LIST' }],
-      query: masterProfileId => ({ method: 'POST', url: '/master-invites', body: { masterProfileId } }),
+      query: masterProfileId => ({ method: 'POST', url: '/api/v1/dashboard/master-invites', body: { masterProfileId } }),
     }),
   }),
 })

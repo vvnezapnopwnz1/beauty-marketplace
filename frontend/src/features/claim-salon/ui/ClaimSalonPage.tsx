@@ -17,7 +17,7 @@ import {
 import { fetchPlaceByExternalId } from '@shared/api/placesApi'
 import { submitClaim, type ClaimRelation } from '@shared/api/claimApi'
 import { claimStatusPath } from '@shared/config/routes'
-import { NavBar } from '@shared/ui/NavBar'
+import { NavBar } from '@shared/ui/Navbar/NavBar'
 import { ClaimSuccessScreen } from './ClaimSuccessScreen'
 
 export function ClaimSalonPage() {
@@ -45,11 +45,11 @@ export function ClaimSalonPage() {
       return
     }
     fetchPlaceByExternalId(externalId)
-      .then((p) =>
+      .then(p =>
         setPlace({
           name: p.name,
           address: p.address,
-          phone: p.contacts?.find((c) => c.type === 'phone')?.value,
+          phone: p.contacts?.find(c => c.type === 'phone')?.value,
           photoUrl: p.photoUrls?.[0],
         }),
       )
@@ -141,7 +141,7 @@ export function ClaimSalonPage() {
               <Select
                 value={relation}
                 label="Ваша роль"
-                onChange={(e) => setRelation(e.target.value as ClaimRelation)}
+                onChange={e => setRelation(e.target.value as ClaimRelation)}
               >
                 <MenuItem value="owner">Владелец</MenuItem>
                 <MenuItem value="manager">Управляющий</MenuItem>
@@ -154,7 +154,7 @@ export function ClaimSalonPage() {
               multiline
               rows={3}
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={e => setComment(e.target.value)}
               placeholder="Расскажите, как связаны с этим бизнесом"
             />
 

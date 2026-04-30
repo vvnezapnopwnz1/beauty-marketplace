@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+	domainmodel "github.com/yourusername/beauty-marketplace/internal/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"gorm.io/gorm"
 )
@@ -14,13 +16,13 @@ import (
 // --- fakes ---
 
 type fakeSlotsRepo struct {
-	meta                 *repository.SalonSlotMeta
-	activeMasters        []repository.SalonMasterBasic
-	master               *repository.SalonMasterBasic
-	masterByProfile      *repository.SalonMasterBasic
-	hourByMaster         map[uuid.UUID]*model.SalonMasterHour
-	durationOverride     *int
-	coveringMasterIDs    []uuid.UUID
+	meta              *repository.SalonSlotMeta
+	activeMasters     []repository.SalonMasterBasic
+	master            *repository.SalonMasterBasic
+	masterByProfile   *repository.SalonMasterBasic
+	hourByMaster      map[uuid.UUID]*model.SalonMasterHour
+	durationOverride  *int
+	coveringMasterIDs []uuid.UUID
 }
 
 func (f *fakeSlotsRepo) GetSalonMeta(ctx context.Context, salonID uuid.UUID) (*repository.SalonSlotMeta, error) {
@@ -74,6 +76,9 @@ type fakeApptsRepo struct {
 
 func (f *fakeApptsRepo) Create(ctx context.Context, a *model.Appointment) error { return nil }
 func (f *fakeApptsRepo) CreateWithLineItems(ctx context.Context, a *model.Appointment, lines []model.AppointmentLineItem) error {
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New()
+	}
 	return nil
 }
 func (f *fakeApptsRepo) FindServiceForSalon(ctx context.Context, salonID, serviceID uuid.UUID) (*model.SalonService, error) {
@@ -89,6 +94,54 @@ func (f *fakeApptsRepo) FindByMasterInRange(ctx context.Context, salonMasterID u
 	return f.appts, nil
 }
 func (f *fakeApptsRepo) SetSalonClientID(_ context.Context, _, _ uuid.UUID) error { return nil }
+
+type fakeSalonRepo struct {
+	salon *domainmodel.Salon
+}
+
+func (f *fakeSalonRepo) FindAll(ctx context.Context) ([]domainmodel.Salon, error) { return nil, nil }
+func (f *fakeSalonRepo) FindByID(ctx context.Context, id uuid.UUID) (*domainmodel.Salon, error) {
+	return f.salon, nil
+}
+func (f *fakeSalonRepo) FindServicesBySalonID(ctx context.Context, salonID uuid.UUID) ([]domainmodel.ServiceLine, error) {
+	return nil, nil
+}
+func (f *fakeSalonRepo) GetWorkingHours(ctx context.Context, salonID uuid.UUID) ([]domainmodel.WorkingHourDTO, error) {
+	return nil, nil
+}
+func (f *fakeSalonRepo) FindByExternalID(ctx context.Context, source, externalID string) (*domainmodel.Salon, error) {
+	return nil, nil
+}
+func (f *fakeSalonRepo) FindByExternalIDs(ctx context.Context, source string, ids []string) ([]domainmodel.Salon, error) {
+	return nil, nil
+}
+func (f *fakeSalonRepo) FindServicesBySalonIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID][]domainmodel.ServiceLine, error) {
+	return nil, nil
+}
+
+type fakeAppointmentNotifier struct {
+	calls []fakeAppointmentNotifierCall
+}
+
+type fakeAppointmentNotifierCall struct {
+	salonID       uuid.UUID
+	salonMasterID *uuid.UUID
+	notifType     string
+	title         string
+	body          string
+	data          json.RawMessage
+}
+
+func (f *fakeAppointmentNotifier) NotifySalonMembers(ctx context.Context, salonID uuid.UUID, salonMasterID *uuid.UUID, notifType, title, body string, data json.RawMessage) {
+	f.calls = append(f.calls, fakeAppointmentNotifierCall{
+		salonID:       salonID,
+		salonMasterID: salonMasterID,
+		notifType:     notifType,
+		title:         title,
+		body:          body,
+		data:          data,
+	})
+}
 
 // --- helpers ---
 
@@ -368,5 +421,69 @@ func TestGetAvailableSlots_MultiServiceFiltersMasters(t *testing.T) {
 	// Combined duration 60m, step 30 → 10:00, 10:30, 11:00, 11:30, 12:00
 	if len(out) != 5 {
 		t.Fatalf("got %d slots, want 5", len(out))
+	}
+}
+
+func TestCreateGuestBooking_NotifiesSalonMembers(t *testing.T) {
+	loc := mskLoc(t)
+	salonID := uuid.New()
+	serviceID := uuid.New()
+	masterID := uuid.New()
+	startsAt := time.Date(2026, 5, 20, 10, 0, 0, 0, loc)
+	endsAt := startsAt.Add(30 * time.Minute)
+	notifier := &fakeAppointmentNotifier{}
+
+	svc := &bookingService{
+		salons: &fakeSalonRepo{salon: &domainmodel.Salon{
+			ID:                   salonID,
+			OnlineBookingEnabled: true,
+		}},
+		appts: &fakeApptsRepo{
+			services: map[uuid.UUID]*model.SalonService{
+				serviceID: {ID: serviceID, SalonID: salonID, Name: "Cut", DurationMinutes: 30},
+			},
+		},
+		slots: &fakeSlotsRepo{
+			coveringMasterIDs: []uuid.UUID{masterID},
+		},
+		notifier: notifier,
+		now:      func() time.Time { return time.Date(2026, 4, 17, 12, 0, 0, 0, loc) },
+	}
+
+	result, err := svc.CreateGuestBooking(context.Background(), GuestBookingInput{
+		SalonID:       salonID,
+		ServiceIDs:    []uuid.UUID{serviceID},
+		Name:          "Мария",
+		PhoneE164:     "+79990000000",
+		StartsAt:      &startsAt,
+		EndsAt:        &endsAt,
+		SalonMasterID: &masterID,
+	})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if result.AppointmentID == uuid.Nil {
+		t.Fatal("expected appointment id")
+	}
+	if len(notifier.calls) != 1 {
+		t.Fatalf("expected 1 notification call, got %d", len(notifier.calls))
+	}
+	call := notifier.calls[0]
+	if call.notifType != "appointment.created" {
+		t.Fatalf("notification type: got %q", call.notifType)
+	}
+	if call.salonID != salonID {
+		t.Fatalf("salon id: got %s want %s", call.salonID, salonID)
+	}
+	if call.salonMasterID == nil || *call.salonMasterID != masterID {
+		t.Fatalf("salon master id: got %v want %s", call.salonMasterID, masterID)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(call.data, &payload); err != nil {
+		t.Fatalf("notification payload json: %v", err)
+	}
+	if payload["appointmentId"] == "" || payload["salonId"] == "" {
+		t.Fatalf("notification payload missing ids: %s", string(call.data))
 	}
 }

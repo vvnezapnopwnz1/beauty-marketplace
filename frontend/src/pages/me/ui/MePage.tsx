@@ -28,6 +28,8 @@ import { GeneralSection } from './sections/GeneralSection'
 import { SecuritySection } from './sections/SecuritySection'
 import { DangerSection } from './sections/DangerSection'
 import { SalonInvitesSection } from './sections/SalonInvitesSection'
+import NotificationMenuPopover from '@widgets/NotificationsPopover/NotificationMenuPopover'
+import MenuIcon from '@mui/icons-material/Menu'
 
 type TabKey = 'general' | 'security' | 'danger' | 'invites'
 
@@ -71,6 +73,8 @@ export function MePage() {
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
   const narrow = useMediaQuery('(max-width:899px)')
+
+  const [notificationsAnchor, setNotificationsAnchor] = useState<null | HTMLElement>(null)
 
   const currentTab = asTab(params.get('tab'))
   const pendingInvites = profile?.effectiveRoles?.pendingInvites ?? 0
@@ -169,7 +173,16 @@ export function MePage() {
         })}
       </Box>
 
-      <Box sx={{ px: 1, py: 2, borderTop: `1px solid ${dashboard.borderSubtle}`, mt: 'auto' }}>
+      <Box
+        sx={{
+          px: 1,
+          py: 2,
+          borderTop: `1px solid ${dashboard.borderSubtle}`,
+          mt: 'auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+        }}
+      >
         <Box
           sx={{
             display: 'flex',
@@ -178,9 +191,12 @@ export function MePage() {
             gap: 1,
             cursor: 'pointer',
             width: '100%',
-            textAlign: 'right',
+            textAlign: 'left',
           }}
-          onClick={e => setUserMenuAnchor(e.currentTarget as HTMLElement)}
+          onClick={() => {
+            setUserMenuAnchor(null)
+            navigate(ROUTES.ME)
+          }}
         >
           <Avatar
             sx={{
@@ -200,6 +216,9 @@ export function MePage() {
             <Typography sx={{ fontSize: 11, color: dashboard.muted }}>Учетная запись</Typography>
           </Box>
         </Box>
+        <IconButton onClick={e => setUserMenuAnchor(e.currentTarget as HTMLElement)}>
+          <MenuIcon />
+        </IconButton>
         <Menu
           anchorEl={userMenuAnchor}
           open={!!userMenuAnchor}
@@ -213,14 +232,14 @@ export function MePage() {
           >
             Главная
           </MenuItem>
-          <MenuItem
+          {/* <MenuItem
             onClick={() => {
               setUserMenuAnchor(null)
               navigate(`${ROUTES.ME}?tab=general`)
             }}
           >
             Профиль
-          </MenuItem>
+          </MenuItem> */}
           {memberships.length === 1 && (
             <MenuItem
               onClick={() => {
@@ -256,7 +275,9 @@ export function MePage() {
           <MenuItem
             onClick={() => {
               setUserMenuAnchor(null)
-              void dispatch(logout())
+              void dispatch(logout()).finally(() => {
+                navigate(ROUTES.HOME)
+              })
             }}
           >
             Выйти
@@ -287,6 +308,7 @@ export function MePage() {
             px: 2,
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 1,
             borderBottom: `1px solid ${dashboard.borderSubtle}`,
             bgcolor: dashboard.sidebar,
@@ -300,6 +322,11 @@ export function MePage() {
           <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>
             {TITLES[currentTab]}
           </Typography>
+          <NotificationMenuPopover
+            open={notificationsAnchor}
+            handleClosePopover={() => setNotificationsAnchor(null)}
+            setOpenPopover={setNotificationsAnchor}
+          />
         </Box>
 
         <Box sx={{ flex: 1, overflow: 'auto', px: { xs: 2, md: 3 }, py: 3 }}>

@@ -67,7 +67,11 @@ export function DashboardAppointments() {
         />
         <ShowAppointmentsGrid />
 
-        <CreateAppointmentDrawer open={isCreateOpen} onClose={handleCloseDrawer} />
+        <CreateAppointmentDrawer
+          key={isCreateOpen ? 'create' : 'idle'}
+          open={isCreateOpen}
+          onClose={handleCloseDrawer}
+        />
 
         <AppointmentDrawer open={isEditOpen} appointmentId={drawerData.id} onClose={handleCloseDrawer} />
       </Box>

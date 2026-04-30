@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+	domainmodel "github.com/yourusername/beauty-marketplace/internal/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
 )
 
@@ -49,11 +52,26 @@ type SalonClaimService interface {
 type salonClaimService struct {
 	claimRepo repository.SalonClaimRepository
 	salonRepo repository.SalonRepository
+	dashRepo  repository.DashboardRepository
+	places    PlacesService
+	notify    NotificationService
 }
 
 // NewSalonClaimService constructs SalonClaimService.
-func NewSalonClaimService(claimRepo repository.SalonClaimRepository, salonRepo repository.SalonRepository) SalonClaimService {
-	return &salonClaimService{claimRepo: claimRepo, salonRepo: salonRepo}
+func NewSalonClaimService(
+	claimRepo repository.SalonClaimRepository,
+	salonRepo repository.SalonRepository,
+	dashRepo repository.DashboardRepository,
+	places PlacesService,
+	notify NotificationService,
+) SalonClaimService {
+	return &salonClaimService{
+		claimRepo: claimRepo,
+		salonRepo: salonRepo,
+		dashRepo:  dashRepo,
+		places:    places,
+		notify:    notify,
+	}
 }
 
 func (s *salonClaimService) Submit(ctx context.Context, in SubmitClaimInput) (*model.SalonClaim, error) {
@@ -93,6 +111,10 @@ func (s *salonClaimService) Submit(ctx context.Context, in SubmitClaimInput) (*m
 	if err := s.claimRepo.Create(ctx, c); err != nil {
 		return nil, err
 	}
+	if s.notify != nil {
+		payload, _ := json.Marshal(map[string]any{"claimId": c.ID, "source": c.Source, "externalId": c.ExternalID, "status": c.Status})
+		_ = s.notify.CreateForUsers(ctx, []uuid.UUID{c.UserID}, "claim.submitted", "Заявка отправлена", "Заявка на салон отправлена на модерацию", payload)
+	}
 	return c, nil
 }
 
@@ -115,7 +137,16 @@ func (s *salonClaimService) Approve(ctx context.Context, claimID, reviewerID uui
 	if claim.Status != "pending" {
 		return uuid.Nil, ErrClaimNotPending
 	}
-	return s.claimRepo.ApproveClaim(ctx, claimID, reviewerID)
+	salonID, err := s.claimRepo.ApproveClaim(ctx, claimID, reviewerID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	_ = s.bootstrapSalonSchedule(ctx, salonID, claim)
+	if s.notify != nil {
+		payload, _ := json.Marshal(map[string]any{"claimId": claimID, "salonId": salonID, "status": "approved"})
+		_ = s.notify.CreateForUsers(ctx, []uuid.UUID{claim.UserID}, "claim.approved", "Заявка одобрена", "Ваш салон успешно добавлен в платформу", payload)
+	}
+	return salonID, nil
 }
 
 func (s *salonClaimService) Reject(ctx context.Context, claimID, reviewerID uuid.UUID, reason string) error {
@@ -129,5 +160,148 @@ func (s *salonClaimService) Reject(ctx context.Context, claimID, reviewerID uuid
 	if claim.Status != "pending" {
 		return ErrClaimNotPending
 	}
-	return s.claimRepo.RejectClaim(ctx, claimID, reviewerID, reason)
+	if err := s.claimRepo.RejectClaim(ctx, claimID, reviewerID, reason); err != nil {
+		return err
+	}
+	if s.notify != nil {
+		payload, _ := json.Marshal(map[string]any{"claimId": claimID, "status": "rejected", "reason": reason})
+		_ = s.notify.CreateForUsers(ctx, []uuid.UUID{claim.UserID}, "claim.rejected", "Заявка отклонена", "Заявка на салон отклонена модератором", payload)
+	}
+	return nil
+}
+
+func (s *salonClaimService) bootstrapSalonSchedule(ctx context.Context, salonID uuid.UUID, claim *model.SalonClaim) error {
+	existing, err := s.dashRepo.ListWorkingHours(ctx, salonID)
+	if err != nil {
+		return err
+	}
+	if len(existing) > 0 {
+		return nil
+	}
+
+	rows := defaultSalonWorkingHours(salonID)
+	if claim != nil && strings.EqualFold(claim.Source, "2gis") && strings.TrimSpace(claim.ExternalID) != "" {
+		detail, err := s.places.GetByExternalID(ctx, claim.ExternalID, "ru_RU")
+		if err == nil && detail != nil {
+			if from2GIS := mapWorkingHoursFromPlaceDetail(salonID, detail); len(from2GIS) > 0 {
+				rows = from2GIS
+			}
+		}
+	}
+	return s.dashRepo.ReplaceWorkingHours(ctx, salonID, rows)
+}
+
+func defaultSalonWorkingHours(salonID uuid.UUID) []model.WorkingHour {
+	rows := make([]model.WorkingHour, 0, 7)
+	for day := 0; day < 7; day++ {
+		rows = append(rows, model.WorkingHour{
+			SalonID:   salonID,
+			DayOfWeek: int16(day),
+			OpensAt:   "10:00:00",
+			ClosesAt:  "21:00:00",
+			IsClosed:  day == 0, // Sunday.
+		})
+	}
+	return rows
+}
+
+func mapWorkingHoursFromPlaceDetail(salonID uuid.UUID, detail *domainmodel.PlaceDetail) []model.WorkingHour {
+	byDay := map[int]model.WorkingHour{}
+	for day := 0; day < 7; day++ {
+		byDay[day] = model.WorkingHour{
+			SalonID:   salonID,
+			DayOfWeek: int16(day),
+			OpensAt:   "10:00:00",
+			ClosesAt:  "21:00:00",
+			IsClosed:  true,
+		}
+	}
+
+	if detail == nil {
+		return nil
+	}
+	for _, day := range detail.WeeklySchedule {
+		dow, ok := dayToWeekday(day.Day)
+		if !ok {
+			continue
+		}
+		row := byDay[dow]
+		if detail.Schedule247 || day.Is247 {
+			row.IsClosed = false
+			row.OpensAt = "00:00:00"
+			row.ClosesAt = "23:59:00"
+			row.BreakStartsAt = nil
+			row.BreakEndsAt = nil
+			byDay[dow] = row
+			continue
+		}
+		if len(day.WorkingHours) == 0 {
+			row.IsClosed = true
+			row.BreakStartsAt = nil
+			row.BreakEndsAt = nil
+			byDay[dow] = row
+			continue
+		}
+		firstFrom, okFrom := normalizeScheduleClock(day.WorkingHours[0].From)
+		firstTo, okTo := normalizeScheduleClock(day.WorkingHours[0].To)
+		if !okFrom || !okTo {
+			continue
+		}
+		row.IsClosed = false
+		row.OpensAt = firstFrom
+		row.ClosesAt = firstTo
+		row.BreakStartsAt = nil
+		row.BreakEndsAt = nil
+		if len(day.WorkingHours) > 1 {
+			bs, okBS := normalizeScheduleClock(day.WorkingHours[0].To)
+			be, okBE := normalizeScheduleClock(day.WorkingHours[1].From)
+			if okBS && okBE && bs < be {
+				row.BreakStartsAt = &bs
+				row.BreakEndsAt = &be
+			}
+			lastTo, okLast := normalizeScheduleClock(day.WorkingHours[len(day.WorkingHours)-1].To)
+			if okLast {
+				row.ClosesAt = lastTo
+			}
+		}
+		byDay[dow] = row
+	}
+
+	rows := make([]model.WorkingHour, 0, 7)
+	for day := 0; day < 7; day++ {
+		rows = append(rows, byDay[day])
+	}
+	return rows
+}
+
+func dayToWeekday(day string) (int, bool) {
+	switch strings.ToLower(strings.TrimSpace(day)) {
+	case "sun":
+		return 0, true
+	case "mon":
+		return 1, true
+	case "tue":
+		return 2, true
+	case "wed":
+		return 3, true
+	case "thu":
+		return 4, true
+	case "fri":
+		return 5, true
+	case "sat":
+		return 6, true
+	default:
+		return 0, false
+	}
+}
+
+func normalizeScheduleClock(v string) (string, bool) {
+	s := strings.TrimSpace(v)
+	if len(s) == 5 {
+		return s + ":00", true
+	}
+	if len(s) == 8 {
+		return s, true
+	}
+	return "", false
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { Box, Typography, Grid, Button, CircularProgress, useMediaQuery } from '@mui/material'
 import { useTranslation } from 'react-i18next'
-import { NavBar } from '@shared/ui/NavBar'
+import { NavBar } from '@shared/ui/Navbar/NavBar'
 import {
   SearchResultCard,
   SearchResultCardSkeleton,
@@ -33,6 +33,7 @@ import { PromoBanner } from './PromoBanner'
 import { MapToggleButton } from './MapToggleButton'
 import { assignFeaturedVariants } from '../lib/calcFeaturedScore'
 import { useBrandColors, useThemeMode } from '@shared/theme'
+import mockSearchData from '../../../../../mock-search.json'
 
 /** Скелетон под первый батч: featured-vertical + 4 normal (чётные батчи в assignFeaturedVariants). */
 const SEARCH_LOADING_SKELETON_VARIANTS: SearchResultCardVariant[] = [
@@ -77,6 +78,7 @@ function pinsFromPlaceItems(items: PlaceItem[]): MapSidebarPin[] {
 }
 
 type ViewMode = 'list' | 'map'
+const USE_MOCK_SEARCH = true
 
 export function SearchPage() {
   const { t } = useTranslation()
@@ -124,6 +126,20 @@ export function SearchPage() {
   const [activePinId, setActivePinId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const listScrollYRef = useRef(0)
+  const mockItems = useMemo(() => mockSearchData.items as SearchResultItem[], [])
+
+  const filteredMockItems = useMemo(() => {
+    if (!USE_MOCK_SEARCH) return []
+    const normalizedQuery = query.trim().toLowerCase()
+    return mockItems.filter(item => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        (item.address ?? '').toLowerCase().includes(normalizedQuery)
+      const matchesCategory = !category || item.category === category
+      return matchesQuery && matchesCategory
+    })
+  }, [mockItems, query, category])
 
   const showPlaces = placesResult !== null && placesResult.items.length > 0
 
@@ -133,6 +149,7 @@ export function SearchPage() {
   }, [showPlaces])
 
   useEffect(() => {
+    if (USE_MOCK_SEARCH) return
     if (!locationReady) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1)
@@ -164,6 +181,7 @@ export function SearchPage() {
   ])
 
   const loadMore = useCallback(() => {
+    if (USE_MOCK_SEARCH) return
     if (searchFetching || !searchResult || searchResult.items.length >= searchResult.total) return
     const nextPage = page + 1
     setPage(nextPage)
@@ -217,6 +235,7 @@ export function SearchPage() {
   }, [loadMore])
 
   const handleSearch = useCallback(() => {
+    if (USE_MOCK_SEARCH) return
     const q = query.trim()
     if (!q) return
     triggerSearch({
@@ -232,13 +251,15 @@ export function SearchPage() {
   }, [query, lat, lon, regionId, category, locationTag, triggerSearch])
 
   const displaySearchItems = useMemo(() => {
-    const items = searchResult?.items ?? []
+    const items = USE_MOCK_SEARCH ? filteredMockItems : (searchResult?.items ?? [])
     if (!onlineOnly) return items
     return [...items].sort((a, b) => {
       if (a.onlineBooking === b.onlineBooking) return 0
       return a.onlineBooking ? -1 : 1
     })
-  }, [searchResult, onlineOnly])
+  }, [filteredMockItems, searchResult, onlineOnly])
+
+  const effectiveTotal = USE_MOCK_SEARCH ? filteredMockItems.length : (searchResult?.total ?? 0)
 
   const bentoRows = useMemo(() => assignFeaturedVariants(displaySearchItems), [displaySearchItems])
 
@@ -248,9 +269,11 @@ export function SearchPage() {
   }, [showPlaces, placesResult?.items, displaySearchItems])
 
   /** Пока нет первого ответа search — скелетон (раньше было только searchFetching&&null → «пусто» до старта fetch). */
-  const loading = showPlaces
-    ? placesFetching
-    : !locationReady || (searchResult === null && !searchError)
+  const loading = USE_MOCK_SEARCH
+    ? false
+    : showPlaces
+      ? placesFetching
+      : !locationReady || (searchResult === null && !searchError)
 
   const mainEmpty =
     !showPlaces && locationReady && !searchFetching && displaySearchItems.length === 0
@@ -296,7 +319,7 @@ export function SearchPage() {
       ) : (
         <Typography sx={{ fontSize: 14, color: COLORS.inkSoft }}>
           <Box component="strong" sx={{ color: COLORS.ink }}>
-            {(searchResult?.total ?? 0).toLocaleString('ru-RU')}
+            {effectiveTotal.toLocaleString('ru-RU')}
           </Box>{' '}
           {t('places.foundInCity')}
         </Typography>
@@ -420,7 +443,7 @@ export function SearchPage() {
               </Box>
             ))}
           </Box>
-          {searchResult && displaySearchItems.length < searchResult.total && (
+          {!USE_MOCK_SEARCH && searchResult && displaySearchItems.length < searchResult.total && (
             <Box
               ref={sentinelRef}
               sx={{ height: 40, mt: 4, display: 'flex', justifyContent: 'center' }}
@@ -475,9 +498,7 @@ export function SearchPage() {
             fontWeight: 600,
             color: COLORS.accent,
             bgcolor: COLORS.blushLight,
-            border: isLightHero
-              ? `1px solid ${COLORS.border}`
-              : '1px solid rgba(216,149,107,0.3)',
+            border: isLightHero ? `1px solid ${COLORS.border}` : '1px solid rgba(216,149,107,0.3)',
             px: '14px',
             py: '6px',
             borderRadius: 100,

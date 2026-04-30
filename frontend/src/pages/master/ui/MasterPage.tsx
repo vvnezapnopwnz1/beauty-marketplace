@@ -1,17 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  Card,
-  Chip,
-  Skeleton,
-  Stack,
-  Typography,
-} from '@mui/material'
-import { NavBar } from '@shared/ui/NavBar'
+import { Alert, Avatar, Box, Button, Card, Chip, Skeleton, Stack, Typography } from '@mui/material'
+import { NavBar } from '@shared/ui/Navbar/NavBar'
 import { StarRow } from '@shared/ui/StarRow'
 import { fetchMasterProfile, type MasterProfilePublic } from '@shared/api/salonApi'
 import { salonPath } from '@shared/config/routes'
@@ -109,7 +99,12 @@ export function MasterPage() {
     <Box minHeight="100vh" bgcolor="background.default">
       <NavBar />
       <Box sx={{ maxWidth: 800, mx: 'auto', px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 5 } }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} gap={3} alignItems={{ xs: 'center', sm: 'flex-start' }} sx={{ mb: 3 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          gap={3}
+          alignItems={{ xs: 'center', sm: 'flex-start' }}
+          sx={{ mb: 3 }}
+        >
           {data.avatarUrl ? (
             <Avatar
               src={data.avatarUrl}
@@ -149,14 +144,26 @@ export function MasterPage() {
               {data.displayName}
             </Typography>
             {specs.length > 0 && (
-              <Stack direction="row" gap={0.75} flexWrap="wrap" justifyContent={{ xs: 'center', sm: 'flex-start' }} sx={{ mb: 1.5 }}>
+              <Stack
+                direction="row"
+                gap={0.75}
+                flexWrap="wrap"
+                justifyContent={{ xs: 'center', sm: 'flex-start' }}
+                sx={{ mb: 1.5 }}
+              >
                 {specs.map(s => (
                   <Chip key={s} label={s} size="small" sx={{ fontWeight: 500 }} />
                 ))}
               </Stack>
             )}
             {showRating && (
-              <Stack direction="row" alignItems="center" gap={1} justifyContent={{ xs: 'center', sm: 'flex-start' }} sx={{ mb: 1 }}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                gap={1}
+                justifyContent={{ xs: 'center', sm: 'flex-start' }}
+                sx={{ mb: 1 }}
+              >
                 <StarRow rating={data.cachedRating!} size={16} />
                 <Typography sx={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>
                   {data.cachedRating!.toFixed(1)}
@@ -176,7 +183,15 @@ export function MasterPage() {
         </Stack>
 
         {data.bio?.trim() && (
-          <Typography sx={{ fontSize: 15, color: COLORS.inkSoft, lineHeight: 1.7, mb: 4, whiteSpace: 'pre-wrap' }}>
+          <Typography
+            sx={{
+              fontSize: 15,
+              color: COLORS.inkSoft,
+              lineHeight: 1.7,
+              mb: 4,
+              whiteSpace: 'pre-wrap',
+            }}
+          >
             {data.bio.trim()}
           </Typography>
         )}
@@ -195,7 +210,9 @@ export function MasterPage() {
 
         <Stack gap={2}>
           {data.salons.length === 0 && (
-            <Typography sx={{ color: COLORS.inkSoft, fontSize: 15 }}>Нет активных салонов в профиле.</Typography>
+            <Typography sx={{ color: COLORS.inkSoft, fontSize: 15 }}>
+              Нет активных салонов в профиле.
+            </Typography>
           )}
           {data.salons.map(s => (
             <Card
@@ -209,9 +226,13 @@ export function MasterPage() {
               }}
             >
               <Box sx={{ p: 2.5 }}>
-                <Typography sx={{ fontSize: 18, fontWeight: 600, color: COLORS.ink, mb: 0.5 }}>{s.salonName}</Typography>
+                <Typography sx={{ fontSize: 18, fontWeight: 600, color: COLORS.ink, mb: 0.5 }}>
+                  {s.salonName}
+                </Typography>
                 {s.salonAddress ? (
-                  <Typography sx={{ fontSize: 14, color: COLORS.inkSoft, mb: 1.5 }}>{s.salonAddress}</Typography>
+                  <Typography sx={{ fontSize: 14, color: COLORS.inkSoft, mb: 1.5 }}>
+                    {s.salonAddress}
+                  </Typography>
                 ) : null}
                 <Typography sx={{ fontSize: 13, color: COLORS.inkFaint, mb: 1 }}>
                   Как в салоне: {s.displayNameInSalon}

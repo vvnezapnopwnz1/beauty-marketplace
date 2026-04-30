@@ -17,7 +17,7 @@ import {
   rejectClaim,
   type AdminClaimItem,
 } from '@shared/api/claimApi'
-import { NavBar } from '@shared/ui/NavBar'
+import { NavBar } from '@shared/ui/Navbar/NavBar'
 
 export function AdminClaimsPage() {
   const [claims, setClaims] = useState<AdminClaimItem[]>([])
@@ -93,7 +93,7 @@ export function AdminClaimsPage() {
         {actionError && <Alert severity="error">{actionError}</Alert>}
 
         <Stack gap={2}>
-          {claims.map((claim) => (
+          {claims.map(claim => (
             <Box
               key={claim.id}
               sx={{ p: 2.5, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
@@ -132,7 +132,11 @@ export function AdminClaimsPage() {
                   "{claim.comment}"
                 </Typography>
               )}
-              <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.disabled"
+                sx={{ mt: 0.5, display: 'block' }}
+              >
                 {new Date(claim.createdAt).toLocaleString('ru-RU')}
               </Typography>
 
@@ -142,7 +146,7 @@ export function AdminClaimsPage() {
                     size="small"
                     placeholder="Причина отклонения"
                     value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
+                    onChange={e => setRejectReason(e.target.value)}
                     sx={{ flex: 1 }}
                   />
                   <Button

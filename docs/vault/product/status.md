@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-04-28
+updated: 2026-04-30
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -10,6 +10,20 @@ code_pointers:
 # Статус разработки — Beauty Marketplace
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
+
+### Последние изменения (2026-04-30)
+
+- **Notifications provider на уровне приложения:** подписка на `SSE` и показ snackbar входящих уведомлений вынесены из `NotificationMenuPopover` в `frontend/src/app/NotificationsProvider.tsx`, подключенный в `main.tsx`. Это убирает зависимость от рендера popover и обеспечивает обработку новых уведомлений на всех страницах авторизованного пользователя. `NotificationMenuPopover` оставлен для списка/бейджа и действий `seen/read`.
+- **Dashboard calendar → новая запись:** при клике по свободному слоту в недельном или дневном календаре (`DashboardCalendar`) поле «Дата и время» в `CreateAppointmentDrawer` заполняется выбранным слотом; форма сбрасывается из `initialData` при каждом открытии drawer (раньше `useState` брал значение только при первом монтировании). Для плейсхолдера `id === 'new'` не открывается `AppointmentDrawer`, чтобы не дублировать UI и запрос детали записи.
+- **Frontend snackbar crash fix:** кастомные snackbars (`ActionSnackbar`, `FormSnackbar`) теперь используют `forwardRef` и передают ref/style на DOM-обёртку, как требует notistack для transition-анимаций. Это устраняет runtime error `notistack - Custom snackbar is not refForwarding` при показе уведомлений.
+- **Public booking notifications fix:** публичная запись через страницу салона (`POST /api/v1/salons/:id/bookings`) теперь создаёт in-app notification `appointment.created` для участников салона и назначенного мастера так же, как ручное создание записи из кабинета. Логика получателей вынесена в общий `AppointmentNotifier`, который переиспользуют `BookingService` и `DashboardService`; SSE `/api/v1/notifications/stream` получает событие сразу после создания уведомления.
+- **Notifications seen/read upgrade:** добавлена миграция `000026_notifications_seen` (`notifications.seen_at` + индекс `idx_notifications_user_unseen`), API `POST /api/v1/notifications/:id/seen` и `POST /api/v1/notifications/seen-all`, а `GET /api/v1/notifications/unread-count` теперь возвращает оба счётчика `{ unread, unseen }`. `POST .../read` и `POST .../read-all` автоматически заполняют `seen_at`, если ранее было `NULL`. Фронтенд (`entities/notification`, `NotificationsPopover`) использует бейдж по `unseen`, отмечает `seen` при показе snackbar/открытии popover и помечает уведомление `read` после успешного CTA «Подтвердить запись».
+
+### Последние изменения (2026-04-29)
+
+- **Notifications MVP foundation (in-app + SSE backend):** добавлен базовый модуль уведомлений: миграция `000025_notifications` (`notifications`, `notification_preferences`, `telegram_outbox`), backend `NotificationService` + `NotificationRepository`, REST API (`GET /api/v1/notifications`, `GET /api/v1/notifications/unread-count`, `POST /api/v1/notifications/:id/read`, `POST /api/v1/notifications/read-all`) и SSE stream `GET /api/v1/notifications/stream`. Уведомления о создании/смене статуса записи и по claim-flow (submitted/approved/rejected) теперь пишутся в `notifications`; фронтенд получил entity `notification` (RTK Query) и бейдж/список уведомлений в `UserMenu`.
+- **Logout UX/state fix (dashboard/master/me):** после `POST /api/auth/logout` фронтенд теперь гарантированно делает переход на главную (`/`) из меню пользователя (dashboard, master-dashboard, `/me`), а клиентская очистка сессии дополнительно сбрасывает `activeSalonId` и `profile`-слайс. Это убирает кейс, когда после успешного logout UI оставался на dashboard и визуально выглядел как авторизованный.
+- **Инициализация расписания при создании салона через claim:** после approve заявки салона бэкенд теперь автоматически заполняет `working_hours` для нового `salon_id`: сначала пытается построить неделю из `2GIS` (`PlaceDetail.WeeklySchedule` по `source=2gis` и `external_id`), а при недоступности/пустом графике использует fallback по умолчанию (Пн–Сб 10:00–21:00, Вс выходной). Это устраняет кейс пустого ответа `GET /api/v1/dashboard/schedule` с `workingHours: []` сразу после создания кабинета.
 
 ### Последние изменения (2026-04-28)
 

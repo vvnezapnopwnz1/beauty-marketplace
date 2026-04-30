@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Typography, Drawer, IconButton, Switch, useMediaQuery, useTheme, Avatar, Menu, MenuItem } from '@mui/material'
+import {
+  Box,
+  Typography,
+  Drawer,
+  IconButton,
+  Switch,
+  useMediaQuery,
+  useTheme,
+  Avatar,
+  Menu,
+  MenuItem,
+} from '@mui/material'
 import { Route, Routes, useMatch, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ROUTES, dashboardPath, dashboardSectionPath, salonRoleLabelRu } from '@shared/config/routes'
+import {
+  ROUTES,
+  dashboardPath,
+  dashboardSectionPath,
+  salonRoleLabelRu,
+} from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
 import { useAppSelector, useAppDispatch } from '@app/store'
 import { selectUser, logout } from '@features/auth-by-phone/model/authSlice'
@@ -18,6 +34,8 @@ import { PersonnelView } from './views/PersonnelView'
 import { fetchSalonProfile } from '@shared/api/dashboardApi'
 import { setActiveSalonId } from '@shared/lib/activeSalon'
 import { rtkApi } from '@shared/api/rtkApi'
+import NotificationMenuPopover from '@widgets/NotificationsPopover/NotificationMenuPopover'
+import MenuIcon from '@mui/icons-material/Menu'
 
 type Section =
   | 'overview'
@@ -185,7 +203,7 @@ export function DashboardPage() {
     if (!user) return
     if (user.role !== 'salon_owner') return
     if (onboardingStatus?.salonId !== salonId) return
-    if (onboardingStatus.completed === false) {
+    if (onboardingStatus?.completed === false && onboardingStatus !== null) {
       navigate(salonId ? `/dashboard/${salonId}/onboarding` : ROUTES.ME, { replace: true })
     }
   }, [navigate, onboardingStatus, user, salonId])
@@ -203,7 +221,9 @@ export function DashboardPage() {
       items = items.filter(item => item.id !== 'personnel')
     }
     if (role === 'receptionist') {
-      return items.filter(item => ['overview', 'calendar', 'appointments', 'clients'].includes(item.id))
+      return items.filter(item =>
+        ['overview', 'calendar', 'appointments', 'clients'].includes(item.id),
+      )
     }
     if (role === 'admin') {
       return items.filter(item => item.id !== 'profile')
@@ -226,6 +246,7 @@ export function DashboardPage() {
       <Route path="staff/:staffId" element={<StaffTabsView />} />
     </Routes>
   )
+  const [notificationsAnchor, setNotificationsAnchor] = useState<null | HTMLElement>(null)
 
   const sidebar = (
     <Box
@@ -238,11 +259,31 @@ export function DashboardPage() {
         borderRight: `1px solid ${dashboard.borderSubtle}`,
       }}
     >
-      <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${dashboard.borderSubtle}`, cursor: 'pointer' }} onClick={() => navigate(ROUTES.HOME)}>
-        <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: dashboard.text }}>
-          beauti<Box component="span" sx={{ color: dashboard.accent }}>ca</Box>
+      <Box
+        sx={{
+          px: 2.5,
+          py: 2,
+          borderBottom: `1px solid ${dashboard.borderSubtle}`,
+          cursor: 'pointer',
+        }}
+        onClick={() => navigate(ROUTES.HOME)}
+      >
+        <Typography
+          sx={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 18,
+            fontWeight: 600,
+            color: dashboard.text,
+          }}
+        >
+          beauti
+          <Box component="span" sx={{ color: dashboard.accent }}>
+            ca
+          </Box>
         </Typography>
-        <Typography sx={{ fontSize: 11, color: dashboard.muted, mt: 0.5 }}>Панель салона</Typography>
+        <Typography sx={{ fontSize: 11, color: dashboard.muted, mt: 0.5 }}>
+          Панель салона
+        </Typography>
       </Box>
       <Box component="nav" sx={{ flex: 1, minHeight: 0, py: 1, overflow: 'auto' }}>
         {visibleNav.map(item => {
@@ -267,7 +308,10 @@ export function DashboardPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                '&:hover': { bgcolor: on ? dashboard.accent : dashboard.navHover, color: on ? dashboard.onAccent : dashboard.text },
+                '&:hover': {
+                  bgcolor: on ? dashboard.accent : dashboard.navHover,
+                  color: on ? dashboard.onAccent : dashboard.text,
+                },
               }}
             >
               <span>{item.icon}</span>
@@ -276,26 +320,87 @@ export function DashboardPage() {
           )
         })}
       </Box>
-      <Box sx={{ p: 2, borderTop: `1px solid ${dashboard.borderSubtle}`, mt: 'auto' }}>
+      <Box
+        sx={{
+          p: 2,
+          borderTop: `1px solid ${dashboard.borderSubtle}`,
+          mt: 'auto',
+          // justifyContent: 'flex-end',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 1,
+        }}
+      >
         <Box
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
-          onClick={(e) => setUserMenuAnchor(e.currentTarget as HTMLElement)}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            cursor: 'pointer',
+            // direction: 'rtl',
+          }}
+          onClick={() => {
+            setUserMenuAnchor(null)
+            navigate(ROUTES.ME)
+          }}
         >
-          <Avatar sx={{ width: 40, height: 40, bgcolor: dashboard.accent, color: dashboard.onAccent, fontWeight: 700 }}>
+          <Avatar
+            sx={{
+              width: 40,
+              height: 40,
+              bgcolor: dashboard.accent,
+              color: dashboard.onAccent,
+              fontWeight: 700,
+            }}
+          >
             {initials(user?.displayName)}
           </Avatar>
           <Box>
-            <Typography sx={{ fontSize: 13, color: dashboard.text, fontWeight: 600 }}>{user?.displayName ? user.displayName.split(' ')[0] : 'Пользователь'}</Typography>
-            <Typography sx={{ fontSize: 11, color: dashboard.muted }}>{salonRoleSubtitle}</Typography>
+            <Typography sx={{ fontSize: 13, color: dashboard.text, fontWeight: 600 }}>
+              {user?.displayName ? user.displayName.split(' ')[0] : 'Пользователь'}
+            </Typography>
+            <Typography sx={{ fontSize: 11, color: dashboard.muted }}>
+              {salonRoleSubtitle}
+            </Typography>
           </Box>
         </Box>
-        <Menu anchorEl={userMenuAnchor} open={!!userMenuAnchor} onClose={() => setUserMenuAnchor(null)}>
-          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.HOME) }}>Главная</MenuItem>
-          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.ME) }}>Профиль</MenuItem>
-          {salonId ? (
-            <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(dashboardPath(salonId)) }}>Обзор салона</MenuItem>
-          ) : null}
-          <MenuItem onClick={() => { setUserMenuAnchor(null); void dispatch(logout()) }}>Выйти</MenuItem>
+        <IconButton onClick={e => setUserMenuAnchor(e.currentTarget as HTMLElement)}>
+          <MenuIcon />
+        </IconButton>
+        <Menu
+          anchorEl={userMenuAnchor}
+          open={!!userMenuAnchor}
+          onClose={() => setUserMenuAnchor(null)}
+        >
+          <MenuItem
+            onClick={() => {
+              setUserMenuAnchor(null)
+              navigate(ROUTES.HOME)
+            }}
+          >
+            Главная
+          </MenuItem>
+          {/* {salonId ? (
+            <MenuItem
+              onClick={() => {
+                setUserMenuAnchor(null)
+                navigate(dashboardPath(salonId))
+              }}
+            >
+              Обзор салона
+            </MenuItem>
+          ) : null} */}
+          <MenuItem
+            onClick={() => {
+              setUserMenuAnchor(null)
+              void dispatch(logout()).finally(() => {
+                navigate(ROUTES.HOME)
+              })
+            }}
+          >
+            Выйти
+          </MenuItem>
         </Menu>
       </Box>
     </Box>
@@ -307,13 +412,13 @@ export function DashboardPage() {
       {narrow && (
         <>
           <Drawer
-        anchor="left"
-        open={drawer}
-        onClose={() => setDrawer(false)}
-        PaperProps={{ sx: { bgcolor: dashboard.sidebar, height: '100vh', width: 220 } }}
-      >
-        {sidebar}
-      </Drawer>
+            anchor="left"
+            open={drawer}
+            onClose={() => setDrawer(false)}
+            PaperProps={{ sx: { bgcolor: dashboard.sidebar, height: '100vh', width: 220 } }}
+          >
+            {sidebar}
+          </Drawer>
         </>
       )}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -323,6 +428,7 @@ export function DashboardPage() {
             px: 2,
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 1,
             borderBottom: `1px solid ${dashboard.borderSubtle}`,
             bgcolor: dashboard.sidebar,
@@ -333,18 +439,29 @@ export function DashboardPage() {
               ☰
             </IconButton>
           )}
-          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>{headerTitle}</Typography>
-          <Switch
-            size="small"
-            checked={mode === 'dark'}
-            onChange={(_, checked) => setMode(checked ? 'dark' : 'light')}
-            inputProps={{ 'aria-label': 'Toggle dashboard theme' }}
-            sx={{
-              ml: 'auto',
-              '& .MuiSwitch-track': { bgcolor: dashboard.border },
-              '& .MuiSwitch-thumb': { bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark },
-            }}
-          />
+          <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>
+            {headerTitle}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <NotificationMenuPopover
+              open={notificationsAnchor}
+              handleClosePopover={() => setNotificationsAnchor(null)}
+              setOpenPopover={setNotificationsAnchor}
+            />
+            <Switch
+              size="small"
+              checked={mode === 'dark'}
+              onChange={(_, checked) => setMode(checked ? 'dark' : 'light')}
+              inputProps={{ 'aria-label': 'Toggle dashboard theme' }}
+              sx={{
+                ml: 'auto',
+                '& .MuiSwitch-track': { bgcolor: dashboard.border },
+                '& .MuiSwitch-thumb': {
+                  bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark,
+                },
+              }}
+            />
+          </Box>
         </Box>
         <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflow: 'auto' }}>{content}</Box>
       </Box>

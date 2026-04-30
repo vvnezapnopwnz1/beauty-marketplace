@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -187,6 +188,14 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 		return nil, err
 	}
 
+	payload, _ := json.Marshal(map[string]any{
+		"appointmentId": ap.ID,
+		"salonId":       salonID,
+		"startsAt":      ap.StartsAt,
+		"status":        ap.Status,
+	})
+	s.notifier.NotifySalonMembers(ctx, salonID, ap.SalonMasterID, "appointment.created", "Новая запись", "Появилась новая запись в расписании", payload)
+
 	return ap, nil
 }
 
@@ -212,7 +221,17 @@ func (s *dashboardService) UpdateAppointmentStatus(ctx context.Context, salonID,
 	if !allowedStatusTransition(a.Status, newStatus) {
 		return fmt.Errorf("invalid status transition")
 	}
-	return s.dash.UpdateAppointmentStatus(ctx, salonID, appointmentID, newStatus)
+	if err := s.dash.UpdateAppointmentStatus(ctx, salonID, appointmentID, newStatus); err != nil {
+		return err
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"appointmentId": appointmentID,
+		"salonId":       salonID,
+		"from":          a.Status,
+		"to":            newStatus,
+	})
+	s.notifier.NotifySalonMembers(ctx, salonID, a.SalonMasterID, "appointment.status_changed", "Статус записи изменен", "Запись обновлена", payload)
+	return nil
 }
 
 func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.UUID, in UpdateAppointmentInput) error {

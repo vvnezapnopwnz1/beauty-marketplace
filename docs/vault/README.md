@@ -1,6 +1,6 @@
 ---
 title: Beauty Marketplace — Vault MOC
-updated: 2026-04-28
+updated: 2026-04-30
 source_of_truth: true
 code_pointers: []
 ---
@@ -55,6 +55,7 @@ code_pointers: []
 | [`entities/dashboard-i18n.md`](entities/dashboard-i18n.md) | i18n дашборда |
 | [`entities/entity-prototype.md`](entities/entity-prototype.md) | Прототип сущности |
 | [`entities/master-profiles-salon-masters.md`](entities/master-profiles-salon-masters.md) | Мастер в салоне vs профиль |
+| [`entities/notifications.md`](entities/notifications.md) | In-app уведомления: seen/read, SSE, счётчики |
 | [`entities/plan-unified-search.md`](entities/plan-unified-search.md) | Unified search |
 | [`entities/service-categories.md`](entities/service-categories.md) | Slug категорий услуг |
 | [`entities/user-roles.md`](entities/user-roles.md) | Двухуровневая модель ролей и `EffectiveRoles` |

@@ -1,18 +1,10 @@
 import { useState } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { Alert, Box, Button, CircularProgress, Stack, TextField, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 
 import { searchPlaces } from '@shared/api/placesApi'
 import { claimSalonPath } from '@shared/config/routes'
-import { NavBar } from '@shared/ui/NavBar'
+import { NavBar } from '@shared/ui/Navbar/NavBar'
 
 interface PlaceResult {
   externalId: string
@@ -35,7 +27,7 @@ export function JoinPage() {
     try {
       const res = await searchPlaces({ q: query.trim(), pageSize: 10 })
       setResults(
-        res.items.map((p) => ({
+        res.items.map(p => ({
           externalId: p.externalId,
           name: p.name,
           address: p.address ?? '',
@@ -65,10 +57,15 @@ export function JoinPage() {
             fullWidth
             placeholder="Название или адрес вашего салона"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && void handleSearch()}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && void handleSearch()}
           />
-          <Button variant="contained" disabled={loading} onClick={handleSearch} sx={{ minWidth: 120 }}>
+          <Button
+            variant="contained"
+            disabled={loading}
+            onClick={handleSearch}
+            sx={{ minWidth: 120 }}
+          >
             {loading ? <CircularProgress size={20} /> : 'Найти'}
           </Button>
         </Stack>
@@ -80,7 +77,7 @@ export function JoinPage() {
         )}
 
         <Stack gap={1.5} textAlign="left">
-          {results.map((p) => (
+          {results.map(p => (
             <Box
               key={p.externalId}
               sx={{

@@ -53,19 +53,16 @@ export function CreateAppointmentDrawer({
   const { inputBaseSx, selectMenuSx } = useDashboardFormStyles()
   const dispatch = useAppDispatch()
 
-  const [
-    createAppointment,
-    { isLoading },
-  ] = useCreateAppointmentMutation()
+  const [createAppointment, { isLoading }] = useCreateAppointmentMutation()
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     guestName: '',
     guestPhone: '',
     note: '',
-    startsAt: initialData?.startsAt || '',
-    staffId: initialData?.staffId || '',
-    serviceIds: initialData?.serviceIds || [],
-  })
+    startsAt: initialData?.startsAt ?? '',
+    staffId: initialData?.staffId ?? '',
+    serviceIds: initialData?.serviceIds?.length ? [...initialData.serviceIds] : [],
+  }))
   const [services, setServices] = useState<DashboardServiceRow[]>([])
   const [staff, setStaff] = useState<DashboardStaffRow[]>([])
 
@@ -77,7 +74,8 @@ export function CreateAppointmentDrawer({
   }, [open])
 
   const handleSubmit = async () => {
-    if (form.serviceIds.length === 0) return enqueueFormSnackbar('Выберите хотя бы одну услугу', 'Error')
+    if (form.serviceIds.length === 0)
+      return enqueueFormSnackbar('Выберите хотя бы одну услугу', 'Error')
     if (!form.startsAt) return enqueueFormSnackbar('Выберите время начала', 'Error')
     if (!form.staffId) return enqueueFormSnackbar('Выберите мастера', 'Error')
     if (!form.guestName.trim()) return enqueueFormSnackbar('Введите имя гостя', 'Error')
@@ -93,7 +91,10 @@ export function CreateAppointmentDrawer({
       dispatch(closeAppointmentDrawer())
       onClose()
     } catch (error) {
-      enqueueFormSnackbar(error instanceof Error ? error.message : 'Ошибка при создании записи', 'Error')
+      enqueueFormSnackbar(
+        error instanceof Error ? error.message : 'Ошибка при создании записи',
+        'Error',
+      )
     }
   }
 

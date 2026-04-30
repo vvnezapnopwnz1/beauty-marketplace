@@ -680,7 +680,16 @@ export function MasterDashboardPage() {
                 {m.salonName || 'Салон'}
               </MenuItem>
             ))}
-          <MenuItem onClick={() => { setUserMenuAnchor(null); void dispatch(logout()) }}>Выйти</MenuItem>
+          <MenuItem
+            onClick={() => {
+              setUserMenuAnchor(null)
+              void dispatch(logout()).finally(() => {
+                navigate(ROUTES.HOME)
+              })
+            }}
+          >
+            Выйти
+          </MenuItem>
         </Menu>
       </Box>
     </Box>

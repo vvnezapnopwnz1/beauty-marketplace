@@ -34,29 +34,13 @@ function normalizeAppointment(raw: LegacyAppointment): DashboardAppointment {
     }
 }
 
-
-// const q = new URLSearchParams()
-// if (params.from) q.set('from', params.from)
-// if (params.to) q.set('to', params.to)
-// if (params.statuses?.length) q.set('status', params.statuses.join(','))
-// if (params.staffId) q.set('salon_master_id', params.staffId)
-// if (params.serviceId) q.set('service_id', params.serviceId)
-// if (params.sortBy) q.set('sort_by', params.sortBy)
-// if (params.sortDir) q.set('sort_dir', params.sortDir)
-// if (params.search) q.set('search', params.search)
-// if (params.page) q.set('page', String(params.page))
-// if (params.pageSize) q.set('page_size', String(params.pageSize))
-// const res = await authFetch(`${base()}/appointments?${q}`)
-// return parseJson<DashboardAppointmentList>(res)
-
-//rewrite old fetch request functions to rtk api queries and mutations
 const appointmentApi = rtkApi.injectEndpoints({
     endpoints: (builder) => ({
         getAppointments: builder.query<DashboardAppointmentList, DashboardAppointmentListReq>({
             providesTags: ['Appointments'],
             query: (params: DashboardAppointmentListReq) => ({
                 method: 'GET',
-                url: '/appointments',
+                url: '/api/v1/dashboard/appointments',
                 params: {
                     from: params.from,
                     to: params.to,
@@ -78,7 +62,7 @@ const appointmentApi = rtkApi.injectEndpoints({
         getAppointmentById: builder.query<DashboardAppointment, string>({
             providesTags: ['Appointments'],
             query: (id) => ({
-                url: '/appointments/' + id,
+                url: '/api/v1/dashboard/appointments/' + id,
             }),
             transformResponse: (response: LegacyAppointment): DashboardAppointment => normalizeAppointment(response),
         }),
@@ -89,7 +73,7 @@ const appointmentApi = rtkApi.injectEndpoints({
                 if (status !== undefined) payload.status = status
                 return {
                     method: 'PATCH',
-                    url: '/appointments/' + id + '/status',
+                    url: '/api/v1/dashboard/appointments/' + id + '/status',
                     body: payload,
                 }
             },
@@ -108,7 +92,7 @@ const appointmentApi = rtkApi.injectEndpoints({
                 if (body.guestPhone !== undefined) payload.guestPhone = body.guestPhone
                 return {
                     method: 'PUT',
-                    url: '/appointments/' + id,
+                    url: '/api/v1/dashboard/appointments/' + id,
                     body: payload,
                 }
             },
@@ -117,7 +101,7 @@ const appointmentApi = rtkApi.injectEndpoints({
             invalidatesTags: ['Appointments'],
             query: (body: CreateAppointmentPayload) => ({
                 method: 'POST',
-                url: '/appointments',
+                url: '/api/v1/dashboard/appointments',
                 body: {
                     serviceIds: body.serviceIds,
                     salonMasterId: body.salonMasterId ?? undefined,

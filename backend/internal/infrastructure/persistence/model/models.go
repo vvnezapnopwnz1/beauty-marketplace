@@ -466,6 +466,62 @@ func (TelegramPhoneLink) TableName() string {
 	return "telegram_phone_links"
 }
 
+type Notification struct {
+	ID         uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	UserID     *uuid.UUID `gorm:"type:uuid;column:user_id"`
+	GuestPhone *string    `gorm:"column:guest_phone"`
+	Type       string     `gorm:"column:type;not null"`
+	Title      string     `gorm:"column:title;not null"`
+	Body       string     `gorm:"column:body;not null"`
+	Data       []byte     `gorm:"column:data;type:jsonb;not null"`
+	SeenAt     *time.Time `gorm:"column:seen_at"`
+	IsRead     bool       `gorm:"column:is_read;not null;default:false"`
+	ReadAt     *time.Time `gorm:"column:read_at"`
+	CreatedAt  time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+func (n *Notification) BeforeCreate(tx *gorm.DB) error {
+	if n.ID == uuid.Nil {
+		n.ID = uuid.New()
+	}
+	return nil
+}
+
+func (Notification) TableName() string { return "notifications" }
+
+type NotificationPreference struct {
+	UserID     uuid.UUID `gorm:"type:uuid;primaryKey;column:user_id"`
+	InApp      bool      `gorm:"column:in_app;not null;default:true"`
+	Telegram   bool      `gorm:"column:telegram;not null;default:true"`
+	Email      bool      `gorm:"column:email;not null;default:false"`
+	MobilePush bool      `gorm:"column:mobile_push;not null;default:false"`
+	UpdatedAt  time.Time `gorm:"column:updated_at;not null;autoUpdateTime"`
+}
+
+func (NotificationPreference) TableName() string { return "notification_preferences" }
+
+type TelegramOutbox struct {
+	ID             uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	ChatID         int64      `gorm:"column:chat_id;not null"`
+	Text           string     `gorm:"column:text;not null"`
+	NotificationID *uuid.UUID `gorm:"type:uuid;column:notification_id"`
+	Status         string     `gorm:"column:status;not null;default:pending"`
+	Attempts       int        `gorm:"column:attempts;not null;default:0"`
+	LastError      *string    `gorm:"column:last_error"`
+	NextAttemptAt  time.Time  `gorm:"column:next_attempt_at;not null"`
+	SentAt         *time.Time `gorm:"column:sent_at"`
+	CreatedAt      time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+func (t *TelegramOutbox) BeforeCreate(tx *gorm.DB) error {
+	if t.ID == uuid.Nil {
+		t.ID = uuid.New()
+	}
+	return nil
+}
+
+func (TelegramOutbox) TableName() string { return "telegram_outbox" }
+
 // Review maps to reviews (phase 2 migration).
 type Review struct {
 	ID            uuid.UUID `gorm:"type:uuid;primaryKey"`

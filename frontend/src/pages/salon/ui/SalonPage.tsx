@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from '@mui/material'
-import { NavBar } from '@shared/ui/NavBar'
+import { NavBar } from '@shared/ui/Navbar/NavBar'
 import { CARD_GRADIENTS, formatPrice } from '@entities/salon'
 import type { SalonView, Service } from '@entities/salon'
 import { fetchPlaceByExternalId } from '@shared/api/placesApi'
@@ -38,13 +38,16 @@ function apiToView(a: ApiSalon): SalonView {
     badge: a.badge,
     cardGradient: a.cardGradient,
     emoji: a.emoji,
-    services: a.services.map(s => ({ id: s.id, name: s.name, durationMinutes: s.durationMinutes, priceCents: s.priceCents })),
+    services: a.services.map(s => ({
+      id: s.id,
+      name: s.name,
+      durationMinutes: s.durationMinutes,
+      priceCents: s.priceCents,
+    })),
     workingHours: a.workingHours,
     schedule247: false,
     scheduleComment: undefined,
-    contactRows: [
-      ...(a.phonePublic ? [{ type: 'phone' as const, value: a.phonePublic }] : []),
-    ],
+    contactRows: [...(a.phonePublic ? [{ type: 'phone' as const, value: a.phonePublic }] : [])],
     canBookOnline: a.onlineBooking && a.services.length > 0,
     hasOwner: true,
     timezone: a.timezone || 'Europe/Moscow',
@@ -134,7 +137,14 @@ export function SalonPage() {
   }, [view])
 
   if (loading) {
-    return <Box minHeight="100vh"><NavBar /><Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box></Box>
+    return (
+      <Box minHeight="100vh">
+        <NavBar />
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+          <CircularProgress />
+        </Box>
+      </Box>
+    )
   }
 
   if (!view) {
@@ -142,8 +152,12 @@ export function SalonPage() {
       <Box>
         <NavBar />
         <Box sx={{ maxWidth: 720, mx: 'auto', py: 8 }}>
-          <Alert severity="warning" sx={{ mb: 2 }}>{error ?? 'Салон не найден'}</Alert>
-          <Button variant="contained" onClick={() => navigate(ROUTES.HOME)}>Назад к поиску</Button>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {error ?? 'Салон не найден'}
+          </Alert>
+          <Button variant="contained" onClick={() => navigate(ROUTES.HOME)}>
+            Назад к поиску
+          </Button>
         </Box>
       </Box>
     )
@@ -158,31 +172,72 @@ export function SalonPage() {
         sx={{
           position: 'relative',
           height: { xs: 220, sm: 300 },
-          background: CARD_GRADIENTS[(view.cardGradient as keyof typeof CARD_GRADIENTS) ?? 'bg1'] ?? CARD_GRADIENTS.bg1,
+          background:
+            CARD_GRADIENTS[(view.cardGradient as keyof typeof CARD_GRADIENTS) ?? 'bg1'] ??
+            CARD_GRADIENTS.bg1,
           overflow: 'hidden',
         }}
       >
         {view.photos[0] ? (
-          <Box component="img" src={view.photos[0]} alt={view.name} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <Box
+            component="img"
+            src={view.photos[0]}
+            alt={view.name}
+            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
         ) : (
           <Box sx={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center' }}>
-            <Typography sx={{ fontSize: { xs: 88, sm: 136 }, opacity: 0.18 }}>{view.emoji ?? '✂'}</Typography>
+            <Typography sx={{ fontSize: { xs: 88, sm: 136 }, opacity: 0.18 }}>
+              {view.emoji ?? '✂'}
+            </Typography>
           </Box>
         )}
-        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,10,10,0.62) 0%, rgba(10,10,10,0.1) 65%, transparent 100%)' }} />
-        <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, px: { xs: 2, sm: 4 }, pb: 2.5 }}>
-          <Typography sx={{ color: 'white', fontFamily: "'Fraunces', serif", fontSize: { xs: 28, sm: 36 }, fontWeight: 500 }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(to top, rgba(10,10,10,0.62) 0%, rgba(10,10,10,0.1) 65%, transparent 100%)',
+          }}
+        />
+        <Box
+          sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, px: { xs: 2, sm: 4 }, pb: 2.5 }}
+        >
+          <Typography
+            sx={{
+              color: 'white',
+              fontFamily: "'Fraunces', serif",
+              fontSize: { xs: 28, sm: 36 },
+              fontWeight: 500,
+            }}
+          >
             {view.name}
           </Typography>
           <Stack direction="row" alignItems="center" gap={1.2} flexWrap="wrap" mt={0.8}>
             <Stack direction="row" alignItems="center" gap={0.6}>
               <StarRow rating={view.rating ?? 0} />
-              <Typography sx={{ color: 'white', fontSize: 14, fontWeight: 700 }}>{(view.rating ?? 0).toFixed(1)}</Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.72)', fontSize: 13 }}>({view.reviewCount ?? 0} отзывов)</Typography>
+              <Typography sx={{ color: 'white', fontSize: 14, fontWeight: 700 }}>
+                {(view.rating ?? 0).toFixed(1)}
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.72)', fontSize: 13 }}>
+                ({view.reviewCount ?? 0} отзывов)
+              </Typography>
             </Stack>
-            <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: 13 }}>📍 {view.address}</Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontSize: 13 }}>
+              📍 {view.address}
+            </Typography>
             {view.mode === 'place' && (
-              <Box sx={{ px: 1.2, py: 0.35, borderRadius: 100, bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 12, fontWeight: 600 }}>
+              <Box
+                sx={{
+                  px: 1.2,
+                  py: 0.35,
+                  borderRadius: 100,
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
                 2GIS карточка
               </Box>
             )}
@@ -203,8 +258,25 @@ export function SalonPage() {
         </Box>
       </Box>
 
-      <Box sx={{ bgcolor: COLORS.white, borderBottom: `1px solid ${COLORS.border}`, position: 'sticky', top: 64, zIndex: 9 }}>
-        <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3 }, display: 'flex', gap: 0.5, overflowX: 'auto' }}>
+      <Box
+        sx={{
+          bgcolor: COLORS.white,
+          borderBottom: `1px solid ${COLORS.border}`,
+          position: 'sticky',
+          top: 64,
+          zIndex: 9,
+        }}
+      >
+        <Box
+          sx={{
+            maxWidth: 1200,
+            mx: 'auto',
+            px: { xs: 2, sm: 3 },
+            display: 'flex',
+            gap: 0.5,
+            overflowX: 'auto',
+          }}
+        >
           {tabs.map(t => {
             const active = activeTab === t.id
             return (
@@ -230,19 +302,41 @@ export function SalonPage() {
       </Box>
 
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3 }, py: 3.5 }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 340px' }, gap: 3.5 }}>
+        <Box
+          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 340px' }, gap: 3.5 }}
+        >
           <Box>
             {activeTab === 'overview' && (
               <Stack gap={3}>
                 {!!view.description && (
-                  <Box sx={{ bgcolor: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: '16px', p: 2.5 }}>
-                    <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1 }}>О салоне</Typography>
-                    <Typography sx={{ color: COLORS.inkSoft, lineHeight: 1.7 }}>{view.description}</Typography>
+                  <Box
+                    sx={{
+                      bgcolor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '16px',
+                      p: 2.5,
+                    }}
+                  >
+                    <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1 }}>
+                      О салоне
+                    </Typography>
+                    <Typography sx={{ color: COLORS.inkSoft, lineHeight: 1.7 }}>
+                      {view.description}
+                    </Typography>
                   </Box>
                 )}
                 {!!view.workingHours && (
-                  <Box sx={{ bgcolor: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: '16px', p: 2.5 }}>
-                    <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1.4 }}>Режим работы</Typography>
+                  <Box
+                    sx={{
+                      bgcolor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '16px',
+                      p: 2.5,
+                    }}
+                  >
+                    <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1.4 }}>
+                      Режим работы
+                    </Typography>
                     <SalonScheduleList
                       workingHours={view.workingHours}
                       schedule247={view.schedule247}
@@ -250,8 +344,17 @@ export function SalonPage() {
                     />
                   </Box>
                 )}
-                <Box sx={{ bgcolor: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: '16px', p: 2.5 }}>
-                  <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1.4 }}>Контакты</Typography>
+                <Box
+                  sx={{
+                    bgcolor: COLORS.white,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: '16px',
+                    p: 2.5,
+                  }}
+                >
+                  <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1.4 }}>
+                    Контакты
+                  </Typography>
                   <Typography sx={{ color: COLORS.inkSoft, mb: 1 }}>{view.address}</Typography>
                   <SalonContactList contactRows={view.contactRows} />
                 </Box>
@@ -260,18 +363,36 @@ export function SalonPage() {
 
             {activeTab === 'services' && (
               <Stack gap={1.4}>
-                {view.services.length === 0 && <Typography color="text.secondary">Услуги пока недоступны</Typography>}
+                {view.services.length === 0 && (
+                  <Typography color="text.secondary">Услуги пока недоступны</Typography>
+                )}
                 {view.services.map(s => (
-                  <Box key={s.id ?? s.name} sx={{ bgcolor: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: '14px', p: 2.2 }}>
+                  <Box
+                    key={s.id ?? s.name}
+                    sx={{
+                      bgcolor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '14px',
+                      p: 2.2,
+                    }}
+                  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
                       <Box>
                         <Typography sx={{ fontWeight: 600, fontSize: 15 }}>{s.name}</Typography>
-                        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>{s.durationMinutes} мин</Typography>
+                        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
+                          {s.durationMinutes} мин
+                        </Typography>
                       </Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: 16 }}>{formatPrice(s.priceCents)} ₽</Typography>
+                      <Typography sx={{ fontWeight: 700, fontSize: 16 }}>
+                        {formatPrice(s.priceCents)} ₽
+                      </Typography>
                     </Box>
                     {view.mode === 'salon' && view.canBookOnline && s.id && (
-                      <Button sx={{ mt: 1.2 }} variant="contained" onClick={() => setBookingDialogOpen(true)}>
+                      <Button
+                        sx={{ mt: 1.2 }}
+                        variant="contained"
+                        onClick={() => setBookingDialogOpen(true)}
+                      >
                         Записаться
                       </Button>
                     )}
@@ -282,11 +403,25 @@ export function SalonPage() {
 
             {activeTab === 'masters' && view.mode === 'salon' && (
               <Stack gap={1.2}>
-                {masters.length === 0 && <Typography color="text.secondary">Нет мастеров для отображения</Typography>}
+                {masters.length === 0 && (
+                  <Typography color="text.secondary">Нет мастеров для отображения</Typography>
+                )}
                 {masters.map(m => (
-                  <Box key={m.id} sx={{ bgcolor: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: '14px', p: 2.2 }}>
+                  <Box
+                    key={m.id}
+                    sx={{
+                      bgcolor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '14px',
+                      p: 2.2,
+                    }}
+                  >
                     <Typography sx={{ fontWeight: 600, mb: 0.8 }}>{m.displayName}</Typography>
-                    {m.masterProfile?.id && <Button onClick={() => navigate(masterPath(m.masterProfile!.id))}>Профиль мастера</Button>}
+                    {m.masterProfile?.id && (
+                      <Button onClick={() => navigate(masterPath(m.masterProfile!.id))}>
+                        Профиль мастера
+                      </Button>
+                    )}
                   </Box>
                 ))}
               </Stack>
@@ -295,12 +430,27 @@ export function SalonPage() {
 
           <Box>
             {view.mode === 'salon' && view.canBookOnline ? (
-              <Box sx={{ bgcolor: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: '18px', p: 2.2, position: { md: 'sticky' }, top: { md: 86 } }}>
-                <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1 }}>Запись онлайн</Typography>
+              <Box
+                sx={{
+                  bgcolor: COLORS.white,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: '18px',
+                  p: 2.2,
+                  position: { md: 'sticky' },
+                  top: { md: 86 },
+                }}
+              >
+                <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, mb: 1 }}>
+                  Запись онлайн
+                </Typography>
                 <Stack direction="row" alignItems="center" gap={0.8} mb={1.5}>
                   <StarRow rating={view.rating ?? 0} />
-                  <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{(view.rating ?? 0).toFixed(1)}</Typography>
-                  <Typography sx={{ fontSize: 13, color: COLORS.inkSoft }}>· {view.reviewCount ?? 0} отзывов</Typography>
+                  <Typography sx={{ fontSize: 14, fontWeight: 700 }}>
+                    {(view.rating ?? 0).toFixed(1)}
+                  </Typography>
+                  <Typography sx={{ fontSize: 13, color: COLORS.inkSoft }}>
+                    · {view.reviewCount ?? 0} отзывов
+                  </Typography>
                 </Stack>
                 <Divider sx={{ mb: 1.5 }} />
                 <Button fullWidth variant="contained" onClick={() => setBookingDialogOpen(true)}>
@@ -325,8 +475,21 @@ export function SalonPage() {
       )}
 
       {view.mode === 'place' && phone && (
-        <Box sx={{ display: { xs: 'block', md: 'none' }, p: 2, position: 'fixed', left: 0, right: 0, bottom: 0, bgcolor: 'background.paper', borderTop: '1px solid #E5DFD5' }}>
-          <Button fullWidth component="a" href={`tel:${phone}`} variant="contained">Позвонить</Button>
+        <Box
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            p: 2,
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'background.paper',
+            borderTop: '1px solid #E5DFD5',
+          }}
+        >
+          <Button fullWidth component="a" href={`tel:${phone}`} variant="contained">
+            Позвонить
+          </Button>
         </Box>
       )}
     </Box>

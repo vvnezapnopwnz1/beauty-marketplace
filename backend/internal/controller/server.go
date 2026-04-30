@@ -33,6 +33,7 @@ func NewHTTPServer(
 	mh *MasterController,
 	md *MasterDashboardController,
 	uh *UserController,
+	nh *NotificationController,
 	claimCtrl *SalonClaimController,
 	devCtrl *DevController,
 ) *http.Server {
@@ -67,6 +68,13 @@ func NewHTTPServer(
 	mux.HandleFunc("/api/v1/master-dashboard/", withCORS(auth.RequireAuth(jwtMgr, md.MasterDashboardRoutes)))
 	mux.HandleFunc("/api/v1/me", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
 	mux.HandleFunc("/api/v1/me/", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
+	mux.HandleFunc("GET /api/v1/notifications", withCORS(auth.RequireAuth(jwtMgr, nh.List)))
+	mux.HandleFunc("GET /api/v1/notifications/unread-count", withCORS(auth.RequireAuth(jwtMgr, nh.UnreadCount)))
+	mux.HandleFunc("POST /api/v1/notifications/{id}/seen", withCORS(auth.RequireAuth(jwtMgr, nh.MarkSeen)))
+	mux.HandleFunc("POST /api/v1/notifications/seen-all", withCORS(auth.RequireAuth(jwtMgr, nh.MarkAllSeen)))
+	mux.HandleFunc("POST /api/v1/notifications/{id}/read", withCORS(auth.RequireAuth(jwtMgr, nh.MarkRead)))
+	mux.HandleFunc("POST /api/v1/notifications/read-all", withCORS(auth.RequireAuth(jwtMgr, nh.MarkAllRead)))
+	mux.HandleFunc("GET /api/v1/notifications/stream", withCORS(auth.RequireAuth(jwtMgr, nh.Stream)))
 
 	// Salon claim (JWT required)
 	mux.HandleFunc("POST /api/v1/salons/claim", withCORS(auth.RequireAuth(jwtMgr, claimCtrl.SubmitClaim)))
@@ -111,6 +119,12 @@ type statusRecorder struct {
 func (r *statusRecorder) WriteHeader(code int) {
 	r.status = code
 	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *statusRecorder) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func withRequestID(next http.Handler) http.Handler {

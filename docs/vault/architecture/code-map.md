@@ -1,6 +1,6 @@
 ---
 title: Указатели концепция → код
-updated: 2026-04-28
+updated: 2026-04-30
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -26,8 +26,9 @@ code_pointers:
 | CRM клиенты салона | `backend/internal/service/salon_client_service.go`, `controller/salon_client_controller.go` | `frontend/src/shared/api/clientsApi.ts`, `pages/dashboard/ui/ClientsListView.tsx` |
 | Staff entity (RTK Query + slice) | `backend/internal/service/dashboard_staff.go`, `controller/dashboard_controller.go` | `frontend/src/entities/staff/model/staffApi.ts`, `frontend/src/entities/staff/model/staffSlice.ts`, `frontend/src/pages/dashboard/ui/views/StaffTabsView.tsx` |
 | Персонал салона, инвайты членов (`salon_member_invites`) | `repository/salon_member_invite.go`, `persistence/salon_member_invite_repository.go`, `service/dashboard_personnel.go`, `controller/dashboard_personnel_handlers.go`, `service/auth.go` (привязка инвайтов по телефону после OTP) | `frontend/src/entities/salon-invite/`, `pages/dashboard/ui/views/PersonnelView.tsx`, `drawers/InviteStaffDrawer.tsx` |
-| Multi-salon дашборд (`X-Salon-Id`, маршрут `/dashboard/:salonId`) | `controller/dashboard_controller.go` (`resolveSalonMembership`) | `shared/lib/activeSalon.ts`, `shared/config/routes.ts`, `App.tsx`, `DashboardPage.tsx`, `features/user-menu/ui/UserMenu.tsx` |
+| Multi-salon дашборд (`X-Salon-Id`, маршрут `/dashboard/:salonId`) | `controller/dashboard_controller.go` (`resolveSalonMembership`) | `shared/lib/activeSalon.ts`, `shared/config/routes.ts`, `App.tsx`, `DashboardPage.tsx`, `widgets/user-menu/ui/UserMenu.tsx` |
 | Приглашения в салон (принятие пользователем) | `controller/user_controller.go` (`/api/v1/me/salon-invites/*`) | `shared/api/meApi.ts`, `pages/me/ui/sections/SalonInvitesSection.tsx` |
+| In-app notifications (`seen`/`read`, SSE, счетчики) | `controller/notification_controller.go`, `service/notification_service.go`, `service/appointment_notifier.go`, `infrastructure/persistence/notification_repository.go` | `app/NotificationsProvider.tsx`, `entities/notification/model/notificationApi.ts`, `entities/notification/model/notificationStream.ts`, `widgets/NotificationsPopover/NotificationMenuPopover.tsx`, `widgets/NotificationsPopover/lib/handleIncomingNotification.tsx` |
 | DnD перенос записи | `PUT .../appointments/:id` (см. dashboard) | `frontend/src/features/reschedule-appointment/`, `pages/dashboard/lib/dndCalendarUtils.ts` |
 | Dev auth/e2e bootstrap (`DEV_OTP_BYPASS_ANY`, `/api/dev/*`) | `backend/internal/config/config.go`, `backend/internal/service/auth.go`, `backend/internal/controller/dev_controller.go`, `backend/internal/controller/server.go` | `frontend/e2e/helpers/api-helpers.ts`, `frontend/e2e/playwright.config.ts`, `frontend/e2e/tests/flow-runner.spec.ts` |
 | E2E flow-runner (YAML сценарии + action registry) | — | `frontend/e2e/scenarios/flows.yaml`, `frontend/e2e/actions/index.ts`, `frontend/e2e/helpers/flow-loader.ts` |

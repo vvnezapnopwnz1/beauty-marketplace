@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -28,11 +29,12 @@ type BookingService interface {
 }
 
 type bookingService struct {
-	salons  repository.SalonRepository
-	appts   repository.AppointmentRepository
-	slots   repository.BookingSlotsRepository
-	clients repository.SalonClientRepository
-	now     func() time.Time
+	salons   repository.SalonRepository
+	appts    repository.AppointmentRepository
+	slots    repository.BookingSlotsRepository
+	clients  repository.SalonClientRepository
+	notifier AppointmentNotifier
+	now      func() time.Time
 }
 
 // NewBookingService constructs BookingService.
@@ -41,8 +43,9 @@ func NewBookingService(
 	appts repository.AppointmentRepository,
 	slots repository.BookingSlotsRepository,
 	clients repository.SalonClientRepository,
+	notifier AppointmentNotifier,
 ) BookingService {
-	return &bookingService{salons: salons, appts: appts, slots: slots, clients: clients, now: time.Now}
+	return &bookingService{salons: salons, appts: appts, slots: slots, clients: clients, notifier: notifier, now: time.Now}
 }
 
 // GuestBookingInput is a public booking request without auth.
@@ -62,9 +65,9 @@ type GuestBookingInput struct {
 
 // GuestBookingResult is returned after a successful insert.
 type GuestBookingResult struct {
-	AppointmentID uuid.UUID `json:"appointmentId"`
-	StartsAt      time.Time `json:"startsAt"`
-	EndsAt        time.Time `json:"endsAt"`
+	AppointmentID uuid.UUID  `json:"appointmentId"`
+	StartsAt      time.Time  `json:"startsAt"`
+	EndsAt        time.Time  `json:"endsAt"`
 	SalonMasterID *uuid.UUID `json:"salonMasterId,omitempty"`
 }
 
@@ -311,6 +314,16 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 		if sc, scErr := s.clients.GetOrCreateByPhone(ctx, in.SalonID, guestPhone, guestName); scErr == nil {
 			_ = s.appts.SetSalonClientID(ctx, appt.ID, sc.ID)
 		}
+	}
+
+	if s.notifier != nil {
+		payload, _ := json.Marshal(map[string]any{
+			"appointmentId": appt.ID,
+			"salonId":       in.SalonID,
+			"startsAt":      appt.StartsAt,
+			"status":        appt.Status,
+		})
+		s.notifier.NotifySalonMembers(ctx, in.SalonID, appt.SalonMasterID, "appointment.created", "Новая запись", "Появилась новая запись в расписании", payload)
 	}
 
 	return &GuestBookingResult{

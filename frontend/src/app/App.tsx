@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { SearchPage } from '@pages/search/ui/SearchPage'
 import { SalonPage } from '@pages/salon/ui/SalonPage'
 import { MasterPage } from '@pages/master/ui/MasterPage'
@@ -21,7 +21,7 @@ import '@entities/salon-invite'
 
 export function App() {
   return (
-    <BrowserRouter>
+    <>
       <AuthBootstrap />
       <DeviceLocationSync />
       <GeoLocationStorageWatcher />
@@ -41,6 +41,6 @@ export function App() {
         <Route path={ROUTES.ADMIN_CLAIMS} element={<RequireAuth><AdminClaimsPage /></RequireAuth>} />
         <Route path={ROUTES.ONBOARDING} element={<RequireAuth><OnboardingWizard /></RequireAuth>} />
       </Routes>
-    </BrowserRouter>
+    </>
   )
 }

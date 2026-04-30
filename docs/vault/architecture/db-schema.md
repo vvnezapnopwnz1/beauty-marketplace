@@ -1,6 +1,6 @@
 ---
 title: Схема базы данных
-updated: 2026-04-27
+updated: 2026-04-30
 source_of_truth: true
 code_pointers:
   - backend/internal/infrastructure/persistence/model/models.go
@@ -254,6 +254,7 @@ erDiagram
 - **salon_subscriptions** — тарифный план салона (фаза 2).
 - **SalonClaim** — заявка владельца на привязку 2GIS-места к платформе. `UNIQUE INDEX` на `(user_id, source, external_id) WHERE status IN ('pending','approved')` гарантирует один активный claim на пользователя × место. При approve — атомарная транзакция создаёт `salons` + `salon_external_ids` + `salon_members(owner)` + `salon_subscriptions(free/trial)`. Конкурирующие pending-заявки других пользователей помечаются `duplicate`. Migration: `000020_salon_claims`.
 - **salon_member_invites** — приглашение в `salon_members` по телефону; роль не может быть `owner` (CHECK). После OTP для существующего пользователя строки с тем же `phone_e164` могут получить `user_id` для списка «Мои приглашения»; принятие — отдельный вызов API. Migration: **`000024_staff_management`**.
+- **notifications** — in-app уведомления пользователя: `type`, `title`, `body`, `data` (JSONB), `is_read` / `read_at`, **`seen_at`** (отдельно от прочтения), индексы по непрочитанным и «невидимым». Связанные таблицы: **`notification_preferences`**, **`telegram_outbox`** (очередь на будущую доставку в Telegram). Migrations: **`000025_notifications`**, **`000026_notifications_seen`** (индекс и выравнивание `seen_at`). Спека: [`entities/notifications.md`](../entities/notifications.md).
 - **salons.onboarding_completed** — флаг первичного онбординга (добавлен в migration 000020). Для владельца: `false` → редирект на **`/dashboard/:salonId/onboarding`** (см. фронт `OnboardingWizard`).
 
 ## Связанные заметки

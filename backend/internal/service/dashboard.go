@@ -68,9 +68,10 @@ type DashboardService interface {
 }
 
 type dashboardService struct {
-	dash    repository.DashboardRepository
-	clients repository.SalonClientRepository
-	invites repository.SalonMemberInviteRepository
+	dash     repository.DashboardRepository
+	clients  repository.SalonClientRepository
+	invites  repository.SalonMemberInviteRepository
+	notifier AppointmentNotifier
 }
 
 // NewDashboardService constructs DashboardService.
@@ -78,6 +79,7 @@ func NewDashboardService(
 	dash repository.DashboardRepository,
 	clients repository.SalonClientRepository,
 	invites repository.SalonMemberInviteRepository,
+	notifier AppointmentNotifier,
 ) DashboardService {
-	return &dashboardService{dash: dash, clients: clients, invites: invites}
+	return &dashboardService{dash: dash, clients: clients, invites: invites, notifier: notifier}
 }

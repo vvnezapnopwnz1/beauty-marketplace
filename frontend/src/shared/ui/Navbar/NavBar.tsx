@@ -17,7 +17,7 @@ import {
   setAddressLine,
 } from '@features/location/model/locationSlice'
 import { reverseGeocode } from '@shared/api/geoApi'
-import { UserMenu } from '@features/user-menu/ui/UserMenu'
+import { UserMenu } from '@widgets/user-menu/ui/UserMenu'
 
 export function NavBar() {
   const navigate = useNavigate()

@@ -90,7 +90,15 @@ function StepIndicator({ step }: { step: WizardStep }) {
         return (
           <React.Fragment key={s.key}>
             {/* circle + label */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '6px',
+                minWidth: 0,
+              }}
+            >
               <Box
                 sx={{
                   width: 28,
@@ -109,7 +117,16 @@ function StepIndicator({ step }: { step: WizardStep }) {
                 }}
               >
                 {done ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 ) : (
@@ -171,7 +188,16 @@ function ContextBadge({ children }: { children: React.ReactNode }) {
         gap: 0.75,
       }}
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.success} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={P.success}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <polyline points="20 6 9 17 4 12" />
       </svg>
       <Typography sx={{ fontSize: 12, color: P.success, fontWeight: 500 }}>{children}</Typography>
@@ -183,9 +209,12 @@ const fieldSx = {
   '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: P.card, fontSize: 14 },
   '& .MuiOutlinedInput-notchedOutline': { borderColor: P.border },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#C8C4BE' },
-  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: P.accent },
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+    borderColor: P.accent,
+  },
   '& .MuiInputLabel-root.Mui-focused': { color: P.accent },
   '& .MuiFormHelperText-root': { color: P.textSub },
+  '& .MuiInputBase-input': { color: P.text },
 } as const
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -262,10 +291,18 @@ export function GuestBookingDialog({
     setMasterLoading(true)
     setMasterError(null)
     void fetchSalonMasters(salonId)
-      .then(rows => { if (!cancelled) setMasters(rows) })
-      .catch(() => { if (!cancelled) setMasterError('Не удалось загрузить список мастеров.') })
-      .finally(() => { if (!cancelled) setMasterLoading(false) })
-    return () => { cancelled = true }
+      .then(rows => {
+        if (!cancelled) setMasters(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setMasterError('Не удалось загрузить список мастеров.')
+      })
+      .finally(() => {
+        if (!cancelled) setMasterLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [open, step, selectedServiceIds, salonId])
 
   const mastersForSelection = useMemo(() => {
@@ -288,13 +325,24 @@ export function GuestBookingDialog({
   }, [selectedMaster, selectedServices])
 
   const handleClose = () => {
-    if (!loading) { setError(null); resetWizard(); onClose() }
+    if (!loading) {
+      setError(null)
+      resetWizard()
+      onClose()
+    }
   }
 
   const goBack = () => {
     setError(null)
-    if (step === 'contact') { setStep('slot'); return }
-    if (step === 'slot') { setSlot(null); setStep('master'); return }
+    if (step === 'contact') {
+      setStep('slot')
+      return
+    }
+    if (step === 'slot') {
+      setSlot(null)
+      setStep('master')
+      return
+    }
     if (step === 'master') {
       setSelectedMaster(null)
       if (initialServiceId != null && initialServiceId !== '') {
@@ -307,12 +355,24 @@ export function GuestBookingDialog({
 
   const submitBooking = async () => {
     setError(null)
-    if (selectedServiceIds.length === 0) { setError('Выберите хотя бы одну услугу'); return }
-    if (!slot) { setError('Выберите время'); return }
+    if (selectedServiceIds.length === 0) {
+      setError('Выберите хотя бы одну услугу')
+      return
+    }
+    if (!slot) {
+      setError('Выберите время')
+      return
+    }
     const trimmed = name.trim()
-    if (!trimmed) { setError(t('guestBooking.nameRequired')); return }
+    if (!trimmed) {
+      setError(t('guestBooking.nameRequired'))
+      return
+    }
     const e164 = toE164(phone)
-    if (!/^\+7\d{10}$/.test(e164)) { setError(t('guestBooking.phoneInvalid')); return }
+    if (!/^\+7\d{10}$/.test(e164)) {
+      setError(t('guestBooking.phoneInvalid'))
+      return
+    }
     setLoading(true)
     try {
       const primaryId = selectedServiceIds[0]!
@@ -358,7 +418,14 @@ export function GuestBookingDialog({
     >
       {/* ── Header ── */}
       <Box sx={{ px: 3, pt: 3, pb: 2.5, borderBottom: `1px solid ${P.border}` }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2.5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            mb: 2.5,
+          }}
+        >
           <Box>
             <Typography
               sx={{
@@ -381,9 +448,22 @@ export function GuestBookingDialog({
           <IconButton
             onClick={handleClose}
             size="small"
-            sx={{ color: P.textSub, '&:hover': { bgcolor: P.borderSub, color: P.textMuted }, mt: -0.25, mr: -0.5 }}
+            sx={{
+              color: P.textSub,
+              '&:hover': { bgcolor: P.borderSub, color: P.textMuted },
+              mt: -0.25,
+              mr: -0.5,
+            }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </IconButton>
@@ -395,7 +475,6 @@ export function GuestBookingDialog({
 
       {/* ── Content ── */}
       <DialogContent sx={{ px: 3, py: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-
         {/* ── 1: Service ── */}
         {step === 'service' && (
           <Stack gap={1.25}>
@@ -449,7 +528,16 @@ export function GuestBookingDialog({
                         }}
                       >
                         {checked && (
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#fff"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         )}
@@ -500,9 +588,19 @@ export function GuestBookingDialog({
             )}
 
             {masterLoading ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 4, justifyContent: 'center' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  py: 4,
+                  justifyContent: 'center',
+                }}
+              >
                 <CircularProgress size={20} sx={{ color: P.accent }} />
-                <Typography sx={{ fontSize: 13, color: P.textMuted }}>Загружаем мастеров…</Typography>
+                <Typography sx={{ fontSize: 13, color: P.textMuted }}>
+                  Загружаем мастеров…
+                </Typography>
               </Box>
             ) : mastersForSelection.length === 0 ? (
               <Stack gap={1.5} sx={{ py: 2, alignItems: 'flex-start' }}>
@@ -535,7 +633,11 @@ export function GuestBookingDialog({
                   key={m.id}
                   component="button"
                   type="button"
-                  onClick={() => { setSelectedMaster(m); setSlot(null); setStep('slot') }}
+                  onClick={() => {
+                    setSelectedMaster(m)
+                    setSlot(null)
+                    setStep('slot')
+                  }}
                   sx={{
                     textAlign: 'left',
                     width: '100%',
@@ -576,7 +678,15 @@ export function GuestBookingDialog({
                         {m.services.length} услуг{m.services.length === 1 ? 'а' : ''}
                       </Typography>
                     </Box>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={P.textSub} strokeWidth="2" strokeLinecap="round">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={P.textSub}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    >
                       <path d="M9 18l6-6-6-6" />
                     </svg>
                   </Box>
@@ -599,7 +709,10 @@ export function GuestBookingDialog({
               masterProfileId={selectedMaster.masterProfile?.id}
               salonMasterId={selectedMaster.masterProfile?.id ? undefined : selectedMaster.id}
               value={slot?.startsAt}
-              onChange={s => { setSlot(s); setStep('contact') }}
+              onChange={s => {
+                setSlot(s)
+                setStep('contact')
+              }}
             />
           </Stack>
         )}
@@ -637,14 +750,32 @@ export function GuestBookingDialog({
                 </Typography>
 
                 {selectedMaster && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pb: 1.25, mb: 0.5, borderBottom: `1px solid ${P.borderSub}` }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      pb: 1.25,
+                      mb: 0.5,
+                      borderBottom: `1px solid ${P.borderSub}`,
+                    }}
+                  >
                     <Typography sx={{ fontSize: 13, color: P.textMuted }}>Мастер</Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: P.text }}>{selectedMaster.displayName}</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: P.text }}>
+                      {selectedMaster.displayName}
+                    </Typography>
                   </Box>
                 )}
 
                 {slot && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pb: 1.25, mb: 0.5, borderBottom: `1px solid ${P.borderSub}` }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      pb: 1.25,
+                      mb: 0.5,
+                      borderBottom: `1px solid ${P.borderSub}`,
+                    }}
+                  >
                     <Typography sx={{ fontSize: 13, color: P.textMuted }}>Дата и время</Typography>
                     <Typography sx={{ fontSize: 13, fontWeight: 600, color: P.text }}>
                       {new Date(slot.startsAt).toLocaleString('ru-RU', {
@@ -665,7 +796,8 @@ export function GuestBookingDialog({
                       justifyContent: 'space-between',
                       pb: 1.25,
                       mb: 0.5,
-                      borderBottom: i < bookingSummary.lines.length - 1 ? `1px solid ${P.borderSub}` : 'none',
+                      borderBottom:
+                        i < bookingSummary.lines.length - 1 ? `1px solid ${P.borderSub}` : 'none',
                     }}
                   >
                     <Typography sx={{ fontSize: 13, color: P.textMuted }}>{l.name}</Typography>
@@ -678,7 +810,16 @@ export function GuestBookingDialog({
 
               <Divider sx={{ borderColor: P.border }} />
 
-              <Box sx={{ px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: P.borderSub }}>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  bgcolor: P.borderSub,
+                }}
+              >
                 <Typography sx={{ fontWeight: 700, fontSize: 14, color: P.text }}>Итого</Typography>
                 <Typography sx={{ fontWeight: 700, fontSize: 16, color: P.accent }}>
                   {formatPrice(bookingSummary.totalCents)} ₽

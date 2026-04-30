@@ -4,7 +4,7 @@ import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/ma
 
 import { fetchMyClaimStatus, type ClaimStatus } from '@shared/api/claimApi'
 import { ROUTES, dashboardPath } from '@shared/config/routes'
-import { NavBar } from '@shared/ui/NavBar'
+import { NavBar } from '@shared/ui/Navbar/NavBar'
 
 const STATUS_TEXT: Record<ClaimStatus, string> = {
   pending: 'На рассмотрении',
@@ -36,7 +36,7 @@ export function ClaimStatusPage() {
   useEffect(() => {
     if (missingExternalId) return
     void fetchMyClaimStatus(source, externalId)
-      .then((res) => {
+      .then(res => {
         if (!res) {
           setError('Активная заявка не найдена.')
           return
@@ -67,7 +67,11 @@ export function ClaimStatusPage() {
 
         {!missingExternalId && !loading && !error && status && (
           <Stack gap={2}>
-            <Alert severity={status === 'approved' ? 'success' : status === 'pending' ? 'info' : 'warning'}>
+            <Alert
+              severity={
+                status === 'approved' ? 'success' : status === 'pending' ? 'info' : 'warning'
+              }
+            >
               <Typography fontWeight={700}>{STATUS_TEXT[status]}</Typography>
               <Typography variant="body2">{STATUS_HINT[status]}</Typography>
             </Alert>

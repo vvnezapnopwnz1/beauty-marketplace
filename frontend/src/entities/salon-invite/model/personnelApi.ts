@@ -24,21 +24,21 @@ const personnelApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getSalonMembers: builder.query<SalonMemberRow[], void>({
       providesTags: [{ type: 'Personnel' as const, id: 'MEMBERS' }],
-      query: () => ({ url: '/salon-members' }),
+      query: () => ({ url: '/api/v1/dashboard/salon-members' }),
       transformResponse: (r: { items: SalonMemberRow[] }) => r.items ?? [],
     }),
     getStaffInvites: builder.query<StaffInviteRow[], void>({
       providesTags: [{ type: 'Personnel' as const, id: 'INVITES' }],
-      query: () => ({ url: '/staff-invites' }),
+      query: () => ({ url: '/api/v1/dashboard/staff-invites' }),
       transformResponse: (r: { items: StaffInviteRow[] }) => r.items ?? [],
     }),
     createStaffInvite: builder.mutation<StaffInviteRow, { phoneE164: string; role: string }>({
       invalidatesTags: [{ type: 'Personnel' as const, id: 'INVITES' }],
-      query: body => ({ url: '/staff-invites', method: 'POST', body }),
+      query: body => ({ url: '/api/v1/dashboard/staff-invites', method: 'POST', body }),
     }),
     revokeStaffInvite: builder.mutation<void, string>({
       invalidatesTags: [{ type: 'Personnel' as const, id: 'INVITES' }],
-      query: id => ({ url: `/staff-invites/${id}`, method: 'DELETE' }),
+      query: id => ({ url: `/api/v1/dashboard/staff-invites/${id}`, method: 'DELETE' }),
     }),
     removeSalonMember: builder.mutation<void, string>({
       invalidatesTags: () => [
@@ -46,12 +46,12 @@ const personnelApi = rtkApi.injectEndpoints({
         { type: 'Personnel' as const, id: 'INVITES' },
         { type: 'Staff' as const, id: 'LIST' },
       ],
-      query: userId => ({ url: `/salon-members/${userId}`, method: 'DELETE' }),
+      query: userId => ({ url: `/api/v1/dashboard/salon-members/${userId}`, method: 'DELETE' }),
     }),
     updateSalonMemberRole: builder.mutation<void, { userId: string; role: string }>({
       invalidatesTags: [{ type: 'Personnel' as const, id: 'MEMBERS' }],
       query: ({ userId, role }) => ({
-        url: `/salon-members/${userId}`,
+        url: `/api/v1/dashboard/salon-members/${userId}`,
         method: 'PATCH',
         body: { role },
       }),

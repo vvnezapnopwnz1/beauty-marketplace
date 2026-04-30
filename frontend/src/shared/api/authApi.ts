@@ -1,5 +1,6 @@
 /* global RequestInfo, RequestInit */
 import { getActiveSalonId } from '@shared/lib/activeSalon'
+import { clearActiveSalonId } from '@shared/lib/activeSalon'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -84,6 +85,7 @@ export function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_KEY)
   localStorage.removeItem(SESSION_ID_KEY)
+  clearActiveSalonId()
 }
 
 export async function authFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {

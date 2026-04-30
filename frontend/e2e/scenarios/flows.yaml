@@ -3,7 +3,7 @@
 # ============================================================
 # Seed strategy:
 # - Базовый backend seed поднимается через `make backend-local` (DEV_DEMO_SEED=1).
-# - Для flow с claim/2GIS используется externalId из dev-сида: 70000001087152985.
+# - Для flow с claim/2GIS используется externalId из dev-сида: 70000001045818530.
 # - Шаги, требующие предданных, подготавливаются через actions + ApiHelpers,
 #   поэтому flow НЕ гарантируют независимость при произвольном порядке запуска.
 # Каждый flow — пользовательский сценарий от начала до конца.
@@ -34,14 +34,14 @@ flows:
         data: { query: 'Салон Красоты Тест' }
 
       - action: join.claimSalon
-        data: { source: '2gis', externalId: '70000001087152985' }
+        data: { source: '2gis', externalId: '70000001045818530' }
 
       - action: claim.checkStatus
         assert: { status: 'pending' }
 
       # Admin approves (API shortcut)
       - action: admin.approveClaim
-        data: { source: '2gis', externalId: '70000001087152985' }
+        data: { source: '2gis', externalId: '70000001045818530' }
 
       - action: claim.checkStatus
         assert: { status: 'approved' }
@@ -549,9 +549,9 @@ flows:
       - action: join.searchSalon
         data: { query: 'Салон Красоты Тест' }
       - action: join.claimSalon
-        data: { source: '2gis', externalId: '70000001087152985' }
+        data: { source: '2gis', externalId: '70000001045818530' }
       - action: admin.approveClaim
-        data: { source: '2gis', externalId: '70000001087152985' }
+        data: { source: '2gis', externalId: '70000001045818530' }
       - action: claim.goToDashboard
 
       # 2. Onboarding

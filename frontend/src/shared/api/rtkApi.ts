@@ -1,13 +1,14 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { HOST_API_KEY_MIDDLEWARE } from '@shared/config/config-global';
-import { publicApiUrl } from '@shared/lib/apiPublicUrl';
 import { getStoredAccessToken, getStoredSessionId } from './authApi';
 import { getActiveSalonId } from '@shared/lib/activeSalon';
+
+const API_ORIGIN = HOST_API_KEY_MIDDLEWARE || import.meta.env.VITE_API_URL || '';
 
 export const rtkApi = createApi({
     reducerPath: 'api',
     baseQuery: fetchBaseQuery({
-        baseUrl: HOST_API_KEY_MIDDLEWARE || publicApiUrl('/api/v1/dashboard'),
+        baseUrl: API_ORIGIN,
         prepareHeaders: (headers) => {
             const token = getStoredAccessToken();
             if (token) {
@@ -29,6 +30,7 @@ export const rtkApi = createApi({
         'Clients',
         'Staff',
         'Personnel',
+        'Notifications',
     ],
     endpoints: () => ({}),
 });

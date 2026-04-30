@@ -12,6 +12,8 @@ import {
   getStoredAccessToken,
   type UserInfo,
 } from '@shared/api/authApi'
+// import { fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+// import { rtkApi } from '@shared/api/rtkApi'
 
 type AuthStep = 'phone' | 'otp'
 type OTPChannel = 'sms' | 'telegram'
@@ -152,6 +154,44 @@ export const authSlice = createSlice({
       })
   },
 })
+
+// const authApi = rtkApi.injectEndpoints({
+//   endpoints: (builder) => ({
+//     sendOtp: builder.mutation<void, { phone: string; channel: OTPChannel }>({
+//       // invalidatesTags: ['Auth'],
+//       query: ({ phone, channel }) => ({
+//         url: '/auth/otp/request',
+//         method: 'POST',
+//         body: { phone, channel },
+//       })
+//     }),
+//     confirmOtp: builder.mutation<void, { phone: string; code: string }>({
+//       query: ({ phone, code }) => ({
+//         url: '/auth/otp/verify',
+//         method: 'POST',
+//         body: { phone, code },
+//       })
+//     }),
+//     loadMe: builder.query<UserInfo, void>({
+//       query: () => ({
+//         url: '/auth/me',
+//       })
+//     }),
+//     logout: builder.mutation<void, void>({
+//       query: () => ({
+//         url: '/auth/logout',
+//         method: 'POST',
+//       })
+//     }),
+//     refreshTokens: builder.mutation<void, void>({
+//       query: () => ({
+//         url: '/auth/refresh',
+//         method: 'POST',
+//       })
+//     }),
+//   }),
+// })
+
 
 export const { backToPhone, setAuthChannel } = authSlice.actions
 

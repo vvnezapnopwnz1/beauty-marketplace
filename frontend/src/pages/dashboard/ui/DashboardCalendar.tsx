@@ -516,17 +516,22 @@ export function DashboardCalendar() {
       </Typography>
 
       <AppointmentDrawer
-        open={!!detail}
+        open={!!detail && detail.id !== 'new'}
         appointment={detail}
         onClose={() => setDetail(null)}
         onUpdated={() => void load()}
       />
 
       <CreateAppointmentDrawer
+        key={
+          createOpen && detail?.id === 'new'
+            ? `${detail.startsAt}\u0000${detail.salonMasterId ?? ''}`
+            : 'idle'
+        }
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         initialData={
-          detail?.id === 'new'
+          createOpen && detail?.id === 'new'
             ? {
                 startsAt: detail.startsAt,
                 staffId: detail.salonMasterId ?? undefined,

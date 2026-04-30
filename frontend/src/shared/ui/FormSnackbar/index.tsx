@@ -1,11 +1,13 @@
 import { Box, Typography } from '@mui/material'
 import { enqueueSnackbar, type SnackbarKey } from 'notistack'
+import { forwardRef, type CSSProperties } from 'react'
 
 export type FormSnackbarVariant = 'Error' | 'Success' | 'Info'
 
 type FormSnackbarProps = {
   message: string
   variant: FormSnackbarVariant
+  style?: CSSProperties
 }
 
 const variantStyles: Record<FormSnackbarVariant, { bg: string; color: string }> = {
@@ -14,10 +16,15 @@ const variantStyles: Record<FormSnackbarVariant, { bg: string; color: string }> 
   Info: { bg: '#2C5E97', color: '#FFFFFF' },
 }
 
-export function FormSnackbar({ message, variant }: FormSnackbarProps) {
+export const FormSnackbar = forwardRef<HTMLDivElement, FormSnackbarProps>(function FormSnackbar(
+  { message, variant, style },
+  ref,
+) {
   const cfg = variantStyles[variant]
   return (
     <Box
+      ref={ref}
+      style={style}
       sx={{
         minWidth: 280,
         maxWidth: 560,
@@ -32,7 +39,7 @@ export function FormSnackbar({ message, variant }: FormSnackbarProps) {
       <Typography sx={{ fontSize: 13, fontWeight: 500, lineHeight: 1.35 }}>{message}</Typography>
     </Box>
   )
-}
+})
 
 const notistackVariantMap: Record<FormSnackbarVariant, 'error' | 'success' | 'info'> = {
   Error: 'error',

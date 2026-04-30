@@ -23,7 +23,7 @@ export const AUTH_API = {
 export const MAP_API = import.meta.env.VITE_MAPBOX_API;
 
 export const ICONIFY_API_URL =
-  import.meta.env.VITE_ICONIFY_API_URL || 'https://iconify-plant-dev.ctr-hub.com';
+  import.meta.env.VITE_ICONIFY_API_URL || 'https://icon-sets.iconify.design/';
 // APP
 
 export const RELEASE_VERSION = import.meta.env.VITE_VERSION || '1.2.1';

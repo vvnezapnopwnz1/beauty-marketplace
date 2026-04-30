@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import type { RootState } from '@app/store'
 import { fetchMyProfile, updateMyProfile, type UpdateMePayload, type UserProfile } from '@shared/api/meApi'
+import { logout } from '@features/auth-by-phone/model/authSlice'
 
 interface ProfileState {
   profile: UserProfile | null
@@ -69,6 +70,9 @@ const profileSlice = createSlice({
         if (payload?.field) {
           state.fieldErrors[payload.field] = payload.message ?? 'Ошибка поля'
         }
+      })
+      .addCase(logout.fulfilled, () => {
+        return initialState
       })
   },
 })
