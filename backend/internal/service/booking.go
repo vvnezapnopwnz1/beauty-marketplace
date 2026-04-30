@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	domainmodel "github.com/yourusername/beauty-marketplace/internal/model"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"gorm.io/gorm"
@@ -29,12 +30,15 @@ type BookingService interface {
 }
 
 type bookingService struct {
-	salons   repository.SalonRepository
-	appts    repository.AppointmentRepository
-	slots    repository.BookingSlotsRepository
-	clients  repository.SalonClientRepository
-	notifier AppointmentNotifier
-	now      func() time.Time
+	salons      repository.SalonRepository
+	appts       repository.AppointmentRepository
+	slots       repository.BookingSlotsRepository
+	clients     repository.SalonClientRepository
+	authRepo    repository.AuthRepository
+	tgLinks     repository.TelegramLinkRepository
+	tgOutbox    repository.TelegramOutboxWriter
+	notifier    AppointmentNotifier
+	now         func() time.Time
 }
 
 // NewBookingService constructs BookingService.
@@ -43,9 +47,22 @@ func NewBookingService(
 	appts repository.AppointmentRepository,
 	slots repository.BookingSlotsRepository,
 	clients repository.SalonClientRepository,
+	authRepo repository.AuthRepository,
+	tgLinks repository.TelegramLinkRepository,
+	tgOutbox repository.TelegramOutboxWriter,
 	notifier AppointmentNotifier,
 ) BookingService {
-	return &bookingService{salons: salons, appts: appts, slots: slots, clients: clients, notifier: notifier, now: time.Now}
+	return &bookingService{
+		salons:   salons,
+		appts:    appts,
+		slots:    slots,
+		clients:  clients,
+		authRepo: authRepo,
+		tgLinks:  tgLinks,
+		tgOutbox: tgOutbox,
+		notifier: notifier,
+		now:      time.Now,
+	}
 }
 
 // GuestBookingInput is a public booking request without auth.
@@ -259,24 +276,28 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 		}
 	}
 
-	guestName := name
-	guestPhone := in.PhoneE164
 	note := trimSpace(in.Note)
 	var clientNote *string
 	if note != "" {
 		clientNote = &note
 	}
 
+	// Find or create a user account for the guest phone so the appointment is
+	// owned by a real user from the start (constraint: client_user_id XOR guest fields).
+	user, err := s.findOrCreateGuestUser(ctx, in.PhoneE164, name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve guest user: %w", err)
+	}
+
 	appt := &model.Appointment{
-		SalonID:        in.SalonID,
-		ServiceID:      primary,
-		GuestName:      &guestName,
-		GuestPhoneE164: &guestPhone,
-		SalonMasterID:  salonMasterID,
-		StartsAt:       startsAt,
-		EndsAt:         endsAt,
-		Status:         "pending",
-		ClientNote:     clientNote,
+		SalonID:       in.SalonID,
+		ServiceID:     primary,
+		ClientUserID:  &user.ID,
+		SalonMasterID: salonMasterID,
+		StartsAt:      startsAt,
+		EndsAt:        endsAt,
+		Status:        "pending",
+		ClientNote:    clientNote,
 	}
 
 	lines := make([]model.AppointmentLineItem, 0, len(svcIDs))
@@ -311,7 +332,7 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 	}
 
 	if s.clients != nil {
-		if sc, scErr := s.clients.GetOrCreateByPhone(ctx, in.SalonID, guestPhone, guestName); scErr == nil {
+		if sc, scErr := s.clients.GetOrCreateByUserID(ctx, in.SalonID, user.ID, name); scErr == nil {
 			_ = s.appts.SetSalonClientID(ctx, appt.ID, sc.ID)
 		}
 	}
@@ -326,12 +347,90 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 		s.notifier.NotifySalonMembers(ctx, in.SalonID, appt.SalonMasterID, "appointment.created", "Новая запись", "Появилась новая запись в расписании", payload)
 	}
 
+	// Best-effort: notify the guest via Telegram if they have linked their account.
+	s.tryQueueGuestTelegramNotification(ctx, in.PhoneE164, salon, appt)
+
 	return &GuestBookingResult{
 		AppointmentID: appt.ID,
 		StartsAt:      startsAt,
 		EndsAt:        endsAt,
 		SalonMasterID: salonMasterID,
 	}, nil
+}
+
+// findOrCreateGuestUser returns an existing user for the phone or creates a new one.
+// If the user exists but is soft-deleted, it returns the deleted record as-is so the
+// booking still succeeds; the user can recover their account later.
+func (s *bookingService) findOrCreateGuestUser(ctx context.Context, phone, displayName string) (*model.User, error) {
+	existing, err := s.authRepo.FindUserByPhone(ctx, phone)
+	if err == nil {
+		// User already exists — set display_name only if it's currently blank.
+		if existing.DisplayName == nil && displayName != "" {
+			dn := displayName
+			existing.DisplayName = &dn
+			// Fire-and-forget update; failure is non-fatal.
+			_ = s.authRepo.UpdateDisplayName(ctx, existing.ID, dn)
+		}
+		return existing, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	dn := displayName
+	newUser := &model.User{
+		PhoneE164:   phone,
+		DisplayName: &dn,
+		GlobalRole:  "client",
+		Locale:      "ru",
+		ThemePref:   "system",
+	}
+	if createErr := s.authRepo.CreateUser(ctx, newUser); createErr != nil {
+		// Rare race: another goroutine created the user between our lookup and insert.
+		// Re-fetch to get the canonical record.
+		if existing2, fetchErr := s.authRepo.FindUserByPhone(ctx, phone); fetchErr == nil {
+			return existing2, nil
+		}
+		return nil, createErr
+	}
+	return newUser, nil
+}
+
+// tryQueueGuestTelegramNotification sends a booking confirmation to the guest's
+// Telegram chat if they have a linked phone. All errors are swallowed — this is
+// best-effort and must never block the booking response.
+func (s *bookingService) tryQueueGuestTelegramNotification(
+	ctx context.Context,
+	guestPhone string,
+	salon *domainmodel.Salon,
+	appt *model.Appointment,
+) {
+	if s.tgLinks == nil || s.tgOutbox == nil {
+		return
+	}
+	link, err := s.tgLinks.FindByPhone(ctx, guestPhone)
+	if err != nil || link == nil {
+		return // guest hasn't linked Telegram — skip silently
+	}
+
+	salonName := "Салон"
+	if salon.NameOverride != nil && *salon.NameOverride != "" {
+		salonName = *salon.NameOverride
+	}
+
+	loc, _ := time.LoadLocation(salon.Timezone)
+	if loc == nil {
+		loc = time.UTC
+	}
+	localTime := appt.StartsAt.In(loc)
+	dateStr := localTime.Format("2 Jan 2006, 15:04")
+
+	text := fmt.Sprintf(
+		"✅ Ваша запись создана!\n\n🏪 %s\n📅 %s\n\nСтатус записи вы можете отслеживать в своём профиле на сайте.",
+		salonName, dateStr,
+	)
+
+	_ = s.tgOutbox.QueueMessage(ctx, link.ChatID, text)
 }
 
 func trimSpace(s string) string {

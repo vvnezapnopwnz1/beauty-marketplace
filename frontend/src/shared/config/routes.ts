@@ -5,6 +5,7 @@ export const ROUTES = {
   MASTER: '/master/:masterProfileId',
   LOGIN: '/login',
   ME: '/me',
+  NOTIFICATIONS: '/notifications',
   DASHBOARD: '/dashboard/:salonId',
   MASTER_DASHBOARD: '/master-dashboard',
   MASTER_DASHBOARD_INVITES: '/master-dashboard?section=invites',

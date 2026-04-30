@@ -479,6 +479,7 @@ export function StaffFormModal(props: {
                         fullWidth
                         placeholder="Анна"
                         error={!!errors.firstName}
+                        inputProps={{ 'aria-label': 'Имя' }}
                         sx={inputBaseSx}
                       />
                     </FormField>
@@ -494,6 +495,7 @@ export function StaffFormModal(props: {
                         value={field.value ?? ''}
                         fullWidth
                         placeholder="Соколова"
+                        inputProps={{ 'aria-label': 'Фамилия' }}
                         sx={inputBaseSx}
                       />
                     </FormField>
@@ -512,6 +514,7 @@ export function StaffFormModal(props: {
                         value={field.value ?? ''}
                         fullWidth
                         placeholder="Стилист-колорист"
+                        inputProps={{ 'aria-label': 'Специализация' }}
                         sx={inputBaseSx}
                       />
                     </FormField>
@@ -601,6 +604,7 @@ export function StaffFormModal(props: {
                         value={field.value ?? ''}
                         fullWidth
                         placeholder="+7 916 234-56-78"
+                        inputProps={{ 'aria-label': 'Телефон' }}
                         sx={inputBaseSx}
                       />
                     </FormField>

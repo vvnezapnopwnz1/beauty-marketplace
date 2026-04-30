@@ -12,7 +12,7 @@ export const claimActions: Record<string, ActionFn> = {
       (ctx.has('claimExternalId') ? ctx.get<string>('claimExternalId') : '')
     const statusUrl = `/claim-salon/status?source=${encodeURIComponent(source)}&externalId=${encodeURIComponent(externalId)}`
     await page.goto(statusUrl)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     if (data?.status) {
       await closeCitySelectionModalIfVisible(page)

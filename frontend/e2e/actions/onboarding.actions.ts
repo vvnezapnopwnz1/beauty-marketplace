@@ -45,8 +45,15 @@ export const onboardingActions: Record<string, ActionFn> = {
     }
 
     await page.getByRole('button', { name: /Перейти в кабинет|Пропустить все/i }).first().click()
-    await page.waitForURL(/\/dashboard\//)
+    // `/dashboard/` matches onboarding too; wait until we left /.../onboarding so salonId is reliable.
+    await page.waitForFunction(
+      () => {
+        const p = window.location.pathname
+        return /^\/dashboard\/[^/]+/.test(p) && !p.includes('/onboarding')
+      },
+      { timeout: 20_000 },
+    )
     const match = page.url().match(/\/dashboard\/([^/?]+)/)
-    if (match) ctx.set('salonId', match[1])
+    if (match?.[1] && match[1] !== 'onboarding') ctx.set('salonId', match[1])
   },
 }

@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-04-30
+updated: 2026-05-01
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -10,6 +10,14 @@ code_pointers:
 # Статус разработки — Beauty Marketplace
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
+
+### Последние изменения (2026-05-01)
+
+- **Документация (vault):** синхронизированы [`architecture/code-map.md`](../architecture/code-map.md) (мои записи, гостевое бронирование + `client_user_id`, пути `widgets/notification-popover/`, e2e actions), [`architecture/frontend.md`](../architecture/frontend.md) (`/me`, `/notifications`, entity `user-appointment`, RTK `GET /me/appointments`), [`architecture/backend.md`](../architecture/backend.md) (JWT: `ANY /api/v1/me/*`, `ANY /api/v1/notifications*`). В `frontend/.gitignore` добавлены `playwright-report/`, `test-results/`, `.claude/`.
+- **Авто-аккаунт при гостевой записи:** `CreateGuestBooking` теперь создаёт/находит `users`-запись по `guest_phone_e164` и сохраняет appointment с `client_user_id` (без guest полей), удовлетворяя DB-constraint `appointments_client_or_guest`. `bookingService` получил зависимости `AuthRepository` + `TelegramLinkRepository` + `TelegramOutboxWriter`. Telegram-уведомление гостю ставится в `telegram_outbox` best-effort (если chat_id привязан). CRM: `GetOrCreateByUserID` вместо `GetOrCreateByPhone` после создания пользователя. Backfill: миграция `000027_guest_booking_auto_user` создаёт аккаунты для исторических гостевых записей и линкует `client_user_id`. `AuthRepository` расширен методом `UpdateDisplayName`. `TelegramLinkRepository` + новый `TelegramOutboxWriter` интерфейс (`QueueMessage`) — реализованы в `persistence/telegram_link_repository.go`.
+- **GET /api/v1/me/appointments:** новый `UserAppointmentRepository` (interface + persistence impl с JOIN по salon/service/master/line_items + STRING_AGG), `UserAppointmentService`, handler в `UserController.handleMeAppointments`. Поддержка пагинации `?page=&page_size=`. Зарегистрированы в Fx-графе.
+- **"Мои записи" на /me:** новая FSD-entity `entities/user-appointment` (types, RTK Query `useGetMyAppointmentsQuery`, `AppointmentCard` + `AppointmentCardSkeleton`). Новая секция `AppointmentsSection.tsx` (пагинированный список без RenderTable, empty state, skeleton). Добавлен таб `appointments` в `MePage.tsx`. `rtkApi` получил тег `MyAppointments`.
+- **GuestBookingDialog — success UX:** вместо немедленного `onClose()` после записи переходим в step `'success'` с анимированной иконкой, текстом и кнопками «Войти» (→ /login) / «Закрыть». При закрытии с success-шага показывается notistack-snackbar с action-кнопкой «Войти». i18n: добавлены ключи `guestBooking.successTitle/successBody/successLogin/successClose/snackbarTitle/snackbarBody/snackbarAction`, `myAppointments.*`.
 
 ### Последние изменения (2026-04-30)
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -16,13 +17,19 @@ import (
 )
 
 type UserController struct {
-	profiles service.UserProfileService
-	dash     service.DashboardService
-	log      *zap.Logger
+	profiles    service.UserProfileService
+	dash        service.DashboardService
+	userAppts   service.UserAppointmentService
+	log         *zap.Logger
 }
 
-func NewUserController(profiles service.UserProfileService, dash service.DashboardService, log *zap.Logger) *UserController {
-	return &UserController{profiles: profiles, dash: dash, log: log}
+func NewUserController(
+	profiles service.UserProfileService,
+	dash service.DashboardService,
+	userAppts service.UserAppointmentService,
+	log *zap.Logger,
+) *UserController {
+	return &UserController{profiles: profiles, dash: dash, userAppts: userAppts, log: log}
 }
 
 func (h *UserController) MeRoutes(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +115,10 @@ func (h *UserController) handleMeSubroutes(w http.ResponseWriter, r *http.Reques
 	}
 	if parts[0] == "salon-invites" {
 		h.handleMeSalonInvites(w, r, userID, parts[1:])
+		return
+	}
+	if parts[0] == "appointments" && len(parts) == 1 {
+		h.handleMeAppointments(w, r, userID)
 		return
 	}
 	if parts[0] != "sessions" {
@@ -223,6 +234,25 @@ func (h *UserController) handleMeSalonInvites(w http.ResponseWriter, r *http.Req
 		}
 	}
 	http.NotFound(w, r)
+}
+
+func (h *UserController) handleMeAppointments(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	pageSize, _ := strconv.Atoi(q.Get("page_size"))
+
+	result, err := h.userAppts.ListMyAppointments(r.Context(), userID, page, pageSize)
+	if err != nil {
+		h.log.Error("get /api/v1/me/appointments", zap.Error(err))
+		writeMachineError(w, "internal_error", http.StatusInternalServerError, "", "")
+		return
+	}
+	jsonOK(w, result)
 }
 
 func parseSessionIDHeader(r *http.Request) *uuid.UUID {

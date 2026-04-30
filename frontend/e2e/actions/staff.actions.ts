@@ -9,22 +9,25 @@ export const staffActions: Record<string, ActionFn> = {
     const [firstName, ...rest] = displayName.split(' ')
     const lastName = rest.join(' ')
 
-    await page.getByRole('button', { name: /добавить мастера/i }).click()
-    await page.getByRole('dialog').waitFor({ state: 'visible' })
+    await page.getByRole('button', { name: /Добавить мастера/ }).click()
 
-    await page.getByLabel('Имя').fill(firstName)
-    if (lastName) await page.getByLabel('Фамилия').fill(lastName)
-    if (phone) await page.getByLabel('Телефон').fill(phone)
+    const dlg = page.getByRole('dialog')
+    await dlg.waitFor({ state: 'visible' })
+
+    await dlg.getByLabel('Имя').fill(firstName)
+    if (lastName) await dlg.getByLabel('Фамилия').fill(lastName)
+    // «Пригласить по телефону» даёт радио с тем же подписанным именем; берём только поле ввода.
+    if (phone) await dlg.getByRole('textbox', { name: 'Телефон' }).fill(phone)
     if (specialization) {
-      const specInput = page.getByLabel('Специализация')
+      const specInput = dlg.getByLabel('Специализация')
       if (await specInput.isVisible()) await specInput.fill(specialization)
     }
     if (color) {
-      const colorInput = page.locator(`[data-color="${color}"]`)
+      const colorInput = dlg.locator(`[data-color="${color}"]`)
       if (await colorInput.isVisible()) await colorInput.click()
     }
 
-    await page.getByRole('button', { name: 'Сохранить' }).click()
+    await dlg.getByRole('button', { name: 'Сохранить' }).click()
     await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
   },
 
@@ -34,7 +37,7 @@ export const staffActions: Record<string, ActionFn> = {
 
     // Click on staff row to open detail
     await page.click(`text="${staffName}"`)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
 
     // Open service assignment
     await page.click('[data-testid="assign-services"], button:has-text("Настроить услуги")')
@@ -51,7 +54,7 @@ export const staffActions: Record<string, ActionFn> = {
   async openDetail(page: Page, ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {
     const name = data?.name as string
     await page.click(`text="${name}"`)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   async editSchedule(page: Page, ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {

@@ -6,7 +6,7 @@ import type { ActionFn } from './index'
 export const meActions: Record<string, ActionFn> = {
   async navigate(page: Page) {
     await page.goto('/me')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   async editProfile(page: Page, _ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {
@@ -18,13 +18,13 @@ export const meActions: Record<string, ActionFn> = {
 
   async goToSecurity(page: Page) {
     await page.locator('nav').getByText('Безопасность', { exact: true }).first().click()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   async goToInvites(page: Page) {
     await page.goto('/me')
     await page.locator('nav').getByText('Приглашения', { exact: true }).first().click()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   async acceptInvite(page: Page, _ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {

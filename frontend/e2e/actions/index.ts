@@ -23,6 +23,7 @@ import { salonPageActions } from './salon-page.actions'
 import { scheduleActions } from './schedule.actions'
 import { assertActions } from './assert.actions'
 import { joinActions } from './join.actions'
+import { notificationActions } from './notification.actions'
 
 export type ActionFn = (
   page: Page,
@@ -57,6 +58,7 @@ const registry: Record<string, ActionFn> = {
   ...prefixActions('schedule', scheduleActions),
   ...prefixActions('assert', assertActions),
   ...prefixActions('join', joinActions),
+  ...prefixActions('notification', notificationActions),
 }
 
 function prefixActions(prefix: string, actions: Record<string, ActionFn>): Record<string, ActionFn> {

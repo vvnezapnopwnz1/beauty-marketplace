@@ -27,6 +27,7 @@ export const rtkApi = createApi({
     }),
     tagTypes: [
         'Appointments',
+        'MyAppointments',
         'Clients',
         'Staff',
         'Personnel',

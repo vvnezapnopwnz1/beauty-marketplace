@@ -157,5 +157,23 @@
     "resendHint": "Didn’t get code?",
     "resend": "Resend",
     "invalidCode": "Invalid code. Try again."
+  },
+  "notifications": {
+    "noNotifications": "No notifications",
+    "viewAll": "View all",
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "page": {
+      "title": "Notifications",
+      "tabs": {
+        "all": "All",
+        "unread": "Unread"
+      },
+      "emptyAll": "No notifications yet",
+      "emptyUnread": "No unread notifications",
+      "prev": "Previous",
+      "next": "Next",
+      "pageOf": "Page {{page}}"
+    }
   }
 }

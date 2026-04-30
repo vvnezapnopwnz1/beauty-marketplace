@@ -8,7 +8,7 @@ import {
   useNotificationActions,
   useNotificationCenter,
 } from '@entities/notification'
-import { handleIncomingNotification } from '@widgets/NotificationsPopover/lib/handleIncomingNotification'
+import { handleIncomingNotification } from '@widgets/notification-popover/lib/handleIncomingNotification'
 
 export function NotificationsProvider() {
   const user = useAppSelector(selectUser)

@@ -17,6 +17,7 @@ type AuthRepository interface {
 	FindUserByPhone(ctx context.Context, phone string) (*model.User, error)
 	FindUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	CreateUser(ctx context.Context, user *model.User) error
+	UpdateDisplayName(ctx context.Context, userID uuid.UUID, displayName string) error
 
 	SaveRefreshToken(ctx context.Context, rt *model.RefreshToken) error
 	FindRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error)

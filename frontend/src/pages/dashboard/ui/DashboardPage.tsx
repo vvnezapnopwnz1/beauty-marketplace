@@ -20,7 +20,7 @@ import {
 } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
 import { useAppSelector, useAppDispatch } from '@app/store'
-import { selectUser, logout } from '@features/auth-by-phone/model/authSlice'
+import { selectUser, logout } from '@features/auth-by-phone'
 import { useThemeMode } from '@shared/theme'
 import { DashboardOverview } from './DashboardOverview'
 import { DashboardCalendar } from './DashboardCalendar'
@@ -34,7 +34,7 @@ import { PersonnelView } from './views/PersonnelView'
 import { fetchSalonProfile } from '@shared/api/dashboardApi'
 import { setActiveSalonId } from '@shared/lib/activeSalon'
 import { rtkApi } from '@shared/api/rtkApi'
-import NotificationMenuPopover from '@widgets/NotificationsPopover/NotificationMenuPopover'
+import { NotificationMenuPopover } from '@widgets/notification-popover'
 import MenuIcon from '@mui/icons-material/Menu'
 
 type Section =
@@ -325,10 +325,10 @@ export function DashboardPage() {
           p: 2,
           borderTop: `1px solid ${dashboard.borderSubtle}`,
           mt: 'auto',
-          // justifyContent: 'flex-end',
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 1,
         }}
       >
@@ -338,12 +338,11 @@ export function DashboardPage() {
             alignItems: 'center',
             gap: 1,
             cursor: 'pointer',
-            // direction: 'rtl',
           }}
-          onClick={() => {
-            setUserMenuAnchor(null)
-            navigate(ROUTES.ME)
-          }}
+          // onClick={() => {
+          //   setUserMenuAnchor(null)
+          //   navigate(ROUTES.ME)
+          // }}
         >
           <Avatar
             sx={{
@@ -391,6 +390,14 @@ export function DashboardPage() {
               Обзор салона
             </MenuItem>
           ) : null} */}
+          <MenuItem
+            onClick={() => {
+              setUserMenuAnchor(null)
+              navigate(ROUTES.ME)
+            }}
+          >
+            Мой профиль
+          </MenuItem>
           <MenuItem
             onClick={() => {
               setUserMenuAnchor(null)

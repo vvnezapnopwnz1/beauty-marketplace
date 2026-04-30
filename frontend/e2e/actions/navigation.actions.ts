@@ -19,6 +19,6 @@ export const navigationActions: Record<string, ActionFn> = {
       resolved = rawPath.replace(/\{salonId\}/g, fallbackSalonId || '')
     }
     await page.goto(resolved)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 }

@@ -27,6 +27,7 @@ type PlacesService interface {
 type placesService struct {
 	provider        PlacesProvider
 	defaultRegionID int
+	devEndpoints    bool
 }
 
 // NewPlacesService constructs PlacesService.
@@ -34,6 +35,29 @@ func NewPlacesService(provider PlacesProvider, cfg *config.Config) PlacesService
 	return &placesService{
 		provider:        provider,
 		defaultRegionID: cfg.TwoGisRegionID,
+		devEndpoints:    cfg.DevEndpoints,
+	}
+}
+
+// devStubPlaceDetailByExternalID returns a synthetic catalog branch for known E2E external IDs when
+// DEV_ENDPOINTS is enabled (same flag as Playwright webServer backend). Keeps claim flows deterministic
+// without relying on upstream 2GIS returning a fixed id.
+func devStubPlaceDetailByExternalID(externalID string) *model.PlaceDetail {
+	id := strings.TrimSpace(externalID)
+	switch id {
+	case "70000001045818530":
+		return &model.PlaceDetail{
+			ExternalID: id,
+			Name:       "Салон Красоты Тест",
+			Address:    "Тестовая ул., 1",
+			Lat:        55.751244,
+			Lon:        37.618423,
+			Contacts: []model.PlaceContact{
+				{Type: "phone", Value: "+79009990000"},
+			},
+		}
+	default:
+		return nil
 	}
 }
 
@@ -131,6 +155,11 @@ func (s *placesService) GetByExternalID(ctx context.Context, externalID, locale 
 	}
 	if locale == "" {
 		locale = "ru_RU"
+	}
+	if s.devEndpoints {
+		if stub := devStubPlaceDetailByExternalID(id); stub != nil {
+			return stub, nil
+		}
 	}
 	out, err := s.provider.GetByExternalID(ctx, id, locale)
 	if err != nil {

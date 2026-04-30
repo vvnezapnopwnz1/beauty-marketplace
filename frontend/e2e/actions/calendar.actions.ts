@@ -8,7 +8,7 @@ export const calendarActions: Record<string, ActionFn> = {
     const mode = data?.mode as string
     const labels: Record<string, string> = { day: 'День', week: 'Неделя', month: 'Месяц' }
     await page.click(`[data-testid="calendar-mode-${mode}"], button:has-text("${labels[mode]}")`)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   async dragAppointment(page: Page, _ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {
@@ -20,6 +20,6 @@ export const calendarActions: Record<string, ActionFn> = {
 
     // Perform drag
     await block.dragTo(target)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 }

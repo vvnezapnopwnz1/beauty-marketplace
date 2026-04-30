@@ -31,3 +31,19 @@ func (r *telegramLinkRepository) Save(ctx context.Context, link *model.TelegramP
 		DoUpdates: clause.AssignmentColumns([]string{"chat_id", "telegram_id", "first_name", "updated_at"}),
 	}).Create(link).Error
 }
+
+// telegramOutboxWriter implements TelegramOutboxWriter backed by the same DB.
+type telegramOutboxWriter struct {
+	db *gorm.DB
+}
+
+func NewTelegramOutboxWriter(db *gorm.DB) repository.TelegramOutboxWriter {
+	return &telegramOutboxWriter{db: db}
+}
+
+func (w *telegramOutboxWriter) QueueMessage(ctx context.Context, chatID int64, text string) error {
+	return w.db.WithContext(ctx).Create(&model.TelegramOutbox{
+		ChatID: chatID,
+		Text:   text,
+	}).Error
+}

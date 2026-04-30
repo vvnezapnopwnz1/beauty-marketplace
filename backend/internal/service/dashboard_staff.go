@@ -73,7 +73,45 @@ func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, i
 	if err := s.applyStaffServiceAssignments(ctx, salonID, st.ID, in); err != nil {
 		return nil, err
 	}
+	if err := s.initStaffScheduleFromSalon(ctx, salonID, st.ID); err != nil {
+		return nil, err
+	}
 	return st, nil
+}
+
+// initStaffScheduleFromSalon copies the salon's working_hours into salon_master_hours for a
+// newly created staff member so their schedule is non-empty by default.
+func (s *dashboardService) initStaffScheduleFromSalon(ctx context.Context, salonID, staffID uuid.UUID) error {
+	salonHours, err := s.dash.ListWorkingHours(ctx, salonID)
+	if err != nil {
+		return err
+	}
+	var rows []model.SalonMasterHour
+	if len(salonHours) > 0 {
+		rows = make([]model.SalonMasterHour, 0, len(salonHours))
+		for _, h := range salonHours {
+			rows = append(rows, model.SalonMasterHour{
+				DayOfWeek:     h.DayOfWeek,
+				OpensAt:       h.OpensAt,
+				ClosesAt:      h.ClosesAt,
+				IsDayOff:      h.IsClosed,
+				BreakStartsAt: h.BreakStartsAt,
+				BreakEndsAt:   h.BreakEndsAt,
+			})
+		}
+	} else {
+		// Salon has no schedule yet — use the platform default (Mon–Sat 10:00–21:00, Sun off).
+		rows = make([]model.SalonMasterHour, 0, 7)
+		for day := 0; day < 7; day++ {
+			rows = append(rows, model.SalonMasterHour{
+				DayOfWeek: int16(day),
+				OpensAt:   "10:00:00",
+				ClosesAt:  "21:00:00",
+				IsDayOff:  day == 0,
+			})
+		}
+	}
+	return s.dash.ReplaceStaffWorkingHours(ctx, staffID, salonID, rows)
 }
 
 func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uuid.UUID, in StaffInput) (*model.SalonMaster, error) {

@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local backend-local-no-seed backend-local-e2e db-migrate db-reset seed-salon-page-dev vault-update docs-check e2e-test e2e-test-reseed
+.PHONY: up down logs logs-vector ps restart smoke-logs diagnose rebuild backend-local backend-local-no-seed backend-local-e2e db-migrate db-reset seed-service-categories seed-salon-page-dev vault-update docs-check e2e-test e2e-test-reseed
 
 up:
 	@docker compose up -d --build
@@ -41,6 +41,16 @@ db-reset:
 	else \
 		echo "Unknown MODE='$$mode'. Use MODE=data or MODE=full"; \
 		exit 1; \
+	fi
+
+# Повторная заливка системных service_categories (идемпотентно; см. 000010).
+# Полезно после db-reset MODE=full или если справочник пустой.
+seed-service-categories:
+	@if command -v psql >/dev/null 2>&1; then \
+		psql "$${DATABASE_DSN:-postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable}" -v ON_ERROR_STOP=1 -f backend/migrations/dev_seed_service_categories.sql; \
+	else \
+		echo "psql not found locally, using docker compose exec postgres..."; \
+		docker compose exec -T postgres psql -U beauty -d beauty -v ON_ERROR_STOP=1 < backend/migrations/dev_seed_service_categories.sql; \
 	fi
 
 # Точечный seed для проверки SalonPage dual-mode сценариев:
@@ -147,12 +157,14 @@ e2e-test:
 	fi
 
 # E2E с reseed: сначала чистим данные БД (schema сохраняется),
-# затем запускаем Playwright. Полезно для "чистого" прогона.
+# затем гарантируем service_categories, затем Playwright.
 # Примеры:
 #   make e2e-test-reseed
 #   E2E_TAG=smoke make e2e-test-reseed
 #   PW_GREP="Claim салона" make e2e-test-reseed
-e2e-test-reseed: db-reset
+e2e-test-reseed:
+	@$(MAKE) db-reset
+	@$(MAKE) seed-service-categories
 	@cd frontend && \
 	if [ -n "$$PW_GREP" ]; then \
 		E2E_HEADED="$${E2E_HEADED:-1}" E2E_TAG="$${E2E_TAG}" npx playwright test --config=e2e/playwright.config.ts -g "$$PW_GREP"; \

@@ -1,6 +1,6 @@
 ---
 title: Frontend — структура компонентов
-updated: 2026-04-28
+updated: 2026-05-01
 source_of_truth: true
 code_pointers:
   - frontend/src/app/App.tsx
@@ -27,6 +27,7 @@ graph TD
     App --> PPlace["/place/:id → PlacePage"]
     App --> PMaster["/master/:id → MasterPage"]
     App --> PLogin["/login → LoginPage"]
+    App --> PMe["/me → MePage\n(+ /notifications → NotificationsPage)"]
     App --> PDash["/dashboard/:salonId → DashboardPage"]
     App --> PMDash["/master-dashboard → MasterDashboardPage"]
 
@@ -136,6 +137,7 @@ graph LR
         Client["client\n(CRM entity api/slice)"]
         Staff["staff\n(RTK Query + slice)"]
         SalonInvite["salon-invite\n(personnel RTK)"]
+        UserAppt["user-appointment\n(мои визиты, RTK Query)"]
     end
 
     subgraph shared
@@ -180,6 +182,7 @@ graph LR
 | `entities/staff/model/staffApi.ts` | `/salon-masters`, `/masters/lookup`, `/master-invites` | DashboardPage → StaffTabsView |
 | `entities/salon-invite/model/personnelApi.ts` | `/salon-members`, `/staff-invites` | `PersonnelView`, `InviteStaffDrawer` |
 | `meApi.ts` | `/api/v1/me`, `/api/v1/me/salon-invites`, accept/decline | `MePage` → `SalonInvitesSection` |
+| `entities/user-appointment/model/userAppointmentApi.ts` | `GET /api/v1/me/appointments` (pagination) | `MePage` → `AppointmentsSection` |
 | `masterDashboardApi.ts` | `/api/v1/master-dashboard/*` | MasterDashboardPage |
 | `geoApi.ts` | `/api/v1/geo/*` | location feature |
 | `placesApi.ts` | `/api/v1/places/*` | SearchPage |

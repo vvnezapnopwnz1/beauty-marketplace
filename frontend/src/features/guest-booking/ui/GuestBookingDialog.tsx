@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  Button,
   Dialog,
   DialogContent,
   TextField,
@@ -11,7 +12,11 @@ import {
   Divider,
   IconButton,
 } from '@mui/material'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+import { useSnackbar } from 'notistack'
+import { ROUTES } from '@shared/config/routes'
 import { formatPhone, toE164 } from '@shared/lib/formatPhone'
 import {
   fetchSalonMasters,
@@ -30,7 +35,7 @@ export interface GuestBookingServiceLine {
   priceCents: number
 }
 
-type WizardStep = 'service' | 'master' | 'slot' | 'contact'
+type WizardStep = 'service' | 'master' | 'slot' | 'contact' | 'success'
 
 interface Props {
   open: boolean
@@ -76,6 +81,7 @@ const STEP_INDEX: Record<WizardStep, number> = {
   master: 1,
   slot: 2,
   contact: 3,
+  success: 4,
 }
 
 // ─── step indicator ───────────────────────────────────────────────────────────
@@ -228,6 +234,8 @@ export function GuestBookingDialog({
   onSuccess,
 }: Props) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { enqueueSnackbar } = useSnackbar()
   const [step, setStep] = useState<WizardStep>('service')
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
   const [selectedMaster, setSelectedMaster] = useState<SalonMasterPublic | null>(null)
@@ -325,11 +333,25 @@ export function GuestBookingDialog({
   }, [selectedMaster, selectedServices])
 
   const handleClose = () => {
-    if (!loading) {
-      setError(null)
-      resetWizard()
-      onClose()
+    if (loading) return
+    if (step === 'success') {
+      enqueueSnackbar(t('guestBooking.snackbarTitle'), {
+        variant: 'info',
+        autoHideDuration: 8000,
+        action: (
+          <Button
+            size="small"
+            sx={{ color: '#fff', fontWeight: 700, textTransform: 'none' }}
+            onClick={() => navigate(ROUTES.LOGIN)}
+          >
+            {t('guestBooking.snackbarAction')}
+          </Button>
+        ),
+      })
     }
+    setError(null)
+    resetWizard()
+    onClose()
   }
 
   const goBack = () => {
@@ -386,9 +408,8 @@ export function GuestBookingDialog({
         endsAt: slot.endsAt,
         salonMasterId: slot.salonMasterId,
       })
-      resetWizard()
       onSuccess()
-      onClose()
+      setStep('success')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('guestBooking.error'))
     } finally {
@@ -443,6 +464,7 @@ export function GuestBookingDialog({
               {step === 'master' && 'Выберите специалиста'}
               {step === 'slot' && 'Выберите удобное время'}
               {step === 'contact' && 'Введите контактные данные'}
+              {step === 'success' && 'Всё готово!'}
             </Typography>
           </Box>
           <IconButton
@@ -841,6 +863,7 @@ export function GuestBookingDialog({
             <TextField
               label={t('guestBooking.phone')}
               value={phone}
+              required
               onChange={e => setPhone(formatPhone(e.target.value))}
               placeholder="+7 (___) ___-__-__"
               inputMode="numeric"
@@ -863,135 +886,205 @@ export function GuestBookingDialog({
             />
           </Stack>
         )}
+
+        {/* ── Success screen ── */}
+        {step === 'success' && (
+          <Stack alignItems="center" spacing={3} sx={{ py: 5, px: 2, textAlign: 'center' }}>
+            <CheckCircleOutlineIcon
+              sx={{
+                fontSize: 72,
+                color: P.success,
+                animation: 'successPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                '@keyframes successPop': {
+                  '0%': { transform: 'scale(0)', opacity: 0 },
+                  '100%': { transform: 'scale(1)', opacity: 1 },
+                },
+              }}
+            />
+            <Box>
+              <Typography sx={{ fontSize: 20, fontWeight: 700, color: P.text, mb: 1 }}>
+                {t('guestBooking.successTitle')}
+              </Typography>
+              <Typography sx={{ fontSize: 14, color: P.textMuted, maxWidth: 320, mx: 'auto' }}>
+                {t('guestBooking.successBody')}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1.5}>
+              <Box
+                component="button"
+                onClick={handleClose}
+                sx={{
+                  px: 3,
+                  py: '9px',
+                  borderRadius: '8px',
+                  border: `1px solid ${P.border}`,
+                  bgcolor: 'transparent',
+                  color: P.textMuted,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  '&:hover': { bgcolor: P.borderSub },
+                }}
+              >
+                {t('guestBooking.successClose')}
+              </Box>
+              <Box
+                component="button"
+                onClick={() => {
+                  navigate(ROUTES.LOGIN)
+                  handleClose()
+                }}
+                sx={{
+                  px: 3,
+                  py: '9px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  bgcolor: P.accent,
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  '&:hover': { bgcolor: P.accentDark },
+                }}
+              >
+                {t('guestBooking.successLogin')}
+              </Box>
+            </Stack>
+          </Stack>
+        )}
       </DialogContent>
 
       {/* ── Footer ── */}
-      <Box
-        sx={{
-          px: 3,
-          py: 2,
-          borderTop: `1px solid ${P.border}`,
-          display: 'flex',
-          gap: 1.5,
-          alignItems: 'center',
-          bgcolor: P.surface,
-        }}
-      >
-        {showBack && (
+      {step !== 'success' && (
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: `1px solid ${P.border}`,
+            display: 'flex',
+            gap: 1.5,
+            alignItems: 'center',
+            bgcolor: P.surface,
+          }}
+        >
+          {showBack && (
+            <Box
+              component="button"
+              type="button"
+              onClick={goBack}
+              disabled={loading}
+              sx={{
+                px: 2,
+                py: '7px',
+                borderRadius: '8px',
+                border: `1px solid ${P.border}`,
+                bgcolor: 'transparent',
+                color: P.textMuted,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all .15s',
+                '&:hover:not(:disabled)': { bgcolor: P.borderSub, borderColor: '#C8C4BE' },
+                '&:disabled': { opacity: 0.4, cursor: 'default' },
+              }}
+            >
+              ← Назад
+            </Box>
+          )}
+
+          <Box sx={{ flex: 1 }} />
+
+          {/* Cancel (always) */}
           <Box
             component="button"
             type="button"
-            onClick={goBack}
+            onClick={handleClose}
             disabled={loading}
             sx={{
               px: 2,
               py: '7px',
               borderRadius: '8px',
-              border: `1px solid ${P.border}`,
+              border: 'none',
               bgcolor: 'transparent',
               color: P.textMuted,
               fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
               fontFamily: 'inherit',
-              transition: 'all .15s',
-              '&:hover:not(:disabled)': { bgcolor: P.borderSub, borderColor: '#C8C4BE' },
+              '&:hover:not(:disabled)': { color: P.text },
               '&:disabled': { opacity: 0.4, cursor: 'default' },
             }}
           >
-            ← Назад
+            {t('guestBooking.cancel')}
           </Box>
-        )}
 
-        <Box sx={{ flex: 1 }} />
+          {/* Next (service step) */}
+          {step === 'service' && (
+            <Box
+              component="button"
+              type="button"
+              disabled={selectedServiceIds.length === 0}
+              onClick={() => setStep('master')}
+              sx={{
+                px: '20px',
+                py: '8px',
+                borderRadius: '8px',
+                border: 'none',
+                bgcolor: P.accent,
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'background .15s',
+                '&:hover:not(:disabled)': { bgcolor: P.accentDark },
+                '&:disabled': { bgcolor: P.border, color: P.textSub, cursor: 'default' },
+              }}
+            >
+              Далее →
+            </Box>
+          )}
 
-        {/* Cancel (always) */}
-        <Box
-          component="button"
-          type="button"
-          onClick={handleClose}
-          disabled={loading}
-          sx={{
-            px: 2,
-            py: '7px',
-            borderRadius: '8px',
-            border: 'none',
-            bgcolor: 'transparent',
-            color: P.textMuted,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            '&:hover:not(:disabled)': { color: P.text },
-            '&:disabled': { opacity: 0.4, cursor: 'default' },
-          }}
-        >
-          {t('guestBooking.cancel')}
+          {/* Submit (contact step) */}
+          {step === 'contact' && (
+            <Box
+              component="button"
+              type="button"
+              disabled={loading || !slot}
+              onClick={() => void submitBooking()}
+              sx={{
+                px: '20px',
+                py: '8px',
+                borderRadius: '8px',
+                border: 'none',
+                bgcolor: P.accent,
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                minWidth: 160,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+                transition: 'background .15s',
+                '&:hover:not(:disabled)': { bgcolor: P.accentDark },
+                '&:disabled': { bgcolor: P.border, color: P.textSub, cursor: 'default' },
+              }}
+            >
+              {loading ? (
+                <CircularProgress size={16} sx={{ color: 'rgba(255,255,255,0.7)' }} />
+              ) : (
+                t('guestBooking.submit')
+              )}
+            </Box>
+          )}
         </Box>
-
-        {/* Next (service step) */}
-        {step === 'service' && (
-          <Box
-            component="button"
-            type="button"
-            disabled={selectedServiceIds.length === 0}
-            onClick={() => setStep('master')}
-            sx={{
-              px: '20px',
-              py: '8px',
-              borderRadius: '8px',
-              border: 'none',
-              bgcolor: P.accent,
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              transition: 'background .15s',
-              '&:hover:not(:disabled)': { bgcolor: P.accentDark },
-              '&:disabled': { bgcolor: P.border, color: P.textSub, cursor: 'default' },
-            }}
-          >
-            Далее →
-          </Box>
-        )}
-
-        {/* Submit (contact step) */}
-        {step === 'contact' && (
-          <Box
-            component="button"
-            type="button"
-            disabled={loading || !slot}
-            onClick={() => void submitBooking()}
-            sx={{
-              px: '20px',
-              py: '8px',
-              borderRadius: '8px',
-              border: 'none',
-              bgcolor: P.accent,
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              minWidth: 160,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 1,
-              transition: 'background .15s',
-              '&:hover:not(:disabled)': { bgcolor: P.accentDark },
-              '&:disabled': { bgcolor: P.border, color: P.textSub, cursor: 'default' },
-            }}
-          >
-            {loading ? (
-              <CircularProgress size={16} sx={{ color: 'rgba(255,255,255,0.7)' }} />
-            ) : (
-              t('guestBooking.submit')
-            )}
-          </Box>
-        )}
-      </Box>
+      )}
     </Dialog>
   )
 }

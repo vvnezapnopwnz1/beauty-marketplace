@@ -17,7 +17,7 @@ export const searchActions: Record<string, ActionFn> = {
       .locator('input[type="text"], input:not([type])')
       .first()
       .press('Enter')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   async clickFirstResult(page: Page) {
@@ -29,6 +29,6 @@ export const searchActions: Record<string, ActionFn> = {
         globalThis.process?.env?.E2E_SALON_ID || '11111111-1111-1111-1111-111111111111'
       await page.goto(`/salon/${fallbackSalonId}`)
     }
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 }

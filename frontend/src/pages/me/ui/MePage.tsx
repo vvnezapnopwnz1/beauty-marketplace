@@ -23,18 +23,23 @@ import {
   selectProfileStatus,
 } from '@features/edit-profile/model/profileSlice'
 import { logout, selectUser } from '@features/auth-by-phone/model/authSlice'
-import { ROUTES, dashboardPath } from '@shared/config/routes'
+import { ROUTES, dashboardPath, salonRoleLabelRu } from '@shared/config/routes'
 import { GeneralSection } from './sections/GeneralSection'
 import { SecuritySection } from './sections/SecuritySection'
 import { DangerSection } from './sections/DangerSection'
 import { SalonInvitesSection } from './sections/SalonInvitesSection'
-import NotificationMenuPopover from '@widgets/NotificationsPopover/NotificationMenuPopover'
+import { AppointmentsSection } from './sections/AppointmentsSection'
+import NotificationMenuPopover from '@widgets/notification-popover/ui/NotificationMenuPopover'
 import MenuIcon from '@mui/icons-material/Menu'
+import { Switch } from '@mui/material'
+import { useThemeMode } from '@shared/theme'
+import { useTranslation } from 'react-i18next'
+// import { useMemberships } from '@features/salon-membership/hooks/useMemberships'
 
-type TabKey = 'general' | 'security' | 'danger' | 'invites'
+type TabKey = 'general' | 'security' | 'danger' | 'invites' | 'appointments'
 
 function asTab(value: string | null): TabKey {
-  if (value === 'security' || value === 'danger' || value === 'invites') return value
+  if (value === 'security' || value === 'danger' || value === 'invites' || value === 'appointments') return value
   return 'general'
 }
 
@@ -48,6 +53,7 @@ function initials(name?: string | null): string {
 
 const NAV: { id: TabKey; label: string; icon: string }[] = [
   { id: 'general', label: 'Общее', icon: '👤' },
+  { id: 'appointments', label: 'Мои записи', icon: '📋' },
   { id: 'security', label: 'Безопасность', icon: '🔐' },
   { id: 'invites', label: 'Приглашения', icon: '✉️' },
   { id: 'danger', label: 'Опасная зона', icon: '⚠️' },
@@ -55,6 +61,7 @@ const NAV: { id: TabKey; label: string; icon: string }[] = [
 
 const TITLES: Record<TabKey, string> = {
   general: 'Профиль',
+  appointments: 'Мои записи',
   security: 'Безопасность',
   invites: 'Приглашения',
   danger: 'Опасная зона',
@@ -73,9 +80,9 @@ export function MePage() {
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
   const narrow = useMediaQuery('(max-width:899px)')
-
+  const { mode, setMode } = useThemeMode()
   const [notificationsAnchor, setNotificationsAnchor] = useState<null | HTMLElement>(null)
-
+  const { t } = useTranslation()
   const currentTab = asTab(params.get('tab'))
   const pendingInvites = profile?.effectiveRoles?.pendingInvites ?? 0
   const memberships =
@@ -247,7 +254,10 @@ export function MePage() {
                 navigate(dashboardPath(memberships[0].salonId))
               }}
             >
-              Кабинет салона
+              {t('cabinet.cabinetOfSalon', {
+                salonName: memberships[0].salonName || 'Салон',
+                role: salonRoleLabelRu(memberships[0].role),
+              })}
             </MenuItem>
           )}
           {memberships.length > 1 &&
@@ -269,7 +279,7 @@ export function MePage() {
                 navigate(ROUTES.MASTER_DASHBOARD)
               }}
             >
-              Кабинет мастера
+              {t('cabinetOfMaster')}
             </MenuItem>
           )}
           <MenuItem
@@ -322,11 +332,26 @@ export function MePage() {
           <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>
             {TITLES[currentTab]}
           </Typography>
-          <NotificationMenuPopover
-            open={notificationsAnchor}
-            handleClosePopover={() => setNotificationsAnchor(null)}
-            setOpenPopover={setNotificationsAnchor}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <NotificationMenuPopover
+              open={notificationsAnchor}
+              handleClosePopover={() => setNotificationsAnchor(null)}
+              setOpenPopover={setNotificationsAnchor}
+            />
+            <Switch
+              size="small"
+              checked={mode === 'dark'}
+              onChange={(_, checked) => setMode(checked ? 'dark' : 'light')}
+              inputProps={{ 'aria-label': 'Toggle dashboard theme' }}
+              sx={{
+                ml: 'auto',
+                '& .MuiSwitch-track': { bgcolor: dashboard.border },
+                '& .MuiSwitch-thumb': {
+                  bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark,
+                },
+              }}
+            />
+          </Box>
         </Box>
 
         <Box sx={{ flex: 1, overflow: 'auto', px: { xs: 2, md: 3 }, py: 3 }}>
@@ -344,6 +369,7 @@ export function MePage() {
           {status !== 'loading' && (
             <>
               {currentTab === 'general' && <GeneralSection key={profile?.updatedAt ?? 'empty'} />}
+              {currentTab === 'appointments' && <AppointmentsSection />}
               {currentTab === 'security' && <SecuritySection />}
               {currentTab === 'invites' && <SalonInvitesSection />}
               {currentTab === 'danger' && <DangerSection />}

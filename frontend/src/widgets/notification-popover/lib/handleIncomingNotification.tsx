@@ -1,5 +1,6 @@
 import { NotificationItem, resolveNotificationActions } from '@entities/notification'
 import { enqueueActionSnackbar } from '@shared/ui/ActionSnackbar'
+import { closeSnackbar } from 'notistack'
 import { NavigateFunction } from 'react-router-dom'
 import { dashboardSectionPath } from '@shared/config/routes'
 
@@ -15,6 +16,7 @@ export const handleIncomingNotification =
     void markSeen(notification.id)
     const resolved = resolveNotificationActions(notification)
     const actions = []
+    let snackbarKey: ReturnType<typeof enqueueActionSnackbar> | undefined
 
     switch (notification.type) {
       case 'appointment.created': {
@@ -33,6 +35,7 @@ export const handleIncomingNotification =
               if (isConfirming(appointmentId)) return
               const ok = await confirmAppointment(appointmentId)
               if (ok) {
+                closeSnackbar(snackbarKey)
                 void markRead(notification.id)
                 enqueueActionSnackbar({
                   message: 'Запись подтверждена',
@@ -62,7 +65,7 @@ export const handleIncomingNotification =
               }
             },
           })
-          actions.push({ label: 'Отменить' })
+          actions.push({ label: 'Закрыть' })
         }
         break
       }
@@ -81,11 +84,12 @@ export const handleIncomingNotification =
         break
     }
 
-    enqueueActionSnackbar({
+    snackbarKey = enqueueActionSnackbar({
       title: notification.title,
       message: notification.body,
       variant: 'info',
-      autoHideDuration: 7000,
+      autoHideDuration: notification.type === 'appointment.created' ? null : 7000,
       actions,
     })
+    return snackbarKey
   }

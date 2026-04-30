@@ -1,38 +1,59 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import type { TestContext } from '../helpers/test-context'
 import type { ApiHelpers } from '../helpers/api-helpers'
 import type { ActionFn } from './index'
+
+async function setServiceDurationMinutes(dialog: Locator, target: number) {
+  const stepper = dialog.getByTestId('service-duration-stepper')
+  for (let guard = 0; guard < 200; guard++) {
+    const text = await stepper.locator(':scope > div').first().textContent()
+    const cur = parseInt(text?.match(/\d+/)?.[0] ?? '0', 10)
+    if (cur === target) return
+    if (cur < target) await stepper.locator('button').last().click()
+    else await stepper.locator('button').first().click()
+  }
+  throw new Error(`Could not set duration to ${target} minutes`)
+}
 
 export const servicesActions: Record<string, ActionFn> = {
   async create(page: Page, _ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {
     const { name, categorySlug, durationMinutes, priceCents, description } = data as Record<string, unknown>
 
     await page.click('[data-testid="add-service"], button:has-text("Добавить услугу")')
-    await page.waitForSelector('[data-testid="service-form"], [role="dialog"]')
+    const dialog = page.getByRole('dialog')
+    await dialog.waitFor({ state: 'visible' })
 
-    await page.fill('[name="name"], [data-testid="service-name"]', name as string)
+    await dialog.getByPlaceholder('Стрижка женская').fill(name as string)
 
     if (categorySlug) {
-      const catSelect = page.locator('[name="categorySlug"], [data-testid="service-category"]')
-      if (await catSelect.isVisible()) await catSelect.selectOption(categorySlug as string)
+      const combo = dialog.getByRole('combobox')
+      if (await combo.isVisible()) {
+        await combo.click()
+        const listbox = page.getByRole('listbox')
+        await listbox.waitFor({ state: 'visible' })
+        await listbox
+          .getByRole('option')
+          .filter({ has: page.locator(`[data-value="${categorySlug}"]`) })
+          .click()
+      }
     }
 
     if (durationMinutes) {
-      await page.fill('[name="durationMinutes"], [data-testid="service-duration"]', String(durationMinutes))
+      await setServiceDurationMinutes(dialog, Number(durationMinutes))
     }
 
     if (priceCents) {
       // UI shows rubles, convert from cents
       const rubles = String(Math.floor((priceCents as number) / 100))
-      await page.fill('[name="price"], [data-testid="service-price"]', rubles)
+      await dialog.getByPlaceholder('2 500').fill(rubles)
     }
 
     if (description) {
-      const descInput = page.locator('[name="description"], [data-testid="service-description"]')
+      const descInput = dialog.getByPlaceholder('Что входит в услугу, особенности…')
       if (await descInput.isVisible()) await descInput.fill(description as string)
     }
 
-    await page.click('[data-testid="service-form-submit"], button:has-text("Сохранить")')
+    await dialog.getByRole('button', { name: 'Сохранить' }).click()
     await page.waitForSelector('[role="dialog"]', { state: 'hidden' })
   },
 

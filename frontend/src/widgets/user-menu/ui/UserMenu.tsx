@@ -2,13 +2,10 @@ import { useState } from 'react'
 import { Avatar, Badge, IconButton, Menu, MenuItem } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@app/store'
-import { logout, selectUser } from '@features/auth-by-phone/model/authSlice'
-import {
-  ROUTES,
-  dashboardPath,
-  salonRoleLabelRu,
-} from '@shared/config/routes'
-import { selectProfile } from '@features/edit-profile/model/profileSlice'
+import { logout, selectUser } from '@features/auth-by-phone'
+import { ROUTES, dashboardPath, salonRoleLabelRu } from '@shared/config/routes'
+import { selectProfile } from '@features/edit-profile'
+import { useTranslation } from 'react-i18next'
 
 function initials(name: string | null | undefined): string {
   if (!name) return '?'
@@ -24,7 +21,7 @@ export function UserMenu() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const [anchor, setAnchor] = useState<null | HTMLElement>(null)
-
+  const { t } = useTranslation()
   if (!user) return null
 
   const roles = profile?.effectiveRoles ?? user.effectiveRoles
@@ -49,7 +46,7 @@ export function UserMenu() {
             navigate(ROUTES.HOME)
           }}
         >
-          Главная
+          {t('userMenu.home')}
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -57,7 +54,7 @@ export function UserMenu() {
             navigate(ROUTES.ME)
           }}
         >
-          Профиль
+          {t('userMenu.profile')}
         </MenuItem>
         {canSalon && memberships.length === 1 && (
           <MenuItem
@@ -66,7 +63,7 @@ export function UserMenu() {
               navigate(dashboardPath(memberships[0].salonId))
             }}
           >
-            Кабинет салона
+            {t('cabinet.cabinetOfSalon', { salonName: memberships[0].salonName || 'Салон' })}
           </MenuItem>
         )}
         {canSalon &&
@@ -89,7 +86,7 @@ export function UserMenu() {
               navigate(ROUTES.MASTER_DASHBOARD)
             }}
           >
-            Кабинет мастера
+            {t('cabinet.cabinetOfMaster')}
           </MenuItem>
         )}
 
@@ -101,7 +98,7 @@ export function UserMenu() {
             })
           }}
         >
-          Выйти
+          {t('userMenu.logout')}
         </MenuItem>
       </Menu>
     </>

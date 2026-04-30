@@ -1,6 +1,6 @@
 ---
 title: Backend — детальная архитектура
-updated: 2026-04-28
+updated: 2026-05-01
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -208,12 +208,13 @@ graph LR
         R16["POST /api/auth/logout"]
         R17["ANY /api/v1/dashboard/*\n(+ X-Salon-Id)"]
         R18["ANY /api/v1/master-dashboard/*"]
-        R19["GET|POST /api/v1/me/salon-invites*"]
+        R19["ANY /api/v1/me/*\n(profile, sessions, salon-invites, appointments)"]
+        R20["ANY /api/v1/notifications*\n(+ SSE /stream)"]
     end
 
     subgraph DEV["Dev-only (DEV_ENDPOINTS=1)"]
-        R20["POST /api/dev/claim/by-external"]
-        R21["POST /api/dev/e2e/seed-salon"]
+        R23["POST /api/dev/claim/by-external"]
+        R24["POST /api/dev/e2e/seed-salon"]
     end
 
     subgraph DASH["Dashboard sub-routes"]

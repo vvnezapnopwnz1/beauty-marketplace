@@ -73,6 +73,13 @@ func (r *AuthRepository) CreateUser(ctx context.Context, user *model.User) error
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
+func (r *AuthRepository) UpdateDisplayName(ctx context.Context, userID uuid.UUID, displayName string) error {
+	return r.db.WithContext(ctx).
+		Model(&model.User{}).
+		Where("id = ?", userID).
+		UpdateColumn("display_name", displayName).Error
+}
+
 func (r *AuthRepository) SaveRefreshToken(ctx context.Context, rt *model.RefreshToken) error {
 	return r.db.WithContext(ctx).Create(rt).Error
 }

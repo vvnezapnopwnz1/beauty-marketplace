@@ -7,7 +7,7 @@ export const masterDashboardActions: Record<string, ActionFn> = {
   async navigate(page: Page, _ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {
     const section = data?.section as string
     await page.goto(`/master-dashboard?section=${section}`)
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   async editProfile(page: Page, _ctx: TestContext, _api: ApiHelpers, data?: Record<string, unknown>) {

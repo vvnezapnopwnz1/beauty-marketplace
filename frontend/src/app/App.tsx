@@ -11,6 +11,7 @@ import { ClaimStatusPage } from '@features/claim-salon/ui/ClaimStatusPage'
 import { AdminClaimsPage } from '@pages/admin/ui/AdminClaimsPage'
 import { OnboardingWizard } from '@pages/dashboard/ui/OnboardingWizard'
 import { JoinPage } from '@pages/join/ui/JoinPage'
+import { NotificationsPage } from '@pages/notifications'
 import { ROUTES } from '@shared/config/routes'
 import { DeviceLocationSync } from '@features/location/ui/DeviceLocationSync'
 import { GeoLocationStorageWatcher } from '@features/location/ui/GeoLocationStorageWatcher'
@@ -33,6 +34,7 @@ export function App() {
         <Route path={ROUTES.MASTER} element={<MasterPage />} />
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.ME} element={<RequireAuth><MePage /></RequireAuth>} />
+        <Route path={ROUTES.NOTIFICATIONS} element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="/dashboard/:salonId/*" element={<DashboardPage />} />
         <Route path={`${ROUTES.MASTER_DASHBOARD}/*`} element={<MasterDashboardPage />} />
         <Route path={ROUTES.CLAIM_SALON} element={<RequireAuth><ClaimSalonPage /></RequireAuth>} />

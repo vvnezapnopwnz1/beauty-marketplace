@@ -375,6 +375,7 @@ export function ServiceFormModal({ open, service, onClose, onSaved }: Props) {
                       min={5}
                       max={480}
                       step={5}
+                      rootTestId="service-duration-stepper"
                     />
                   </FormField>
                 )}

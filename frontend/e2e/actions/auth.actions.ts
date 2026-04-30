@@ -23,8 +23,16 @@ export const authActions: Record<string, ActionFn> = {
         sessionId: (auth.user?.sessionId as string | null | undefined) ?? null,
       },
     )
+    const meResp = page.waitForResponse(
+      (r) => r.url().includes('/api/v1/me') && r.request().method() === 'GET',
+      { timeout: 30_000 },
+    )
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    const me = await meResp
+    if (!me.ok()) {
+      throw new Error(`login: GET /api/v1/me after reload returned ${me.status()}`)
+    }
+    await page.waitForLoadState('load')
     ctx.set('currentPhone', phone)
   },
 
@@ -61,7 +69,7 @@ export const authActions: Record<string, ActionFn> = {
       localStorage.removeItem('beauty_session_id')
     })
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 
   /** Wait for automatic token refresh (simulates session persistence) */
@@ -70,7 +78,7 @@ export const authActions: Record<string, ActionFn> = {
     await page.waitForTimeout(2000)
     // Verify the page still works after potential refresh
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('load')
   },
 }
 

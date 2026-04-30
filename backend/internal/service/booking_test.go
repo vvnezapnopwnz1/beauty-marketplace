@@ -143,6 +143,73 @@ func (f *fakeAppointmentNotifier) NotifySalonMembers(ctx context.Context, salonI
 	})
 }
 
+// fakeAuthRepo minimal implementation for CreateGuestBooking tests.
+type fakeAuthRepo struct {
+	byPhone map[string]*model.User
+}
+
+func newFakeAuthRepo() *fakeAuthRepo {
+	return &fakeAuthRepo{byPhone: make(map[string]*model.User)}
+}
+
+func (f *fakeAuthRepo) CreateOTP(ctx context.Context, otp *model.OtpCode) error { return nil }
+
+func (f *fakeAuthRepo) FindActiveOTP(ctx context.Context, phone string) (*model.OtpCode, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeAuthRepo) MarkOTPUsed(ctx context.Context, id uuid.UUID) error { return nil }
+
+func (f *fakeAuthRepo) IncrementOTPAttempts(ctx context.Context, id uuid.UUID) error { return nil }
+
+func (f *fakeAuthRepo) FindUserByPhone(ctx context.Context, phone string) (*model.User, error) {
+	if u, ok := f.byPhone[phone]; ok {
+		return u, nil
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeAuthRepo) FindUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	for _, u := range f.byPhone {
+		if u.ID == id {
+			return u, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeAuthRepo) CreateUser(ctx context.Context, user *model.User) error {
+	if user.ID == uuid.Nil {
+		user.ID = uuid.New()
+	}
+	cp := *user
+	f.byPhone[user.PhoneE164] = &cp
+	return nil
+}
+
+func (f *fakeAuthRepo) UpdateDisplayName(ctx context.Context, userID uuid.UUID, displayName string) error {
+	for _, u := range f.byPhone {
+		if u.ID == userID {
+			dn := displayName
+			u.DisplayName = &dn
+			break
+		}
+	}
+	return nil
+}
+
+func (f *fakeAuthRepo) SaveRefreshToken(ctx context.Context, rt *model.RefreshToken) error { return nil }
+
+func (f *fakeAuthRepo) FindRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeAuthRepo) RevokeRefreshToken(ctx context.Context, id uuid.UUID) error { return nil }
+
+func (f *fakeAuthRepo) RevokeAllUserTokens(ctx context.Context, userID uuid.UUID) error { return nil }
+
+func (f *fakeAuthRepo) CleanExpiredOTPs(ctx context.Context, before time.Time) error { return nil }
+
 // --- helpers ---
 
 func mskLoc(t *testing.T) *time.Location {
@@ -434,6 +501,7 @@ func TestCreateGuestBooking_NotifiesSalonMembers(t *testing.T) {
 	notifier := &fakeAppointmentNotifier{}
 
 	svc := &bookingService{
+		authRepo: newFakeAuthRepo(),
 		salons: &fakeSalonRepo{salon: &domainmodel.Salon{
 			ID:                   salonID,
 			OnlineBookingEnabled: true,

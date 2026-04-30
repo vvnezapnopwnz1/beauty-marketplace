@@ -51,6 +51,11 @@ export class ApiHelpers {
     return t.access
   }
 
+  /** Dashboard routes resolve salon membership from X-Salon-Id (not from path prefix). */
+  private dashboardHeaders(token: string, salonId: string): Record<string, string> {
+    return { Authorization: `Bearer ${token}`, 'X-Salon-Id': salonId }
+  }
+
   getDefaultSalonId(): string | null {
     return this.defaultSalonId
   }
@@ -58,9 +63,12 @@ export class ApiHelpers {
   /** Approve a salon claim via admin API */
   async approveClaim(adminPhone: string, claimId: string) {
     const token = this.getAccessToken(adminPhone)
-    await this.ctx.post(`/api/v1/admin/claims/${claimId}/approve`, {
+    const res = await this.ctx.put(`/api/v1/admin/claims/${claimId}/approve`, {
       headers: { Authorization: `Bearer ${token}` },
     })
+    if (!res.ok()) {
+      throw new Error(`approveClaim failed: ${res.status()} ${await res.text()}`)
+    }
   }
 
   /** Create a salon via API (for seeding) */
@@ -89,6 +97,79 @@ export class ApiHelpers {
     }
     return res.json()
   }
+
+  // ─── Notification test helpers ───────────────────────────────────────────────
+
+  /**
+   * Guest booking — no auth required.
+   * POST /api/v1/salons/{salonId}/bookings
+   * Used to trigger SSE notifications without touching the UI.
+   */
+  async createGuestBooking(salonId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const res = await this.ctx.post(`/api/v1/salons/${salonId}/bookings`, { data })
+    if (!res.ok()) {
+      throw new Error(`createGuestBooking failed: ${res.status()} ${await res.text()}`)
+    }
+    return res.json() as Promise<Record<string, unknown>>
+  }
+
+  /** GET /api/v1/dashboard/services (requires X-Salon-Id) */
+  async listSalonServices(phone: string, salonId: string): Promise<Array<Record<string, unknown>>> {
+    const token = this.getAccessToken(phone)
+    const res = await this.ctx.get('/api/v1/dashboard/services', {
+      headers: this.dashboardHeaders(token, salonId),
+    })
+    if (!res.ok()) throw new Error(`listSalonServices failed: ${res.status()} ${await res.text()}`)
+    const body = await res.json()
+    return Array.isArray(body) ? (body as Array<Record<string, unknown>>) : []
+  }
+
+  /** POST /api/v1/dashboard/services (requires X-Salon-Id) */
+  async createSalonService(phone: string, salonId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const token = this.getAccessToken(phone)
+    const res = await this.ctx.post('/api/v1/dashboard/services', {
+      headers: this.dashboardHeaders(token, salonId),
+      data,
+    })
+    if (!res.ok()) throw new Error(`createSalonService failed: ${res.status()} ${await res.text()}`)
+    return res.json() as Promise<Record<string, unknown>>
+  }
+
+  /** GET /api/v1/dashboard/staff (requires X-Salon-Id) */
+  async listSalonMasters(phone: string, salonId: string): Promise<Array<Record<string, unknown>>> {
+    const token = this.getAccessToken(phone)
+    const res = await this.ctx.get('/api/v1/dashboard/staff', {
+      headers: this.dashboardHeaders(token, salonId),
+    })
+    if (!res.ok()) throw new Error(`listSalonMasters failed: ${res.status()} ${await res.text()}`)
+    const body = await res.json()
+    return Array.isArray(body) ? (body as Array<Record<string, unknown>>) : []
+  }
+
+  /** POST /api/v1/dashboard/staff (requires X-Salon-Id) */
+  async createSalonMaster(phone: string, salonId: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const token = this.getAccessToken(phone)
+    const res = await this.ctx.post('/api/v1/dashboard/staff', {
+      headers: this.dashboardHeaders(token, salonId),
+      data,
+    })
+    if (!res.ok()) throw new Error(`createSalonMaster failed: ${res.status()} ${await res.text()}`)
+    return res.json() as Promise<Record<string, unknown>>
+  }
+
+  /** PUT /api/v1/dashboard/staff/{masterId}/services (requires X-Salon-Id) */
+  async assignServiceToMaster(phone: string, salonId: string, masterId: string, serviceIds: string[]): Promise<void> {
+    const token = this.getAccessToken(phone)
+    const body = serviceIds.map((id) => ({ serviceId: id }))
+    const res = await this.ctx.fetch(`${API_BASE}/api/v1/dashboard/staff/${masterId}/services`, {
+      method: 'PUT',
+      headers: { ...this.dashboardHeaders(token, salonId), 'Content-Type': 'application/json' },
+      data: JSON.stringify(body),
+    })
+    if (!res.ok()) throw new Error(`assignServiceToMaster failed: ${res.status()} ${await res.text()}`)
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   /**
    * Dev fallback: approve/ensure claim via dev endpoint

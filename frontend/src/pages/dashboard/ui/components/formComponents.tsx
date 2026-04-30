@@ -510,12 +510,15 @@ export function DurationStepper({
   min = 5,
   max = 480,
   step = 5,
+  rootTestId,
 }: {
   value: number
   onChange: (v: number) => void
   min?: number
   max?: number
   step?: number
+  /** E2E: stable handle for the stepper root */
+  rootTestId?: string
 }) {
   const mocha = useDashboardMocha()
   const dec = () => onChange(Math.max(min, value - step))
@@ -539,7 +542,7 @@ export function DurationStepper({
   }
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center' }} data-testid={rootTestId}>
       <Box
         component="button"
         type="button"
