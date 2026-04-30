@@ -1,6 +1,6 @@
 ---
 title: Notifications (in-app) — seen/read
-updated: 2026-04-30
+updated: 2026-05-01
 source_of_truth: true
 code_pointers:
   - backend/internal/controller/notification_controller.go
@@ -8,7 +8,9 @@ code_pointers:
   - backend/internal/infrastructure/persistence/notification_repository.go
   - frontend/src/entities/notification/model/notificationApi.ts
   - frontend/src/app/NotificationsProvider.tsx
-  - frontend/src/widgets/NotificationsPopover/lib/handleIncomingNotification.tsx
+  - frontend/src/widgets/notification-popover/ui/NotificationMenuPopover.tsx
+  - frontend/src/widgets/notification-popover/lib/handleIncomingNotification.tsx
+  - frontend/src/pages/notifications/ui/NotificationsPage.tsx
 ---
 
 # Notifications (in-app)
@@ -32,7 +34,8 @@ code_pointers:
 
 - Глобальный `NotificationsProvider` (`frontend/src/app/NotificationsProvider.tsx`) подписывает приложение на SSE и отвечает за snackbar входящих уведомлений на уровне всего SPA.
 - Бейдж колокольчика использует `unseen`.
-- `NotificationMenuPopover` отвечает за список/бейдж и seen/read-действия внутри popover, но не запускает snackbar-обработчик входящих событий.
+- `NotificationMenuPopover` (`frontend/src/widgets/notification-popover/ui/NotificationMenuPopover.tsx`) отвечает за список/бейдж и seen/read-действия внутри popover, но не запускает snackbar-обработчик входящих событий.
+- Полноэкранный список: `frontend/src/pages/notifications/ui/NotificationsPage.tsx` (маршрут `/notifications`).
 - При получении SSE и показе snackbar клиент отправляет `markSeen`.
 - При успешном доменном CTA из уведомления (например, подтверждение записи) клиент отправляет `markRead`.
 - Простое закрытие snackbar без доменного действия не переводит уведомление в `read`.
