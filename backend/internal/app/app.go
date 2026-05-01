@@ -60,6 +60,10 @@ func New() *fx.App {
 				fx.As(new(repository.SalonMemberInviteRepository)),
 			),
 			fx.Annotate(
+				persistence.NewStaffPhoneVerificationRepository,
+				fx.As(new(repository.StaffPhoneVerificationRepository)),
+			),
+			fx.Annotate(
 				twogis.NewCatalogAdapter,
 				fx.As(new(service.PlacesProvider)),
 			),
@@ -81,6 +85,7 @@ func New() *fx.App {
 			service.NewNotificationService,
 			service.NewAppointmentNotifier,
 			service.NewAuthService,
+			service.NewStaffPhoneOTPService,
 			controller.NewHealthController,
 			controller.NewSalonController,
 			controller.NewPlacesController,

@@ -2,7 +2,9 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/yourusername/beauty-marketplace/internal/auth"
 	"github.com/yourusername/beauty-marketplace/internal/service"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // MasterDashboardController handles /api/v1/master-dashboard/* (auth + master profile required).
@@ -170,15 +173,204 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 				}
 			}
 			status := q.Get("status")
-			items, total, err := h.svc.ListAppointments(r.Context(), userID, from, to, status)
+			page, _ := strconv.Atoi(q.Get("page"))
+			pageSize, _ := strconv.Atoi(q.Get("page_size"))
+
+			items, total, err := h.svc.ListAppointments(r.Context(), userID, from, to, status, page, pageSize)
 			if err != nil {
 				h.log.Error("master list appointments", zap.Error(err))
 				jsonError(w, "internal error", http.StatusInternalServerError)
 				return
 			}
+			if page < 1 {
+				page = 1
+			}
+			if pageSize < 1 {
+				pageSize = 50
+			}
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"items": items, "total": total})
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items":    items,
+				"total":    total,
+				"page":     page,
+				"pageSize": pageSize,
+			})
 			return
+		}
+		if len(parts) == 1 && r.Method == http.MethodPost {
+			var body service.ManualAppointmentInput
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonError(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			ap, err := h.svc.CreatePersonalAppointment(r.Context(), userID, body)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(ap)
+			return
+		}
+		if len(parts) == 2 && r.Method == http.MethodPut {
+			id, err := uuid.Parse(parts[1])
+			if err != nil {
+				jsonError(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+			var body service.UpdateAppointmentInput
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonError(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			body.AppointmentID = id
+			if err := h.svc.UpdatePersonalAppointment(r.Context(), userID, body); err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					jsonError(w, "not found", http.StatusNotFound)
+					return
+				}
+				jsonError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		http.NotFound(w, r)
+	case "services":
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			list, err := h.svc.ListMasterServices(r.Context(), userID)
+			if err != nil {
+				h.log.Error("master list services", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(list)
+			return
+		}
+		if len(parts) == 1 && r.Method == http.MethodPost {
+			var body service.CreateMasterServiceInput
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonError(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			out, err := h.svc.CreateMasterService(r.Context(), userID, body)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		if len(parts) == 2 {
+			id, err := uuid.Parse(parts[1])
+			if err != nil {
+				jsonError(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+			if r.Method == http.MethodPut {
+				var body service.CreateMasterServiceInput
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonError(w, "invalid json", http.StatusBadRequest)
+					return
+				}
+				out, err := h.svc.UpdateMasterService(r.Context(), userID, id, body)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						jsonError(w, "not found", http.StatusNotFound)
+						return
+					}
+					jsonError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+			if r.Method == http.MethodDelete {
+				if err := h.svc.DeleteMasterService(r.Context(), userID, id); err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						jsonError(w, "not found", http.StatusNotFound)
+						return
+					}
+					h.log.Error("master delete service", zap.Error(err))
+					jsonError(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		http.NotFound(w, r)
+	case "clients":
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			list, err := h.svc.ListMasterClients(r.Context(), userID)
+			if err != nil {
+				h.log.Error("master list clients", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(list)
+			return
+		}
+		if len(parts) == 1 && r.Method == http.MethodPost {
+			var body service.CreateMasterClientInput
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonError(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			out, err := h.svc.CreateMasterClient(r.Context(), userID, body)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		if len(parts) == 2 {
+			id, err := uuid.Parse(parts[1])
+			if err != nil {
+				jsonError(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+			if r.Method == http.MethodPut {
+				var body service.CreateMasterClientInput
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonError(w, "invalid json", http.StatusBadRequest)
+					return
+				}
+				out, err := h.svc.UpdateMasterClient(r.Context(), userID, id, body)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						jsonError(w, "not found", http.StatusNotFound)
+						return
+					}
+					jsonError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+			if r.Method == http.MethodDelete {
+				if err := h.svc.DeleteMasterClient(r.Context(), userID, id); err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						jsonError(w, "not found", http.StatusNotFound)
+						return
+					}
+					h.log.Error("master delete client", zap.Error(err))
+					jsonError(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 		}
 		http.NotFound(w, r)
 	default:

@@ -4,6 +4,7 @@ import {
   Avatar,
   Box,
   Button,
+  Chip,
   Drawer,
   IconButton,
   Menu,
@@ -15,6 +16,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -38,20 +40,32 @@ import {
   getMyMasterProfile,
   getMyMasterSalons,
   updateMyMasterProfile,
+  getMasterServices,
+  createMasterService,
+  updateMasterService,
+  deleteMasterService,
+  getMasterClients,
+  createMasterClient,
+  updateMasterClient,
+  deleteMasterClient,
   type MasterCabinetProfile,
   type MasterDashboardAppointment,
   type MasterInviteDTO,
   type MasterSalonMembershipDTO,
+  type MasterService,
+  type MasterClient,
 } from '@shared/api/masterDashboardApi'
 import { salonPath } from '@shared/config/routes'
 
-type Section = 'profile' | 'invites' | 'salons' | 'appointments'
+type Section = 'profile' | 'invites' | 'salons' | 'appointments' | 'services' | 'clients'
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'profile', label: 'Профиль', icon: '👤' },
   { id: 'invites', label: 'Приглашения', icon: '✉️' },
   { id: 'salons', label: 'Салоны', icon: '🏪' },
   { id: 'appointments', label: 'Записи', icon: '📋' },
+  { id: 'services', label: 'Услуги', icon: '✂️' },
+  { id: 'clients', label: 'Клиенты', icon: '👥' },
 ]
 
 const TITLES: Record<Section, string> = {
@@ -59,10 +73,19 @@ const TITLES: Record<Section, string> = {
   invites: 'Приглашения',
   salons: 'Мои салоны',
   appointments: 'Записи',
+  services: 'Мои услуги',
+  clients: 'Мои клиенты',
 }
 
 function isSection(s: string | null): s is Section {
-  return s === 'profile' || s === 'invites' || s === 'salons' || s === 'appointments'
+  return (
+    s === 'profile' ||
+    s === 'invites' ||
+    s === 'salons' ||
+    s === 'appointments' ||
+    s === 'services' ||
+    s === 'clients'
+  )
 }
 
 function pickColorFromSalonId(salonId: string): string {
@@ -389,6 +412,8 @@ function AppointmentsSection() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [status, setStatus] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(25)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -398,17 +423,23 @@ function AppointmentsSection() {
         from: from || undefined,
         to: to || undefined,
         status: status || undefined,
+        page,
+        page_size: pageSize,
       })
       setItems(res.items)
       setTotal(res.total)
     } finally {
       setLoading(false)
     }
-  }, [from, to, status])
+  }, [from, to, status, page, pageSize])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    setPage(1)
+  }, [from, to, status])
 
   return (
     <Stack spacing={2}>
@@ -455,36 +486,182 @@ function AppointmentsSection() {
       ) : items.length === 0 ? (
         <Typography sx={{ color: d.muted }}>Нет записей</Typography>
       ) : (
-        <Table
-          size="small"
-          sx={{
-            bgcolor: d.card,
-            border: `1px solid ${d.borderSubtle}`,
-            borderRadius: 1,
-            overflow: 'hidden',
-          }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>Дата и время</TableCell>
-              <TableCell>Салон</TableCell>
-              <TableCell>Услуга</TableCell>
-              <TableCell>Клиент</TableCell>
-              <TableCell>Статус</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map(a => (
-              <TableRow key={a.id}>
-                <TableCell>{formatApptRange(a.startsAt, a.endsAt)}</TableCell>
-                <TableCell>{a.salonName}</TableCell>
-                <TableCell>{a.serviceName}</TableCell>
-                <TableCell>{a.clientLabel}</TableCell>
-                <TableCell>{a.status}</TableCell>
+        <Box>
+          <Table
+            size="small"
+            sx={{
+              bgcolor: d.card,
+              border: `1px solid ${d.borderSubtle}`,
+              borderRadius: 1,
+              overflow: 'hidden',
+            }}
+          >
+            <TableHead>
+              <TableRow>
+                <TableCell>Дата и время</TableCell>
+                <TableCell>Салон</TableCell>
+                <TableCell>Услуга</TableCell>
+                <TableCell>Клиент</TableCell>
+                <TableCell>Статус</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {items.map(a => (
+                <TableRow key={a.id}>
+                  <TableCell>{formatApptRange(a.startsAt, a.endsAt)}</TableCell>
+                  <TableCell>
+                    {a.salonName === 'Личная запись' ? (
+                      <Chip
+                        label="Личная запись"
+                        size="small"
+                        sx={{ bgcolor: d.accentSubtle, color: d.accent, fontWeight: 600 }}
+                      />
+                    ) : (
+                      a.salonName
+                    )}
+                  </TableCell>
+                  <TableCell>{a.serviceName}</TableCell>
+                  <TableCell>{a.clientLabel}</TableCell>
+                  <TableCell>{a.status}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <TablePagination
+            component="div"
+            count={total}
+            page={page - 1}
+            onPageChange={(_, p) => setPage(p + 1)}
+            rowsPerPage={pageSize}
+            rowsPerPageOptions={[pageSize]}
+            labelDisplayedRows={({ from, to, count }) => `${from}–${to} из ${count}`}
+            sx={{
+              color: d.text,
+              '& .MuiTablePagination-actions': { color: d.text },
+              borderTop: `1px solid ${d.borderSubtle}`,
+            }}
+          />
+        </Box>
+      )}
+    </Stack>
+  )
+}
+
+function ServicesSection() {
+  const d = useDashboardPalette()
+  const [rows, setRows] = useState<MasterService[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      setRows(await getMasterServices())
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  return (
+    <Stack spacing={2}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Typography sx={{ color: d.muted, fontSize: 13 }}>
+          Ваши собственные услуги, доступные для личных записей
+        </Typography>
+        <Button variant="contained" size="small" disabled>
+          Добавить
+        </Button>
+      </Stack>
+      {loading ? (
+        <Typography sx={{ color: d.muted }}>Загрузка…</Typography>
+      ) : rows.length === 0 ? (
+        <Paper elevation={0} sx={{ p: 4, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}>
+          <Typography sx={{ color: d.muted }}>У вас пока нет своих услуг</Typography>
+        </Paper>
+      ) : (
+        <Stack spacing={1}>
+          {rows.map(s => (
+            <Paper
+              key={s.id}
+              elevation={0}
+              sx={{ p: 2, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}
+            >
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                <Box>
+                  <Typography sx={{ fontWeight: 600, color: d.text }}>{s.name}</Typography>
+                  <Typography sx={{ fontSize: 12, color: d.muted }}>
+                    {s.durationMinutes} мин • {s.priceCents ? `${s.priceCents / 100} ₽` : 'Цена не указана'}
+                  </Typography>
+                </Box>
+                {!s.isActive && (
+                  <Chip label="Неактивна" size="small" sx={{ height: 20, fontSize: 10 }} />
+                )}
+              </Stack>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  )
+}
+
+function ClientsSection() {
+  const d = useDashboardPalette()
+  const [rows, setRows] = useState<MasterClient[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      setRows(await getMasterClients())
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  return (
+    <Stack spacing={2}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Typography sx={{ color: d.muted, fontSize: 13 }}>
+          Ваша личная база клиентов
+        </Typography>
+        <Button variant="contained" size="small" disabled>
+          Добавить
+        </Button>
+      </Stack>
+      {loading ? (
+        <Typography sx={{ color: d.muted }}>Загрузка…</Typography>
+      ) : rows.length === 0 ? (
+        <Paper elevation={0} sx={{ p: 4, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}>
+          <Typography sx={{ color: d.muted }}>У вас пока нет личных клиентов</Typography>
+        </Paper>
+      ) : (
+        <Stack spacing={1}>
+          {rows.map(c => (
+            <Paper
+              key={c.id}
+              elevation={0}
+              sx={{ p: 2, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}
+            >
+              <Typography sx={{ fontWeight: 600, color: d.text }}>{c.displayName}</Typography>
+              {c.phone && (
+                <Typography sx={{ fontSize: 13, color: d.muted }}>{c.phone}</Typography>
+              )}
+              {c.notes && (
+                <Typography sx={{ fontSize: 12, color: d.mutedDark, mt: 0.5, fontStyle: 'italic' }}>
+                  {c.notes}
+                </Typography>
+              )}
+            </Paper>
+          ))}
+        </Stack>
       )}
     </Stack>
   )
@@ -727,6 +904,10 @@ export function MasterDashboardPage() {
         return <SalonsSection />
       case 'appointments':
         return <AppointmentsSection />
+      case 'services':
+        return <ServicesSection />
+      case 'clients':
+        return <ClientsSection />
       default:
         return null
     }

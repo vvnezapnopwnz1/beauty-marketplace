@@ -1,12 +1,11 @@
 import '@mui/material/styles'
-import type { DashboardPalette } from './dashboardPalette'
+import type { VelaTheme } from './themes'
 
 declare module '@mui/material/styles' {
   interface Palette {
-    dashboard: DashboardPalette
+    dashboard: VelaTheme
   }
-
   interface PaletteOptions {
-    dashboard: DashboardPalette
+    dashboard: VelaTheme
   }
 }

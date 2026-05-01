@@ -70,3 +70,36 @@ func (r *appointmentRepository) FindByMasterInRange(ctx context.Context, salonMa
 		Find(&rows).Error
 	return rows, err
 }
+func (r *appointmentRepository) FindByID(ctx context.Context, id uuid.UUID) (*model.Appointment, error) {
+	var a model.Appointment
+	err := r.db.WithContext(ctx).First(&a, id).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &a, nil
+}
+
+func (r *appointmentRepository) Update(ctx context.Context, a *model.Appointment) error {
+	return r.db.WithContext(ctx).Save(a).Error
+}
+
+func (r *appointmentRepository) ReplaceAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID, items []model.AppointmentLineItem) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("appointment_id = ?", appointmentID).Delete(&model.AppointmentLineItem{}).Error; err != nil {
+			return err
+		}
+		for i := range items {
+			items[i].AppointmentID = appointmentID
+			if items[i].ID == uuid.Nil {
+				items[i].ID = uuid.New()
+			}
+			if err := tx.Create(&items[i]).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

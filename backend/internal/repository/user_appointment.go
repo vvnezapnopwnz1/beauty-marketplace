@@ -10,7 +10,7 @@ import (
 // UserAppointmentRow is a single appointment as seen by the client in their profile.
 type UserAppointmentRow struct {
 	ID           uuid.UUID
-	SalonID      uuid.UUID
+	SalonID      *uuid.UUID
 	SalonName    string
 	ServiceName  string  // primary or concatenated line-item names
 	MasterName   *string // nil when no master assigned

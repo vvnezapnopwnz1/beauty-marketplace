@@ -31,12 +31,25 @@ func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, i
 		b := trimSpace(*in.Bio)
 		bioPtr = &b
 	}
+	normalizedPhone := normalizePhoneE164Ptr(in.Phone)
+	if normalizedPhone != nil {
+		if in.PhoneVerificationProof == nil || *in.PhoneVerificationProof == "" {
+			return nil, fmt.Errorf("phone verification proof is required when setting phone")
+		}
+		proofID, err := uuid.Parse(*in.PhoneVerificationProof)
+		if err != nil {
+			return nil, fmt.Errorf("invalid phone verification proof")
+		}
+		if err := s.phoneOTP.ValidateAndConsumeProof(ctx, proofID, *normalizedPhone, salonID); err != nil {
+			return nil, fmt.Errorf("phone verification failed: %w", err)
+		}
+	}
 	mp := &model.MasterProfile{
 		DisplayName:     n,
 		Bio:             bioPtr,
 		Specializations: specs,
 		YearsExperience: in.YearsExperience,
-		PhoneE164:       normalizePhoneE164Ptr(in.Phone),
+		PhoneE164:       normalizedPhone,
 	}
 	if err := s.dash.CreateMasterProfile(ctx, mp); err != nil {
 		return nil, err
@@ -181,10 +194,29 @@ func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uui
 				mp.YearsExperience = in.YearsExperience
 			}
 			if in.Phone != nil {
-				if trimSpace(*in.Phone) == "" {
+				newPhone := normalizePhoneE164Ptr(in.Phone)
+				phoneChanged := false
+				if newPhone == nil && mp.PhoneE164 != nil {
+					phoneChanged = true
+				} else if newPhone != nil && (mp.PhoneE164 == nil || *newPhone != *mp.PhoneE164) {
+					phoneChanged = true
+				}
+				if phoneChanged && newPhone != nil {
+					if in.PhoneVerificationProof == nil || *in.PhoneVerificationProof == "" {
+						return nil, fmt.Errorf("phone verification proof is required when changing phone")
+					}
+					proofID, err := uuid.Parse(*in.PhoneVerificationProof)
+					if err != nil {
+						return nil, fmt.Errorf("invalid phone verification proof")
+					}
+					if err := s.phoneOTP.ValidateAndConsumeProof(ctx, proofID, *newPhone, salonID); err != nil {
+						return nil, fmt.Errorf("phone verification failed: %w", err)
+					}
+				}
+				if newPhone == nil {
 					mp.PhoneE164 = nil
-				} else if p := normalizePhoneE164Ptr(in.Phone); p != nil {
-					mp.PhoneE164 = p
+				} else {
+					mp.PhoneE164 = newPhone
 				}
 			}
 			if err := s.dash.UpdateMasterProfile(ctx, mp); err != nil {

@@ -13,15 +13,16 @@ import (
 
 // DashboardController handles /api/v1/dashboard/* (auth required).
 type DashboardController struct {
-	svc     service.DashboardService
-	booking service.BookingService
-	clients *SalonClientController
-	log     *zap.Logger
+	svc      service.DashboardService
+	booking  service.BookingService
+	clients  *SalonClientController
+	phoneOTP *service.StaffPhoneOTPService
+	log      *zap.Logger
 }
 
 // NewDashboardController constructs DashboardController.
-func NewDashboardController(svc service.DashboardService, booking service.BookingService, clients *SalonClientController, log *zap.Logger) *DashboardController {
-	return &DashboardController{svc: svc, booking: booking, clients: clients, log: log}
+func NewDashboardController(svc service.DashboardService, booking service.BookingService, clients *SalonClientController, phoneOTP *service.StaffPhoneOTPService, log *zap.Logger) *DashboardController {
+	return &DashboardController{svc: svc, booking: booking, clients: clients, phoneOTP: phoneOTP, log: log}
 }
 
 // resolveSalonMembership validates auth context and salon membership. Writes JSON errors on failure.
@@ -197,6 +198,12 @@ func (h *DashboardController) DashboardRoutes(w http.ResponseWriter, r *http.Req
 			}
 		}
 		http.NotFound(w, r)
+	case "phone-otp":
+		if role == "receptionist" {
+			jsonError(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		h.handleStaffPhoneOTP(w, r, salonID, parts)
 	default:
 		http.NotFound(w, r)
 	}

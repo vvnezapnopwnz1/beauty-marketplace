@@ -11,6 +11,8 @@ import {
   RadioGroup,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import { useForm, Controller, useWatch, type Resolver } from 'react-hook-form'
@@ -30,6 +32,8 @@ import {
   useLazyGetStaffByIdQuery,
   useLazyLookupMasterByPhoneQuery,
   useUpdateStaffMutation,
+  useRequestStaffPhoneOtpMutation,
+  useVerifyStaffPhoneOtpMutation,
 } from '@entities/staff'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
@@ -162,6 +166,67 @@ export function StaffFormModal(props: {
   const [deleteStaff] = useDeleteStaffMutation()
   const [lookupMaster] = useLazyLookupMasterByPhoneQuery()
   const [createMasterInvite] = useCreateMasterInviteMutation()
+  const [requestOtp, { isLoading: isRequestingOtp }] = useRequestStaffPhoneOtpMutation()
+  const [verifyOtp, { isLoading: isVerifyingOtp }] = useVerifyStaffPhoneOtpMutation()
+
+  // OTP verification state
+  const [phoneVerified, setPhoneVerified] = React.useState(false)
+  const [phoneProof, setPhoneProof] = React.useState<string | null>(null)
+  const [otpStep, setOtpStep] = React.useState<'idle' | 'sent' | 'verified'>('idle')
+  const [otpCode, setOtpCode] = React.useState('')
+  const [otpChannel, setOtpChannel] = React.useState<'sms' | 'telegram'>('sms')
+  const [otpError, setOtpError] = React.useState<string | null>(null)
+  const [verifiedPhone, setVerifiedPhone] = React.useState<string | null>(null)
+
+  const watchedPhone = useWatch({ control, name: 'phone' })
+
+  const normalizePhone = (raw: string | undefined | null): string | null => {
+    if (!raw) return null
+    let p = raw.replace(/[\s\-()]/g, '')
+    if (p.startsWith('8') && p.length === 11) p = '+7' + p.slice(1)
+    if (/^\+7\d{10}$/.test(p)) return p
+    return null
+  }
+
+  const currentNormalized = normalizePhone(watchedPhone)
+  const isPhoneValid = currentNormalized !== null
+  const needsPhoneVerification = isPhoneValid && !phoneVerified
+
+  // Reset OTP state when phone changes
+  useEffect(() => {
+    if (currentNormalized !== verifiedPhone) {
+      setPhoneVerified(false)
+      setPhoneProof(null)
+      setOtpStep('idle')
+      setOtpCode('')
+      setOtpError(null)
+    }
+  }, [currentNormalized, verifiedPhone])
+
+  const handleRequestOtp = async () => {
+    if (!currentNormalized) return
+    setOtpError(null)
+    try {
+      await requestOtp({ phone: currentNormalized, channel: otpChannel }).unwrap()
+      setOtpStep('sent')
+    } catch (e: any) {
+      setOtpError(e?.data?.error || 'Ошибка отправки кода')
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    if (!currentNormalized || !otpCode) return
+    setOtpError(null)
+    try {
+      const result = await verifyOtp({ phone: currentNormalized, code: otpCode }).unwrap()
+      setPhoneProof(result.phoneVerificationProof)
+      setPhoneVerified(true)
+      setVerifiedPhone(currentNormalized)
+      setOtpStep('verified')
+    } catch (e: any) {
+      setOtpError(e?.data?.error || 'Неверный код')
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -190,6 +255,13 @@ export function StaffFormModal(props: {
           serviceIds: [], specializations: [], yearsExperience: undefined,
           color: STAFF_COLOR_SWATCHES[0],
         })
+        // Reset OTP state for new staff
+        setPhoneVerified(false)
+        setPhoneProof(null)
+        setOtpStep('idle')
+        setOtpCode('')
+        setOtpError(null)
+        setVerifiedPhone(null)
         return
       }
       try {
@@ -220,6 +292,23 @@ export function StaffFormModal(props: {
           yearsExperience: st.masterProfile?.yearsExperience ?? undefined,
           color: st.color ?? STAFF_COLOR_SWATCHES[0],
         })
+        // Pre-verify phone for edit mode (so existing phone doesn't require re-verification)
+        const existingPhone = st.phone
+        if (existingPhone) {
+          const existingNormalized = normalizePhone(existingPhone)
+          if (existingNormalized) {
+            setVerifiedPhone(existingNormalized)
+            setPhoneVerified(true)
+            setOtpStep('verified')
+          }
+        } else {
+          setVerifiedPhone(null)
+          setPhoneVerified(false)
+          setOtpStep('idle')
+        }
+        setOtpCode('')
+        setOtpError(null)
+        setPhoneProof(null)
       } catch { /* ignore */ }
     })()
   }, [open, staffId, reset, fetchStaff])
@@ -264,6 +353,7 @@ export function StaffFormModal(props: {
       specializations: v.specializations ?? [],
       yearsExperience: v.yearsExperience ?? null,
       serviceAssignments,
+      phoneVerificationProof: phoneProof,
     }
     try {
       if (!staffId) {
@@ -606,7 +696,64 @@ export function StaffFormModal(props: {
                         placeholder="+7 916 234-56-78"
                         inputProps={{ 'aria-label': 'Телефон' }}
                         sx={inputBaseSx}
+                        disabled={otpStep === 'sent'}
                       />
+                      {isPhoneValid && otpStep === 'idle' && !phoneVerified && (
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1 }}>
+                          <ToggleButtonGroup
+                            value={otpChannel}
+                            exclusive
+                            onChange={(_, v) => v && setOtpChannel(v)}
+                            size="small"
+                            sx={{ '& .MuiToggleButton-root': { fontSize: 12, py: 0.5, px: 1.5 } }}
+                          >
+                            <ToggleButton value="sms">SMS</ToggleButton>
+                            <ToggleButton value="telegram">Telegram</ToggleButton>
+                          </ToggleButtonGroup>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => void handleRequestOtp()}
+                            disabled={isRequestingOtp}
+                          >
+                            {isRequestingOtp ? 'Отправка...' : 'Подтвердить номер'}
+                          </Button>
+                        </Box>
+                      )}
+                      {otpStep === 'sent' && (
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1 }}>
+                          <TextField
+                            label="Код"
+                            size="small"
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            inputProps={{ maxLength: 4, style: { letterSpacing: 8, textAlign: 'center', fontWeight: 700 } }}
+                            sx={{ width: 120, ...inputBaseSx }}
+                            autoFocus
+                          />
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => void handleVerifyOtp()}
+                            disabled={otpCode.length < 4 || isVerifyingOtp}
+                          >
+                            {isVerifyingOtp ? '...' : 'Проверить'}
+                          </Button>
+                          <Button size="small" onClick={() => { setOtpStep('idle'); setOtpCode('') }}>
+                            Назад
+                          </Button>
+                        </Box>
+                      )}
+                      {otpStep === 'verified' && (
+                        <Alert severity="success" sx={{ mt: 1 }}>
+                          Номер подтверждён
+                        </Alert>
+                      )}
+                      {otpError && (
+                        <Alert severity="error" sx={{ mt: 1 }}>
+                          {otpError}
+                        </Alert>
+                      )}
                     </FormField>
                   )}
                 />
@@ -807,7 +954,7 @@ export function StaffFormModal(props: {
             ) : (
             <>
               <PanelBtn variant="ghost" onClick={onClose}>Отмена</PanelBtn>
-              <PanelBtn variant="primary" type="submit">Сохранить</PanelBtn>
+              <PanelBtn variant="primary" type="submit" disabled={needsPhoneVerification}>Сохранить</PanelBtn>
             </>
             )
           }

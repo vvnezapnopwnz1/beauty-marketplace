@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yourusername/beauty-marketplace/internal/auth"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
 	"github.com/yourusername/beauty-marketplace/internal/service"
 	"go.uber.org/zap"
@@ -265,3 +266,74 @@ func staffScheduleBundleJSON(b *service.StaffScheduleBundle) map[string]any {
 	}
 	return map[string]any{"rows": rows, "absences": abs}
 }
+
+func (h *DashboardController) handleStaffPhoneOTP(w http.ResponseWriter, r *http.Request, salonID uuid.UUID, parts []string) {
+	if len(parts) != 2 {
+		http.NotFound(w, r)
+		return
+	}
+	switch parts[1] {
+	case "request":
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.requestStaffPhoneOTP(w, r, salonID)
+	case "verify":
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.verifyStaffPhoneOTP(w, r, salonID)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (h *DashboardController) requestStaffPhoneOTP(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	uid, ok := auth.UserIDFromCtx(r.Context())
+	if !ok {
+		jsonError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var body service.StaffPhoneOTPRequestParams
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if body.Phone == "" {
+		jsonError(w, "phone is required", http.StatusBadRequest)
+		return
+	}
+	result, err := h.phoneOTP.Request(r.Context(), salonID, uid, body)
+	if err != nil {
+		h.log.Error("staff phone otp request", zap.Error(err))
+		jsonError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(result)
+}
+
+func (h *DashboardController) verifyStaffPhoneOTP(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
+	var body service.StaffPhoneOTPVerifyParams
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if body.Phone == "" || body.Code == "" {
+		jsonError(w, "phone and code are required", http.StatusBadRequest)
+		return
+	}
+	proofID, err := h.phoneOTP.Verify(r.Context(), salonID, body)
+	if err != nil {
+		h.log.Error("staff phone otp verify", zap.Error(err))
+		jsonError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"phoneVerificationProof": proofID.String(),
+	})
+}
+

@@ -230,8 +230,8 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 	}
 
 	countQ := r.db.WithContext(ctx).Table("appointments a").
-		Joins("JOIN salon_masters sm ON a.salon_master_id = sm.id").
-		Where("sm.master_id = ?", f.MasterProfileID)
+		Joins("LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id").
+		Where("sm.master_id = ? OR a.master_profile_id = ?", f.MasterProfileID, f.MasterProfileID)
 	if f.From != nil {
 		countQ = countQ.Where("a.starts_at >= ?", *f.From)
 	}
@@ -259,15 +259,20 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 				(SELECT string_agg(ali.service_name, ', ' ORDER BY ali.sort_order)
 				 FROM appointment_line_items ali
 				 WHERE ali.appointment_id = a.id),
-				s.name
+				s.name,
+				''
 			) AS service_name,
-			COALESCE(NULLIF(TRIM(sal.name_override), ''), 'Салон') AS salon_name,
+			CASE 
+				WHEN a.salon_id IS NULL THEN 'Личная запись'
+				ELSE COALESCE(NULLIF(TRIM(sal.name_override), ''), 'Салон')
+			END AS salon_name,
 			COALESCE(NULLIF(TRIM(a.guest_name), ''), users.display_name, 'Гость') AS client_label,
 			a.guest_phone_e164 AS client_phone`).
-		Joins("JOIN salon_masters sm ON a.salon_master_id = sm.id AND sm.master_id = ?", f.MasterProfileID).
-		Joins("JOIN services s ON s.id = a.service_id AND s.salon_id = a.salon_id").
-		Joins("JOIN salons sal ON sal.id = a.salon_id").
-		Joins("LEFT JOIN users ON users.id = a.client_user_id")
+		Joins("LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id").
+		Joins("LEFT JOIN services s ON s.id = a.service_id").
+		Joins("LEFT JOIN salons sal ON sal.id = a.salon_id").
+		Joins("LEFT JOIN users ON users.id = a.client_user_id").
+		Where("sm.master_id = ? OR a.master_profile_id = ?", f.MasterProfileID, f.MasterProfileID)
 	if f.From != nil {
 		q = q.Where("a.starts_at >= ?", *f.From)
 	}
@@ -277,7 +282,7 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 	if f.Status != "" {
 		q = q.Where("a.status = ?", f.Status)
 	}
-	if err := q.Order("a.starts_at DESC").Limit(limit).Scan(&raw).Error; err != nil {
+	if err := q.Order("a.starts_at DESC").Limit(limit).Offset(f.Offset).Scan(&raw).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]repository.MasterAppointmentListRow, len(raw))
@@ -291,4 +296,116 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 		}
 	}
 	return out, total, nil
+}
+
+func (r *masterDashboardRepository) ListMasterServices(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterService, error) {
+	var rows []model.MasterService
+	err := r.db.WithContext(ctx).
+		Where("master_id = ?", masterProfileID).
+		Order("created_at ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *masterDashboardRepository) GetMasterService(ctx context.Context, masterProfileID, serviceID uuid.UUID) (*model.MasterService, error) {
+	var row model.MasterService
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND master_id = ?", serviceID, masterProfileID).
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (r *masterDashboardRepository) CreateMasterService(ctx context.Context, s *model.MasterService) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return r.db.WithContext(ctx).Create(s).Error
+}
+
+func (r *masterDashboardRepository) UpdateMasterService(ctx context.Context, s *model.MasterService) error {
+	res := r.db.WithContext(ctx).Model(&model.MasterService{}).
+		Where("id = ? AND master_id = ?", s.ID, s.MasterID).
+		Updates(s)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *masterDashboardRepository) DeleteMasterService(ctx context.Context, masterProfileID, serviceID uuid.UUID) error {
+	res := r.db.WithContext(ctx).
+		Where("id = ? AND master_id = ?", serviceID, masterProfileID).
+		Delete(&model.MasterService{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *masterDashboardRepository) ListMasterClients(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterClient, error) {
+	var rows []model.MasterClient
+	err := r.db.WithContext(ctx).
+		Where("master_profile_id = ?", masterProfileID).
+		Order("display_name ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *masterDashboardRepository) GetMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) (*model.MasterClient, error) {
+	var row model.MasterClient
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND master_profile_id = ?", clientID, masterProfileID).
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (r *masterDashboardRepository) CreateMasterClient(ctx context.Context, c *model.MasterClient) error {
+	if c.ID == uuid.Nil {
+		c.ID = uuid.New()
+	}
+	return r.db.WithContext(ctx).Create(c).Error
+}
+
+func (r *masterDashboardRepository) UpdateMasterClient(ctx context.Context, c *model.MasterClient) error {
+	res := r.db.WithContext(ctx).Model(&model.MasterClient{}).
+		Where("id = ? AND master_profile_id = ?", c.ID, c.MasterProfileID).
+		Updates(c)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *masterDashboardRepository) DeleteMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) error {
+	res := r.db.WithContext(ctx).
+		Where("id = ? AND master_profile_id = ?", clientID, masterProfileID).
+		Delete(&model.MasterClient{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

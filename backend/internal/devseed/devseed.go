@@ -339,7 +339,7 @@ func Run(ctx context.Context, db *gorm.DB, log *zap.Logger) error {
 
 		ap := model.Appointment{
 			ID:            uuid.New(),
-			SalonID:       demoSalonUUID,
+			SalonID:       &demoSalonUUID,
 			ServiceID:     svcID,
 			SalonMasterID: &stID,
 			StartsAt:      startLocal.UTC(),

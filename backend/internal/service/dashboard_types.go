@@ -120,6 +120,7 @@ type StaffInput struct {
 	Specializations       []string                            `json:"specializations"`
 	YearsExperience       *int                                `json:"yearsExperience"`
 	ServiceAssignments    []SalonMasterServiceAssignmentInput `json:"serviceAssignments,omitempty"`
+	PhoneVerificationProof *string                            `json:"phoneVerificationProof,omitempty"`
 }
 
 type SalonMasterServiceAssignmentInput struct {

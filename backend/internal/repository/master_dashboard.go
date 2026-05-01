@@ -42,6 +42,7 @@ type MasterAppointmentListFilter struct {
 	To              *time.Time
 	Status          string
 	Limit           int
+	Offset          int
 }
 
 // MasterDashboardRepository persists master cabinet reads/writes and OTP claiming helpers.
@@ -56,4 +57,18 @@ type MasterDashboardRepository interface {
 	AcceptPendingInvite(ctx context.Context, masterProfileID, salonMasterID uuid.UUID) (bool, error)
 	DeclinePendingInvite(ctx context.Context, masterProfileID, salonMasterID uuid.UUID) (bool, error)
 	ListMasterAppointments(ctx context.Context, f MasterAppointmentListFilter) ([]MasterAppointmentListRow, int64, error)
+
+	// MasterServices
+	ListMasterServices(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterService, error)
+	GetMasterService(ctx context.Context, masterProfileID, serviceID uuid.UUID) (*model.MasterService, error)
+	CreateMasterService(ctx context.Context, s *model.MasterService) error
+	UpdateMasterService(ctx context.Context, s *model.MasterService) error
+	DeleteMasterService(ctx context.Context, masterProfileID, serviceID uuid.UUID) error
+
+	// MasterClients
+	ListMasterClients(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterClient, error)
+	GetMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) (*model.MasterClient, error)
+	CreateMasterClient(ctx context.Context, c *model.MasterClient) error
+	UpdateMasterClient(ctx context.Context, c *model.MasterClient) error
+	DeleteMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) error
 }

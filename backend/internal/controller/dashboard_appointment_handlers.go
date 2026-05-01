@@ -212,7 +212,7 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(apOut{
-		ID: ap.ID, SalonID: ap.SalonID, ServiceID: ap.ServiceID, SalonMasterID: ap.SalonMasterID,
+		ID: ap.ID, SalonID: *ap.SalonID, ServiceID: ap.ServiceID, SalonMasterID: ap.SalonMasterID,
 		StartsAt: ap.StartsAt, EndsAt: ap.EndsAt, Status: ap.Status,
 		GuestName: ap.GuestName, GuestPhoneE164: ap.GuestPhoneE164, ClientUserID: ap.ClientUserID, ClientNote: ap.ClientNote,
 	})

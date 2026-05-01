@@ -29,6 +29,7 @@ import { SecuritySection } from './sections/SecuritySection'
 import { DangerSection } from './sections/DangerSection'
 import { SalonInvitesSection } from './sections/SalonInvitesSection'
 import { AppointmentsSection } from './sections/AppointmentsSection'
+import { AppearanceSection } from './sections/AppearanceSection'
 import NotificationMenuPopover from '@widgets/notification-popover/ui/NotificationMenuPopover'
 import MenuIcon from '@mui/icons-material/Menu'
 import { Switch } from '@mui/material'
@@ -36,10 +37,10 @@ import { useThemeMode } from '@shared/theme'
 import { useTranslation } from 'react-i18next'
 // import { useMemberships } from '@features/salon-membership/hooks/useMemberships'
 
-type TabKey = 'general' | 'security' | 'danger' | 'invites' | 'appointments'
+type TabKey = 'general' | 'security' | 'danger' | 'invites' | 'appointments' | 'appearance'
 
 function asTab(value: string | null): TabKey {
-  if (value === 'security' || value === 'danger' || value === 'invites' || value === 'appointments') return value
+  if (value === 'security' || value === 'danger' || value === 'invites' || value === 'appointments' || value === 'appearance') return value
   return 'general'
 }
 
@@ -54,6 +55,7 @@ function initials(name?: string | null): string {
 const NAV: { id: TabKey; label: string; icon: string }[] = [
   { id: 'general', label: 'Общее', icon: '👤' },
   { id: 'appointments', label: 'Мои записи', icon: '📋' },
+  { id: 'appearance', label: 'Оформление', icon: '🎨' },
   { id: 'security', label: 'Безопасность', icon: '🔐' },
   { id: 'invites', label: 'Приглашения', icon: '✉️' },
   { id: 'danger', label: 'Опасная зона', icon: '⚠️' },
@@ -62,6 +64,7 @@ const NAV: { id: TabKey; label: string; icon: string }[] = [
 const TITLES: Record<TabKey, string> = {
   general: 'Профиль',
   appointments: 'Мои записи',
+  appearance: 'Оформление',
   security: 'Безопасность',
   invites: 'Приглашения',
   danger: 'Опасная зона',
@@ -370,6 +373,7 @@ export function MePage() {
             <>
               {currentTab === 'general' && <GeneralSection key={profile?.updatedAt ?? 'empty'} />}
               {currentTab === 'appointments' && <AppointmentsSection />}
+              {currentTab === 'appearance' && <AppearanceSection />}
               {currentTab === 'security' && <SecuritySection />}
               {currentTab === 'invites' && <SalonInvitesSection />}
               {currentTab === 'danger' && <DangerSection />}

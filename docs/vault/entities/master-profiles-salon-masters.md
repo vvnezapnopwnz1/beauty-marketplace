@@ -55,7 +55,8 @@ code_pointers: []
 
 - Полный контент **`master_profiles`** через API `/api/v1/master-dashboard/profile` (имя, bio, специализации, стаж, `avatar_url`; телефон только чтение).
 - Просмотр **`salon_masters`**: активные салоны и входящие приглашения (`pending`), принятие / отклонение без push-уведомлений.
-- Просмотр записей по всем салонам (`GET .../appointments`).
+- Просмотр записей по всем салонам + **личные записи** (`GET .../appointments`).
+- Управление личными клиентами (**`master_clients`**) и личным каталогом услуг (**`master_services`**).
 
 ---
 
@@ -86,11 +87,11 @@ code_pointers: []
 
 ### 4.1. Записи (`appointments`)
 
-Всегда через **`salon_masters`**:
+Два типа записей:
+1. **Салонные**: `salon_id` задан, связь через **`salon_masters`** (`appointments.salon_master_id` → `salon_masters.id`).
+2. **Личные**: `salon_id` IS NULL, связь напрямую с профилем мастера (`appointments.master_profile_id` → `master_profiles.id`).
 
-`appointments.salon_master_id` → `salon_masters.id`.
-
-В JSON API дашборда поле мастера: **`salonMasterId`** (UUID строки `salon_masters`).
+В JSON API дашборда поле мастера: **`salonMasterId`** (для салонных) или пустые ссылки для личных. В кабинете мастера (`MasterDashboardService`) записи агрегируются.
 
 При уходе мастера из салона: `is_active=false`, `left_at`, строка **`salon_masters`** не удаляется — история записей сохраняется.
 
@@ -102,7 +103,7 @@ code_pointers: []
 
 | Слой | Таблица / смысл |
 |------|------------------|
-| Личный каталог мастера | `master_services` — «что умею» (резюме, не обязательно для записи клиента). |
+| Личный каталог мастера | `master_services` — услуги для личной практики и резюме (используются в личных записях). |
 | Каталог салона | `services` (услуги салона, цена/длительность по умолчанию). |
 | Мастер в этом салоне | `salon_master_services` — пересечение + **`price_override_cents`**, **`duration_override_minutes`**. |
 

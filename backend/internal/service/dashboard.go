@@ -72,6 +72,7 @@ type dashboardService struct {
 	clients  repository.SalonClientRepository
 	invites  repository.SalonMemberInviteRepository
 	notifier AppointmentNotifier
+	phoneOTP *StaffPhoneOTPService
 }
 
 // NewDashboardService constructs DashboardService.
@@ -80,6 +81,7 @@ func NewDashboardService(
 	clients repository.SalonClientRepository,
 	invites repository.SalonMemberInviteRepository,
 	notifier AppointmentNotifier,
+	phoneOTP *StaffPhoneOTPService,
 ) DashboardService {
-	return &dashboardService{dash: dash, clients: clients, invites: invites, notifier: notifier}
+	return &dashboardService{dash: dash, clients: clients, invites: invites, notifier: notifier, phoneOTP: phoneOTP}
 }

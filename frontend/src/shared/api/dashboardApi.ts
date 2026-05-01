@@ -239,6 +239,7 @@ export type StaffFormPayload = {
   specializations: string[]
   yearsExperience?: number | null
   serviceAssignments?: StaffServiceAssignmentPayload[]
+  phoneVerificationProof?: string | null
 }
 
 export interface SalonProfile {
@@ -486,6 +487,7 @@ function staffPayloadJson(body: StaffFormPayload) {
     specializations: body.specializations,
     yearsExperience: body.yearsExperience ?? undefined,
     serviceAssignments: assignments,
+    phoneVerificationProof: body.phoneVerificationProof ?? undefined,
   }
 }
 

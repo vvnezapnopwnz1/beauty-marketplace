@@ -89,6 +89,7 @@ erDiagram
         uuid salon_id FK
         uuid master_id FK
         string display_name
+        text[] specializations
         bool dashboard_access
         bool is_active
         enum status "active|inactive"
@@ -114,7 +115,8 @@ erDiagram
 
     appointments {
         uuid id PK
-        uuid salon_id FK
+        uuid salon_id FK "nullable"
+        uuid master_profile_id FK "for personal appts"
         uuid client_user_id FK
         uuid salon_master_id FK
         uuid service_id FK
@@ -124,6 +126,17 @@ erDiagram
         timestamp starts_at
         timestamp ends_at
         enum status "pending|confirmed|completed|cancelled"
+        timestamp created_at
+    }
+
+    master_clients {
+        uuid id PK
+        uuid master_id FK
+        uuid user_id FK
+        string phone_e164
+        string display_name
+        string notes
+        string extra_contact
         timestamp created_at
     }
 
@@ -227,20 +240,12 @@ erDiagram
     salons ||--o{ salon_clients : "clients"
     salons ||--o| salon_subscriptions : "subscription"
 
-    salon_masters ||--o{ salon_master_services : "offers"
-    salon_masters ||--o{ salon_master_hours : "schedule"
-    services ||--o{ salon_master_services : "linked to"
-
-    appointments ||--o{ appointment_line_items : "items"
-    appointments ||--o| reviews : "review"
-
-    users ||--o{ salon_members : "member of"
-    users ||--o{ salon_member_invites : "invited_by / linked"
-    users ||--o{ appointments : "books"
-    users ||--o{ refresh_tokens : "sessions"
-
     master_profiles ||--o{ master_services : "personal catalog"
+    master_profiles ||--o{ master_clients : "personal clients"
     master_profiles ||--o{ salon_masters : "works at"
+    master_profiles ||--o{ appointments : "personal bookings"
+
+    salon_masters ||--o{ salon_master_services : "offers"
 
     users ||--o{ salon_claims : "submits"
     salons ||--o{ salon_claims : "claimed via"
@@ -248,7 +253,9 @@ erDiagram
 
 ## Ключевые особенности
 
-- **SalonMaster** — мост между `salons` и `master_profiles`. `master_id` может быть NULL (shadow-профиль, созданный салоном).
+- **SalonMaster** — мост между `salons` и `master_profiles`. `master_id` может быть NULL (shadow-профиль, созданный салоном). Содержит `specializations` для роли в конкретном салоне.
+- **MasterClient** — личная клиентская база мастера (`master_profiles.id`).
+- **Appointment** — поддерживает салонные записи (`salon_id` задан) и личные (`salon_id` IS NULL, `master_profile_id` задан).
 - **AppointmentLineItem** — снапшот услуг на момент бронирования; поддерживает мультисервисный гостевой флоу.
 - **SalonClient** — CRM-запись клиента внутри салона; может быть связан с `users` или существовать независимо.
 - **salon_subscriptions** — тарифный план салона (фаза 2).

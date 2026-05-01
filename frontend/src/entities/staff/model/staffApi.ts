@@ -59,6 +59,7 @@ function staffPayloadJson(body: StaffFormPayload) {
     specializations: body.specializations,
     yearsExperience: body.yearsExperience ?? undefined,
     serviceAssignments: assignments,
+    phoneVerificationProof: body.phoneVerificationProof ?? undefined,
   }
 }
 
@@ -113,6 +114,26 @@ const staffApi = rtkApi.injectEndpoints({
       invalidatesTags: [{ type: 'Staff' as const, id: 'LIST' }],
       query: masterProfileId => ({ method: 'POST', url: '/api/v1/dashboard/master-invites', body: { masterProfileId } }),
     }),
+    requestStaffPhoneOtp: builder.mutation<
+      { expiresAt: string },
+      { phone: string; channel: 'sms' | 'telegram' }
+    >({
+      query: (body) => ({
+        url: '/api/v1/dashboard/phone-otp/request',
+        method: 'POST',
+        body,
+      }),
+    }),
+    verifyStaffPhoneOtp: builder.mutation<
+      { phoneVerificationProof: string },
+      { phone: string; code: string }
+    >({
+      query: (body) => ({
+        url: '/api/v1/dashboard/phone-otp/verify',
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 })
 
@@ -125,4 +146,6 @@ export const {
   useDeleteStaffMutation,
   useLazyLookupMasterByPhoneQuery,
   useCreateMasterInviteMutation,
+  useRequestStaffPhoneOtpMutation,
+  useVerifyStaffPhoneOtpMutation,
 } = staffApi

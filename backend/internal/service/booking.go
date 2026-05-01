@@ -290,7 +290,7 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 	}
 
 	appt := &model.Appointment{
-		SalonID:       in.SalonID,
+		SalonID:       &in.SalonID,
 		ServiceID:     primary,
 		ClientUserID:  &user.ID,
 		SalonMasterID: salonMasterID,

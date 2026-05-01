@@ -9,9 +9,9 @@ import (
 
 // UserAppointmentItem is a single appointment DTO for the client's profile view.
 type UserAppointmentItem struct {
-	ID          uuid.UUID `json:"id"`
-	SalonID     uuid.UUID `json:"salonId"`
-	SalonName   string    `json:"salonName"`
+	ID          uuid.UUID  `json:"id"`
+	SalonID     *uuid.UUID `json:"salonId,omitempty"`
+	SalonName   string     `json:"salonName"`
 	ServiceName string    `json:"serviceName"`
 	MasterName  *string   `json:"masterName"`
 	StartsAt    string    `json:"startsAt"` // RFC3339

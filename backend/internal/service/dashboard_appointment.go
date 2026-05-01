@@ -46,9 +46,14 @@ func (s *dashboardService) GetAppointment(ctx context.Context, salonID, appointm
 		}
 	}
 
+	var sid uuid.UUID
+	if a.SalonID != nil {
+		sid = *a.SalonID
+	}
+
 	dto := &AppointmentDetailDTO{
 		ID:            a.ID,
-		SalonID:       a.SalonID,
+		SalonID:       sid,
 		StartsAt:      a.StartsAt,
 		EndsAt:        a.EndsAt,
 		Status:        a.Status,
@@ -138,7 +143,7 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 	end := in.StartsAt.Add(time.Duration(totalDuration) * time.Minute)
 
 	ap := &model.Appointment{
-		SalonID:        salonID,
+		SalonID:        &salonID,
 		ServiceID:      primaryServiceID, // Legacy field for compatibility
 		SalonMasterID:  in.StaffID,
 		ClientUserID:   in.ClientUserID,

@@ -167,14 +167,15 @@ type SalonMaster struct {
 	Phone                 *string    `gorm:"column:phone" json:"phone,omitempty"`
 	TelegramUsername      *string    `gorm:"column:telegram_username" json:"telegramUsername,omitempty"`
 	Email                 *string    `gorm:"column:email" json:"email,omitempty"`
-	Color                 *string    `gorm:"column:color" json:"color,omitempty"`
-	JoinedAt              *time.Time `gorm:"column:joined_at;type:date" json:"joinedAt,omitempty"`
-	LeftAt                *time.Time `gorm:"column:left_at"`
-	DashboardAccess       bool       `gorm:"column:dashboard_access;not null;default:false" json:"dashboardAccess"`
-	TelegramNotifications bool       `gorm:"column:telegram_notifications;not null;default:true" json:"telegramNotifications"`
-	IsActive              bool       `gorm:"column:is_active;not null;default:true" json:"isActive"`
-	Status                string     `gorm:"type:salon_master_status;column:status;not null;default:active" json:"status"`
-	CreatedAt             time.Time  `gorm:"column:created_at;not null;autoCreateTime" json:"createdAt"`
+	Color                 *string        `gorm:"column:color" json:"color,omitempty"`
+	JoinedAt              *time.Time     `gorm:"column:joined_at;type:date" json:"joinedAt,omitempty"`
+	LeftAt                *time.Time     `gorm:"column:left_at"`
+	Specializations       pq.StringArray `gorm:"type:text[];column:specializations;not null;default:'{}'" json:"specializations"`
+	DashboardAccess       bool           `gorm:"column:dashboard_access;not null;default:false" json:"dashboardAccess"`
+	TelegramNotifications bool           `gorm:"column:telegram_notifications;not null;default:true" json:"telegramNotifications"`
+	IsActive              bool           `gorm:"column:is_active;not null;default:true" json:"isActive"`
+	Status                string         `gorm:"type:salon_master_status;column:status;not null;default:active" json:"status"`
+	CreatedAt             time.Time      `gorm:"column:created_at;not null;autoCreateTime" json:"createdAt"`
 }
 
 func (SalonMaster) TableName() string { return "salon_masters" }
@@ -344,15 +345,16 @@ func (SalonSubscription) TableName() string {
 
 // Appointment maps to appointments.
 type Appointment struct {
-	ID             uuid.UUID  `gorm:"type:uuid;primaryKey"`
-	SalonID        uuid.UUID  `gorm:"type:uuid;not null;column:salon_id"`
-	ClientUserID   *uuid.UUID `gorm:"type:uuid;column:client_user_id"`
-	GuestName      *string    `gorm:"column:guest_name"`
-	GuestPhoneE164 *string    `gorm:"column:guest_phone_e164"`
-	SalonMasterID  *uuid.UUID `gorm:"type:uuid;column:salon_master_id" json:"salonMasterId"`
-	ServiceID      uuid.UUID  `gorm:"type:uuid;not null;column:service_id"`
-	StartsAt       time.Time  `gorm:"column:starts_at;not null"`
-	EndsAt         time.Time  `gorm:"column:ends_at;not null"`
+	ID              uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SalonID         *uuid.UUID `gorm:"type:uuid;column:salon_id"`
+	MasterProfileID *uuid.UUID `gorm:"type:uuid;column:master_profile_id"`
+	ClientUserID    *uuid.UUID `gorm:"type:uuid;column:client_user_id"`
+	GuestName       *string    `gorm:"column:guest_name"`
+	GuestPhoneE164  *string    `gorm:"column:guest_phone_e164"`
+	SalonMasterID   *uuid.UUID `gorm:"type:uuid;column:salon_master_id" json:"salonMasterId"`
+	ServiceID       uuid.UUID  `gorm:"type:uuid;not null;column:service_id"`
+	StartsAt        time.Time  `gorm:"column:starts_at;not null"`
+	EndsAt          time.Time  `gorm:"column:ends_at;not null"`
 	Status         string     `gorm:"type:appointment_status;not null;default:pending;column:status"`
 	ClientNote     *string    `gorm:"column:client_note"`
 	SalonClientID  *uuid.UUID `gorm:"type:uuid;column:salon_client_id"`
@@ -412,6 +414,29 @@ func (c *SalonClient) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (SalonClient) TableName() string { return "salon_clients" }
+
+// MasterClient maps to master_clients (personal clients for Solo Master CRM).
+type MasterClient struct {
+	ID              uuid.UUID      `gorm:"type:uuid;primaryKey"`
+	MasterProfileID uuid.UUID      `gorm:"type:uuid;not null;column:master_profile_id"`
+	UserID          *uuid.UUID     `gorm:"type:uuid;column:user_id"`
+	PhoneE164       *string        `gorm:"column:phone_e164"`
+	ExtraContact    *string        `gorm:"column:extra_contact"`
+	DisplayName     string         `gorm:"column:display_name;not null"`
+	Notes           *string        `gorm:"column:notes"`
+	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at;index"`
+	CreatedAt       time.Time      `gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt       time.Time      `gorm:"column:updated_at;not null;autoUpdateTime"`
+}
+
+func (c *MasterClient) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == uuid.Nil {
+		c.ID = uuid.New()
+	}
+	return nil
+}
+
+func (MasterClient) TableName() string { return "master_clients" }
 
 // SalonClientTag maps to salon_client_tags.
 // salon_id NULL = system tag visible to all.
@@ -582,6 +607,32 @@ func (o *OtpCode) BeforeCreate(tx *gorm.DB) error {
 
 func (OtpCode) TableName() string {
 	return "otp_codes"
+}
+
+// StaffPhoneVerification maps to staff_phone_verifications.
+// Used to verify a phone number before assigning it to a salon master.
+type StaffPhoneVerification struct {
+	ID         uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SalonID    uuid.UUID  `gorm:"type:uuid;not null;column:salon_id"`
+	PhoneE164  string     `gorm:"column:phone_e164;not null"`
+	Code       string     `gorm:"column:code;not null"`
+	Attempts   int16      `gorm:"column:attempts;not null;default:0"`
+	ExpiresAt  time.Time  `gorm:"column:expires_at;not null"`
+	VerifiedAt *time.Time `gorm:"column:verified_at"`
+	ConsumedAt *time.Time `gorm:"column:consumed_at"`
+	CreatedBy  uuid.UUID  `gorm:"type:uuid;not null;column:created_by"`
+	CreatedAt  time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+func (s *StaffPhoneVerification) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
+}
+
+func (StaffPhoneVerification) TableName() string {
+	return "staff_phone_verifications"
 }
 
 // RefreshToken maps to refresh_tokens.
