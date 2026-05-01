@@ -908,7 +908,34 @@ export function GuestBookingDialog({
               <Typography sx={{ fontSize: 14, color: P.textMuted, maxWidth: 320, mx: 'auto' }}>
                 {t('guestBooking.successBody')}
               </Typography>
+              <Typography sx={{ fontSize: 14, color: P.textMuted, maxWidth: 320, mx: 'auto', mt: 1 }}>
+                {t('guestBooking.successTelegramExtra')}
+              </Typography>
             </Box>
+
+            <Box
+              onClick={() => {
+                navigate(`${ROUTES.LOGIN}?phone=${encodeURIComponent(phone)}`)
+                handleClose()
+              }}
+              sx={{
+                p: 2,
+                bgcolor: P.successSoft,
+                border: `1px solid ${P.successBorder}`,
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  bgcolor: 'rgba(77, 149, 110, 0.15)',
+                  borderColor: P.success,
+                }
+              }}
+            >
+              <Typography sx={{ fontSize: 14, color: P.text, fontWeight: 500 }}>
+                {t('guestBooking.successProfileCardHint')}
+              </Typography>
+            </Box>
+
             <Stack direction="row" spacing={1.5}>
               <Box
                 component="button"
@@ -932,7 +959,7 @@ export function GuestBookingDialog({
               <Box
                 component="button"
                 onClick={() => {
-                  navigate(ROUTES.LOGIN)
+                  navigate(`${ROUTES.LOGIN}?phone=${encodeURIComponent(phone)}`)
                   handleClose()
                 }}
                 sx={{

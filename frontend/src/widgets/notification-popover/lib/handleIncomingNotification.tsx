@@ -3,6 +3,7 @@ import { enqueueActionSnackbar } from '@shared/ui/ActionSnackbar'
 import { closeSnackbar } from 'notistack'
 import { NavigateFunction } from 'react-router-dom'
 import { dashboardSectionPath } from '@shared/config/routes'
+import { Box, Typography } from '@mui/material'
 
 export const handleIncomingNotification =
   (
@@ -84,12 +85,27 @@ export const handleIncomingNotification =
         break
     }
 
+    let customContent
+    if (notification.type === 'appointment.created') {
+      const gName = notification.data?.guestName as string | undefined
+      const gPhone = notification.data?.guestPhone as string | undefined
+      if (gName || gPhone) {
+        customContent = (
+          <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 2 }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{gName || 'Без имени'}</Typography>
+            <Typography sx={{ fontSize: 12, opacity: 0.9 }}>{gPhone || 'Без телефона'}</Typography>
+          </Box>
+        )
+      }
+    }
+
     snackbarKey = enqueueActionSnackbar({
       title: notification.title,
       message: notification.body,
       variant: 'info',
       autoHideDuration: notification.type === 'appointment.created' ? null : 7000,
       actions,
+      customContent,
     })
     return snackbarKey
   }

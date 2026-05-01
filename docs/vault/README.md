@@ -16,6 +16,7 @@ code_pointers: []
 | [`product/context.md`](product/context.md) | Рынок, MVP, монетизация, стратегия запуска, кабинет салона (обзор) |
 | [`product/status.md`](product/status.md) | Что сделано, эндпоинты, техдолг, приоритеты, §7 кабинет для ТЗ |
 | [`product/staff-management-spec.md`](product/staff-management-spec.md) | Multi-salon, `salon_members` / инвайты персонала, RBAC-матрица (живая спека) |
+| [`product/discovery-plan.md`](product/discovery-plan.md) | Discovery-раунд 1: интервью-гайд, рекрутинг, критерии выбора ICP, бюджет 90 дней |
 
 ## Архитектура
 

@@ -484,3 +484,6 @@ resources/
 .out/
 output/
 docpad.
+# beauty-marketplace (local artifacts — do not commit)
+/backend/api
+/Beautica 2 (2)/

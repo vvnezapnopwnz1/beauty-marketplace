@@ -124,7 +124,23 @@
     "nameRequired": "Enter your name",
     "phoneInvalid": "Enter a number in +7 format",
     "error": "Could not send. Try again later.",
-    "success": "Request sent. The salon will contact you."
+    "success": "Request sent. The salon will contact you.",
+    "successTitle": "Booking created!",
+    "successBody": "We’ll notify you in Telegram if your account is linked. You can track the booking in your profile.",
+    "successTelegramExtra": "You’ll receive a Telegram message with the booking details.",
+    "successProfileCardHint": "You can also check your booking in your profile by signing in with your phone.",
+    "successLogin": "Log in and view booking",
+    "successClose": "Close",
+    "snackbarTitle": "Booking created",
+    "snackbarBody": "You can see the status in your profile",
+    "snackbarAction": "Log in"
+  },
+  "myAppointments": {
+    "title": "My bookings",
+    "empty": "No bookings yet",
+    "emptyHint": "Book any salon — it will appear here",
+    "findSalon": "Find a salon",
+    "backfillNote": "Bookings made before your account existed may not show up"
   },
   "dashboard": {
     "services": {

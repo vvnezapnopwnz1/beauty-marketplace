@@ -47,3 +47,11 @@ code_pointers:
 - `unread`: количество `is_read = FALSE`
 - `unseen`: количество `seen_at IS NULL`
 
+## Payload типа `appointment.created`
+
+При создании записи (гостевой канал или ручное создание из дашборда) в JSON `data` рекомендуется передавать контакт для отображения в UI:
+
+- `guestName` (string)
+- `guestPhone` (string, желательно в формате E.164)
+
+Бэкенд заполняет поля при `CreateGuestBooking` и при ручном создании записи в кабинете. Snackbar входящего уведомления (`handleIncomingNotification` + `ActionSnackbar.customContent`) показывает имя и телефон, если они есть в `notification.data`.

@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Typography } from '@mui/material'
+import { Box, Button, Stack, Typography, useTheme } from '@mui/material'
 import { closeSnackbar, enqueueSnackbar, type SnackbarKey } from 'notistack'
 import { forwardRef, type CSSProperties, type ReactNode } from 'react'
 
@@ -30,18 +30,28 @@ type EnqueueActionSnackbarInput = {
   customContent?: ReactNode
 }
 
-const variantStyles: Record<ActionSnackbarVariant, { bg: string; color: string; buttonColor: 'inherit' | 'warning' }> = {
-  error: { bg: '#C04156', color: '#FFFFFF', buttonColor: 'inherit' },
-  success: { bg: '#2E7D5A', color: '#FFFFFF', buttonColor: 'inherit' },
-  info: { bg: '#2C5E97', color: '#FFFFFF', buttonColor: 'inherit' },
-  warning: { bg: '#946200', color: '#FFFFFF', buttonColor: 'warning' },
-}
-
 const ActionSnackbarCard = forwardRef<HTMLDivElement, ActionSnackbarCardProps>(function ActionSnackbarCard(
   { message, title, variant, actions, customContent, snackbarKey, style },
   ref,
 ) {
-  const cfg = variantStyles[variant]
+  const theme = useTheme()
+  const isDark = theme.palette.mode === 'dark'
+
+  const getVariantConfig = () => {
+    switch (variant) {
+      case 'error':
+        return { bg: theme.palette.error[isDark ? 'dark' : 'main'], color: '#FFFFFF', buttonColor: 'inherit' as const }
+      case 'success':
+        return { bg: theme.palette.success[isDark ? 'dark' : 'main'], color: '#FFFFFF', buttonColor: 'inherit' as const }
+      case 'info':
+        return { bg: theme.palette.info[isDark ? 'dark' : 'main'], color: '#FFFFFF', buttonColor: 'inherit' as const }
+      case 'warning':
+        return { bg: theme.palette.warning[isDark ? 'dark' : 'main'], color: '#FFFFFF', buttonColor: 'warning' as const }
+    }
+  }
+
+  const cfg = getVariantConfig()
+
   return (
     <Box
       ref={ref}
@@ -51,10 +61,10 @@ const ActionSnackbarCard = forwardRef<HTMLDivElement, ActionSnackbarCardProps>(f
         maxWidth: 620,
         px: 2,
         py: 1.5,
-        borderRadius: '10px',
+        borderRadius: '16px',
         bgcolor: cfg.bg,
         color: cfg.color,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
+        boxShadow: isDark ? '0 8px 24px rgba(255,255,255,0.08)' : '0 8px 24px rgba(0,0,0,0.22)',
       }}
     >
       {title && (

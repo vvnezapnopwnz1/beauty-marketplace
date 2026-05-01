@@ -193,6 +193,8 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 		"salonId":       salonID,
 		"startsAt":      ap.StartsAt,
 		"status":        ap.Status,
+		"guestName":     name,
+		"guestPhone":    phone,
 	})
 	s.notifier.NotifySalonMembers(ctx, salonID, ap.SalonMasterID, "appointment.created", "Новая запись", "Появилась новая запись в расписании", payload)
 

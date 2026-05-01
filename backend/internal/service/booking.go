@@ -343,6 +343,8 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 			"salonId":       in.SalonID,
 			"startsAt":      appt.StartsAt,
 			"status":        appt.Status,
+			"guestName":     name,
+			"guestPhone":    in.PhoneE164,
 		})
 		s.notifier.NotifySalonMembers(ctx, in.SalonID, appt.SalonMasterID, "appointment.created", "Новая запись", "Появилась новая запись в расписании", payload)
 	}

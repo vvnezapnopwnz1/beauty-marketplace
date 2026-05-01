@@ -27,6 +27,38 @@ import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { getDataGridDashboardSx } from '@shared/ui/DataGrid/dataGridDashboardSx'
 import { ServiceFormModal } from '../modals/ServiceFormModal'
 import { useTranslation } from 'react-i18next'
+import { V } from '@shared/theme/palettes'
+
+const filterSelectSx = {
+  bgcolor: V.surface,
+  borderRadius: V.rSm,
+  fontSize: 12,
+  color: V.text,
+  height: '33px',
+  minWidth: 130,
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: V.border, top: 0 },
+  '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: V.accent },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: V.accent, borderWidth: '1.5px' },
+  '& .MuiSelect-select': { py: 0, px: '10px', color: V.text },
+  '& .MuiSvgIcon-root': { color: V.textMuted },
+} as const
+
+const menuPaperSx = {
+  bgcolor: V.surface,
+  color: V.text,
+  border: `1px solid ${V.border}`,
+  borderRadius: V.rMd,
+  boxShadow: '0 8px 24px rgba(212,84,122,0.10)',
+} as const
+
+const menuItemSx = {
+  fontSize: 13,
+  color: V.text,
+  '&:hover': { bgcolor: V.surfaceEl },
+  '&.Mui-selected': { bgcolor: V.surfaceHi, color: V.accent },
+  '&.Mui-selected:hover': { bgcolor: V.surfaceHi },
+} as const
 
 export function ServicesView() {
   const theme = useTheme()
@@ -217,20 +249,34 @@ export function ServicesView() {
         }}
       >
         <FormControl size="small" sx={{ minWidth: 240 }}>
-          <InputLabel id="services-category-filter-label">Категория</InputLabel>
           <Select
-            labelId="services-category-filter-label"
+            data-testid="services-category-filter"
+            sx={filterSelectSx}
             value={selectedCategorySlug}
-            label="Категория"
+            displayEmpty
+            MenuProps={{ PaperProps: { sx: menuPaperSx } }}
             onChange={(event: SelectChangeEvent<string>) => {
               setSelectedCategorySlug(event.target.value)
             }}
           >
-            <MenuItem value="">Все категории</MenuItem>
+            <MenuItem value="" sx={menuItemSx}>
+              Все категории
+            </MenuItem>
             {categories.flatMap(group => [
-              <ListSubheader key={`h-${group.parentSlug}`}>{group.label}</ListSubheader>,
+              <ListSubheader
+                key={`h-${group.parentSlug}`}
+                sx={{
+                  bgcolor: V.surface,
+                  color: V.textMuted,
+                  fontSize: 12,
+                  lineHeight: '32px',
+                  fontWeight: 600,
+                }}
+              >
+                {group.label}
+              </ListSubheader>,
               ...group.items.map((item: DashboardServiceCategoryItem) => (
-                <MenuItem key={item.slug} value={item.slug}>
+                <MenuItem key={item.slug} value={item.slug} sx={menuItemSx}>
                   {item.nameRu}
                 </MenuItem>
               )),
@@ -239,7 +285,8 @@ export function ServicesView() {
         </FormControl>
         <Button
           size="small"
-          sx={{ bgcolor: d.accent, color: d.onAccent }}
+          variant="contained"
+          sx={{ bgcolor: d.accent, color: d.onAccent, borderRadius: '8px', px: 2 }}
           onClick={() => {
             setEdit(null)
             setModalOpen(true)

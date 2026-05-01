@@ -1,6 +1,20 @@
+import { useCallback, useEffect } from 'react'
 import { useMemo, useState } from 'react'
 import { Alert, Box, Button, Stack, Typography } from '@mui/material'
-import type { DashboardStaffListItem, SalonDateOverrideRow, StaffAbsenceRow } from '@shared/api/dashboardApi'
+import type {
+  DashboardStaffListItem,
+  SalonDateOverrideRow,
+  StaffAbsenceRow,
+  WorkingHourRow,
+  StaffWorkingHourRow,
+} from '@shared/api/dashboardApi'
+import {
+  fetchSalonSchedule,
+  fetchStaffSchedule,
+  putSalonScheduleBundle,
+  putStaffScheduleBundle,
+  fetchDashboardStaff,
+} from '@shared/api/dashboardApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { ToggleSwitch } from '@pages/dashboard/ui/components/formComponents'
 import {
@@ -16,16 +30,7 @@ import {
   dayDiffersFromSalon,
   compactTimeRange,
 } from '@pages/dashboard/domain/schedule'
-import {
-  useSalonSchedule,
-  useStaffSchedule,
-  useStaffList,
-  createSalonScheduleOperations,
-  createStaffScheduleOperations,
-  type NewOverride,
-  type NewAbsence,
-} from '@pages/dashboard/domain/schedule'
-
+import type { LocalSalonDay, LocalStaffDay } from '@pages/dashboard/domain/schedule/types'
 
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const d = useDashboardPalette()
@@ -405,9 +410,7 @@ export function ScheduleView() {
             </Button>
           </Stack>
 
-          <Box
-            sx={{ bgcolor: d.card, borderRadius: '10px', p: 2, border: `1px solid ${d.grid}` }}
-          >
+          <Box sx={{ bgcolor: d.card, borderRadius: '10px', p: 2, border: `1px solid ${d.grid}` }}>
             {salonLocal.map((l, i) => (
               <Box
                 key={l.day}
@@ -635,9 +638,7 @@ export function ScheduleView() {
             </Button>
           </Stack>
 
-          <Box
-            sx={{ bgcolor: d.card, borderRadius: '10px', p: 2, border: `1px solid ${d.grid}` }}
-          >
+          <Box sx={{ bgcolor: d.card, borderRadius: '10px', p: 2, border: `1px solid ${d.grid}` }}>
             {staffLocal.map((l, i) => {
               const s = salonByDay.get(l.day)
               const showDiff = dayDiffersFromSalon(l, s)

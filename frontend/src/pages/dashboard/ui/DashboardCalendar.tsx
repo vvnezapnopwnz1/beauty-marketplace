@@ -4,8 +4,8 @@ import {
   Box,
   Button,
   MenuItem,
+  Select,
   Stack,
-  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -50,6 +50,38 @@ import { AppointmentDrawer } from '@pages/dashboard/ui/drawers/AppointmentDrawer
 import { CreateAppointmentDrawer } from '@pages/dashboard/ui/drawers/CreateAppointmentDrawer'
 
 import { type DashboardAppointment } from '@entities/appointment'
+import { V } from '@shared/theme/palettes'
+
+const filterSelectSx = {
+  bgcolor: V.surface,
+  borderRadius: V.rSm,
+  fontSize: 12,
+  color: V.text,
+  height: '33px',
+  minWidth: 130,
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: V.border, top: 0 },
+  '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: V.accent },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: V.accent, borderWidth: '1.5px' },
+  '& .MuiSelect-select': { py: 0, px: '10px', color: V.text },
+  '& .MuiSvgIcon-root': { color: V.textMuted },
+} as const
+
+const menuPaperSx = {
+  bgcolor: V.surface,
+  color: V.text,
+  border: `1px solid ${V.border}`,
+  borderRadius: V.rMd,
+  boxShadow: '0 8px 24px rgba(212,84,122,0.10)',
+} as const
+
+const menuItemSx = {
+  fontSize: 13,
+  color: V.text,
+  '&:hover': { bgcolor: V.surfaceEl },
+  '&.Mui-selected': { bgcolor: V.surfaceHi, color: V.accent },
+  '&.Mui-selected:hover': { bgcolor: V.surfaceHi },
+} as const
 
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   const d = useDashboardPalette()
@@ -409,48 +441,38 @@ export function DashboardCalendar() {
           alignItems="center"
           sx={{ flex: '0 1 auto' }}
         >
-          <TextField
-            select
+          <Select
+            displayEmpty
             size="small"
-            label="Мастер"
             value={filterStaffId}
             onChange={e => setFilterStaffId(e.target.value)}
-            sx={{
-              minWidth: { xs: 140, sm: 160 },
-              '& .MuiInputBase-root': { color: d.text },
-              '& label': { color: d.muted },
-            }}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: d.card } } } }}
+            sx={[filterSelectSx, { minWidth: { xs: 140, sm: 160 } }]}
+            MenuProps={{ PaperProps: { sx: menuPaperSx } }}
           >
-            <MenuItem value="">Все</MenuItem>
+            <MenuItem value="" sx={menuItemSx}>Все мастера</MenuItem>
             {staff
               .filter(s => s.isActive)
               .map(s => (
-                <MenuItem key={s.id} value={s.id}>
+                <MenuItem key={s.id} value={s.id} sx={menuItemSx}>
                   {s.displayName}
                 </MenuItem>
               ))}
-          </TextField>
-          <TextField
-            select
+          </Select>
+          <Select
+            displayEmpty
             size="small"
-            label="Услуга"
             value={filterServiceId}
             onChange={e => setFilterServiceId(e.target.value)}
-            sx={{
-              minWidth: { xs: 140, sm: 180 },
-              '& .MuiInputBase-root': { color: d.text },
-              '& label': { color: d.muted },
-            }}
-            SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: d.card } } } }}
+            sx={[filterSelectSx, { minWidth: { xs: 140, sm: 180 } }]}
+            MenuProps={{ PaperProps: { sx: menuPaperSx } }}
           >
-            <MenuItem value="">Все</MenuItem>
+            <MenuItem value="" sx={menuItemSx}>Все услуги</MenuItem>
             {services.map(s => (
-              <MenuItem key={s.id} value={s.id}>
+              <MenuItem key={s.id} value={s.id} sx={menuItemSx}>
                 {s.name}
               </MenuItem>
             ))}
-          </TextField>
+          </Select>
         </Stack>
       </Stack>
 

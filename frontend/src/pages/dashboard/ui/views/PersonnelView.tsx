@@ -119,7 +119,11 @@ export function PersonnelView() {
                         <Select
                           labelId={`role-${m.userId}`}
                           label="Роль"
-                          value={m.role === 'admin' || m.role === 'receptionist' ? m.role : 'receptionist'}
+                          value={
+                            m.role === 'admin' || m.role === 'receptionist'
+                              ? m.role
+                              : 'receptionist'
+                          }
                           onChange={e => void onRoleChange(m.userId, e.target.value as string)}
                         >
                           <MenuItem value="admin">Администратор</MenuItem>
@@ -130,7 +134,11 @@ export function PersonnelView() {
                   </TableCell>
                   <TableCell align="right">
                     {!isOwner && (
-                      <Button size="small" color="error" onClick={() => void onRemoveMember(m.userId)}>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => void onRemoveMember(m.userId)}
+                      >
                         Удалить
                       </Button>
                     )}

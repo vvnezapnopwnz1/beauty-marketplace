@@ -3,6 +3,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { TextField, Button, Typography, Stack, Link, Alert, ToggleButtonGroup, ToggleButton } from '@mui/material'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import {
   sendOtp,
@@ -30,10 +31,12 @@ export function PhoneStep() {
   const error = useAppSelector(selectAuthError)
   const channel = useAppSelector(selectAuthChannel)
   const botUsername = useAppSelector(selectTelegramBotUsername) || '@beautica_bot'
+  const [searchParams] = useSearchParams()
+  const initialPhone = searchParams.get('phone') || ''
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: yupResolver(schema),
-    defaultValues: { phone: '' },
+    defaultValues: { phone: formatPhone(initialPhone) },
   })
 
   const onSubmit = ({ phone }: FormValues) => {

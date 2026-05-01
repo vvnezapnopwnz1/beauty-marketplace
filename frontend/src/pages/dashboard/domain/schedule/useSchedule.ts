@@ -12,7 +12,8 @@ import {
 } from '@shared/api/dashboardApi'
 import { FULL_DAYS } from './utils'
 import { time5 } from './utils'
-import type { LocalSalonDay, LocalStaffDay, SalonDateOverrideRow, StaffAbsenceRow } from './types'
+import type { LocalSalonDay, LocalStaffDay } from './types'
+import type { SalonDateOverrideRow, StaffAbsenceRow } from '@shared/api/dashboardApi'
 
 /**
  * Hook for managing salon schedule state and operations
@@ -49,7 +50,14 @@ export function useSalonSchedule() {
   }, [])
 
   useEffect(() => {
-    void loadSalon()
+    void (async () => {
+      try {
+        setErr(null)
+        await loadSalon()
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : 'Ошибка')
+      }
+    })()
   }, [loadSalon])
 
   return {
@@ -102,7 +110,14 @@ export function useStaffSchedule(staffId: string | null) {
 
   useEffect(() => {
     if (!staffId) return
-    void loadStaffBundle(staffId)
+    void (async () => {
+      try {
+        setErr(null)
+        await loadStaffBundle(staffId)
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : 'Ошибка')
+      }
+    })()
   }, [staffId, loadStaffBundle])
 
   return {
