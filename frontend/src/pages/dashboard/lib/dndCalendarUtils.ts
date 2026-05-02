@@ -12,6 +12,9 @@ export const DROP_STAFF_PREFIX = 'staff:'
 /** Droppable id: one day column in week mode. */
 export const DROP_WEEK_PREFIX = 'week:'
 
+/** Week grid: bottom strip «перенести на другую дату» (must not use `week:` prefix — see `parseWeekDropId`). */
+export const CALENDAR_WEEK_RESCHEDULE_STRIP_DROP_ID = 'calendar:week-reschedule-strip'
+
 const GRID_START_ABS_MINS = CALENDAR_HOUR_START * 60
 const GRID_END_ABS_MINS = (CALENDAR_HOUR_END + 1) * 60
 const VISIBLE_SPAN_MINS = GRID_END_ABS_MINS - GRID_START_ABS_MINS

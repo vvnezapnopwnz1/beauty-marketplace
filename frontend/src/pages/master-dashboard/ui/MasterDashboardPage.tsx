@@ -4,7 +4,6 @@ import {
   Avatar,
   Box,
   Button,
-  Chip,
   Drawer,
   IconButton,
   Menu,
@@ -12,12 +11,6 @@ import {
   Paper,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TablePagination,
-  TableRow,
   TextField,
   Typography,
   useMediaQuery,
@@ -35,34 +28,34 @@ import { STAFF_COLOR_SWATCHES, SPECIALIZATION_PRESETS } from '@shared/api/dashbo
 import {
   acceptMasterInvite,
   declineMasterInvite,
-  getMyMasterAppointments,
   getMyMasterInvites,
   getMyMasterProfile,
   getMyMasterSalons,
   updateMyMasterProfile,
-  getMasterServices,
-  createMasterService,
-  updateMasterService,
-  deleteMasterService,
-  getMasterClients,
-  createMasterClient,
-  updateMasterClient,
-  deleteMasterClient,
   type MasterCabinetProfile,
-  type MasterDashboardAppointment,
   type MasterInviteDTO,
   type MasterSalonMembershipDTO,
-  type MasterService,
-  type MasterClient,
 } from '@shared/api/masterDashboardApi'
 import { salonPath } from '@shared/config/routes'
+import { MasterCalendar } from './MasterCalendar'
+import { MasterServicesGrid } from './MasterServicesGrid'
+import { MasterDashboardAppointments } from './MasterDashboardAppointments'
+import { MasterDashboardClients } from './MasterDashboardClients'
 
-type Section = 'profile' | 'invites' | 'salons' | 'appointments' | 'services' | 'clients'
+type Section =
+  | 'profile'
+  | 'invites'
+  | 'salons'
+  | 'calendar'
+  | 'appointments'
+  | 'services'
+  | 'clients'
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'profile', label: 'Профиль', icon: '👤' },
   { id: 'invites', label: 'Приглашения', icon: '✉️' },
   { id: 'salons', label: 'Салоны', icon: '🏪' },
+  { id: 'calendar', label: 'Календарь', icon: '📅' },
   { id: 'appointments', label: 'Записи', icon: '📋' },
   { id: 'services', label: 'Услуги', icon: '✂️' },
   { id: 'clients', label: 'Клиенты', icon: '👥' },
@@ -72,6 +65,7 @@ const TITLES: Record<Section, string> = {
   profile: 'Профиль',
   invites: 'Приглашения',
   salons: 'Мои салоны',
+  calendar: 'Календарь',
   appointments: 'Записи',
   services: 'Мои услуги',
   clients: 'Мои клиенты',
@@ -82,6 +76,7 @@ function isSection(s: string | null): s is Section {
     s === 'profile' ||
     s === 'invites' ||
     s === 'salons' ||
+    s === 'calendar' ||
     s === 'appointments' ||
     s === 'services' ||
     s === 'clients'
@@ -99,15 +94,6 @@ function initials(name: string): string {
   if (p.length === 0) return '?'
   if (p.length === 1) return p[0]!.slice(0, 2).toUpperCase()
   return (p[0]![0] + p[1]![0]).toUpperCase()
-}
-
-function formatApptRange(startsAt: string, endsAt: string): string {
-  const s = new Date(startsAt)
-  const e = new Date(endsAt)
-  const d = s.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
-  const ts = s.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  const te = e.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  return `${d}, ${ts}–${te}`
 }
 
 function ProfileSection({
@@ -215,7 +201,6 @@ function ProfileSection({
           getLabel={item => String((item as unknown as { label: string }).label)}
           getId={item => item.id}
         />
-        ``
       </Box>
       <TextField
         label="Стаж (лет)"
@@ -391,278 +376,6 @@ function SalonsSection() {
           </Button>
         </Paper>
       ))}
-    </Stack>
-  )
-}
-
-const STATUS_OPTIONS = [
-  { value: '', label: 'Все статусы' },
-  { value: 'pending', label: 'Ожидает' },
-  { value: 'confirmed', label: 'Подтверждена' },
-  { value: 'completed', label: 'Завершена' },
-  { value: 'cancelled_by_client', label: 'Отмена клиентом' },
-  { value: 'cancelled_by_salon', label: 'Отмена салоном' },
-  { value: 'no_show', label: 'Неявка' },
-]
-
-function AppointmentsSection() {
-  const d = useDashboardPalette()
-  const [items, setItems] = useState<MasterDashboardAppointment[]>([])
-  const [total, setTotal] = useState(0)
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(1)
-  const [pageSize] = useState(25)
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await getMyMasterAppointments({
-        from: from || undefined,
-        to: to || undefined,
-        status: status || undefined,
-        page,
-        page_size: pageSize,
-      })
-      setItems(res.items)
-      setTotal(res.total)
-    } finally {
-      setLoading(false)
-    }
-  }, [from, to, status, page, pageSize])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  useEffect(() => {
-    setPage(1)
-  }, [from, to, status])
-
-  return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-        <TextField
-          label="С даты"
-          type="date"
-          size="small"
-          value={from}
-          onChange={e => setFrom(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          sx={{ flex: 1, '& .MuiOutlinedInput-root': { bgcolor: d.card } }}
-        />
-        <TextField
-          label="По дату"
-          type="date"
-          size="small"
-          value={to}
-          onChange={e => setTo(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          sx={{ flex: 1, '& .MuiOutlinedInput-root': { bgcolor: d.card } }}
-        />
-        <TextField
-          select
-          label="Статус"
-          size="small"
-          value={status}
-          onChange={e => setStatus(e.target.value)}
-          sx={{ minWidth: 180, '& .MuiOutlinedInput-root': { bgcolor: d.card } }}
-        >
-          {STATUS_OPTIONS.map(o => (
-            <MenuItem key={o.value || 'all'} value={o.value}>
-              {o.label}
-            </MenuItem>
-          ))}
-        </TextField>
-        <Button variant="outlined" onClick={() => void load()} sx={{ alignSelf: { sm: 'center' } }}>
-          Обновить
-        </Button>
-      </Stack>
-      <Typography sx={{ fontSize: 13, color: d.muted }}>Всего в выборке: {total}</Typography>
-      {loading ? (
-        <Typography sx={{ color: d.muted }}>Загрузка…</Typography>
-      ) : items.length === 0 ? (
-        <Typography sx={{ color: d.muted }}>Нет записей</Typography>
-      ) : (
-        <Box>
-          <Table
-            size="small"
-            sx={{
-              bgcolor: d.card,
-              border: `1px solid ${d.borderSubtle}`,
-              borderRadius: 1,
-              overflow: 'hidden',
-            }}
-          >
-            <TableHead>
-              <TableRow>
-                <TableCell>Дата и время</TableCell>
-                <TableCell>Салон</TableCell>
-                <TableCell>Услуга</TableCell>
-                <TableCell>Клиент</TableCell>
-                <TableCell>Статус</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map(a => (
-                <TableRow key={a.id}>
-                  <TableCell>{formatApptRange(a.startsAt, a.endsAt)}</TableCell>
-                  <TableCell>
-                    {a.salonName === 'Личная запись' ? (
-                      <Chip
-                        label="Личная запись"
-                        size="small"
-                        sx={{ bgcolor: d.accentSubtle, color: d.accent, fontWeight: 600 }}
-                      />
-                    ) : (
-                      a.salonName
-                    )}
-                  </TableCell>
-                  <TableCell>{a.serviceName}</TableCell>
-                  <TableCell>{a.clientLabel}</TableCell>
-                  <TableCell>{a.status}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <TablePagination
-            component="div"
-            count={total}
-            page={page - 1}
-            onPageChange={(_, p) => setPage(p + 1)}
-            rowsPerPage={pageSize}
-            rowsPerPageOptions={[pageSize]}
-            labelDisplayedRows={({ from, to, count }) => `${from}–${to} из ${count}`}
-            sx={{
-              color: d.text,
-              '& .MuiTablePagination-actions': { color: d.text },
-              borderTop: `1px solid ${d.borderSubtle}`,
-            }}
-          />
-        </Box>
-      )}
-    </Stack>
-  )
-}
-
-function ServicesSection() {
-  const d = useDashboardPalette()
-  const [rows, setRows] = useState<MasterService[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      setRows(await getMasterServices())
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  return (
-    <Stack spacing={2}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography sx={{ color: d.muted, fontSize: 13 }}>
-          Ваши собственные услуги, доступные для личных записей
-        </Typography>
-        <Button variant="contained" size="small" disabled>
-          Добавить
-        </Button>
-      </Stack>
-      {loading ? (
-        <Typography sx={{ color: d.muted }}>Загрузка…</Typography>
-      ) : rows.length === 0 ? (
-        <Paper elevation={0} sx={{ p: 4, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}>
-          <Typography sx={{ color: d.muted }}>У вас пока нет своих услуг</Typography>
-        </Paper>
-      ) : (
-        <Stack spacing={1}>
-          {rows.map(s => (
-            <Paper
-              key={s.id}
-              elevation={0}
-              sx={{ p: 2, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}
-            >
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                <Box>
-                  <Typography sx={{ fontWeight: 600, color: d.text }}>{s.name}</Typography>
-                  <Typography sx={{ fontSize: 12, color: d.muted }}>
-                    {s.durationMinutes} мин • {s.priceCents ? `${s.priceCents / 100} ₽` : 'Цена не указана'}
-                  </Typography>
-                </Box>
-                {!s.isActive && (
-                  <Chip label="Неактивна" size="small" sx={{ height: 20, fontSize: 10 }} />
-                )}
-              </Stack>
-            </Paper>
-          ))}
-        </Stack>
-      )}
-    </Stack>
-  )
-}
-
-function ClientsSection() {
-  const d = useDashboardPalette()
-  const [rows, setRows] = useState<MasterClient[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      setRows(await getMasterClients())
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  return (
-    <Stack spacing={2}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography sx={{ color: d.muted, fontSize: 13 }}>
-          Ваша личная база клиентов
-        </Typography>
-        <Button variant="contained" size="small" disabled>
-          Добавить
-        </Button>
-      </Stack>
-      {loading ? (
-        <Typography sx={{ color: d.muted }}>Загрузка…</Typography>
-      ) : rows.length === 0 ? (
-        <Paper elevation={0} sx={{ p: 4, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}>
-          <Typography sx={{ color: d.muted }}>У вас пока нет личных клиентов</Typography>
-        </Paper>
-      ) : (
-        <Stack spacing={1}>
-          {rows.map(c => (
-            <Paper
-              key={c.id}
-              elevation={0}
-              sx={{ p: 2, bgcolor: d.card, border: `1px solid ${d.borderSubtle}` }}
-            >
-              <Typography sx={{ fontWeight: 600, color: d.text }}>{c.displayName}</Typography>
-              {c.phone && (
-                <Typography sx={{ fontSize: 13, color: d.muted }}>{c.phone}</Typography>
-              )}
-              {c.notes && (
-                <Typography sx={{ fontSize: 12, color: d.mutedDark, mt: 0.5, fontStyle: 'italic' }}>
-                  {c.notes}
-                </Typography>
-              )}
-            </Paper>
-          ))}
-        </Stack>
-      )}
     </Stack>
   )
 }
@@ -843,17 +556,46 @@ export function MasterDashboardPage() {
             <Typography sx={{ fontSize: 11, color: dashboard.muted }}>Учетная запись</Typography>
           </Box>
         </Box>
-        <Menu anchorEl={userMenuAnchor} open={!!userMenuAnchor} onClose={() => setUserMenuAnchor(null)}>
-          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(ROUTES.HOME) }}>Главная</MenuItem>
-          <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(`${ROUTES.ME}?tab=general`) }}>Профиль</MenuItem>
+        <Menu
+          anchorEl={userMenuAnchor}
+          open={!!userMenuAnchor}
+          onClose={() => setUserMenuAnchor(null)}
+        >
+          <MenuItem
+            onClick={() => {
+              setUserMenuAnchor(null)
+              navigate(ROUTES.HOME)
+            }}
+          >
+            Главная
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setUserMenuAnchor(null)
+              navigate(`${ROUTES.ME}?tab=general`)
+            }}
+          >
+            Профиль
+          </MenuItem>
           {memberships.length === 1 && (
-            <MenuItem onClick={() => { setUserMenuAnchor(null); navigate(dashboardPath(memberships[0].salonId)) }}>
+            <MenuItem
+              onClick={() => {
+                setUserMenuAnchor(null)
+                navigate(dashboardPath(memberships[0].salonId))
+              }}
+            >
               Кабинет салона
             </MenuItem>
           )}
           {memberships.length > 1 &&
             memberships.map(m => (
-              <MenuItem key={m.salonId} onClick={() => { setUserMenuAnchor(null); navigate(dashboardPath(m.salonId)) }}>
+              <MenuItem
+                key={m.salonId}
+                onClick={() => {
+                  setUserMenuAnchor(null)
+                  navigate(dashboardPath(m.salonId))
+                }}
+              >
                 {m.salonName || 'Салон'}
               </MenuItem>
             ))}
@@ -902,12 +644,14 @@ export function MasterDashboardPage() {
         )
       case 'salons':
         return <SalonsSection />
+      case 'calendar':
+        return <MasterCalendar />
       case 'appointments':
-        return <AppointmentsSection />
+        return <MasterDashboardAppointments />
       case 'services':
-        return <ServicesSection />
+        return <MasterServicesGrid />
       case 'clients':
-        return <ClientsSection />
+        return <MasterDashboardClients />
       default:
         return null
     }

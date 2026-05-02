@@ -220,6 +220,47 @@ func (r *masterDashboardRepository) DeclinePendingInvite(ctx context.Context, ma
 	return res.RowsAffected > 0, nil
 }
 
+func (r *masterDashboardRepository) applyMasterApptFilters(q *gorm.DB, f repository.MasterAppointmentListFilter) *gorm.DB {
+	if f.From != nil {
+		q = q.Where("a.starts_at >= ?", *f.From)
+	}
+	if f.To != nil {
+		q = q.Where("a.starts_at < ?", *f.To)
+	}
+	if f.Status != "" {
+		q = q.Where("a.status = ?", f.Status)
+	}
+	if f.Search != "" {
+		like := "%" + f.Search + "%"
+		q = q.Where("(COALESCE(NULLIF(TRIM(a.guest_name),''), users.display_name, '') ILIKE ? OR a.guest_phone_e164 ILIKE ?)", like, like)
+	}
+	if f.Source == "personal" {
+		q = q.Where("a.salon_id IS NULL")
+	} else if f.Source != "" {
+		q = q.Where("a.salon_id = ?", f.Source)
+	}
+	return q
+}
+
+func masterApptOrderClause(sortBy, sortDir string) string {
+	allowed := map[string]string{
+		"starts_at":    "a.starts_at",
+		"client_name":  "client_label",
+		"service_name": "service_name",
+		"status":       "a.status",
+		"salon_name":   "salon_name",
+	}
+	col, ok := allowed[sortBy]
+	if !ok {
+		col = "a.starts_at"
+	}
+	dir := "DESC"
+	if sortDir == "asc" {
+		dir = "ASC"
+	}
+	return col + " " + dir
+}
+
 func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, f repository.MasterAppointmentListFilter) ([]repository.MasterAppointmentListRow, int64, error) {
 	limit := f.Limit
 	if limit < 1 {
@@ -229,18 +270,14 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 		limit = 200
 	}
 
-	countQ := r.db.WithContext(ctx).Table("appointments a").
-		Joins("LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id").
-		Where("sm.master_id = ? OR a.master_profile_id = ?", f.MasterProfileID, f.MasterProfileID)
-	if f.From != nil {
-		countQ = countQ.Where("a.starts_at >= ?", *f.From)
+	baseJoins := func(q *gorm.DB) *gorm.DB {
+		return q.Table("appointments a").
+			Joins("LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id").
+			Joins("LEFT JOIN users ON users.id = a.client_user_id").
+			Where("sm.master_id = ? OR a.master_profile_id = ?", f.MasterProfileID, f.MasterProfileID)
 	}
-	if f.To != nil {
-		countQ = countQ.Where("a.starts_at < ?", *f.To)
-	}
-	if f.Status != "" {
-		countQ = countQ.Where("a.status = ?", f.Status)
-	}
+
+	countQ := r.applyMasterApptFilters(baseJoins(r.db.WithContext(ctx)), f)
 	var total int64
 	if err := countQ.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -262,7 +299,7 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 				s.name,
 				''
 			) AS service_name,
-			CASE 
+			CASE
 				WHEN a.salon_id IS NULL THEN 'Личная запись'
 				ELSE COALESCE(NULLIF(TRIM(sal.name_override), ''), 'Салон')
 			END AS salon_name,
@@ -273,16 +310,8 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 		Joins("LEFT JOIN salons sal ON sal.id = a.salon_id").
 		Joins("LEFT JOIN users ON users.id = a.client_user_id").
 		Where("sm.master_id = ? OR a.master_profile_id = ?", f.MasterProfileID, f.MasterProfileID)
-	if f.From != nil {
-		q = q.Where("a.starts_at >= ?", *f.From)
-	}
-	if f.To != nil {
-		q = q.Where("a.starts_at < ?", *f.To)
-	}
-	if f.Status != "" {
-		q = q.Where("a.status = ?", f.Status)
-	}
-	if err := q.Order("a.starts_at DESC").Limit(limit).Offset(f.Offset).Scan(&raw).Error; err != nil {
+	q = r.applyMasterApptFilters(q, f)
+	if err := q.Order(masterApptOrderClause(f.SortBy, f.SortDir)).Limit(limit).Offset(f.Offset).Scan(&raw).Error; err != nil {
 		return nil, 0, err
 	}
 	out := make([]repository.MasterAppointmentListRow, len(raw))
@@ -296,6 +325,15 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 		}
 	}
 	return out, total, nil
+}
+
+func (r *masterDashboardRepository) ListSystemServiceCategories(ctx context.Context) ([]model.ServiceCategory, error) {
+	var rows []model.ServiceCategory
+	err := r.db.WithContext(ctx).
+		Where("salon_id IS NULL").
+		Order("parent_slug ASC, sort_order ASC, slug ASC").
+		Find(&rows).Error
+	return rows, err
 }
 
 func (r *masterDashboardRepository) ListMasterServices(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterService, error) {
@@ -354,13 +392,46 @@ func (r *masterDashboardRepository) DeleteMasterService(ctx context.Context, mas
 	return nil
 }
 
-func (r *masterDashboardRepository) ListMasterClients(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterClient, error) {
+func (r *masterDashboardRepository) ListMasterClients(ctx context.Context, f repository.MasterClientListFilter) ([]model.MasterClient, int64, error) {
+	limit := f.Limit
+	if limit < 1 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	q := r.db.WithContext(ctx).Model(&model.MasterClient{}).Where("master_profile_id = ?", f.MasterProfileID)
+	if f.Search != "" {
+		like := "%" + f.Search + "%"
+		q = q.Where("(display_name ILIKE ? OR phone ILIKE ?)", like, like)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	allowed := map[string]string{
+		"displayName": "display_name",
+		"phone":       "phone",
+		"createdAt":   "created_at",
+	}
+	col, ok := allowed[f.SortBy]
+	if !ok {
+		col = "display_name"
+	}
+	dir := "ASC"
+	if f.SortDir == "desc" {
+		dir = "DESC"
+	}
+
 	var rows []model.MasterClient
-	err := r.db.WithContext(ctx).
-		Where("master_profile_id = ?", masterProfileID).
-		Order("display_name ASC").
-		Find(&rows).Error
-	return rows, err
+	err := q.Order(col + " " + dir).Limit(limit).Offset(f.Offset).Find(&rows).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	return rows, total, nil
 }
 
 func (r *masterDashboardRepository) GetMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) (*model.MasterClient, error) {

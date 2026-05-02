@@ -26,6 +26,48 @@ func NewMasterDashboardController(svc service.MasterDashboardService, log *zap.L
 	return &MasterDashboardController{svc: svc, log: log}
 }
 
+// JSON bodies for master personal appointments (camelCase), same shape as dashboard manual appointment APIs.
+type masterCreateApptBody struct {
+	ServiceIDs   []uuid.UUID `json:"serviceIds"`
+	StartsAt     string      `json:"startsAt"`
+	GuestName    string      `json:"guestName"`
+	GuestPhone   string      `json:"guestPhone"`
+	ClientNote   string      `json:"clientNote,omitempty"`
+	ClientUserID *uuid.UUID  `json:"clientUserId,omitempty"`
+}
+
+type masterPutApptBody struct {
+	StartsAt   *string     `json:"startsAt,omitempty"`
+	EndsAt     *string     `json:"endsAt,omitempty"`
+	ServiceIDs []uuid.UUID `json:"serviceIds,omitempty"`
+	ClientNote *string     `json:"clientNote,omitempty"`
+	GuestName  *string     `json:"guestName,omitempty"`
+	GuestPhone *string     `json:"guestPhone,omitempty"`
+}
+
+func parseMasterPutApptBody(id uuid.UUID, body masterPutApptBody) (service.UpdateAppointmentInput, error) {
+	in := service.UpdateAppointmentInput{AppointmentID: id}
+	if body.StartsAt != nil {
+		t, err := time.Parse(time.RFC3339, *body.StartsAt)
+		if err != nil {
+			return in, err
+		}
+		in.StartsAt = &t
+	}
+	if body.EndsAt != nil {
+		t, err := time.Parse(time.RFC3339, *body.EndsAt)
+		if err != nil {
+			return in, err
+		}
+		in.EndsAt = &t
+	}
+	in.ServiceIDs = body.ServiceIDs
+	in.ClientNote = body.ClientNote
+	in.GuestName = body.GuestName
+	in.GuestPhone = body.GuestPhone
+	return in, nil
+}
+
 // MasterDashboardRoutes dispatches under /api/v1/master-dashboard/.
 func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.UserIDFromCtx(r.Context())
@@ -55,6 +97,19 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 	}
 
 	switch parts[0] {
+	case "service-categories":
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			out, err := h.svc.ListMasterServiceCategories(r.Context())
+			if err != nil {
+				h.log.Error("master service categories", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	case "profile":
 		if len(parts) != 1 {
 			http.NotFound(w, r)
@@ -173,10 +228,14 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 				}
 			}
 			status := q.Get("status")
+			search := q.Get("search")
+			source := q.Get("source")
+			sortBy := q.Get("sort_by")
+			sortDir := q.Get("sort_dir")
 			page, _ := strconv.Atoi(q.Get("page"))
 			pageSize, _ := strconv.Atoi(q.Get("page_size"))
 
-			items, total, err := h.svc.ListAppointments(r.Context(), userID, from, to, status, page, pageSize)
+			items, total, err := h.svc.ListAppointments(r.Context(), userID, from, to, status, search, source, sortBy, sortDir, page, pageSize)
 			if err != nil {
 				h.log.Error("master list appointments", zap.Error(err))
 				jsonError(w, "internal error", http.StatusInternalServerError)
@@ -198,12 +257,24 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 			return
 		}
 		if len(parts) == 1 && r.Method == http.MethodPost {
-			var body service.ManualAppointmentInput
+			var body masterCreateApptBody
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				jsonError(w, "invalid json", http.StatusBadRequest)
 				return
 			}
-			ap, err := h.svc.CreatePersonalAppointment(r.Context(), userID, body)
+			st, err := time.Parse(time.RFC3339, body.StartsAt)
+			if err != nil {
+				jsonError(w, "startsAt must be RFC3339", http.StatusBadRequest)
+				return
+			}
+			ap, err := h.svc.CreatePersonalAppointment(r.Context(), userID, service.ManualAppointmentInput{
+				ServiceIDs:   body.ServiceIDs,
+				StartsAt:     st,
+				GuestName:    body.GuestName,
+				GuestPhone:   body.GuestPhone,
+				ClientNote:   body.ClientNote,
+				ClientUserID: body.ClientUserID,
+			})
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusBadRequest)
 				return
@@ -219,13 +290,17 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 				jsonError(w, "invalid id", http.StatusBadRequest)
 				return
 			}
-			var body service.UpdateAppointmentInput
+			var body masterPutApptBody
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				jsonError(w, "invalid json", http.StatusBadRequest)
 				return
 			}
-			body.AppointmentID = id
-			if err := h.svc.UpdatePersonalAppointment(r.Context(), userID, body); err != nil {
+			in, err := parseMasterPutApptBody(id, body)
+			if err != nil {
+				jsonError(w, "startsAt/endsAt must be RFC3339", http.StatusBadRequest)
+				return
+			}
+			if err := h.svc.UpdatePersonalAppointment(r.Context(), userID, in); err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					jsonError(w, "not found", http.StatusNotFound)
 					return
@@ -307,14 +382,31 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 		http.NotFound(w, r)
 	case "clients":
 		if len(parts) == 1 && r.Method == http.MethodGet {
-			list, err := h.svc.ListMasterClients(r.Context(), userID)
+			q := r.URL.Query()
+			search := q.Get("search")
+			sortBy := q.Get("sort_by")
+			sortDir := q.Get("sort_dir")
+			page, _ := strconv.Atoi(q.Get("page"))
+			pageSize, _ := strconv.Atoi(q.Get("page_size"))
+			items, total, err := h.svc.ListMasterClients(r.Context(), userID, search, sortBy, sortDir, page, pageSize)
 			if err != nil {
 				h.log.Error("master list clients", zap.Error(err))
 				jsonError(w, "internal error", http.StatusInternalServerError)
 				return
 			}
+			if page < 1 {
+				page = 1
+			}
+			if pageSize < 1 {
+				pageSize = 50
+			}
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(list)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items":    items,
+				"total":    total,
+				"page":     page,
+				"pageSize": pageSize,
+			})
 			return
 		}
 		if len(parts) == 1 && r.Method == http.MethodPost {

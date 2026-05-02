@@ -1,5 +1,6 @@
 import { authFetch } from './authApi'
 import { publicApiUrl } from '@shared/lib/apiPublicUrl'
+import type { DashboardServiceCategoriesResponse } from './dashboardApi'
 
 const root = () => publicApiUrl('/api/v1/master-dashboard')
 
@@ -47,6 +48,7 @@ export interface MasterDashboardAppointment {
   serviceName: string
   clientLabel: string
   clientPhone?: string | null
+  clientNote?: string | null
   serviceId: string
   salonMasterId?: string | null
 }
@@ -160,6 +162,15 @@ export async function updatePersonalAppointment(id: string, data: Partial<Manual
     const errData = await res.json().catch(() => ({}))
     throw new Error((errData as { error?: string }).error || `HTTP ${res.status}`)
   }
+}
+
+export async function fetchMasterServiceCategories(): Promise<DashboardServiceCategoriesResponse> {
+  const res = await authFetch(`${root()}/service-categories`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error || `HTTP ${res.status}`)
+  }
+  return res.json()
 }
 
 // MasterServices

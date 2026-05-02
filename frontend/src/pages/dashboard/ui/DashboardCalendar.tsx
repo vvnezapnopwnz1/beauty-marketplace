@@ -490,11 +490,6 @@ export function DashboardCalendar() {
             }}
             slotDurationMinutes={slotDurationMinutes}
             onAppointmentMoved={p => handleAppointmentMoved(p)}
-            onWeekNavigateByDrag={direction =>
-              setAnchor(d =>
-                new Date(d.getTime() + (direction === 'next' ? 7 * 864e5 : -7 * 864e5)),
-              )
-            }
           />
         ) : mode === 'day' ? (
           <CalendarDayStaffGrid

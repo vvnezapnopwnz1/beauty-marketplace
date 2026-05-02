@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
 	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/yourusername/beauty-marketplace/internal/servicecategory"
 	"gorm.io/gorm"
 )
 
@@ -22,18 +23,19 @@ type MasterDashboardService interface {
 	AcceptInvite(ctx context.Context, userID, salonMasterID uuid.UUID) error
 	DeclineInvite(ctx context.Context, userID, salonMasterID uuid.UUID) error
 	ListSalons(ctx context.Context, userID uuid.UUID) ([]MasterSalonMembershipDTO, error)
-	ListAppointments(ctx context.Context, userID uuid.UUID, from, to *time.Time, status string, page, pageSize int) ([]MasterAppointmentDTO, int64, error)
+	ListAppointments(ctx context.Context, userID uuid.UUID, from, to *time.Time, status, search, source, sortBy, sortDir string, page, pageSize int) ([]MasterAppointmentDTO, int64, error)
 	CreatePersonalAppointment(ctx context.Context, userID uuid.UUID, in ManualAppointmentInput) (*model.Appointment, error)
 	UpdatePersonalAppointment(ctx context.Context, userID uuid.UUID, in UpdateAppointmentInput) error
 
 	// MasterServices
+	ListMasterServiceCategories(ctx context.Context) (*ServiceCategoriesResponse, error)
 	ListMasterServices(ctx context.Context, userID uuid.UUID) ([]MasterServiceDTO, error)
 	CreateMasterService(ctx context.Context, userID uuid.UUID, in CreateMasterServiceInput) (*MasterServiceDTO, error)
 	UpdateMasterService(ctx context.Context, userID uuid.UUID, serviceID uuid.UUID, in CreateMasterServiceInput) (*MasterServiceDTO, error)
 	DeleteMasterService(ctx context.Context, userID uuid.UUID, serviceID uuid.UUID) error
 
 	// MasterClients
-	ListMasterClients(ctx context.Context, userID uuid.UUID) ([]MasterClientDTO, error)
+	ListMasterClients(ctx context.Context, userID uuid.UUID, search, sortBy, sortDir string, page, pageSize int) ([]MasterClientDTO, int64, error)
 	CreateMasterClient(ctx context.Context, userID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error)
 	UpdateMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error)
 	DeleteMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) error
@@ -122,6 +124,7 @@ type MasterAppointmentDTO struct {
 	ServiceName   string     `json:"serviceName"`
 	ClientLabel   string     `json:"clientLabel"`
 	ClientPhone   *string    `json:"clientPhone,omitempty"`
+	ClientNote    *string    `json:"clientNote,omitempty"`
 	ServiceID     uuid.UUID  `json:"serviceId"`
 	SalonMasterID *uuid.UUID `json:"salonMasterId,omitempty"`
 }
@@ -287,7 +290,7 @@ func (s *masterDashboardService) ListSalons(ctx context.Context, userID uuid.UUI
 	return out, nil
 }
 
-func (s *masterDashboardService) ListAppointments(ctx context.Context, userID uuid.UUID, from, to *time.Time, status string, page, pageSize int) ([]MasterAppointmentDTO, int64, error) {
+func (s *masterDashboardService) ListAppointments(ctx context.Context, userID uuid.UUID, from, to *time.Time, status, search, source, sortBy, sortDir string, page, pageSize int) ([]MasterAppointmentDTO, int64, error) {
 	mpID, err := s.masterProfileID(ctx, userID)
 	if err != nil {
 		return nil, 0, err
@@ -308,6 +311,10 @@ func (s *masterDashboardService) ListAppointments(ctx context.Context, userID uu
 		From:            from,
 		To:              to,
 		Status:          status,
+		Search:          search,
+		Source:          source,
+		SortBy:          sortBy,
+		SortDir:         sortDir,
 		Limit:           pageSize,
 		Offset:          (page - 1) * pageSize,
 	})
@@ -332,6 +339,7 @@ func (s *masterDashboardService) ListAppointments(ctx context.Context, userID uu
 			ServiceName:   row.ServiceName,
 			ClientLabel:   row.ClientLabel,
 			ClientPhone:   row.ClientPhone,
+			ClientNote:    a.ClientNote,
 			ServiceID:     a.ServiceID,
 			SalonMasterID: a.SalonMasterID,
 		}
@@ -489,6 +497,38 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 	return s.appts.Update(ctx, a)
 }
 
+func (s *masterDashboardService) ListMasterServiceCategories(ctx context.Context) (*ServiceCategoriesResponse, error) {
+	rows, err := s.repo.ListSystemServiceCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	byParent := make(map[string][]model.ServiceCategory)
+	for _, r := range rows {
+		byParent[r.ParentSlug] = append(byParent[r.ParentSlug], r)
+	}
+	out := &ServiceCategoriesResponse{
+		Groups: make([]ServiceCategoryGroupDTO, 0),
+	}
+	for _, ps := range servicecategory.ParentSlugs {
+		items := byParent[ps]
+		if len(items) == 0 {
+			continue
+		}
+		g := ServiceCategoryGroupDTO{
+			ParentSlug: ps,
+			Label:      servicecategory.ParentSlugLabelRu(ps),
+			Items:      make([]ServiceCategoryItemDTO, 0, len(items)),
+		}
+		for _, it := range items {
+			g.Items = append(g.Items, ServiceCategoryItemDTO{
+				Slug: it.Slug, NameRu: it.NameRu, ParentSlug: it.ParentSlug, SortOrder: it.SortOrder,
+			})
+		}
+		out.Groups = append(out.Groups, g)
+	}
+	return out, nil
+}
+
 func (s *masterDashboardService) ListMasterServices(ctx context.Context, userID uuid.UUID) ([]MasterServiceDTO, error) {
 	mpID, err := s.masterProfileID(ctx, userID)
 	if err != nil {
@@ -584,23 +624,36 @@ func masterServiceToDTO(m *model.MasterService) *MasterServiceDTO {
 		IsActive:        m.IsActive,
 	}
 }
-func (s *masterDashboardService) ListMasterClients(ctx context.Context, userID uuid.UUID) ([]MasterClientDTO, error) {
+func (s *masterDashboardService) ListMasterClients(ctx context.Context, userID uuid.UUID, search, sortBy, sortDir string, page, pageSize int) ([]MasterClientDTO, int64, error) {
 	mpID, err := s.masterProfileID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if mpID == uuid.Nil {
-		return nil, nil
+		return nil, 0, nil
 	}
-	rows, err := s.repo.ListMasterClients(ctx, mpID)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 50
+	}
+	rows, total, err := s.repo.ListMasterClients(ctx, repository.MasterClientListFilter{
+		MasterProfileID: mpID,
+		Search:          search,
+		SortBy:          sortBy,
+		SortDir:         sortDir,
+		Limit:           pageSize,
+		Offset:          (page - 1) * pageSize,
+	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	out := make([]MasterClientDTO, len(rows))
 	for i, r := range rows {
 		out[i] = masterClientToDTO(&r)
 	}
-	return out, nil
+	return out, total, nil
 }
 
 func (s *masterDashboardService) CreateMasterClient(ctx context.Context, userID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error) {

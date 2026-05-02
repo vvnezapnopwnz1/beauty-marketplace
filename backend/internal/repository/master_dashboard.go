@@ -41,6 +41,20 @@ type MasterAppointmentListFilter struct {
 	From            *time.Time
 	To              *time.Time
 	Status          string
+	Search          string
+	Source          string // "personal", salon UUID, or "" for all
+	SortBy          string
+	SortDir         string
+	Limit           int
+	Offset          int
+}
+
+// MasterClientListFilter filters master personal clients.
+type MasterClientListFilter struct {
+	MasterProfileID uuid.UUID
+	Search          string
+	SortBy          string
+	SortDir         string
 	Limit           int
 	Offset          int
 }
@@ -58,6 +72,9 @@ type MasterDashboardRepository interface {
 	DeclinePendingInvite(ctx context.Context, masterProfileID, salonMasterID uuid.UUID) (bool, error)
 	ListMasterAppointments(ctx context.Context, f MasterAppointmentListFilter) ([]MasterAppointmentListRow, int64, error)
 
+	// System service categories (global catalog; master cabinet picker).
+	ListSystemServiceCategories(ctx context.Context) ([]model.ServiceCategory, error)
+
 	// MasterServices
 	ListMasterServices(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterService, error)
 	GetMasterService(ctx context.Context, masterProfileID, serviceID uuid.UUID) (*model.MasterService, error)
@@ -66,7 +83,7 @@ type MasterDashboardRepository interface {
 	DeleteMasterService(ctx context.Context, masterProfileID, serviceID uuid.UUID) error
 
 	// MasterClients
-	ListMasterClients(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterClient, error)
+	ListMasterClients(ctx context.Context, f MasterClientListFilter) ([]model.MasterClient, int64, error)
 	GetMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) (*model.MasterClient, error)
 	CreateMasterClient(ctx context.Context, c *model.MasterClient) error
 	UpdateMasterClient(ctx context.Context, c *model.MasterClient) error
