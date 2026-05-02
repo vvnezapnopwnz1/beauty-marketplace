@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-05-01
+updated: 2026-05-02
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -13,6 +13,8 @@ code_pointers:
 
 ### Последние изменения (2026-05-02)
 
+- **Кабинет мастера — записи и клиенты (drawer’ы):** разделы «Записи» и «Клиенты» собраны в `MasterDashboardAppointments` и `MasterDashboardClients` (аналог `DashboardAppointments`): боковые панели `CreateMasterAppointmentDrawer` / `MasterPersonalAppointmentDrawer` (редактирование только личных визитов), `CreateMasterClientDrawer` / `MasterClientDetailDrawer`. RTK Query: мутации `createMasterPersonalAppointment`, `updateMasterPersonalAppointment`, CRUD клиентов. Бэкенд: `POST`/`PUT` `/master-dashboard/appointments` принимают camelCase JSON как в дашборде салона; в списке записей добавлено поле `clientNote`.
+- **Кабинет мастера — услуги:** `GET /api/v1/master-dashboard/service-categories` отдаёт полный системный справочник категорий без `X-Salon-Id`. На фронте вынесены `MasterServicesGrid` (таблица как в дашборде салона) и `MasterServiceFormModal` (создание/редактирование/удаление личных услуг).
 - **Интеграция CRM в Кабинет Мастера**: реализован полноценный функционал управления частной практикой мастера.
     - **База данных**: `appointments.salon_id` теперь nullable; добавлена колонка `master_profile_id` для личных записей. Создана таблица `master_clients` для личной базы клиентов мастера. В `salon_masters` добавлена колонка `specializations` для изоляции навыков мастера внутри конкретного салона. Миграция: `000029_master_crm_integration`.
     - **Бэкенд**: расширен `MasterDashboardService` и `MasterDashboardRepository` — добавлены CRUD-методы для личных услуг (`master_services`) и личных клиентов (`master_clients`). Список записей (`ListAppointments`) теперь агрегирует салонные и личные визиты с поддержкой серверной пагинации (`page`, `page_size`).
