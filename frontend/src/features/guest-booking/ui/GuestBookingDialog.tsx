@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useSnackbar } from 'notistack'
 import { ROUTES } from '@shared/config/routes'
-import { formatPhone, toE164 } from '@shared/lib/formatPhone'
+import { formatPhone, toRuE164 } from '@shared/lib/formatPhone'
 import {
   fetchSalonMasters,
   submitGuestBooking,
@@ -390,8 +390,8 @@ export function GuestBookingDialog({
       setError(t('guestBooking.nameRequired'))
       return
     }
-    const e164 = toE164(phone)
-    if (!/^\+7\d{10}$/.test(e164)) {
+    const e164 = toRuE164(phone)
+    if (!e164) {
       setError(t('guestBooking.phoneInvalid'))
       return
     }

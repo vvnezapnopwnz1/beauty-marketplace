@@ -42,6 +42,7 @@ import {
   toLocalYMD,
   type StaffScheduleInfo,
 } from '../lib/calendarGridUtils'
+import { useDashboardFilterSelectSx } from '@pages/dashboard/theme/dashboardFilterSelectSx'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { CalendarDayStaffGrid, type StaffColumn } from './CalendarDayStaffGrid'
 import { CalendarMonthGrid } from './CalendarMonthGrid'
@@ -50,38 +51,6 @@ import { AppointmentDrawer } from '@pages/dashboard/ui/drawers/AppointmentDrawer
 import { CreateAppointmentDrawer } from '@pages/dashboard/ui/drawers/CreateAppointmentDrawer'
 
 import { type DashboardAppointment } from '@entities/appointment'
-import { V } from '@shared/theme/palettes'
-
-const filterSelectSx = {
-  bgcolor: V.surface,
-  borderRadius: V.rSm,
-  fontSize: 12,
-  color: V.text,
-  height: '33px',
-  minWidth: 130,
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: V.border, top: 0 },
-  '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
-  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: V.accent },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: V.accent, borderWidth: '1.5px' },
-  '& .MuiSelect-select': { py: 0, px: '10px', color: V.text },
-  '& .MuiSvgIcon-root': { color: V.textMuted },
-} as const
-
-const menuPaperSx = {
-  bgcolor: V.surface,
-  color: V.text,
-  border: `1px solid ${V.border}`,
-  borderRadius: V.rMd,
-  boxShadow: '0 8px 24px rgba(212,84,122,0.10)',
-} as const
-
-const menuItemSx = {
-  fontSize: 13,
-  color: V.text,
-  '&:hover': { bgcolor: V.surfaceEl },
-  '&.Mui-selected': { bgcolor: V.surfaceHi, color: V.accent },
-  '&.Mui-selected:hover': { bgcolor: V.surfaceHi },
-} as const
 
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   const d = useDashboardPalette()
@@ -104,6 +73,7 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
 
 export function DashboardCalendar() {
   const d = useDashboardPalette()
+  const { filterSelectSx, menuPaperSx, menuItemSx } = useDashboardFilterSelectSx()
   const narrow = useMediaQuery('(max-width:600px)')
   const timeColWidth = narrow ? 40 : 56
 
@@ -332,8 +302,10 @@ export function DashboardCalendar() {
   const calendarViewportSx = {
     mt: 0.5,
     maxHeight: { xs: '60vh', md: '68vh' },
-    overflowX: 'auto',
-    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    overflow: 'hidden',
     borderRadius: 1.5,
     border: `1px solid ${d.grid}`,
     bgcolor: d.card,

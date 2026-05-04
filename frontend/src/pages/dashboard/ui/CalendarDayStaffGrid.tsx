@@ -510,7 +510,17 @@ export function CalendarDayStaffGrid({
   )
 
   return (
-    <Box sx={{ borderRadius: 1, border: `1px solid ${d.grid}` }}>
+    <Box
+      sx={{
+        borderRadius: 1,
+        border: `1px solid ${d.grid}`,
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <DragDropProvider
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -518,7 +528,16 @@ export function CalendarDayStaffGrid({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        {grid}
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            minWidth: 0,
+            overflow: 'auto',
+          }}
+        >
+          {grid}
+        </Box>
         <RescheduleDragOverlay activeDragApt={activeDragApt} pxPerMinute={CALENDAR_PX_PER_MINUTE} />
       </DragDropProvider>
       <Snackbar

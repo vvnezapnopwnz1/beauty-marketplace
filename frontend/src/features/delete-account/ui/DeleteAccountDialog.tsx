@@ -17,6 +17,7 @@ import { clearTokens } from '@shared/api/authApi'
 import { deleteMyAccount, type DeleteMeConflictError } from '@shared/api/meApi'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@shared/config/routes'
+import { formatPhone, ruPhonesEqual } from '@shared/lib/formatPhone'
 
 interface Props {
   open: boolean
@@ -31,7 +32,10 @@ export function DeleteAccountDialog({ open, phone, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [ownedSalons, setOwnedSalons] = useState<string[]>([])
 
-  const canDelete = useMemo(() => input.trim() === phone.trim() && !loading, [input, phone, loading])
+  const canDelete = useMemo(
+    () => ruPhonesEqual(input, phone) && !loading,
+    [input, phone, loading],
+  )
 
   const onDelete = async () => {
     if (!canDelete) return
@@ -70,8 +74,10 @@ export function DeleteAccountDialog({ open, phone, onClose }: Props) {
           <TextField
             label="Подтверждение телефона"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={e => setInput(formatPhone(e.target.value))}
+            inputMode="numeric"
             fullWidth
+            placeholder="+7 (___) ___ - __ - __"
           />
           {error && <Alert severity="error">{error}</Alert>}
           {ownedSalons.length > 0 && (

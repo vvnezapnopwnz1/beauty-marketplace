@@ -13,6 +13,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useCreateStaffInviteMutation } from '@entities/salon-invite'
+import { formatPhone, toRuE164 } from '@shared/lib/formatPhone'
 
 type Props = {
   open: boolean
@@ -20,16 +21,21 @@ type Props = {
 }
 
 export function InviteStaffDrawer({ open, onClose }: Props) {
-  const [phone, setPhone] = useState('+7')
+  const [phone, setPhone] = useState('')
   const [role, setRole] = useState<'admin' | 'receptionist'>('receptionist')
   const [err, setErr] = useState<string | null>(null)
   const [createInvite, { isLoading }] = useCreateStaffInviteMutation()
 
   async function submit() {
     setErr(null)
+    const e164 = toRuE164(phone)
+    if (!e164) {
+      setErr('Введите корректный телефон')
+      return
+    }
     try {
-      await createInvite({ phoneE164: phone.trim(), role }).unwrap()
-      setPhone('+7')
+      await createInvite({ phoneE164: e164, role }).unwrap()
+      setPhone('')
       setRole('receptionist')
       onClose()
     } catch (e) {
@@ -43,7 +49,7 @@ export function InviteStaffDrawer({ open, onClose }: Props) {
         Пригласить сотрудника
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Укажите телефон в формате +7XXXXXXXXXX. После регистрации по этому номеру приглашение появится в разделе «Профиль → Приглашения».
+        Укажите телефон. После регистрации по этому номеру приглашение появится в разделе «Профиль → Приглашения».
       </Typography>
       {err && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -52,11 +58,12 @@ export function InviteStaffDrawer({ open, onClose }: Props) {
       )}
       <Stack spacing={2}>
         <TextField
-          label="Телефон (E.164)"
+          label="Телефон"
           value={phone}
-          onChange={e => setPhone(e.target.value)}
+          onChange={e => setPhone(formatPhone(e.target.value))}
+          inputMode="numeric"
           fullWidth
-          placeholder="+79001234567"
+          placeholder="+7 (___) ___ - __ - __"
         />
         <FormControl fullWidth>
           <InputLabel id="invite-role-label">Роль</InputLabel>

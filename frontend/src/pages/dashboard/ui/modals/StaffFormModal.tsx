@@ -37,6 +37,7 @@ import {
 } from '@entities/staff'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
+import { formatPhone, toRuE164 } from '@shared/lib/formatPhone'
 import {
   FormField,
   PanelHeader,
@@ -180,15 +181,7 @@ export function StaffFormModal(props: {
 
   const watchedPhone = useWatch({ control, name: 'phone' })
 
-  const normalizePhone = (raw: string | undefined | null): string | null => {
-    if (!raw) return null
-    let p = raw.replace(/[\s\-()]/g, '')
-    if (p.startsWith('8') && p.length === 11) p = '+7' + p.slice(1)
-    if (/^\+7\d{10}$/.test(p)) return p
-    return null
-  }
-
-  const currentNormalized = normalizePhone(watchedPhone)
+  const currentNormalized = toRuE164(watchedPhone ?? '')
   const isPhoneValid = currentNormalized !== null
   const needsPhoneVerification = isPhoneValid && !phoneVerified
 
@@ -281,7 +274,7 @@ export function StaffFormModal(props: {
         reset({
           firstName: fn, lastName: ln,
           role: st.role ?? '', level: st.level ?? 'master', bio: profBio,
-          phone: st.phone ?? '', telegramUsername: st.telegramUsername ?? '',
+          phone: formatPhone(st.phone ?? ''), telegramUsername: st.telegramUsername ?? '',
           email: st.email ?? '',
           joinedAt: typeof st.joinedAt === 'string' ? st.joinedAt.slice(0, 10) : '',
           dashboardAccess: st.dashboardAccess,
@@ -295,7 +288,7 @@ export function StaffFormModal(props: {
         // Pre-verify phone for edit mode (so existing phone doesn't require re-verification)
         const existingPhone = st.phone
         if (existingPhone) {
-          const existingNormalized = normalizePhone(existingPhone)
+          const existingNormalized = toRuE164(existingPhone)
           if (existingNormalized) {
             setVerifiedPhone(existingNormalized)
             setPhoneVerified(true)
@@ -341,7 +334,7 @@ export function StaffFormModal(props: {
       role: v.role || null,
       level: v.level || null,
       bio: v.bio || null,
-      phone: v.phone || null,
+      phone: toRuE164(v.phone || '') || null,
       telegramUsername: v.telegramUsername || null,
       email: v.email || null,
       color: v.color || null,
@@ -388,7 +381,12 @@ export function StaffFormModal(props: {
     setInviteNotFound(false)
     setInviteLookupLoading(true)
     try {
-      const res = await lookupMaster(invitePhone).unwrap()
+      const inviteE164 = toRuE164(invitePhone)
+      if (!inviteE164) {
+        setSaveErr('Введите корректный телефон')
+        return
+      }
+      const res = await lookupMaster(inviteE164).unwrap()
       if (!res.found || !res.profile) {
         setInviteNotFound(true)
         return
@@ -472,10 +470,11 @@ export function StaffFormModal(props: {
               </Typography>
               <Stack spacing={1.5}>
                 <TextField
-                  label="Телефон (E.164)"
-                  placeholder="+79161234567"
+                  label="Телефон"
+                  placeholder="+7 (___) ___ - __ - __"
                   value={invitePhone}
-                  onChange={e => setInvitePhone(e.target.value)}
+                  onChange={e => setInvitePhone(formatPhone(e.target.value))}
+                  inputMode="numeric"
                   sx={inputBaseSx}
                 />
                 <Stack direction="row" spacing={1} alignItems="center">
@@ -692,8 +691,10 @@ export function StaffFormModal(props: {
                       <TextField
                         {...field}
                         value={field.value ?? ''}
+                        onChange={e => field.onChange(formatPhone(e.target.value))}
+                        inputMode="numeric"
                         fullWidth
-                        placeholder="+7 916 234-56-78"
+                        placeholder="+7 (___) ___ - __ - __"
                         inputProps={{ 'aria-label': 'Телефон' }}
                         sx={inputBaseSx}
                         disabled={otpStep === 'sent'}

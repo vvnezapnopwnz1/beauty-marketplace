@@ -21,6 +21,7 @@ import {
   type MasterClientDTO,
 } from '@entities/master'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
+import { formatPhone, parseOptionalRuPhone, toRuE164 } from '@shared/lib/formatPhone'
 
 export type MasterClientDetailDrawerProps = {
   open: boolean
@@ -41,7 +42,7 @@ function MasterClientDetailBody({
   const [deleteClient, { isLoading: deleteBusy }] = useDeleteMasterClientMutation()
 
   const [nameVal, setNameVal] = useState(client.displayName)
-  const [phoneVal, setPhoneVal] = useState(client.phone ?? '')
+  const [phoneVal, setPhoneVal] = useState(formatPhone(client.phone ?? ''))
   const [extraVal, setExtraVal] = useState(client.extraContact ?? '')
   const [notesVal, setNotesVal] = useState(client.notes ?? '')
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -51,7 +52,8 @@ function MasterClientDetailBody({
   const dirty = useMemo(
     () =>
       nameVal.trim() !== client.displayName ||
-      (!phoneLocked && phoneVal.trim() !== (client.phone ?? '')) ||
+      (!phoneLocked &&
+        (toRuE164(phoneVal) ?? '') !== (toRuE164(client.phone ?? '') ?? '')) ||
       extraVal.trim() !== (client.extraContact ?? '') ||
       notesVal !== (client.notes ?? ''),
     [client, nameVal, phoneVal, extraVal, notesVal, phoneLocked],
@@ -67,12 +69,22 @@ function MasterClientDetailBody({
       enqueueFormSnackbar('Введите имя', 'Error')
       return
     }
+    const parsedPhone = parseOptionalRuPhone(phoneVal)
+    if (!phoneLocked && parsedPhone.kind === 'invalid') {
+      enqueueFormSnackbar('Некорректный телефон', 'Error')
+      return
+    }
     try {
+      const phoneBody = phoneLocked
+        ? (client.phone ?? null)
+        : parsedPhone.kind === 'valid'
+          ? parsedPhone.e164
+          : null
       await updateClient({
         id: client.id,
         body: {
           displayName: nameVal.trim(),
-          phone: phoneLocked ? (client.phone ?? null) : phoneVal.trim() || null,
+          phone: phoneBody,
           notes: notesVal.trim() || null,
           extraContact: extraVal.trim() || null,
           ...(client.userId ? { userId: client.userId } : {}),
@@ -134,7 +146,8 @@ function MasterClientDetailBody({
               <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1.5 }}>Телефон</Typography>
               <TextField
                 value={phoneVal}
-                onChange={e => setPhoneVal(e.target.value)}
+                onChange={e => setPhoneVal(formatPhone(e.target.value))}
+                inputMode="numeric"
                 fullWidth
                 disabled={phoneLocked}
                 helperText={phoneLocked ? 'Телефон привязан к аккаунту пользователя' : undefined}

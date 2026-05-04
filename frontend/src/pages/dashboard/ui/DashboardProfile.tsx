@@ -26,6 +26,7 @@ import {
   PanelBtn,
   ToggleRow,
 } from '@pages/dashboard/ui/components/formComponents'
+import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
 
 // иконка профиля
 function ProfileIcon() {
@@ -91,11 +92,16 @@ export function DashboardProfile() {
   async function save() {
     if (!p) return
     setOk(null)
+    const pub = parseOptionalRuPhone(p.phonePublic ?? '')
+    if (pub.kind === 'invalid') {
+      setErr('Некорректный телефон')
+      return
+    }
     try {
       const next = await putSalonProfile({
         nameOverride: p.nameOverride,
         description: p.description,
-        phonePublic: p.phonePublic,
+        phonePublic: pub.kind === 'valid' ? pub.e164 : null,
         categoryId: p.categoryId,
         salonCategoryScopes: p.salonCategoryScopes ?? [],
         onlineBookingEnabled: p.onlineBookingEnabled,
@@ -243,10 +249,11 @@ export function DashboardProfile() {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <FormField label="Телефон">
               <TextField
-                value={p.phonePublic ?? ''}
-                onChange={e => setP({ ...p, phonePublic: e.target.value || null })}
+                value={formatPhone(p.phonePublic ?? '')}
+                onChange={e => setP({ ...p, phonePublic: formatPhone(e.target.value) || null })}
+                inputMode="numeric"
                 fullWidth
-                placeholder="+7 495 000-00-00"
+                placeholder="+7 (___) ___ - __ - __"
                 sx={inputBaseSx}
               />
             </FormField>

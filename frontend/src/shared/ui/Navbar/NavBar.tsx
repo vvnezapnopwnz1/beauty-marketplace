@@ -140,6 +140,7 @@ export function NavBar() {
               onClick: () =>
                 salonDashboardTarget ? navigate(dashboardPath(salonDashboardTarget)) : navigate(ROUTES.JOIN),
             },
+            { label: t('nav.forMasters'), onClick: () => navigate(ROUTES.FOR_MASTERS) },
             { label: t('nav.giftCards'), onClick: undefined },
           ].map(({ label, onClick }) => (
             <Box

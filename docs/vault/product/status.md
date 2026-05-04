@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-05-02
+updated: 2026-05-03
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -11,9 +11,21 @@ code_pointers:
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
+### Последние изменения (2026-05-03)
+
+- **Календарь дашборда — зона «Перенести на другую дату» при скролле:** вьюпорт календаря (`DashboardCalendar`, `MasterCalendar`) переведён на колонку `flex` + `overflow: hidden`; вертикальный/горизонтальный скролл только у области сетки. Полоска `WeekBottomRescheduleZone` в `CalendarWeekGrid` остаётся под скроллом и всегда видна при перетаскивании записи. То же разбиение скролла для `CalendarDayStaffGrid` и месячной сетки (`CalendarMonthGrid`).
+
+- **Единый ввод телефона (RU, маска + E.164):** в `@shared/lib/formatPhone` добавлены `toRuE164`, `RU_PHONE_FORMATTED_REGEX`, `parseOptionalRuPhone`, `ruPhonesEqual`; маска `+7 (XXX) XXX-XX-XX` и нормализация на API подключены к дроверам записей/клиентов, приглашениям персонала (`StaffFormModal`, `InviteStaffDrawer`), публичному телефону салона (`DashboardProfile`), подтверждению удаления аккаунта, отображению телефона в профиле мастера; логин и гостевое бронирование переведены на общие примитивы.
+
+- **Дашборд — Select в светлой теме:** стили компактных фильтров (`Select` + меню) больше не задаются через модульные константы с `V.*` (они «замораживались» при первом импорте на палитре Rose Night). Вынесены в `useDashboardFilterSelectSx` / `dashboardFilterSelectSx` (`frontend/src/pages/dashboard/theme/dashboardFilterSelectSx.ts`); подключены в `DashboardCalendar`, `FilterAppointmentsBar`, `MasterCalendar`, `MasterFilterAppointmentsBar`, `MasterServicesGrid`, `ServicesView`. Подзаголовки категорий в `ServicesView` используют `d` из `useDashboardPalette`.
+
+- **Личная запись мастера — исправление БД:** триггер `services_same_salon_as_appointment` и FK `appointments.service_id → services` не допускали `service_id` из `master_services` при `salon_id IS NULL`, из-за чего `POST /master-dashboard/appointments` падал с `service_id must belong to the same salon as appointment`. Миграция `000030_personal_appointment_service_check`: снят FK, триггер ветвится — салонные строки проверяются по `services`, личные по `master_services` и `master_profile_id`. Обновлена заметка [`architecture/db-schema.md`](../architecture/db-schema.md).
+
+- **Публичная страница для мастеров (лендинг):** добавлена новая публичная страница `/for-masters` с презентацией возможностей Кабинета мастера. Страница содержит: Hero-секцию с CTA, сетку карточек возможностей (записи, календарь, клиенты, услуги, профиль, приглашения, уведомления, публичная страница), раздел «Как начать», FAQ и финальный CTA. Визуал: пастельные тона, крупные скругления (24px), стилизованные mock-карточки UI без фотографий людей. Навигация: пункт «Для мастеров» в NavBar. i18n: ключи `forMasters.*` в ru/en. Файлы: `frontend/src/pages/for-masters/`, обновление `NavBar.tsx`, `App.tsx`, `routes.ts`.
+
 ### Последние изменения (2026-05-02)
 
-- **Кабинет мастера — записи и клиенты (drawer’ы):** разделы «Записи» и «Клиенты» собраны в `MasterDashboardAppointments` и `MasterDashboardClients` (аналог `DashboardAppointments`): боковые панели `CreateMasterAppointmentDrawer` / `MasterPersonalAppointmentDrawer` (редактирование только личных визитов), `CreateMasterClientDrawer` / `MasterClientDetailDrawer`. RTK Query: мутации `createMasterPersonalAppointment`, `updateMasterPersonalAppointment`, CRUD клиентов. Бэкенд: `POST`/`PUT` `/master-dashboard/appointments` принимают camelCase JSON как в дашборде салона; в списке записей добавлено поле `clientNote`.
+- **Кабинет мастера — записи и клиенты (drawer'ы):** разделы «Записи» и «Клиенты» собраны в `MasterDashboardAppointments` и `MasterDashboardClients` (аналог `DashboardAppointments`): боковые панели `CreateMasterAppointmentDrawer` / `MasterPersonalAppointmentDrawer` (редактирование только личных визитов), `CreateMasterClientDrawer` / `MasterClientDetailDrawer`. RTK Query: мутации `createMasterPersonalAppointment`, `updateMasterPersonalAppointment`, CRUD клиентов. Бэкенд: `POST`/`PUT` `/master-dashboard/appointments` принимают camelCase JSON как в дашборде салона; в списке записей добавлено поле `clientNote`.
 - **Кабинет мастера — услуги:** `GET /api/v1/master-dashboard/service-categories` отдаёт полный системный справочник категорий без `X-Salon-Id`. На фронте вынесены `MasterServicesGrid` (таблица как в дашборде салона) и `MasterServiceFormModal` (создание/редактирование/удаление личных услуг).
 - **Интеграция CRM в Кабинет Мастера**: реализован полноценный функционал управления частной практикой мастера.
     - **База данных**: `appointments.salon_id` теперь nullable; добавлена колонка `master_profile_id` для личных записей. Создана таблица `master_clients` для личной базы клиентов мастера. В `salon_masters` добавлена колонка `specializations` для изоляции навыков мастера внутри конкретного салона. Миграция: `000029_master_crm_integration`.

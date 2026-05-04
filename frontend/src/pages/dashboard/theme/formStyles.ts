@@ -34,7 +34,7 @@ export function useDashboardFormStyles() {
         color: dashboard.text,
         fontSize: 13,
         padding: '9px 12px',
-        '&::placeholder': { color: dashboard.mutedDark, opacity: 1 },
+        '&::placeholder': { color: dashboard.mutedDark, opacity: 0.35 },
       },
       '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: dashboard.mutedDark },
       '& .MuiFormHelperText-root': { fontSize: 11, color: dashboard.mutedDark, ml: 0 },

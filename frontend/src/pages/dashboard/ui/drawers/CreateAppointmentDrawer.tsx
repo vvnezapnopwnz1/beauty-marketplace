@@ -33,6 +33,7 @@ import { useCreateAppointmentMutation } from '@entities/appointment/model/appoin
 import { closeAppointmentDrawer } from '@entities/appointment'
 import { useAppDispatch } from '@app/store'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
+import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
 
 export type CreateAppointmentDrawerProps = {
   open: boolean
@@ -79,13 +80,17 @@ export function CreateAppointmentDrawer({
     if (!form.startsAt) return enqueueFormSnackbar('Выберите время начала', 'Error')
     if (!form.staffId) return enqueueFormSnackbar('Выберите мастера', 'Error')
     if (!form.guestName.trim()) return enqueueFormSnackbar('Введите имя гостя', 'Error')
+    const guestPhoneParsed = parseOptionalRuPhone(form.guestPhone)
+    if (guestPhoneParsed.kind === 'invalid') {
+      return enqueueFormSnackbar('Некорректный телефон', 'Error')
+    }
     try {
       await createAppointment({
         serviceIds: form.serviceIds,
         salonMasterId: form.staffId,
         startsAt: form.startsAt,
         guestName: form.guestName.trim(),
-        guestPhone: form.guestPhone.trim(),
+        guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
         clientNote: form.note.trim() || undefined,
       }).unwrap()
       dispatch(closeAppointmentDrawer())
@@ -257,7 +262,8 @@ export function CreateAppointmentDrawer({
                 <TextField
                   placeholder="+7 (___) ___ - __ - __"
                   value={form.guestPhone}
-                  onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
+                  onChange={e => setForm(f => ({ ...f, guestPhone: formatPhone(e.target.value) }))}
+                  inputMode="numeric"
                   fullWidth
                   InputProps={{
                     startAdornment: (

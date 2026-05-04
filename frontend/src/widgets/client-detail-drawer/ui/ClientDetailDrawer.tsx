@@ -28,6 +28,7 @@ import {
   useUpdateClientMutation,
 } from '@entities/client'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
+import { formatPhone, parseOptionalRuPhone, toRuE164 } from '@shared/lib/formatPhone'
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Ожидает',
@@ -99,7 +100,7 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
     return {
       clientId: client.id,
       nameVal: client.displayName,
-      phoneVal: client.phoneE164 ?? '',
+      phoneVal: formatPhone(client.phoneE164 ?? ''),
       extraContactVal: client.extraContact ?? '',
       notesVal: client.notes ?? '',
     }
@@ -107,11 +108,12 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
 
   const dirty = useMemo(() => {
     if (!client || !formState || isDeleted) return false
-    const nextPhone = formState.phoneVal.trim()
+    const nextPhoneNorm = toRuE164(formState.phoneVal) ?? ''
+    const serverPhoneNorm = toRuE164(client.phoneE164 ?? '') ?? ''
     const nextExtraContact = formState.extraContactVal.trim()
     return (
       formState.nameVal.trim() !== client.displayName ||
-      nextPhone !== (client.phoneE164 ?? '') ||
+      nextPhoneNorm !== serverPhoneNorm ||
       nextExtraContact !== (client.extraContact ?? '') ||
       formState.notesVal !== (client.notes ?? '')
     )
@@ -125,6 +127,11 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
       enqueueFormSnackbar('Укажите имя клиента', 'Error')
       return
     }
+    const phoneParsedForSave = parseOptionalRuPhone(formState.phoneVal)
+    if (!client.userId && phoneParsedForSave.kind !== 'valid') {
+      enqueueFormSnackbar('Укажите корректный телефон', 'Error')
+      return
+    }
     try {
       await updateClient({
         id: clientId,
@@ -133,7 +140,10 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
           notes: formState.notesVal,
           ...(client.userId
             ? { extraContact: formState.extraContactVal.trim() }
-            : { phoneE164: formState.phoneVal.trim() }),
+            : {
+                phoneE164:
+                  phoneParsedForSave.kind === 'valid' ? phoneParsedForSave.e164 : '',
+              }),
         },
       }).unwrap()
     } catch (e) {
@@ -239,7 +249,7 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
                           clientId: client.id,
                           nameVal: e.target.value,
                           phoneVal:
-                            prev?.clientId === client.id ? prev.phoneVal : (client.phoneE164 ?? ''),
+                            prev?.clientId === client.id ? prev.phoneVal : formatPhone(client.phoneE164 ?? ''),
                           extraContactVal:
                             prev?.clientId === client.id ? prev.extraContactVal : (client.extraContact ?? ''),
                           notesVal: prev?.clientId === client.id ? prev.notesVal : (client.notes ?? ''),
@@ -283,7 +293,7 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
                               clientId: client.id,
                               nameVal:
                                 prev?.clientId === client.id ? prev.nameVal : client.displayName,
-                              phoneVal: e.target.value,
+                              phoneVal: formatPhone(e.target.value),
                               extraContactVal:
                                 prev?.clientId === client.id ? prev.extraContactVal : (client.extraContact ?? ''),
                               notesVal: prev?.clientId === client.id ? prev.notesVal : (client.notes ?? ''),
@@ -291,7 +301,8 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
                           }
                           disabled={isDeleted}
                           size="small"
-                          placeholder="+7XXXXXXXXXX"
+                          placeholder="+7 (___) ___ - __ - __"
+                          inputMode="numeric"
                           sx={{ width: 220, ...inputBaseSx }}
                         />
                       )}
@@ -315,7 +326,8 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
                                 clientId: client.id,
                                 nameVal:
                                   prev?.clientId === client.id ? prev.nameVal : client.displayName,
-                                phoneVal: prev?.clientId === client.id ? prev.phoneVal : (client.phoneE164 ?? ''),
+                                phoneVal:
+                                  prev?.clientId === client.id ? prev.phoneVal : formatPhone(client.phoneE164 ?? ''),
                                 extraContactVal: e.target.value,
                                 notesVal: prev?.clientId === client.id ? prev.notesVal : (client.notes ?? ''),
                               }))
@@ -406,7 +418,8 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
                       setDraft(prev => ({
                         clientId: client.id,
                         nameVal: prev?.clientId === client.id ? prev.nameVal : client.displayName,
-                        phoneVal: prev?.clientId === client.id ? prev.phoneVal : (client.phoneE164 ?? ''),
+                        phoneVal:
+                          prev?.clientId === client.id ? prev.phoneVal : formatPhone(client.phoneE164 ?? ''),
                         extraContactVal:
                           prev?.clientId === client.id ? prev.extraContactVal : (client.extraContact ?? ''),
                         notesVal: e.target.value,
@@ -496,7 +509,8 @@ export function ClientDetailDrawer({ open, clientId, onClose }: ClientDetailDraw
                       !dirty ||
                       updateBusy ||
                       !formState.nameVal.trim() ||
-                      (!client.userId && !formState.phoneVal.trim())
+                      (!client.userId &&
+                        parseOptionalRuPhone(formState.phoneVal).kind !== 'valid')
                     }
                     onClick={() => void saveChanges()}
                     sx={{

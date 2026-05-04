@@ -16,6 +16,7 @@ import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import { closeClientDrawer, useCreateClientMutation } from '@entities/client'
 import { useAppDispatch } from '@app/store'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
+import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
 
 export type CreateClientDrawerProps = {
   open: boolean
@@ -39,10 +40,15 @@ export function CreateClientDrawer({ open, onClose }: CreateClientDrawerProps) {
       enqueueFormSnackbar('Введите имя клиента', 'Error')
       return
     }
+    const phoneParsed = parseOptionalRuPhone(form.phoneE164)
+    if (phoneParsed.kind === 'invalid') {
+      enqueueFormSnackbar('Некорректный телефон', 'Error')
+      return
+    }
     try {
       await createClient({
         displayName: form.displayName.trim(),
-        phoneE164: form.phoneE164.trim() || undefined,
+        phoneE164: phoneParsed.kind === 'valid' ? phoneParsed.e164 : undefined,
       }).unwrap()
       dispatch(closeClientDrawer())
       handleClose()
@@ -121,7 +127,8 @@ export function CreateClientDrawer({ open, onClose }: CreateClientDrawerProps) {
               </Typography>
               <TextField
                 value={form.phoneE164}
-                onChange={e => setForm(f => ({ ...f, phoneE164: e.target.value }))}
+                onChange={e => setForm(f => ({ ...f, phoneE164: formatPhone(e.target.value) }))}
+                inputMode="numeric"
                 fullWidth
                 placeholder="+7 (___) ___ - __ - __"
                 InputProps={{

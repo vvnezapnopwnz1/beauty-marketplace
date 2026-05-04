@@ -24,6 +24,7 @@ import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import { useUpdateMasterPersonalAppointmentMutation, type MasterAppointmentDTO } from '@entities/master'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
+import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
 
 export type MasterPersonalAppointmentDrawerProps = {
   open: boolean
@@ -51,7 +52,7 @@ function MasterPersonalAppointmentBody({
     serviceIds: appointment.serviceId ? [appointment.serviceId] : ([] as string[]),
     startsAt: appointment.startsAt,
     guestName: appointment.clientLabel ?? '',
-    guestPhone: appointment.clientPhone ?? '',
+    guestPhone: formatPhone(appointment.clientPhone ?? ''),
     note: appointment.clientNote ?? '',
   }))
 
@@ -70,6 +71,10 @@ function MasterPersonalAppointmentBody({
     if (form.serviceIds.length === 0) return enqueueFormSnackbar('Выберите хотя бы одну услугу', 'Error')
     if (!form.startsAt) return enqueueFormSnackbar('Выберите время начала', 'Error')
     if (!form.guestName.trim()) return enqueueFormSnackbar('Введите имя клиента', 'Error')
+    const guestPhoneParsed = parseOptionalRuPhone(form.guestPhone)
+    if (guestPhoneParsed.kind === 'invalid') {
+      return enqueueFormSnackbar('Некорректный телефон', 'Error')
+    }
     try {
       await updateAppointment({
         id: appointment.id,
@@ -77,7 +82,7 @@ function MasterPersonalAppointmentBody({
           serviceIds: form.serviceIds,
           startsAt: form.startsAt,
           guestName: form.guestName.trim(),
-          guestPhone: form.guestPhone.trim() || null,
+          guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : null,
           clientNote: form.note.trim() || null,
         },
       }).unwrap()
@@ -199,7 +204,8 @@ function MasterPersonalAppointmentBody({
             <TextField
               disabled={!editable}
               value={form.guestPhone}
-              onChange={e => setForm(f => ({ ...f, guestPhone: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, guestPhone: formatPhone(e.target.value) }))}
+              inputMode="numeric"
               fullWidth
               InputProps={{
                 startAdornment: (

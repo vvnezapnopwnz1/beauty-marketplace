@@ -95,7 +95,7 @@ export interface MasterSalonMembershipDTO {
 const masterDashboardApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getMasterAppointments: builder.query<MasterAppointmentListResponse, MasterAppointmentListRequest>({
-      providesTags: ['MasterAppointments'],
+      providesTags: ['MasterAppointments', 'MasterClients'],
       query: params => ({
         url: '/api/v1/master-dashboard/appointments',
         params: {
@@ -176,7 +176,7 @@ const masterDashboardApi = rtkApi.injectEndpoints({
     }),
 
     updateMasterClient: builder.mutation<MasterClientDTO, { id: string; body: UpdateMasterClientBody }>({
-      invalidatesTags: ['MasterClients'],
+      invalidatesTags: ['MasterClients', 'MasterAppointments'],
       query: ({ id, body }) => ({
         url: `/api/v1/master-dashboard/clients/${id}`,
         method: 'PUT',

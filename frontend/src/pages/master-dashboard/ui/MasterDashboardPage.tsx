@@ -37,10 +37,13 @@ import {
   type MasterSalonMembershipDTO,
 } from '@shared/api/masterDashboardApi'
 import { salonPath } from '@shared/config/routes'
+import { formatPhone } from '@shared/lib/formatPhone'
+import { NotificationMenuPopover } from '@widgets/notification-popover'
 import { MasterCalendar } from './MasterCalendar'
 import { MasterServicesGrid } from './MasterServicesGrid'
 import { MasterDashboardAppointments } from './MasterDashboardAppointments'
 import { MasterDashboardClients } from './MasterDashboardClients'
+import MenuIcon from '@mui/icons-material/Menu'
 
 type Section =
   | 'profile'
@@ -213,7 +216,7 @@ function ProfileSection({
       />
       <TextField
         label="Телефон"
-        value={profile.phoneE164}
+        value={formatPhone(profile.phoneE164 ?? '')}
         fullWidth
         disabled
         helperText="Используется для входа"
@@ -389,6 +392,7 @@ export function MasterDashboardPage() {
   const narrow = useMediaQuery('(max-width:899px)')
   const [drawer, setDrawer] = useState(false)
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
+  const [notificationsAnchor, setNotificationsAnchor] = useState<null | HTMLElement>(null)
   const theme = useTheme()
   const dashboard = theme.palette.dashboard
   const d = useDashboardPalette()
@@ -525,16 +529,25 @@ export function MasterDashboardPage() {
           )
         })}
       </Stack>
-      <Box sx={{ px: 1, py: 2, borderTop: `1px solid ${dashboard.borderSubtle}`, mt: 'auto' }}>
+      <Box
+        sx={{
+          px: 1,
+          py: 2,
+          borderTop: `1px solid ${dashboard.borderSubtle}`,
+          mt: 'auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
             gap: 1,
+            textAlign: 'right',
             cursor: 'pointer',
             width: '100%',
-            textAlign: 'right',
           }}
           onClick={e => setUserMenuAnchor(e.currentTarget as HTMLElement)}
         >
@@ -547,15 +560,27 @@ export function MasterDashboardPage() {
               fontWeight: 700,
             }}
           >
-            {initials(avatarName)}
+            {initials(user?.displayName ?? '')}
           </Avatar>
           <Box>
-            <Typography sx={{ fontSize: 13, color: dashboard.text, fontWeight: 600 }}>
-              {avatarName.split(' ')[0] || 'Мастер'}
+            <Typography
+              sx={{
+                fontSize: 13,
+                color: dashboard.text,
+                fontWeight: 600,
+                alignSelf: 'flex-start',
+                justifySelf: 'flex-start',
+                textAlign: 'left',
+              }}
+            >
+              {user?.displayName ? user.displayName.split(' ')[0] : 'Пользователь'}
             </Typography>
-            <Typography sx={{ fontSize: 11, color: dashboard.muted }}>Учетная запись</Typography>
+            <Typography sx={{ fontSize: 11, color: dashboard.muted }}></Typography>
           </Box>
         </Box>
+        <IconButton onClick={e => setUserMenuAnchor(e.currentTarget as HTMLElement)}>
+          <MenuIcon />
+        </IconButton>
         <Menu
           anchorEl={userMenuAnchor}
           open={!!userMenuAnchor}
@@ -690,22 +715,28 @@ export function MasterDashboardPage() {
           <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: dashboard.text }}>
             {TITLES[section]}
           </Typography>
-          <Switch
-            size="small"
-            checked={mode === 'dark'}
-            onChange={(_, checked) => setMode(checked ? 'dark' : 'light')}
-            inputProps={{ 'aria-label': 'Toggle dashboard theme' }}
-            sx={{
-              ml: 'auto',
-              '& .MuiSwitch-track': { bgcolor: dashboard.border },
-              '& .MuiSwitch-thumb': {
-                bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark,
-              },
-            }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <NotificationMenuPopover
+              open={notificationsAnchor}
+              handleClosePopover={() => setNotificationsAnchor(null)}
+              setOpenPopover={setNotificationsAnchor}
+            />
+            <Switch
+              size="small"
+              checked={mode === 'dark'}
+              onChange={(_, checked) => setMode(checked ? 'dark' : 'light')}
+              inputProps={{ 'aria-label': 'Toggle dashboard theme' }}
+              sx={{
+                '& .MuiSwitch-track': { bgcolor: dashboard.border },
+                '& .MuiSwitch-thumb': {
+                  bgcolor: mode === 'dark' ? dashboard.accent : dashboard.mutedDark,
+                },
+              }}
+            />
+          </Box>
         </Box>
         <Box sx={{ flex: 1, p: { xs: 2, sm: 3 }, overflow: 'auto' }}>
-          {showOnboardingBanner && section !== 'profile' && (
+          {/* {showOnboardingBanner && section !== 'profile' && (
             <Alert
               severity="info"
               sx={{ mb: 2, cursor: 'pointer' }}
@@ -716,7 +747,7 @@ export function MasterDashboardPage() {
             >
               Заполните профиль, чтобы салоны могли вас найти — перейти к форме
             </Alert>
-          )}
+          )} */}
           {showOnboardingBanner && section === 'profile' && (
             <Alert severity="info" sx={{ mb: 2 }}>
               Заполните профиль, чтобы салоны могли вас найти

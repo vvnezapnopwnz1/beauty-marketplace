@@ -1,6 +1,7 @@
 import { ChangeEvent, JSX, useRef, useState } from 'react'
 import { addDays, startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns'
 import { DashboardServiceRow, DashboardStaffRow } from '@shared/api/dashboardApi'
+import { useDashboardFilterSelectSx } from '@pages/dashboard/theme/dashboardFilterSelectSx'
 import { V } from '@shared/theme/palettes'
 import { Box, Popover, Select, MenuItem, SelectChangeEvent, GlobalStyles } from '@mui/material'
 import { DateRangeCalendar } from '@mui/x-date-pickers-pro'
@@ -19,37 +20,6 @@ const DATE_PRESET_LABELS: Record<DatePreset, string> = {
   week: 'Эта неделя',
   custom: 'Период',
 }
-
-const filterSelectSx = {
-  bgcolor: V.surface,
-  borderRadius: V.rSm,
-  fontSize: 12,
-  color: V.text,
-  height: '33px',
-  minWidth: 130,
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: V.border, top: 0 },
-  '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
-  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: V.accent },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: V.accent, borderWidth: '1.5px' },
-  '& .MuiSelect-select': { py: 0, px: '10px', color: V.text },
-  '& .MuiSvgIcon-root': { color: V.textMuted },
-} as const
-
-const menuPaperSx = {
-  bgcolor: V.surface,
-  color: V.text,
-  border: `1px solid ${V.border}`,
-  borderRadius: V.rMd,
-  boxShadow: '0 8px 24px rgba(212,84,122,0.10)',
-} as const
-
-const menuItemSx = {
-  fontSize: 13,
-  color: V.text,
-  '&:hover': { bgcolor: V.surfaceEl },
-  '&.Mui-selected': { bgcolor: V.surfaceHi, color: V.accent },
-  '&.Mui-selected:hover': { bgcolor: V.surfaceHi },
-} as const
 
 function getPresetRange(preset: DatePreset): { from: string; to: string } | null {
   if (preset === 'today')
@@ -77,6 +47,7 @@ export default function FilterAppointmentsBar({
   services: DashboardServiceRow[]
   setModal: (v: boolean) => void
 }): JSX.Element | null {
+  const { filterSelectSx, menuPaperSx, menuItemSx } = useDashboardFilterSelectSx()
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [localSearch, setLocalSearch] = useState(filters.search)
 

@@ -84,7 +84,16 @@ export function CalendarMonthGrid({ matrixDays, items, inMonth, onPickDay, onEve
   const VARIANT_SX = useMemo(() => monthEventVariantSx(d), [d])
 
   return (
-    <Box sx={{ overflowX: 'auto', borderRadius: 1, border: `1px solid ${d.grid}` }}>
+    <Box
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        overflow: 'auto',
+        borderRadius: 1,
+        border: `1px solid ${d.grid}`,
+      }}
+    >
       <Box
         sx={{
           display: 'grid',

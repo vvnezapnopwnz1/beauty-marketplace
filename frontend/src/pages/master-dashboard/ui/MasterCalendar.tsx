@@ -17,6 +17,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import {
   useLazyGetMasterAppointmentsQuery,
   useGetMasterSalonsQuery,
+  useUpdateMasterPersonalAppointmentMutation,
   type MasterAppointmentDTO,
   type MasterSalonMembershipDTO,
 } from '@entities/master'
@@ -33,11 +34,14 @@ import {
   startOfWeekMonday,
   toLocalYMD,
 } from '@pages/dashboard/lib/calendarGridUtils'
+import { useDashboardFilterSelectSx } from '@pages/dashboard/theme/dashboardFilterSelectSx'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { CalendarWeekGrid } from '@pages/dashboard/ui/CalendarWeekGrid'
 import { CalendarMonthGrid } from '@pages/dashboard/ui/CalendarMonthGrid'
-import { V } from '@shared/theme/palettes'
 import { type DashboardAppointment } from '@entities/appointment'
+import { CreateMasterAppointmentDrawer } from './drawers/CreateMasterAppointmentDrawer'
+import { MasterPersonalAppointmentDrawer } from './drawers/MasterPersonalAppointmentDrawer'
+import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 
 function toCalendarItem(a: MasterAppointmentDTO): DashboardAppointment {
   return {
@@ -53,43 +57,18 @@ function toCalendarItem(a: MasterAppointmentDTO): DashboardAppointment {
   }
 }
 
-const filterSelectSx = {
-  bgcolor: V.surface,
-  borderRadius: V.rSm,
-  fontSize: 12,
-  color: V.text,
-  height: '33px',
-  minWidth: 130,
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: V.border, top: 0 },
-  '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
-  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: V.accent },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: V.accent, borderWidth: '1.5px' },
-  '& .MuiSelect-select': { py: 0, px: '10px', color: V.text },
-  '& .MuiSvgIcon-root': { color: V.textMuted },
-} as const
-
-const menuPaperSx = {
-  bgcolor: V.surface,
-  color: V.text,
-  border: `1px solid ${V.border}`,
-  borderRadius: V.rMd,
-  boxShadow: '0 8px 24px rgba(212,84,122,0.10)',
-} as const
-
-const menuItemSx = {
-  fontSize: 13,
-  color: V.text,
-  '&:hover': { bgcolor: V.surfaceEl },
-  '&.Mui-selected': { bgcolor: V.surfaceHi, color: V.accent },
-  '&.Mui-selected:hover': { bgcolor: V.surfaceHi },
-} as const
-
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   const d = useDashboardPalette()
   return (
     <Box
       component="span"
-      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: 11, color: d.mutedDark }}
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.5,
+        fontSize: 11,
+        color: d.mutedDark,
+      }}
     >
       <Box component="span" sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: color }} />
       {label}
@@ -99,6 +78,7 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
 
 export function MasterCalendar() {
   const d = useDashboardPalette()
+  const { filterSelectSx, menuPaperSx, menuItemSx } = useDashboardFilterSelectSx()
   const narrow = useMediaQuery('(max-width:600px)')
   const timeColWidth = narrow ? 40 : 56
 
@@ -107,9 +87,12 @@ export function MasterCalendar() {
   const [items, setItems] = useState<DashboardAppointment[]>([])
   const [filterSource, setFilterSource] = useState('')
   const [err, setErr] = useState<string | null>(null)
+  const [detail, setDetail] = useState<MasterAppointmentDTO | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const [getMasterAppointments] = useLazyGetMasterAppointmentsQuery()
   const { data: salons = [] } = useGetMasterSalonsQuery()
+  const [updateAppointment] = useUpdateMasterPersonalAppointmentMutation()
 
   const weekStart = useMemo(() => startOfWeekMonday(anchor), [anchor])
   const weekDays = useMemo(() => eachDayOfWeek(weekStart), [weekStart])
@@ -121,6 +104,18 @@ export function MasterCalendar() {
   }, [anchor])
 
   const monthMatrix = useMemo(() => monthMatrixDates(anchor), [anchor])
+
+  const isPersonalAppointment = useCallback((row: MasterAppointmentDTO): boolean => {
+    return row.salonId == null || row.salonId === ''
+  }, [])
+
+  const openCreateAtSlot = useCallback((slotStart: Date) => {
+    setDetail({
+      id: 'new',
+      startsAt: slotStart.toISOString(),
+    } as MasterAppointmentDTO)
+    setCreateOpen(true)
+  }, [])
 
   const load = useCallback(async () => {
     setErr(null)
@@ -155,6 +150,55 @@ export function MasterCalendar() {
     return () => window.clearTimeout(t)
   }, [load])
 
+  const handleAppointmentMoved = useCallback(
+    async (update: {
+      id: string
+      startsAt: string
+      endsAt: string
+      salonMasterId?: string
+      clearSalonMasterId?: boolean
+    }) => {
+      setErr(null)
+      const oldItems = [...items]
+
+      setItems(prev =>
+        prev.map(apt => {
+          if (apt.id !== update.id) return apt
+          return {
+            ...apt,
+            startsAt: update.startsAt,
+            endsAt: update.endsAt,
+            salonMasterId: update.clearSalonMasterId
+              ? undefined
+              : (update.salonMasterId ?? apt.salonMasterId),
+          }
+        }),
+      )
+
+      try {
+        const apt = items.find(a => a.id === update.id)
+        if (!apt || !isPersonalAppointment(apt as unknown as MasterAppointmentDTO)) {
+          setItems(oldItems)
+          setErr('Редактирование доступно только для личных записей')
+          return
+        }
+        await updateAppointment({
+          id: update.id,
+          body: {
+            startsAt: update.startsAt,
+            endsAt: update.endsAt,
+          },
+        }).unwrap()
+        void load()
+      } catch (e) {
+        setItems(oldItems)
+        // setErr(e instanceof Error ? e.message : 'Не удалось перенести запись')
+        enqueueFormSnackbar(e instanceof Error ? e.message : 'Не удалось перенести запись', 'Error')
+      }
+    },
+    [items, isPersonalAppointment, load, updateAppointment],
+  )
+
   const title =
     mode === 'week'
       ? `Календарь — Неделя ${formatWeekTitleRu(weekStart)}`
@@ -174,15 +218,21 @@ export function MasterCalendar() {
     color: d.text,
     border: `1px solid ${d.border}`,
     transition: 'all 0.2s',
-    '&:hover': { bgcolor: d.controlHover, borderColor: d.borderLight, transform: 'translateY(-1px)' },
+    '&:hover': {
+      bgcolor: d.controlHover,
+      borderColor: d.borderLight,
+      transform: 'translateY(-1px)',
+    },
     '&:active': { transform: 'translateY(0)' },
   }
 
   const calendarViewportSx = {
     mt: 0.5,
     maxHeight: { xs: '60vh', md: '68vh' },
-    overflowX: 'auto',
-    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    overflow: 'hidden',
     borderRadius: 1.5,
     border: `1px solid ${d.grid}`,
     bgcolor: d.card,
@@ -196,7 +246,9 @@ export function MasterCalendar() {
         </Alert>
       )}
 
-      <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: { xs: 18, sm: 22 }, color: d.text, mb: 1 }}>
+      <Typography
+        sx={{ fontFamily: "'Fraunces', serif", fontSize: { xs: 18, sm: 22 }, color: d.text, mb: 1 }}
+      >
         {title}
       </Typography>
 
@@ -208,7 +260,13 @@ export function MasterCalendar() {
         gap={1.5}
         sx={{ mb: 1.25, columnGap: 2, rowGap: 1 }}
       >
-        <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center" sx={{ flex: '1 1 auto', minWidth: 0 }}>
+        <Stack
+          direction="row"
+          flexWrap="wrap"
+          gap={1}
+          alignItems="center"
+          sx={{ flex: '1 1 auto', minWidth: 0 }}
+        >
           <Button
             size="small"
             sx={{ ...mockBtnSx, p: 0.5 }}
@@ -226,8 +284,15 @@ export function MasterCalendar() {
             size="small"
             sx={{
               gap: 1,
-              '& .MuiToggleButton-root': { ...mockBtnSx, border: '1px solid transparent', px: 1.25 },
-              '& .Mui-selected': { bgcolor: `${d.accent} !important`, color: `${d.onAccent} !important` },
+              '& .MuiToggleButton-root': {
+                ...mockBtnSx,
+                border: '1px solid transparent',
+                px: 1.25,
+              },
+              '& .Mui-selected': {
+                bgcolor: `${d.accent} !important`,
+                color: `${d.onAccent} !important`,
+              },
             }}
           >
             <ToggleButton value="day">День</ToggleButton>
@@ -252,24 +317,38 @@ export function MasterCalendar() {
               bgcolor: d.accent,
               color: d.onAccent,
               borderColor: 'transparent',
-              '&:hover': { bgcolor: '#e4a882', color: d.onAccent, boxShadow: `0 4px 12px ${d.accent}40` },
+              '&:hover': {
+                bgcolor: '#e4a882',
+                color: d.onAccent,
+                boxShadow: `0 4px 12px ${d.accent}40`,
+              },
             }}
             onClick={() => setAnchor(new Date())}
           >
             Сегодня
           </Button>
         </Stack>
-        <Stack direction="row" flexWrap="wrap" gap={1.5} alignItems="center" sx={{ flex: '0 1 auto' }}>
+        <Stack
+          direction="row"
+          flexWrap="wrap"
+          gap={1.5}
+          alignItems="center"
+          sx={{ flex: '0 1 auto' }}
+        >
           <Select
             displayEmpty
             size="small"
             value={filterSource}
             onChange={e => setFilterSource(e.target.value)}
-            sx={[filterSelectSx, { minWidth: { xs: 140, sm: 180 } }]}
+            sx={{ ...filterSelectSx, minWidth: { xs: 140, sm: 180 } }}
             MenuProps={{ PaperProps: { sx: menuPaperSx } }}
           >
-            <MenuItem value="" sx={menuItemSx}>Все источники</MenuItem>
-            <MenuItem value="personal" sx={menuItemSx}>Личные записи</MenuItem>
+            <MenuItem value="" sx={menuItemSx}>
+              Все источники
+            </MenuItem>
+            <MenuItem value="personal" sx={menuItemSx}>
+              Личные записи
+            </MenuItem>
             {salons.map((s: MasterSalonMembershipDTO) => (
               <MenuItem key={s.salonId} value={s.salonId} sx={menuItemSx}>
                 {s.salonName}
@@ -285,14 +364,14 @@ export function MasterCalendar() {
             weekDays={weekDays}
             items={items}
             timeColWidth={timeColWidth}
-            onEventClick={() => {}}
-            onEmptyClick={() => {}}
+            onEventClick={a => setDetail(a as unknown as MasterAppointmentDTO)}
+            onEmptyClick={(_day, slotStart) => openCreateAtSlot(slotStart)}
             onDayHeaderClick={dd => {
               setAnchor(dd)
               setMode('day')
             }}
             slotDurationMinutes={15}
-            onAppointmentMoved={() => Promise.resolve()}
+            onAppointmentMoved={p => handleAppointmentMoved(p)}
           />
         ) : mode === 'month' ? (
           <CalendarMonthGrid
@@ -303,18 +382,18 @@ export function MasterCalendar() {
               setAnchor(dd)
               setMode('day')
             }}
-            onEventClick={() => {}}
+            onEventClick={a => setDetail(a as unknown as MasterAppointmentDTO)}
           />
         ) : (
           <CalendarWeekGrid
             weekDays={[dayStart]}
             items={items.filter(a => toLocalYMD(new Date(a.startsAt)) === toLocalYMD(dayStart))}
             timeColWidth={timeColWidth}
-            onEventClick={() => {}}
-            onEmptyClick={() => {}}
+            onEventClick={a => setDetail(a as unknown as MasterAppointmentDTO)}
+            onEmptyClick={(_staffId, slotStart) => openCreateAtSlot(slotStart)}
             onDayHeaderClick={() => {}}
             slotDurationMinutes={15}
-            onAppointmentMoved={() => Promise.resolve()}
+            onAppointmentMoved={p => handleAppointmentMoved(p)}
           />
         )}
       </Box>
@@ -330,9 +409,31 @@ export function MasterCalendar() {
         {mode === 'month'
           ? 'Клик по дню — перейти в режим «День». Клик по записи — карточка.'
           : mode === 'week'
-            ? 'Клик по заголовку дня — перейти в режим «День».'
-            : ''}
+            ? 'Клик по заголовку дня — перейти в режим «День». Пустая ячейка — новая запись.'
+            : 'Пустая ячейка — новая запись.'}
       </Typography>
+
+      <MasterPersonalAppointmentDrawer
+        open={!!detail && detail.id !== 'new'}
+        appointment={detail}
+        onClose={() => setDetail(null)}
+      />
+
+      <CreateMasterAppointmentDrawer
+        key={createOpen && detail?.id === 'new' ? `${detail.startsAt}` : 'idle'}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => {
+          void load()
+        }}
+        initialData={
+          createOpen && detail?.id === 'new'
+            ? {
+                startsAt: detail.startsAt,
+              }
+            : undefined
+        }
+      />
     </Box>
   )
 }

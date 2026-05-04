@@ -13,6 +13,7 @@ export const ROUTES = {
   CLAIM_SALON: '/claim-salon',
   CLAIM_STATUS: '/claim-salon/status',
   JOIN: '/join',
+  FOR_MASTERS: '/for-masters',
   ADMIN_CLAIMS: '/admin/claims',
   ONBOARDING: '/dashboard/:salonId/onboarding',
 } as const

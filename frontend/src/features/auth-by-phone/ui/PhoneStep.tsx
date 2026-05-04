@@ -13,12 +13,12 @@ import {
   selectTelegramBotUsername,
   setAuthChannel,
 } from '../model/authSlice'
-import { formatPhone } from '@shared/lib/formatPhone'
+import { formatPhone, RU_PHONE_FORMATTED_REGEX, toRuE164 } from '@shared/lib/formatPhone'
 
 const schema = yup.object({
   phone: yup
     .string()
-    .matches(/^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/, 'Введите корректный номер')
+    .matches(RU_PHONE_FORMATTED_REGEX, 'Введите корректный номер')
     .required('Обязательное поле'),
 })
 
@@ -40,8 +40,9 @@ export function PhoneStep() {
   })
 
   const onSubmit = ({ phone }: FormValues) => {
-    const e164 = phone.replace(/\D/g, '').replace(/^8/, '7')
-    dispatch(sendOtp({ phone: `+${e164}`, channel }))
+    const e164 = toRuE164(phone)
+    if (!e164) return
+    dispatch(sendOtp({ phone: e164, channel }))
   }
 
   return (

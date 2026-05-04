@@ -221,9 +221,7 @@ function WeekBottomRescheduleZone({
           transition: 'color 0.15s',
         }}
       >
-        {dropHover
-          ? `Отпустите, чтобы перенести «${serviceLabel}»`
-          : 'Перенести на другую дату…'}
+        {dropHover ? `Отпустите, чтобы перенести «${serviceLabel}»` : 'Перенести на другую дату…'}
       </Typography>
     </Box>
   )
@@ -444,6 +442,11 @@ export function CalendarWeekGrid({
         borderRadius: 1,
         border: `1px solid ${d.grid}`,
         position: 'relative',
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       <DragDropProvider
@@ -453,9 +456,21 @@ export function CalendarWeekGrid({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEndWithStrip}
       >
-        {grid}
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            minWidth: 0,
+            overflow: 'auto',
+          }}
+        >
+          {grid}
+        </Box>
         {activeDragApt ? (
-          <WeekBottomRescheduleZone serviceLabel={serviceLabelForStrip} dropHighlight={stripHighlighted} />
+          <WeekBottomRescheduleZone
+            serviceLabel={serviceLabelForStrip}
+            dropHighlight={stripHighlighted}
+          />
         ) : null}
         <RescheduleDragOverlay
           activeDragApt={activeDragApt}

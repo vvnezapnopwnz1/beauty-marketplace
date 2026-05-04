@@ -40,7 +40,14 @@ import { useTranslation } from 'react-i18next'
 type TabKey = 'general' | 'security' | 'danger' | 'invites' | 'appointments' | 'appearance'
 
 function asTab(value: string | null): TabKey {
-  if (value === 'security' || value === 'danger' || value === 'invites' || value === 'appointments' || value === 'appearance') return value
+  if (
+    value === 'security' ||
+    value === 'danger' ||
+    value === 'invites' ||
+    value === 'appointments' ||
+    value === 'appearance'
+  )
+    return value
   return 'general'
 }
 
@@ -282,7 +289,7 @@ export function MePage() {
                 navigate(ROUTES.MASTER_DASHBOARD)
               }}
             >
-              {t('cabinetOfMaster')}
+              {t('cabinet.cabinetOfMaster')}
             </MenuItem>
           )}
           <MenuItem

@@ -4,6 +4,7 @@
     "forBusiness": "For business",
     "forBusinesses": "For business",
     "giftCards": "Gift cards",
+    "forMasters": "For professionals",
     "login": "Log in",
     "signup": "Sign up",
     "signUp": "Sign up",
@@ -190,6 +191,99 @@
       "prev": "Previous",
       "next": "Next",
       "pageOf": "Page {{page}}"
+    }
+  },
+  "forMasters": {
+    "pageTitle": "For professionals",
+    "hero": {
+      "title": "Professional Dashboard",
+      "subtitle": "All tools for managing appointments, clients, services and notifications in one place",
+      "primaryCta": "Log in",
+      "secondaryCta": "Learn features"
+    },
+    "features": {
+      "title": "Professional Dashboard Features",
+      "appointments": {
+        "title": "Appointments",
+        "description": "Manage all appointments in one place"
+      },
+      "calendar": {
+        "title": "Calendar",
+        "description": "Visibility of appointments and free time"
+      },
+      "clients": {
+        "title": "Clients",
+        "description": "Store interaction history"
+      },
+      "services": {
+        "title": "Services",
+        "description": "Manage offered services list"
+      },
+      "profile": {
+        "title": "Profile",
+        "description": "Information about specialization and experience"
+      },
+      "invites": {
+        "title": "Invitations",
+        "description": "Invitations from salons and venues"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Important events and updates"
+      },
+      "publicPage": {
+        "title": "Public page",
+        "description": "Page for clients and visitors"
+      }
+    },
+    "howItWorks": {
+      "title": "How to get started",
+      "step1": {
+        "title": "Log in with phone",
+        "description": "Authenticate via Telegram using your phone number"
+      },
+      "step2": {
+        "title": "Open dashboard",
+        "description": "After authentication, you access your personal dashboard"
+      },
+      "step3": {
+        "title": "Accept invitation or work independently",
+        "description": "Accept an invitation from a salon or manage clients independently"
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "q1": {
+        "question": "How are private practice and salon work combined?",
+        "answer": "All appointments, whether booked as private practice or at a salon, appear in the unified professional dashboard. This allows effective time and client base management."
+      },
+      "q2": {
+        "question": "Can I receive invitations from salons?",
+        "answer": "Yes, registered professionals can receive invitations from salons and venues through the platform. All invitations will be displayed in your dashboard."
+      },
+      "q3": {
+        "question": "What data is available in the dashboard?",
+        "answer": "The professional dashboard contains information about appointments, clients, offered services, work schedule and notifications. You can also set up a public page to attract new clients."
+      },
+      "q4": {
+        "question": "Can self-employed individuals use the dashboard?",
+        "answer": "Yes, the professional dashboard is suitable for both salon employees and self-employed professionals. All features are adapted for effective business management."
+      },
+      "q5": {
+        "question": "How is data confidentiality ensured?",
+        "answer": "We maintain a strict privacy policy and use modern information protection methods to ensure the security of your data."
+      },
+      "q6": {
+        "question": "Is there a mobile app?",
+        "answer": "The professional dashboard is fully adapted for mobile devices, allowing you to manage your business from anywhere."
+      }
+    },
+    "cta": {
+      "title": "Start using the Professional Dashboard",
+      "subtitle": "Log in and get access to all tools for effective business management",
+      "primaryCta": "Access dashboard",
+      "salonOwnerText": "Have a salon?",
+      "salonOwnerLink": "Add venue"
     }
   }
 }

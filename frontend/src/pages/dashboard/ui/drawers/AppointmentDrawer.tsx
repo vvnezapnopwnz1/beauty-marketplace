@@ -42,6 +42,7 @@ import {
   type DashboardAppointment,
 } from '@entities/appointment'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
+import { formatPhone, parseOptionalRuPhone, toRuE164 } from '@shared/lib/formatPhone'
 
 type DrawerAppointment = DashboardAppointment & {
   serviceId?: string
@@ -186,7 +187,7 @@ export function AppointmentDrawer({
     setStartsLocal(a.startsAt)
     setClientNote(a.clientNote ?? '')
     setGuestName(a.guestName ?? (a.clientUserId ? a.clientLabel : ''))
-    setGuestPhone(a.guestPhone ?? a.clientPhone ?? '')
+    setGuestPhone(formatPhone(a.guestPhone ?? a.clientPhone ?? ''))
   }, [])
 
   useEffect(() => {
@@ -239,17 +240,27 @@ export function AppointmentDrawer({
       enqueueFormSnackbar('Выберите мастера', 'Error')
       return
     }
+    if (!readOnlyGuest) {
+      const guestPhoneParsed = parseOptionalRuPhone(guestPhone)
+      if (guestPhoneParsed.kind === 'invalid') {
+        enqueueFormSnackbar('Некорректный телефон', 'Error')
+        return
+      }
+    }
 
     setInfo(null)
     setBusy(true)
     const wasConfirmed = appointment.status === 'confirmed'
+    const guestPhoneNorm = toRuE164(guestPhone) ?? ''
+    const prevGuestPhoneNorm =
+      toRuE164(appointment.guestPhone ?? appointment.clientPhone ?? '') ?? ''
     const hasStructuralChanges =
       serviceIds.join(',') !== (appointment.serviceId ?? '') ||
       salonMasterId !== (appointment.salonMasterId ?? '') ||
       new Date(startsLocal).toISOString() !== appointment.startsAt ||
       (!readOnlyGuest &&
-        (guestName.trim() !== (appointment.guestName ?? '') ||
-          guestPhone.trim() !== (appointment.guestPhone ?? '')))
+        (guestName.trim() !== (appointment.guestName ?? '') || guestPhoneNorm !== prevGuestPhoneNorm))
+    const guestPhoneParsed = !readOnlyGuest ? parseOptionalRuPhone(guestPhone) : null
     try {
       const startsAt = new Date(startsLocal).toISOString()
       await updateAppointmentMut({
@@ -259,7 +270,12 @@ export function AppointmentDrawer({
           startsAt,
           clientNote: clientNote.trim(),
           salonMasterId,
-          ...(!readOnlyGuest ? { guestName: guestName.trim(), guestPhone: guestPhone.trim() } : {}),
+          ...(!readOnlyGuest && guestPhoneParsed
+            ? {
+                guestName: guestName.trim(),
+                guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
+              }
+            : {}),
         },
       }).unwrap()
       if (wasConfirmed && hasStructuralChanges) {
@@ -670,7 +686,8 @@ export function AppointmentDrawer({
                           </Typography>
                           <TextField
                             value={guestPhone}
-                            onChange={e => setGuestPhone(e.target.value)}
+                            onChange={e => setGuestPhone(formatPhone(e.target.value))}
+                            inputMode="numeric"
                             fullWidth
                             placeholder="+7 (___) ___ - __ - __"
                             sx={inputBaseSx}

@@ -119,7 +119,7 @@ erDiagram
         uuid master_profile_id FK "for personal appts"
         uuid client_user_id FK
         uuid salon_master_id FK
-        uuid service_id FK
+        uuid service_id "salon: FK services; personal: master_services (trigger)"
         uuid salon_client_id FK
         string guest_name
         string guest_phone_e164
@@ -255,7 +255,7 @@ erDiagram
 
 - **SalonMaster** — мост между `salons` и `master_profiles`. `master_id` может быть NULL (shadow-профиль, созданный салоном). Содержит `specializations` для роли в конкретном салоне.
 - **MasterClient** — личная клиентская база мастера (`master_profiles.id`).
-- **Appointment** — поддерживает салонные записи (`salon_id` задан) и личные (`salon_id` IS NULL, `master_profile_id` задан).
+- **Appointment** — поддерживает салонные записи (`salon_id` задан) и личные (`salon_id` IS NULL, `master_profile_id` задан). Для личных записей `service_id` указывает на `master_services.id` (проверка триггером `services_same_salon_as_appointment`); для салонных — на `services.id`. Внешний ключ с `services` для колонки снят (миграция `000030_personal_appointment_service_check`).
 - **AppointmentLineItem** — снапшот услуг на момент бронирования; поддерживает мультисервисный гостевой флоу.
 - **SalonClient** — CRM-запись клиента внутри салона; может быть связан с `users` или существовать независимо.
 - **salon_subscriptions** — тарифный план салона (фаза 2).

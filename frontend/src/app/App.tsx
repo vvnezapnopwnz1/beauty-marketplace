@@ -12,6 +12,7 @@ import { AdminClaimsPage } from '@pages/admin/ui/AdminClaimsPage'
 import { OnboardingWizard } from '@pages/dashboard/ui/OnboardingWizard'
 import { JoinPage } from '@pages/join/ui/JoinPage'
 import { NotificationsPage } from '@pages/notifications'
+import { ForMastersPage } from '@pages/for-masters/ui/ForMastersPage'
 import { ROUTES } from '@shared/config/routes'
 import { DeviceLocationSync } from '@features/location/ui/DeviceLocationSync'
 import { GeoLocationStorageWatcher } from '@features/location/ui/GeoLocationStorageWatcher'
@@ -40,6 +41,7 @@ export function App() {
         <Route path={ROUTES.CLAIM_SALON} element={<RequireAuth><ClaimSalonPage /></RequireAuth>} />
         <Route path={ROUTES.CLAIM_STATUS} element={<RequireAuth><ClaimStatusPage /></RequireAuth>} />
         <Route path={ROUTES.JOIN} element={<JoinPage />} />
+        <Route path={ROUTES.FOR_MASTERS} element={<ForMastersPage />} />
         <Route path={ROUTES.ADMIN_CLAIMS} element={<RequireAuth><AdminClaimsPage /></RequireAuth>} />
         <Route path={ROUTES.ONBOARDING} element={<RequireAuth><OnboardingWizard /></RequireAuth>} />
       </Routes>
