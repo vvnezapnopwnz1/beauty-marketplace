@@ -142,6 +142,8 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 		ServiceIDs    []uuid.UUID `json:"serviceIds"`
 		SalonMasterID *uuid.UUID  `json:"salonMasterId,omitempty"`
 		ClientNote    *string     `json:"clientNote,omitempty"`
+		TotalCents    *int64      `json:"totalCents"`
+		TotalSource   string      `json:"totalSource"`
 	}
 	out := make([]rowDTO, len(rows))
 	for i, row := range rows {
@@ -151,6 +153,7 @@ func (h *DashboardController) listAppointments(w http.ResponseWriter, r *http.Re
 			ServiceName: row.ServiceName, ServiceNames: row.ServiceNames, StaffName: row.StaffName, ClientLabel: row.ClientLabel,
 			ClientPhone: row.ClientPhone, GuestName: a.GuestName, GuestPhone: a.GuestPhoneE164,
 			ClientUserID: a.ClientUserID, ServiceID: a.ServiceID, ServiceIDs: row.ServiceIDs, SalonMasterID: a.SalonMasterID, ClientNote: a.ClientNote,
+			TotalCents: a.TotalCents, TotalSource: a.TotalSource,
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -166,6 +169,7 @@ type createApptBody struct {
 	GuestPhone    string      `json:"guestPhone"`
 	ClientNote    string      `json:"clientNote,omitempty"`
 	ClientUserID  *uuid.UUID  `json:"clientUserId,omitempty"`
+	TotalCents    *int64      `json:"totalCents,omitempty"`
 }
 
 func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {
@@ -191,6 +195,7 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 		GuestPhone:   body.GuestPhone,
 		ClientNote:   body.ClientNote,
 		ClientUserID: body.ClientUserID,
+		TotalCents:   body.TotalCents,
 	})
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
@@ -208,6 +213,8 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 		GuestPhoneE164 *string    `json:"guestPhone,omitempty"`
 		ClientUserID   *uuid.UUID `json:"clientUserId,omitempty"`
 		ClientNote     *string    `json:"clientNote,omitempty"`
+		TotalCents     *int64     `json:"totalCents"`
+		TotalSource    string     `json:"totalSource"`
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -215,6 +222,7 @@ func (h *DashboardController) createAppointment(w http.ResponseWriter, r *http.R
 		ID: ap.ID, SalonID: *ap.SalonID, ServiceID: ap.ServiceID, SalonMasterID: ap.SalonMasterID,
 		StartsAt: ap.StartsAt, EndsAt: ap.EndsAt, Status: ap.Status,
 		GuestName: ap.GuestName, GuestPhoneE164: ap.GuestPhoneE164, ClientUserID: ap.ClientUserID, ClientNote: ap.ClientNote,
+		TotalCents: ap.TotalCents, TotalSource: ap.TotalSource,
 	})
 }
 
@@ -251,6 +259,7 @@ type putApptBody struct {
 	ClientNote         *string     `json:"clientNote"`
 	GuestName          *string     `json:"guestName"`
 	GuestPhone         *string     `json:"guestPhone"`
+	TotalCents         *int64      `json:"totalCents"`
 }
 
 func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Request, salonID, id uuid.UUID) {
@@ -291,6 +300,7 @@ func (h *DashboardController) putAppointment(w http.ResponseWriter, r *http.Requ
 	in.ClientNote = body.ClientNote
 	in.GuestName = body.GuestName
 	in.GuestPhone = body.GuestPhone
+	in.TotalCents = body.TotalCents
 	if err := h.svc.UpdateAppointment(r.Context(), salonID, in); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			jsonError(w, "not found", http.StatusNotFound)

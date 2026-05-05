@@ -367,9 +367,8 @@ func masterAppointmentVisibleSQL() string {
 func buildFinanceSQL(source, dateColumn string, from, to *time.Time) (string, []interface{}) {
 	clause := sourceFilter(source)
 	dateClause, args := buildDateRangeClause(dateColumn, from, to)
-	return `SELECT COALESCE(SUM(ali.price_cents), 0) AS amount
+	return `SELECT COALESCE(SUM(a.total_cents), 0) AS amount
 FROM appointments a
-INNER JOIN appointment_line_items ali ON ali.appointment_id = a.id
 WHERE ` + masterAppointmentVisibleSQL() + `
   AND a.status = 'completed'` + clause + dateClause, args
 }
@@ -414,9 +413,8 @@ func (r *masterDashboardRepository) GetMasterRevenueTrend(ctx context.Context, m
 
 	var incomes []expenseAmountRow
 	dateClause, dateArgs := buildDateRangeClause("a.starts_at::date", from, to)
-	incomeSQL := `SELECT date(a.starts_at) AS date, COALESCE(SUM(ali.price_cents), 0) AS amount
+	incomeSQL := `SELECT date(a.starts_at) AS date, COALESCE(SUM(a.total_cents), 0) AS amount
 FROM appointments a
-INNER JOIN appointment_line_items ali ON ali.appointment_id = a.id
 WHERE ` + masterAppointmentVisibleSQL() + `
   AND a.status = 'completed'` + sourceFilter(source) + dateClause + `
 GROUP BY date(a.starts_at)
@@ -580,9 +578,7 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 			END AS salon_name,
 			COALESCE(NULLIF(TRIM(a.guest_name), ''), users.display_name, 'Гость') AS client_label,
 			a.guest_phone_e164 AS client_phone,
-			COALESCE((
-				SELECT SUM(li.price_cents) FROM appointment_line_items li WHERE li.appointment_id = a.id
-			), 0) AS total_price_cents`).
+			COALESCE(a.total_cents, 0) AS total_price_cents`).
 		Joins("LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id").
 		Joins("LEFT JOIN services s ON s.id = a.service_id").
 		Joins("LEFT JOIN salons sal ON sal.id = a.salon_id").

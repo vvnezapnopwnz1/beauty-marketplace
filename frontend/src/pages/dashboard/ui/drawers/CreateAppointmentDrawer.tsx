@@ -63,6 +63,7 @@ export function CreateAppointmentDrawer({
     startsAt: initialData?.startsAt ?? '',
     staffId: initialData?.staffId ?? '',
     serviceIds: initialData?.serviceIds?.length ? [...initialData.serviceIds] : [],
+    totalCents: null as number | null,
   }))
   const [services, setServices] = useState<DashboardServiceRow[]>([])
   const [staff, setStaff] = useState<DashboardStaffRow[]>([])
@@ -73,6 +74,10 @@ export function CreateAppointmentDrawer({
       fetchDashboardStaff().then(res => setStaff(staffListItemsToRows(res)))
     }
   }, [open])
+
+  const calculatedTotal = services
+    .filter(s => form.serviceIds.includes(s.id))
+    .reduce((acc, s) => acc + s.priceCents, 0)
 
   const handleSubmit = async () => {
     if (form.serviceIds.length === 0)
@@ -92,6 +97,7 @@ export function CreateAppointmentDrawer({
         guestName: form.guestName.trim(),
         guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
         clientNote: form.note.trim() || undefined,
+        totalCents: form.totalCents,
       }).unwrap()
       dispatch(closeAppointmentDrawer())
       onClose()
@@ -273,6 +279,33 @@ export function CreateAppointmentDrawer({
                   sx={inputBaseSx}
                 />
               </Stack>
+            </Box>
+
+            <Box>
+              <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                Итого (₽)
+              </Typography>
+              <TextField
+                type="number"
+                placeholder={calculatedTotal > 0 ? (calculatedTotal / 100).toString() : '0'}
+                value={form.totalCents !== null ? form.totalCents / 100 : ''}
+                onChange={e => {
+                  const val = parseFloat(e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    totalCents: isNaN(val) ? null : Math.round(val * 100),
+                  }))
+                }}
+                fullWidth
+                sx={inputBaseSx}
+                helperText={
+                  form.totalCents !== null && form.totalCents !== calculatedTotal
+                    ? `Будет установлено вручную. Расчетная цена: ${(calculatedTotal / 100).toLocaleString()} ₽`
+                    : calculatedTotal > 0
+                      ? 'Оставьте пустым для авторасчета'
+                      : ''
+                }
+              />
             </Box>
           </Stack>
         </Box>

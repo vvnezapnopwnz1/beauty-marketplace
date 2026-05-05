@@ -53,6 +53,9 @@ type DrawerAppointment = DashboardAppointment & {
   clientUserId?: string | null
   clientNote?: string | null
   services?: { id: string; name: string; durationMinutes: number; priceCents: number }[]
+  totalCents?: number | null
+  totalSource?: 'calculated' | 'manual'
+  calculatedTotalCents?: number
 }
 
 function statusBadgeCfg(
@@ -135,6 +138,7 @@ export function AppointmentDrawer({
   const [clientNote, setClientNote] = useState('')
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
+  const [totalCents, setTotalCents] = useState<number | null>(null)
 
   const resolvedAppointmentId = appointmentId ?? appointmentFromProps?.id ?? null
   const { data: appointmentDetail, isLoading: isLoadingDetail } = useGetAppointmentByIdQuery(
@@ -173,6 +177,7 @@ export function AppointmentDrawer({
       setClientNote('')
       setGuestName('')
       setGuestPhone('')
+      setTotalCents(null)
       return
     }
     // Initial sync from simple list data, will be refined by fetchAppointmentDetail
@@ -188,6 +193,7 @@ export function AppointmentDrawer({
     setClientNote(a.clientNote ?? '')
     setGuestName(a.guestName ?? (a.clientUserId ? a.clientLabel : ''))
     setGuestPhone(formatPhone(a.guestPhone ?? a.clientPhone ?? ''))
+    setTotalCents(a.totalCents ?? null)
   }, [])
 
   useEffect(() => {
@@ -259,7 +265,8 @@ export function AppointmentDrawer({
       salonMasterId !== (appointment.salonMasterId ?? '') ||
       new Date(startsLocal).toISOString() !== appointment.startsAt ||
       (!readOnlyGuest &&
-        (guestName.trim() !== (appointment.guestName ?? '') || guestPhoneNorm !== prevGuestPhoneNorm))
+        (guestName.trim() !== (appointment.guestName ?? '') || guestPhoneNorm !== prevGuestPhoneNorm)) ||
+      totalCents !== appointment.totalCents
     const guestPhoneParsed = !readOnlyGuest ? parseOptionalRuPhone(guestPhone) : null
     try {
       const startsAt = new Date(startsLocal).toISOString()
@@ -276,6 +283,7 @@ export function AppointmentDrawer({
                 guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
               }
             : {}),
+          totalCents: totalCents,
         },
       }).unwrap()
       if (wasConfirmed && hasStructuralChanges) {
@@ -543,6 +551,44 @@ export function AppointmentDrawer({
                   </Stack>
 
                   <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Box
+                      sx={{
+                        color: d.mutedDark,
+                        fontSize: 18,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 18,
+                      }}
+                    >
+                      ₽
+                    </Box>
+                    <Typography sx={{ fontSize: 14, color: d.text }}>
+                      <Box component="span" sx={{ color: d.mutedDark }}>
+                        Итого:{' '}
+                      </Box>
+                      {((appointment.totalCents ?? 0) / 100).toLocaleString('ru-RU')} ₽
+                      {appointment.totalSource === 'manual' && (
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 1,
+                            fontSize: 10,
+                            color: d.accent,
+                            bgcolor: `${d.accent}15`,
+                            px: 0.5,
+                            py: 0.1,
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          ИЗМЕНЕНО
+                        </Box>
+                      )}
+                    </Typography>
+                  </Stack>
+
+                  <Stack direction="row" spacing={1.5} alignItems="center">
                     <PersonOutlineIcon sx={{ color: d.mutedDark, fontSize: 18 }} />
                     <Typography sx={{ fontSize: 14, color: d.text }}>
                       <Box component="span" sx={{ color: d.mutedDark }}>
@@ -655,6 +701,42 @@ export function AppointmentDrawer({
                             },
                           },
                         }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                        <Typography sx={{ fontSize: 12, color: d.mutedDark }}>Итого (₽)</Typography>
+                        {totalCents !== null &&
+                          appointment?.calculatedTotalCents !== undefined &&
+                          totalCents !== appointment.calculatedTotalCents && (
+                            <Typography
+                              onClick={() => setTotalCents(appointment.calculatedTotalCents ?? null)}
+                              sx={{
+                                fontSize: 11,
+                                color: d.accent,
+                                cursor: 'pointer',
+                                '&:hover': { textDecoration: 'underline' },
+                              }}
+                            >
+                              Сбросить к {(appointment.calculatedTotalCents / 100).toLocaleString()} ₽
+                            </Typography>
+                          )}
+                      </Stack>
+                      <TextField
+                        type="number"
+                        value={totalCents !== null ? totalCents / 100 : ''}
+                        onChange={e => {
+                          const val = parseFloat(e.target.value)
+                          setTotalCents(isNaN(val) ? null : Math.round(val * 100))
+                        }}
+                        placeholder={
+                          appointment?.calculatedTotalCents
+                            ? (appointment.calculatedTotalCents / 100).toString()
+                            : '0'
+                        }
+                        fullWidth
+                        sx={inputBaseSx}
                       />
                     </Box>
 

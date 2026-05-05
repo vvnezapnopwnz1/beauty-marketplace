@@ -123,6 +123,9 @@ temp/
 config/secrets.yml
 secrets.json
 
+# Codex CLI — local MCP secrets (use .codex/config.example.toml as template)
+.codex/config.toml
+
 # Build outputs
 out/
 dist/

@@ -14,47 +14,47 @@
 
 ### New Files
 
-| File | Responsibility |
-|------|----------------|
-| `mobile/package.json` | Expo dependencies, scripts, config |
-| `mobile/app.json` | Expo runtime config (EAS, plugins, environment) |
-| `mobile/.env.development` | Dev backend URL, dev mode flag |
-| `mobile/.env.production` | Production backend URL |
-| `mobile/src/api/client.ts` | Axios wrapper with JWT auth + refresh logic |
-| `mobile/src/api/types.ts` | API response types (mirrored from backend) |
-| `mobile/src/api/endpoints.ts` | Endpoint URLs and query builders |
-| `mobile/src/stores/authStore.ts` | Zustand store for auth session |
-| `mobile/src/stores/appointmentStore.ts` | Zustand store for local appointment cache |
-| `mobile/src/hooks/useAppointments.ts` | React Query hook for appointment CRUD |
-| `mobile/src/hooks/useCalendar.ts` | React Query hook for calendar fetching |
-| `mobile/src/hooks/usePushToken.ts` | Hook for device token registration |
-| `mobile/src/lib/phoneMask.ts` | Phone number formatting/mask utilities |
-| `mobile/src/lib/dateUtils.ts` | Date formatting helpers |
-| `mobile/src/components/AppointmentCard.tsx` | Compact appointment row component |
-| `mobile/src/components/StatusBadge.tsx` | Semantic status badge component |
-| `mobile/src/components/EmptyState.tsx` | Reusable empty/skeleton state |
-| `mobile/app/(auth)/login.tsx` | OTP login screen |
-| `mobile/app/(auth)/_layout.tsx` | Auth stack layout |
-| `mobile/app/(tabs)/calendar.tsx` | Calendar screen |
-| `mobile/app/(tabs)/appointments.tsx` | Appointments list screen |
-| `mobile/app/(tabs)/notifications.tsx` | Notifications list screen |
-| `mobile/app/(tabs)/profile.tsx` | Master profile screen |
-| `mobile/app/(tabs)/_layout.tsx` | Tab navigation layout with role detection |
-| `mobile/app/_layout.tsx` | Root layout with auth gate + providers |
-| `mobile/app/index.tsx` | Entry point redirector |
+| File                                        | Responsibility                                  |
+| ------------------------------------------- | ----------------------------------------------- |
+| `mobile/package.json`                       | Expo dependencies, scripts, config              |
+| `mobile/app.json`                           | Expo runtime config (EAS, plugins, environment) |
+| `mobile/.env.development`                   | Dev backend URL, dev mode flag                  |
+| `mobile/.env.production`                    | Production backend URL                          |
+| `mobile/src/api/client.ts`                  | Axios wrapper with JWT auth + refresh logic     |
+| `mobile/src/api/types.ts`                   | API response types (mirrored from backend)      |
+| `mobile/src/api/endpoints.ts`               | Endpoint URLs and query builders                |
+| `mobile/src/stores/authStore.ts`            | Zustand store for auth session                  |
+| `mobile/src/stores/appointmentStore.ts`     | Zustand store for local appointment cache       |
+| `mobile/src/hooks/useAppointments.ts`       | React Query hook for appointment CRUD           |
+| `mobile/src/hooks/useCalendar.ts`           | React Query hook for calendar fetching          |
+| `mobile/src/hooks/usePushToken.ts`          | Hook for device token registration              |
+| `mobile/src/lib/phoneMask.ts`               | Phone number formatting/mask utilities          |
+| `mobile/src/lib/dateUtils.ts`               | Date formatting helpers                         |
+| `mobile/src/components/AppointmentCard.tsx` | Compact appointment row component               |
+| `mobile/src/components/StatusBadge.tsx`     | Semantic status badge component                 |
+| `mobile/src/components/EmptyState.tsx`      | Reusable empty/skeleton state                   |
+| `mobile/app/(auth)/login.tsx`               | OTP login screen                                |
+| `mobile/app/(auth)/_layout.tsx`             | Auth stack layout                               |
+| `mobile/app/(tabs)/calendar.tsx`            | Calendar screen                                 |
+| `mobile/app/(tabs)/appointments.tsx`        | Appointments list screen                        |
+| `mobile/app/(tabs)/notifications.tsx`       | Notifications list screen                       |
+| `mobile/app/(tabs)/profile.tsx`             | Master profile screen                           |
+| `mobile/app/(tabs)/_layout.tsx`             | Tab navigation layout with role detection       |
+| `mobile/app/_layout.tsx`                    | Root layout with auth gate + providers          |
+| `mobile/app/index.tsx`                      | Entry point redirector                          |
 
 ### Modified Files
 
-| File | Change |
-|------|--------|
-| `backend/internal/controller/server.go` | Register new POST /api/v1/devices route |
-| `backend/internal/repository/device_repository.go` | New interface for device operations |
-| `backend/internal/infrastructure/persistence/device_repository.go` | GORM implementation |
-| `backend/internal/service/device_service.go` | Device registration business logic |
-| `backend/pkg/models/device.go` | Device model definition |
-| `backend/internal/migrations/000031_devices_table.sql` | New migration for devices table |
-| `backend/pkg/handlers/handlers.go` | Route handlers for devices |
-| `docs/vault/product/status.md` | Update "Last changes" section with mobile app milestone |
+| File                                                               | Change                                                  |
+| ------------------------------------------------------------------ | ------------------------------------------------------- |
+| `backend/internal/controller/server.go`                            | Register new POST /api/v1/devices route                 |
+| `backend/internal/repository/device_repository.go`                 | New interface for device operations                     |
+| `backend/internal/infrastructure/persistence/device_repository.go` | GORM implementation                                     |
+| `backend/internal/service/device_service.go`                       | Device registration business logic                      |
+| `backend/pkg/models/device.go`                                     | Device model definition                                 |
+| `backend/internal/migrations/000031_devices_table.sql`             | New migration for devices table                         |
+| `backend/pkg/handlers/handlers.go`                                 | Route handlers for devices                              |
+| `docs/vault/product/status.md`                                     | Update "Last changes" section with mobile app milestone |
 
 ---
 
@@ -63,6 +63,7 @@
 ### Task 1: Create Devices Database Table
 
 **Files:**
+
 - Create: `backend/internal/migrations/000031_devices_table.sql`
 - Modify: Run migration via existing migration runner
 
@@ -112,6 +113,7 @@ CREATE TRIGGER trigger_devices_updated_at
 ### Task 2: Define Device Model
 
 **Files:**
+
 - Create: `backend/pkg/models/device.go`
 
 ```go
@@ -150,6 +152,7 @@ func (Device) TableName() string {
 ### Task 3: Create Device Repository Interface
 
 **Files:**
+
 - Create: `backend/internal/repository/device_repository.go`
 
 ```go
@@ -165,19 +168,19 @@ import (
 type DeviceRepository interface {
     // Create registers a new device for push notifications
     Create(ctx context.Context, device *models.Device) error
-    
+
     // GetByToken finds a device by its push token
     GetByToken(ctx context.Context, token string) (*models.Device, error)
-    
+
     // GetByUser fetches all devices for a given user
     GetByUser(ctx context.Context, userID string) ([]models.Device, error)
-    
+
     // Update replaces an existing device's token (for token rotation)
     Update(ctx context.Context, device *models.Device) error
-    
+
     // Delete removes a device registration
     Delete(ctx context.Context, deviceID string) error
-    
+
     // DeleteByUser removes all devices for a user (on logout/account delete)
     DeleteByUser(ctx context.Context, userID string) error
 }
@@ -194,6 +197,7 @@ type DeviceRepository interface {
 ### Task 4: Implement Device Repository with GORM
 
 **Files:**
+
 - Create: `backend/internal/infrastructure/persistence/device_repository.go`
 
 ```go
@@ -307,6 +311,7 @@ func isUniqueConstraintError(err error, column string) bool {
 ### Task 5: Create Device Service Layer
 
 **Files:**
+
 - Create: `backend/internal/service/device_service.go`
 
 ```go
@@ -347,7 +352,7 @@ func (s *DeviceService) RegisterDevice(ctx context.Context, userID string, token
         }
         return existing, nil
     }
-    
+
     // Token doesn't exist - create new registration
     device := &models.Device{
         UserID:      userID,
@@ -355,11 +360,11 @@ func (s *DeviceService) RegisterDevice(ctx context.Context, userID string, token
         Platform:    platform,
         AppVersion:  appVersion,
     }
-    
+
     if err := s.deviceRepo.Create(ctx, device); err != nil {
         return nil, fmt.Errorf("failed to register device: %w", err)
     }
-    
+
     return device, nil
 }
 
@@ -385,9 +390,11 @@ func (s *DeviceService) ClearAllDevices(ctx context.Context, userID string) erro
 ### Task 6: Wire Device Service into Fx Dependency Graph
 
 **Files:**
+
 - Modify: Find your backend's Fx injection graph (likely `backend/internal/app/app.go` or similar)
 
 Look for patterns like:
+
 ```go
 fx.Provide(
     persistence.NewDeviceRepository,
@@ -407,6 +414,7 @@ fx.Provide(
 ### Task 7: Create Device Controller and Routes
 
 **Files:**
+
 - Create: `backend/internal/controller/device_controller.go`
 
 ```go
@@ -445,12 +453,12 @@ func (c *DeviceController) RegisterDevice(ctx echo.Context) error {
     if err != nil {
         return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
     }
-    
+
     var req RegisterDeviceRequest
     if err := ctx.Bind(&req); err != nil {
         return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
     }
-    
+
     device, err := c.deviceService.RegisterDevice(
         ctx.Request().Context(),
         userID.String(),
@@ -466,7 +474,7 @@ func (c *DeviceController) RegisterDevice(ctx echo.Context) error {
             return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
         }
     }
-    
+
     return ctx.JSON(http.StatusCreated, device)
 }
 
@@ -489,9 +497,11 @@ type RegisterDeviceRequest struct {
 ### Task 8: Register Device Routes in Server
 
 **Files:**
+
 - Modify: `backend/internal/controller/server.go` (or whatever file registers routes)
 
 Find where other v1 routes are registered:
+
 ```go
 v1.Post("/devices", deviceController.RegisterDevice)
 ```
@@ -507,6 +517,7 @@ v1.Post("/devices", deviceController.RegisterDevice)
 ### Task 9: Write Device Endpoint Tests
 
 **Files:**
+
 - Create: `backend/internal/controller/device_controller_test.go`
 
 ```go
@@ -583,7 +594,7 @@ func TestRegisterDevice(t *testing.T) {
         repo := new(mockDeviceRepository)
         svc := new(mockDeviceService)
         ctrl := NewDeviceController(svc)
-        
+
         deviceID := uuid.New().String()
         expectedDevice := &models.Device{
             DeviceID:    deviceID,
@@ -591,9 +602,9 @@ func TestRegisterDevice(t *testing.T) {
             Platform:    "ios",
             AppVersion:  "1.0.0",
         }
-        
+
         svc.On("RegisterDevice", mock.Anything, mock.Anything, "ExpoPushToken[abc123]", "ios", "1.0.0").Return(expectedDevice, nil)
-        
+
         e := echo.New()
         reqBody := `{"device_token":"ExpoPushToken[abc123]","platform":"ios","app_version":"1.0.0"}`
         req := httptest.NewRequest(http.MethodPost, "/api/v1/devices", bytes.NewReader([]byte(reqBody)))
@@ -601,21 +612,21 @@ func TestRegisterDevice(t *testing.T) {
         rec := httptest.NewRecorder()
         c := e.NewContext(req, rec)
         c.Set("userID", deviceID)
-        
+
         err := ctrl.RegisterDevice(c)
-        
+
         assert.NoError(t, err)
         assert.Equal(t, http.StatusCreated, rec.Code)
         svc.AssertExpectations(t)
     })
-    
+
     t.Run("conflict when token already registered", func(t *testing.T) {
         svc := new(mockDeviceService)
         ctrl := NewDeviceController(svc)
-        
+
         svc.On("RegisterDevice", mock.Anything, mock.Anything, "ExpoPushToken[different]", mock.Anything, mock.Anything).
             Return(nil, fmt.Errorf("device token already registered for another user"))
-        
+
         e := echo.New()
         reqBody := `{"device_token":"ExpoPushToken[different]","platform":"android"}`
         req := httptest.NewRequest(http.MethodPost, "/api/v1/devices", bytes.NewReader([]byte(reqBody)))
@@ -623,9 +634,9 @@ func TestRegisterDevice(t *testing.T) {
         rec := httptest.NewRecorder()
         c := e.NewContext(req, rec)
         c.Set("userID", uuid.New().String())
-        
+
         err := ctrl.RegisterDevice(c)
-        
+
         assert.NoError(t, err)
         assert.Equal(t, http.StatusConflict, rec.Code)
         svc.AssertExpectations(t)
@@ -646,6 +657,7 @@ func TestRegisterDevice(t *testing.T) {
 ### Task 10: Update Product Status Documentation
 
 **Files:**
+
 - Modify: `docs/vault/product/status.md`
 
 Add to top of "Последние изменения" section:
@@ -668,6 +680,7 @@ Add to top of "Последние изменения" section:
 ### Task 11: Initialize Expo Project
 
 **Files:**
+
 - Create: `mobile/package.json`
 - Create: `mobile/app.json`
 - Create: `mobile/tsconfig.json`
@@ -683,10 +696,11 @@ Add to top of "Последние изменения" section:
 ### Task 12: Implement Auth Store with Zustand
 
 **Files:**
+
 - Create: `mobile/src/stores/authStore.ts`
 
 ```typescript
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface AuthState {
   tokenPair: { accessToken: string; refreshToken: string } | null;
@@ -695,8 +709,8 @@ interface AuthState {
 }
 
 interface AuthActions {
-  setTokenPair: (tokenPair: AuthState['tokenPair']) => void;
-  setUser: (user: AuthState['user']) => void;
+  setTokenPair: (tokenPair: AuthState["tokenPair"]) => void;
+  setUser: (user: AuthState["user"]) => void;
   setSalonId: (salonId: string | null) => void;
   logout: () => void;
 }
@@ -720,6 +734,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 ### Task 13: Create API Client
 
 **Files:**
+
 - Create: `mobile/src/api/client.ts`
 - Create: `mobile/src/api/types.ts`
 - Create: `mobile/src/api/endpoints.ts`
@@ -733,6 +748,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 ### Task 14: Build Login Screen
 
 **Files:**
+
 - Create: `mobile/app/(auth)/login.tsx`
 - Create: `mobile/app/(auth)/_layout.tsx`
 
@@ -744,6 +760,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 ### Task 15: Set Up Root Layout with Auth Gate
 
 **Files:**
+
 - Modify: `mobile/app/_layout.tsx`
 
 - [ ] Add auth check and redirect to login if not authenticated
@@ -789,6 +806,7 @@ Related backend notes discovered during this audit:
 ### Task 16: Implement Tab Navigation
 
 **Files:**
+
 - Create: `mobile/app/(tabs)/_layout.tsx`
 - Create: `mobile/app/(tabs)/calendar.tsx`
 - Create: `mobile/app/(tabs)/appointments.tsx`
@@ -802,6 +820,7 @@ Related backend notes discovered during this audit:
 ### Task 17: Create Reusable Components
 
 **Files:**
+
 - Create: `mobile/src/components/AppointmentCard.tsx`
 - Create: `mobile/src/components/StatusBadge.tsx`
 - Create: `mobile/src/components/EmptyState.tsx`
@@ -815,6 +834,7 @@ Related backend notes discovered during this audit:
 ### Task 18: Implement Appointments Screen
 
 **Files:**
+
 - Modify: `mobile/app/(tabs)/appointments.tsx`
 - Create: `mobile/src/hooks/useAppointments.ts`
 
@@ -827,6 +847,7 @@ Related backend notes discovered during this audit:
 ### Task 19: Implement Calendar Screen
 
 **Files:**
+
 - Modify: `mobile/app/(tabs)/calendar.tsx`
 - Create: `mobile/src/hooks/useCalendar.ts`
 
@@ -839,6 +860,7 @@ Related backend notes discovered during this audit:
 ### Task 20: Add Push Notifications
 
 **Files:**
+
 - Create: `mobile/src/hooks/usePushToken.ts`
 - Modify: `mobile/app/_layout.tsx`
 
@@ -851,6 +873,7 @@ Related backend notes discovered during this audit:
 ### Task 21: Implement Notifications Screen
 
 **Files:**
+
 - Modify: `mobile/app/(tabs)/notifications.tsx`
 
 - [ ] Fetch and display notifications
@@ -862,6 +885,7 @@ Related backend notes discovered during this audit:
 ### Task 22: Add Biometric Auth
 
 **Files:**
+
 - Modify: `mobile/src/stores/authStore.ts`
 - Create: `mobile/src/lib/biometric.ts`
 
@@ -873,6 +897,7 @@ Related backend notes discovered during this audit:
 ### Task 23: Set Up E2E Tests
 
 **Files:**
+
 - Create: `mobile/e2e/tests/login.spec.ts`
 - Create: `mobile/e2e/tests/appointments.spec.ts`
 
@@ -884,6 +909,7 @@ Related backend notes discovered during this audit:
 ### Task 24: Configure CI/CD with EAS
 
 **Files:**
+
 - Create: `mobile/.github/workflows/build.yml`
 - Modify: `mobile/app.json` for EAS
 
@@ -909,3 +935,8 @@ Plan complete and saved to `docs/superpowers/plans/2026-05-05-react-native-mobil
 2. Inline Execution - Execute tasks in this session using executing-plans, batch execution with checkpoints
 
 Which approach?
+
+<!-- У нас был план @/docs/superpowers/plans/2026-05-05-react-native-mobile-app-design.md по реализации мобильного приложения React Native в папке @mobile  и наброски дизайна в
+  @/Beautica_design/beautica-rn-mockup.jsx - он мне не нравится и его надо улучшить по твоему усмотрению, а также заменить моки в @mobile. Создай план на основе @docs/superpowers/plans/2026-05-05-react-native-mobile-app-design.md (Мы
+  завершили в том плане Task 1-15 точно, возможно и остальное тоже но не точно),В первую очередь включи в план  улучшение ux/ui мобильного приложения, улучшение дизайна и внешнего вида, дальше надо заменить моки на реальное api (где нету api
+  то надо создать), найти лучшее решение по реализации Календаря для мобильных устройств (поищи решения в интернете)   -->

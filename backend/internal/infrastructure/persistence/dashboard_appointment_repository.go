@@ -204,6 +204,8 @@ func (r *dashboardRepository) UpdateAppointment(ctx context.Context, a *model.Ap
 			"guest_name":         a.GuestName,
 			"guest_phone_e164":   a.GuestPhoneE164,
 			"status":             a.Status,
+			"total_cents":        a.TotalCents,
+			"total_source":       a.TotalSource,
 			"updated_at":         time.Now().UTC(),
 		}).Error
 }

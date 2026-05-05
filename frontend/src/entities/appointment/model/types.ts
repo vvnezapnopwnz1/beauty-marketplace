@@ -20,6 +20,8 @@ export interface DashboardAppointment {
     clientPhone?: string | null
     serviceIds: string[]
     salonMasterId?: string | null
+    totalCents?: number | null
+    totalSource?: 'calculated' | 'manual'
 }
 
 export interface DashboardAppointmentList {
@@ -49,6 +51,7 @@ export interface CreateAppointmentPayload {
     guestName: string
     guestPhone: string
     clientNote?: string
+    totalCents?: number
 }
 
 export interface UpdateAppointmentBody {
@@ -60,6 +63,7 @@ export interface UpdateAppointmentBody {
     clientNote?: string
     guestName?: string | null
     guestPhone?: string | null
+    totalCents?: number | null
 }
 
 export interface UpdateAppointmentPayload {
@@ -72,4 +76,5 @@ export interface AppointmentDetail extends DashboardAppointment {
     salonClientId?: string | null
     createdAt: string
     services: { id: string; name: string; durationMinutes: number; priceCents: number }[]
+    calculatedTotalCents?: number
 }

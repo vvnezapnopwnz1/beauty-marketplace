@@ -255,8 +255,7 @@ func (r *dashboardRepository) CountStaffAppointments(ctx context.Context, salonI
 func (r *dashboardRepository) SumStaffRevenueCents(ctx context.Context, salonID, staffID uuid.UUID, from, to time.Time) (int64, error) {
 	var sum int64
 	err := r.db.WithContext(ctx).Table("appointments").
-		Select("COALESCE(SUM(services.price_cents), 0)").
-		Joins("JOIN services ON services.id = appointments.service_id AND services.salon_id = appointments.salon_id").
+		Select("COALESCE(SUM(appointments.total_cents), 0)").
 		Where("appointments.salon_id = ? AND appointments.salon_master_id = ?", salonID, staffID).
 		Where("appointments.starts_at >= ? AND appointments.starts_at < ?", from, to).
 		Where("appointments.status = ?", "completed").

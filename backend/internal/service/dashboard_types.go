@@ -15,6 +15,7 @@ type ManualAppointmentInput struct {
 	GuestPhone   string
 	ClientNote   string
 	ClientUserID *uuid.UUID
+	TotalCents   *int64
 }
 
 type AppointmentServiceDTO struct {
@@ -25,20 +26,23 @@ type AppointmentServiceDTO struct {
 }
 
 type AppointmentDetailDTO struct {
-	ID            uuid.UUID               `json:"id"`
-	SalonID       uuid.UUID               `json:"salonId"`
-	StartsAt      time.Time               `json:"startsAt"`
-	EndsAt        time.Time               `json:"endsAt"`
-	Status        string                  `json:"status"`
-	SalonMasterID *uuid.UUID              `json:"salonMasterId,omitempty"`
-	StaffName     *string                 `json:"staffName,omitempty"`
-	GuestName     *string                 `json:"guestName,omitempty"`
-	GuestPhone    *string                 `json:"guestPhone,omitempty"`
-	ClientUserID  *uuid.UUID              `json:"clientUserId,omitempty"`
-	ClientNote    *string                 `json:"clientNote,omitempty"`
-	SalonClientID *uuid.UUID              `json:"salonClientId,omitempty"`
-	Services      []AppointmentServiceDTO `json:"services"`
-	CreatedAt     time.Time               `json:"createdAt"`
+	ID                   uuid.UUID               `json:"id"`
+	SalonID              uuid.UUID               `json:"salonId"`
+	StartsAt             time.Time               `json:"startsAt"`
+	EndsAt               time.Time               `json:"endsAt"`
+	Status               string                  `json:"status"`
+	SalonMasterID        *uuid.UUID              `json:"salonMasterId,omitempty"`
+	StaffName            *string                 `json:"staffName,omitempty"`
+	GuestName            *string                 `json:"guestName,omitempty"`
+	GuestPhone           *string                 `json:"guestPhone,omitempty"`
+	ClientUserID         *uuid.UUID              `json:"clientUserId,omitempty"`
+	ClientNote           *string                 `json:"clientNote,omitempty"`
+	SalonClientID        *uuid.UUID              `json:"salonClientId,omitempty"`
+	Services             []AppointmentServiceDTO `json:"services"`
+	TotalCents           *int64                  `json:"totalCents,omitempty"`
+	TotalSource          string                  `json:"totalSource"`
+	CalculatedTotalCents int64                   `json:"calculatedTotalCents"`
+	CreatedAt            time.Time               `json:"createdAt"`
 }
 
 type UpdateAppointmentInput struct {
@@ -51,6 +55,7 @@ type UpdateAppointmentInput struct {
 	ClientNote    *string
 	GuestName     *string
 	GuestPhone    *string
+	TotalCents    *int64
 }
 
 type ServiceInput struct {

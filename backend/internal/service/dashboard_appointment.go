@@ -65,11 +65,15 @@ func (s *dashboardService) GetAppointment(ctx context.Context, salonID, appointm
 		ClientUserID:  a.ClientUserID,
 		ClientNote:    a.ClientNote,
 		SalonClientID: a.SalonClientID,
+		TotalCents:    a.TotalCents,
+		TotalSource:   a.TotalSource,
 		CreatedAt:     a.CreatedAt,
 		Services:      []AppointmentServiceDTO{},
 	}
 
+	var calcTotal int64
 	for _, it := range items {
+		calcTotal += it.PriceCents
 		dto.Services = append(dto.Services, AppointmentServiceDTO{
 			ID:              it.ServiceID,
 			Name:            it.ServiceName,
@@ -77,6 +81,7 @@ func (s *dashboardService) GetAppointment(ctx context.Context, salonID, appointm
 			PriceCents:      it.PriceCents,
 		})
 	}
+	dto.CalculatedTotalCents = calcTotal
 
 	// Fallback to legacy single service if no line items found
 	if len(dto.Services) == 0 {
@@ -92,6 +97,9 @@ func (s *dashboardService) GetAppointment(ctx context.Context, salonID, appointm
 				DurationMinutes: svc.DurationMinutes,
 				PriceCents:      price,
 			})
+			if dto.CalculatedTotalCents == 0 {
+				dto.CalculatedTotalCents = price
+			}
 		}
 	}
 
@@ -159,6 +167,19 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 		StartsAt:        in.StartsAt.UTC(),
 		EndsAt:          end.UTC(),
 		Status:          "pending",
+		TotalCents:      in.TotalCents,
+	}
+	if in.TotalCents != nil {
+		ap.TotalSource = "manual"
+	} else {
+		ap.TotalSource = "calculated"
+		var total int64
+		for _, svc := range services {
+			if svc.PriceCents != nil {
+				total += *svc.PriceCents
+			}
+		}
+		ap.TotalCents = &total
 	}
 	if trimSpace(in.ClientNote) != "" {
 		n := trimSpace(in.ClientNote)
@@ -351,6 +372,22 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 		} else {
 			a.GuestPhoneE164 = &p
 		}
+	}
+
+	if in.TotalCents != nil {
+		a.TotalCents = in.TotalCents
+		a.TotalSource = "manual"
+	} else if servicesUpdated {
+		// If services changed and no explicit total provided, reset to calculated
+		a.TotalSource = "calculated"
+		var total int64
+		for _, sid := range in.ServiceIDs {
+			svc, _ := s.dash.GetService(ctx, salonID, sid)
+			if svc != nil && svc.PriceCents != nil {
+				total += *svc.PriceCents
+			}
+		}
+		a.TotalCents = &total
 	}
 
 	if a.EndsAt.Before(a.StartsAt) {

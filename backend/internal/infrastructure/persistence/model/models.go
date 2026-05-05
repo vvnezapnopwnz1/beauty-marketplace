@@ -358,6 +358,8 @@ type Appointment struct {
 	Status          string     `gorm:"type:appointment_status;not null;default:pending;column:status"`
 	ClientNote      *string    `gorm:"column:client_note"`
 	SalonClientID   *uuid.UUID `gorm:"type:uuid;column:salon_client_id"`
+	TotalCents      *int64     `gorm:"column:total_cents" json:"totalCents,omitempty"`
+	TotalSource     string     `gorm:"column:total_source;default:calculated" json:"totalSource"`
 	CreatedAt       time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
 	UpdatedAt       time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
 }

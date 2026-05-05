@@ -1,0 +1,36 @@
+# Copy to `config.toml` and fill in secrets locally. `config.toml` is gitignored.
+#
+# Figma: Settings → Personal access tokens → Generate new token.
+# Use the same value for FIGMA_API_KEY and FIGMA_ACCESS_TOKEN if both MCPs need it.
+
+[mcp_servers.figma]
+args = [
+    "-y",
+    "figma-context-mcp",
+]
+command = "npx"
+
+[mcp_servers.figma.env]
+FIGMA_API_KEY = ""
+
+[mcp_servers.figma-console]
+args = [
+    "-y",
+    "figma-console-mcp@latest",
+]
+command = "npx"
+
+[mcp_servers.figma-console.env]
+ENABLE_MCP_APPS = "true"
+FIGMA_ACCESS_TOKEN = ""
+
+[mcp_servers.mui-mcp]
+args = [
+    "-y",
+    "@mui/mcp@latest",
+]
+command = "npx"
+
+[mcp_servers.playwright]
+args = ["@playwright/mcp@latest"]
+command = "npx"

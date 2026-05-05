@@ -327,6 +327,13 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 		})
 	}
 
+	var totalCents int64
+	for _, l := range lines {
+		totalCents += l.PriceCents
+	}
+	appt.TotalCents = &totalCents
+	appt.TotalSource = "calculated"
+
 	if err := s.appts.CreateWithLineItems(ctx, appt, lines); err != nil {
 		return nil, fmt.Errorf("create appointment: %w", err)
 	}
