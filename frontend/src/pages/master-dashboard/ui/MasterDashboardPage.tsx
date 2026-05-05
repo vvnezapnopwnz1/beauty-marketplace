@@ -43,6 +43,7 @@ import { MasterCalendar } from './MasterCalendar'
 import { MasterServicesGrid } from './MasterServicesGrid'
 import { MasterDashboardAppointments } from './MasterDashboardAppointments'
 import { MasterDashboardClients } from './MasterDashboardClients'
+import { MasterFinancesPage } from './MasterFinancesPage'
 import MenuIcon from '@mui/icons-material/Menu'
 
 type Section =
@@ -53,6 +54,7 @@ type Section =
   | 'appointments'
   | 'services'
   | 'clients'
+  | 'finances'
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'profile', label: 'Профиль', icon: '👤' },
@@ -62,6 +64,7 @@ const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'appointments', label: 'Записи', icon: '📋' },
   { id: 'services', label: 'Услуги', icon: '✂️' },
   { id: 'clients', label: 'Клиенты', icon: '👥' },
+  { id: 'finances', label: 'Финансы', icon: '💰' },
 ]
 
 const TITLES: Record<Section, string> = {
@@ -72,6 +75,7 @@ const TITLES: Record<Section, string> = {
   appointments: 'Записи',
   services: 'Мои услуги',
   clients: 'Мои клиенты',
+  finances: 'Финансы',
 }
 
 function isSection(s: string | null): s is Section {
@@ -82,7 +86,8 @@ function isSection(s: string | null): s is Section {
     s === 'calendar' ||
     s === 'appointments' ||
     s === 'services' ||
-    s === 'clients'
+    s === 'clients' ||
+    s === 'finances'
   )
 }
 
@@ -677,6 +682,8 @@ export function MasterDashboardPage() {
         return <MasterServicesGrid />
       case 'clients':
         return <MasterDashboardClients />
+      case 'finances':
+        return <MasterFinancesPage />
       default:
         return null
     }

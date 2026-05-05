@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Autocomplete,
   Box,
@@ -11,7 +11,6 @@ import {
   Typography,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -21,7 +20,12 @@ import { ru } from 'date-fns/locale'
 import { getMasterServices, type MasterService } from '@shared/api/masterDashboardApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
-import { useCreateMasterPersonalAppointmentMutation } from '@entities/master'
+import {
+  MasterClientAsyncAutocomplete,
+  useCreateMasterClientMutation,
+  useCreateMasterPersonalAppointmentMutation,
+  type MasterClientDTO,
+} from '@entities/master'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
 
@@ -44,6 +48,7 @@ export function CreateMasterAppointmentDrawer({
   const d = useDashboardPalette()
   const { inputBaseSx } = useDashboardFormStyles()
   const [createAppointment, { isLoading }] = useCreateMasterPersonalAppointmentMutation()
+  const [createMasterClient, { isLoading: isCreatingClient }] = useCreateMasterClientMutation()
 
   const [form, setForm] = useState(() => ({
     guestName: '',
@@ -53,6 +58,15 @@ export function CreateMasterAppointmentDrawer({
     serviceIds: initialData?.serviceIds?.length ? [...initialData.serviceIds] : ([] as string[]),
   }))
   const [services, setServices] = useState<MasterService[]>([])
+  const [selectedClient, setSelectedClient] = useState<MasterClientDTO | null>(null)
+
+  const endTimeHint = useMemo(() => {
+    const picked = services.filter(s => form.serviceIds.includes(s.id))
+    const mins = picked.reduce((acc, s) => acc + s.durationMinutes, 0)
+    if (!form.startsAt || mins <= 0) return null
+    const end = new Date(new Date(form.startsAt).getTime() + mins * 60_000)
+    return end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  }, [form.startsAt, form.serviceIds, services])
 
   useEffect(() => {
     if (!open) return
@@ -62,11 +76,13 @@ export function CreateMasterAppointmentDrawer({
   }, [open])
 
   const handleClose = () => {
+    setSelectedClient(null)
     onClose()
   }
 
   const handleSubmit = async () => {
-    if (form.serviceIds.length === 0) return enqueueFormSnackbar('Выберите хотя бы одну услугу', 'Error')
+    if (form.serviceIds.length === 0)
+      return enqueueFormSnackbar('Выберите хотя бы одну услугу', 'Error')
     if (!form.startsAt) return enqueueFormSnackbar('Выберите время начала', 'Error')
     if (!form.guestName.trim()) return enqueueFormSnackbar('Введите имя клиента', 'Error')
     const guestPhoneParsed = parseOptionalRuPhone(form.guestPhone)
@@ -74,12 +90,21 @@ export function CreateMasterAppointmentDrawer({
       return enqueueFormSnackbar('Некорректный телефон', 'Error')
     }
     try {
+      let linkedUserId = selectedClient?.userId ?? undefined
+      if (!selectedClient) {
+        const createdClient = await createMasterClient({
+          displayName: form.guestName.trim(),
+          ...(guestPhoneParsed.kind === 'valid' ? { phone: guestPhoneParsed.e164 } : {}),
+        }).unwrap()
+        linkedUserId = createdClient.userId ?? undefined
+      }
       await createAppointment({
         serviceIds: form.serviceIds,
         startsAt: form.startsAt,
         guestName: form.guestName.trim(),
         guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
         clientNote: form.note.trim() || undefined,
+        clientUserId: linkedUserId,
       }).unwrap()
       onCreated?.()
       handleClose()
@@ -123,7 +148,9 @@ export function CreateMasterAppointmentDrawer({
             <Typography sx={{ fontSize: 18, fontWeight: 800, color: d.text, lineHeight: 1.2 }}>
               Новая личная запись
             </Typography>
-            <Typography sx={{ fontSize: 12, color: d.mutedDark }}>Визит по вашим услугам</Typography>
+            <Typography sx={{ fontSize: 12, color: d.mutedDark }}>
+              Визит по вашим услугам
+            </Typography>
           </Box>
           <IconButton
             onClick={handleClose}
@@ -190,32 +217,40 @@ export function CreateMasterAppointmentDrawer({
 
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
               <Box>
-                <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>Дата и время</Typography>
+                <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
+                  Дата и время
+                </Typography>
                 <DateTimePicker
                   value={form.startsAt ? new Date(form.startsAt) : null}
                   onChange={val => setForm(f => ({ ...f, startsAt: val ? val.toISOString() : '' }))}
                   ampm={false}
+                  label="Дата и время"
                   format="dd.MM.yyyy HH:mm"
                   views={['year', 'month', 'day', 'hours', 'minutes']}
                   slotProps={{ textField: { fullWidth: true, size: 'small', sx: inputBaseSx } }}
                 />
+                {endTimeHint && (
+                  <Typography sx={{ fontSize: 11, color: d.mutedDark, mt: 0.75 }}>
+                    Ориентировочное окончание: {endTimeHint}
+                  </Typography>
+                )}
               </Box>
             </LocalizationProvider>
 
             <Box>
-              <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>Имя клиента</Typography>
-              <TextField
-                value={form.guestName}
-                onChange={e => setForm(f => ({ ...f, guestName: e.target.value }))}
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <PersonOutlineIcon sx={{ color: d.mutedDark, fontSize: 18, mr: 1.5 }} />
-                  ),
-                }}
-                sx={inputBaseSx}
+              <MasterClientAsyncAutocomplete
+                clientName={form.guestName}
+                selectedClient={selectedClient}
+                onClientNameChange={name => setForm(f => ({ ...f, guestName: name }))}
+                onSelectedClientChange={setSelectedClient}
+                onClientPhoneFill={phone =>
+                  setForm(f => ({ ...f, guestPhone: formatPhone(phone) }))
+                }
+                textFieldSx={inputBaseSx}
               />
-              <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>Телефон</Typography>
+              <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>
+                Телефон
+              </Typography>
               <TextField
                 placeholder="+7 (___) ___ - __ - __"
                 value={form.guestPhone}
@@ -229,7 +264,9 @@ export function CreateMasterAppointmentDrawer({
                 }}
                 sx={inputBaseSx}
               />
-              <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>Комментарий</Typography>
+              <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>
+                Комментарий
+              </Typography>
               <TextField
                 value={form.note}
                 onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
@@ -246,7 +283,7 @@ export function CreateMasterAppointmentDrawer({
           <Button
             variant="contained"
             fullWidth
-            disabled={isLoading}
+            disabled={isLoading || isCreatingClient}
             onClick={() => void handleSubmit()}
             sx={{
               bgcolor: d.accent,
@@ -265,7 +302,7 @@ export function CreateMasterAppointmentDrawer({
               transition: 'all 0.2s',
             }}
           >
-            {isLoading ? 'Создание...' : 'Создать запись'}
+            {isLoading || isCreatingClient ? 'Создание...' : 'Создать запись'}
           </Button>
           <Typography sx={{ textAlign: 'center', mt: 1.5, fontSize: 11, color: d.mutedDark }}>
             Запись будет создана со статусом «Ожидает»

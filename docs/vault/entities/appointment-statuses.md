@@ -1,6 +1,6 @@
 ---
 title: appointment statuses
-updated: 2026-04-24
+updated: 2026-05-05
 source_of_truth: mirror
 code_pointers: []
 ---
@@ -75,8 +75,9 @@ code_pointers: []
 ## Кто управляет статусами
 
 - **Владелец / администратор салона** — все переходы через дашборд (`PATCH /api/v1/dashboard/appointments/:id/status`)
+- **Мастер (личная запись)** — смена статуса только для визитов без салона (`salon_id IS NULL`), владелец `master_profile_id` совпадает с профилем пользователя: `PATCH /api/v1/master-dashboard/appointments/:id/status`
 - **Клиент** — `cancelled_by_client` зарезервирован для будущей клиентской части (не реализовано)
-- **Система** — автоматический сброс `confirmed` → `pending` при редактировании деталей
+- **Система** — автоматический сброс `confirmed` → `pending` при редактировании деталей (салон и личная запись в кабинете мастера)
 
 ---
 
@@ -87,8 +88,11 @@ code_pointers: []
 | Файл                                                  | Что делает                                                                                           |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `backend/internal/model/enums.go`                     | Enum `AppointmentStatus` со всеми значениями                                                         |
-| `backend/internal/service/dashboard_appointment.go`   | `allowedStatusTransition` — валидация переходов; `UpdateAppointment` — guard по статусу + авто-сброс |
+| `backend/internal/service/appointmentstatus/transition.go` | Общая функция `AllowedTransition` — допустимые переходы (дашборд салона и кабинет мастера)     |
+| `backend/internal/service/dashboard_appointment.go`   | `UpdateAppointment` — guard по статусу + авто-сброс; создание/обновление записи — `master_profile_id` по `salon_masters.master_id` при назначенном мастере |
+| `backend/internal/service/master_dashboard.go`        | `PatchPersonalAppointmentStatus`, `UpdatePersonalAppointment` — личные записи                        |
 | `backend/internal/controller/dashboard_controller.go` | `PATCH .../appointments/:id/status` и `PUT .../appointments/:id`                                     |
+| `backend/internal/controller/master_dashboard_controller.go` | `PATCH .../master-dashboard/appointments/:id/status`                                        |
 
 **Требования к `UpdateAppointment`:**
 
@@ -101,13 +105,14 @@ code_pointers: []
 | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | `frontend/src/pages/dashboard/ui/drawers/AppointmentDrawer.tsx` | `showEditForm` — форма редактирования только для `pending` и `confirmed` |
 | `frontend/src/pages/dashboard/ui/drawers/AppointmentDrawer.tsx` | Кнопки действий по статусу                                               |
+| `frontend/src/pages/master-dashboard/ui/drawers/MasterPersonalAppointmentDrawer.tsx` | Статусы и кнопки только для **личных** записей; салонные — read-only |
 
 **Кнопки действий по статусу:**
 
 | Статус                                  | Кнопки                                                         |
 | --------------------------------------- | -------------------------------------------------------------- |
 | `pending`                               | «Подтвердить» → `confirmed`, «Отменить» → `cancelled_by_salon` |
-| `confirmed`                             | «Завершить» → `completed`, «Отменить» → `cancelled_by_salon`   |
+| `confirmed`                             | «Завершить» → `completed`, «Не пришёл» → `no_show`, «Отменить» → `cancelled_by_salon` |
 | `completed` / `cancelled_*` / `no_show` | «Закрыть» (read-only)                                          |
 
 ---

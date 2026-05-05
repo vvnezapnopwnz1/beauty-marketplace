@@ -462,6 +462,29 @@ export function AppointmentDrawer({
                         size="small"
                         variant="outlined"
                         disabled={busy}
+                        onClick={() => void patchStatus('no_show')}
+                        sx={{
+                          borderColor: d.mutedDark,
+                          color: d.mutedDark,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '6px',
+                          textTransform: 'none',
+                          '&:hover': {
+                            borderColor: d.text,
+                            bgcolor: `${d.mutedDark}14`,
+                            transform: 'translateY(-1px)',
+                          },
+                        }}
+                      >
+                        Не пришёл
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={busy}
                         onClick={() => void patchStatus('cancelled_by_salon')}
                         sx={{
                           borderColor: d.red,

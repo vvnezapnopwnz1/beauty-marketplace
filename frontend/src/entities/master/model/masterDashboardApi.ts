@@ -13,6 +13,7 @@ export interface MasterAppointmentDTO {
   clientNote?: string | null
   serviceId: string
   salonMasterId?: string | null
+  totalPriceCents?: number
 }
 
 export interface MasterAppointmentListResponse {
@@ -139,7 +140,7 @@ const masterDashboardApi = rtkApi.injectEndpoints({
     }),
 
     createMasterPersonalAppointment: builder.mutation<unknown, CreateMasterPersonalAppointmentBody>({
-      invalidatesTags: ['MasterAppointments'],
+      invalidatesTags: ['MasterAppointments', 'FinanceSummary', 'FinanceExpenses'],
       query: body => ({
         url: '/api/v1/master-dashboard/appointments',
         method: 'POST',
@@ -151,11 +152,20 @@ const masterDashboardApi = rtkApi.injectEndpoints({
       void,
       { id: string; body: UpdateMasterPersonalAppointmentBody }
     >({
-      invalidatesTags: ['MasterAppointments'],
+      invalidatesTags: ['MasterAppointments', 'FinanceSummary', 'FinanceExpenses'],
       query: ({ id, body }) => ({
         url: `/api/v1/master-dashboard/appointments/${id}`,
         method: 'PUT',
         body,
+      }),
+    }),
+
+    patchMasterAppointmentStatus: builder.mutation<void, { id: string; status: string }>({
+      invalidatesTags: ['MasterAppointments', 'FinanceSummary', 'FinanceExpenses'],
+      query: ({ id, status }) => ({
+        url: `/api/v1/master-dashboard/appointments/${id}/status`,
+        method: 'PATCH',
+        body: { status },
       }),
     }),
 
@@ -204,9 +214,11 @@ export const {
   useGetMasterAppointmentsQuery,
   useLazyGetMasterAppointmentsQuery,
   useGetMasterClientsQuery,
+  useLazyGetMasterClientsQuery,
   useGetMasterSalonsQuery,
   useCreateMasterPersonalAppointmentMutation,
   useUpdateMasterPersonalAppointmentMutation,
+  usePatchMasterAppointmentStatusMutation,
   useCreateMasterClientMutation,
   useUpdateMasterClientMutation,
   useDeleteMasterClientMutation,

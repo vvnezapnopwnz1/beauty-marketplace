@@ -15,6 +15,7 @@ import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import { useCreateMasterClientMutation } from '@entities/master'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
+import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
 
 export type CreateMasterClientDrawerProps = {
   open: boolean
@@ -37,10 +38,15 @@ export function CreateMasterClientDrawer({ open, onClose }: CreateMasterClientDr
       enqueueFormSnackbar('Введите имя клиента', 'Error')
       return
     }
+    const parsedPhone = parseOptionalRuPhone(form.phone)
+    if (parsedPhone.kind === 'invalid') {
+      enqueueFormSnackbar('Некорректный телефон', 'Error')
+      return
+    }
     try {
       await createClient({
         displayName: form.displayName.trim(),
-        phone: form.phone.trim() || undefined,
+        phone: parsedPhone.kind === 'valid' ? parsedPhone.e164 : undefined,
         notes: form.notes.trim() || undefined,
         extraContact: form.extraContact.trim() || undefined,
       }).unwrap()
@@ -117,9 +123,9 @@ export function CreateMasterClientDrawer({ open, onClose }: CreateMasterClientDr
               <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>Телефон</Typography>
               <TextField
                 value={form.phone}
-                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
+                inputMode="numeric"
                 fullWidth
-                placeholder="+7…"
                 InputProps={{
                   startAdornment: (
                     <PhoneOutlinedIcon sx={{ color: d.mutedDark, fontSize: 18, mr: 1.5 }} />

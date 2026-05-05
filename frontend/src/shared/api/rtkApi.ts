@@ -34,6 +34,9 @@ export const rtkApi = createApi({
         'Notifications',
         'MasterAppointments',
         'MasterClients',
+        'FinanceSummary',
+        'FinanceCategories',
+        'FinanceExpenses',
     ],
     endpoints: () => ({}),
 });

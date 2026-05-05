@@ -1,6 +1,6 @@
 ---
 title: Frontend — структура компонентов
-updated: 2026-05-01
+updated: 2026-05-05
 source_of_truth: true
 code_pointers:
   - frontend/src/app/App.tsx
@@ -138,6 +138,7 @@ graph LR
         Staff["staff\n(RTK Query + slice)"]
         SalonInvite["salon-invite\n(personnel RTK)"]
         UserAppt["user-appointment\n(мои визиты, RTK Query)"]
+        MasterFin["master-finances\n(финансы мастера, RTK Query + slice)"]
     end
 
     subgraph shared
@@ -184,6 +185,7 @@ graph LR
 | `meApi.ts` | `/api/v1/me`, `/api/v1/me/salon-invites`, accept/decline | `MePage` → `SalonInvitesSection` |
 | `entities/user-appointment/model/userAppointmentApi.ts` | `GET /api/v1/me/appointments` (pagination) | `MePage` → `AppointmentsSection` |
 | `masterDashboardApi.ts` | `/api/v1/master-dashboard/*` | MasterDashboardPage |
+| `entities/master-finances/model/masterFinancesApi.ts` | `/api/v1/master-dashboard/finances/*` | `MasterFinancesPage` |
 | `geoApi.ts` | `/api/v1/geo/*` | location feature |
 | `placesApi.ts` | `/api/v1/places/*` | SearchPage |
 | `clientsApi.ts` | `/api/v1/dashboard/clients/*` | DashboardPage → Clients |
@@ -199,6 +201,16 @@ graph LR
 - `actions/index.ts` + `actions/*.actions.ts` — реестр и реализации действий;
 - `helpers/api-helpers.ts` — подготовка данных через `/api/dev/e2e/seed-salon`;
 - `playwright.config.ts` — webServer-подъём backend/frontend для e2e.
+
+---
+
+## Кабинет мастера — раздел «Финансы»
+
+`MasterDashboardPage` поддерживает секцию `?section=finances`, которая рендерит `MasterFinancesPage`.
+
+- Данные загружаются через `entities/master-finances/model/masterFinancesApi.ts` (summary, trends, top services, expenses, categories, export).
+- Локальный UI-state периода/источника хранится в `masterFinances` slice (`financesSlice.ts`, подключён в `app/store.ts`).
+- Для инвалидации графиков и списков используются RTK-теги: `FinanceSummary`, `FinanceCategories`, `FinanceExpenses`.
 
 ## Связанные заметки
 

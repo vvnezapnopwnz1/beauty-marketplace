@@ -13,6 +13,7 @@ import {
   Typography,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { useDashboardFormStyles } from '@pages/dashboard/theme/formStyles'
 import {
@@ -151,6 +152,11 @@ function MasterClientDetailBody({
                 fullWidth
                 disabled={phoneLocked}
                 helperText={phoneLocked ? 'Телефон привязан к аккаунту пользователя' : undefined}
+                InputProps={{
+                  startAdornment: (
+                    <PhoneOutlinedIcon sx={{ color: d.mutedDark, fontSize: 18, mr: 1.5 }} />
+                  ),
+                }}
                 sx={inputBaseSx}
               />
               <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>Доп. контакт</Typography>

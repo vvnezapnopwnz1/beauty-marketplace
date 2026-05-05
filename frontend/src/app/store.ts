@@ -8,6 +8,7 @@ import { appointmentSlice } from '@entities/appointment/model/appointmentSlice'
 import { clientSlice } from '@entities/client/model/clientSlice'
 import { staffSlice } from '@entities/staff/model/staffSlice'
 import { notificationSlice } from '@entities/notification/model/notificationSlice'
+import { financeReducer } from '@entities/master-finances/model/financesSlice'
 import { rtkApi } from '@shared/api/rtkApi'
 
 export const store = configureStore({
@@ -20,6 +21,7 @@ export const store = configureStore({
     client: clientSlice.reducer,
     staff: staffSlice.reducer,
     notification: notificationSlice.reducer,
+    masterFinances: financeReducer,
     [rtkApi.reducerPath]: rtkApi.reducer,
   },
   middleware: getDefaultMiddleware => getDefaultMiddleware().concat(rtkApi.middleware),
