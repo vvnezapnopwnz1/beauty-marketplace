@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/auth"
 	"github.com/beauty-marketplace/backend/internal/config"
 	"github.com/beauty-marketplace/backend/internal/requestid"
+	"github.com/google/uuid"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -34,6 +34,7 @@ func NewHTTPServer(
 	md *MasterDashboardController,
 	uh *UserController,
 	nh *NotificationController,
+	dc *DeviceController,
 	claimCtrl *SalonClaimController,
 	devCtrl *DevController,
 ) *http.Server {
@@ -75,6 +76,7 @@ func NewHTTPServer(
 	mux.HandleFunc("POST /api/v1/notifications/{id}/read", withCORS(auth.RequireAuth(jwtMgr, nh.MarkRead)))
 	mux.HandleFunc("POST /api/v1/notifications/read-all", withCORS(auth.RequireAuth(jwtMgr, nh.MarkAllRead)))
 	mux.HandleFunc("GET /api/v1/notifications/stream", withCORS(auth.RequireAuth(jwtMgr, nh.Stream)))
+	mux.HandleFunc("POST /api/v1/devices", withCORS(auth.RequireAuth(jwtMgr, dc.Register)))
 
 	// Salon claim (JWT required)
 	mux.HandleFunc("POST /api/v1/salons/claim", withCORS(auth.RequireAuth(jwtMgr, claimCtrl.SubmitClaim)))

@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-05-03
+updated: 2026-05-05
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -11,7 +11,19 @@ code_pointers:
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
+### Последние изменения (2026-05-05)
+
+- **React Native mobile app foundation (Phase 0):** добавлен backend endpoint `POST /api/v1/devices` для регистрации push-токена, реализованы `Device` model/repository/service/controller, подключение в Fx/роутинг и тесты контроллера; подготовлена миграция `000032_devices_table` под хранение устройств.
+- **React Native mobile app (Tasks 11-15) — аудит выполнения:** в репозитории присутствует Expo-scaffold `mobile/`, Zustand store и базовые тесты; при этом часть работ закрыта частично: OTP-login пока на mock-таймерах (без реального API), API-контракты в `mobile/src/api/endpoints.ts` расходятся с backend маршрутами, в `mobile/app/_layout.tsx` пока нет полноценного app-level provider wiring (React Query), а в `mobile/app.json` остаётся placeholder `eas.projectId` и ссылка на отсутствующий `assets/notification-icon.png`.
+- **Кабинет мастера — статусы личных записей и финансы:** `PATCH /api/v1/master-dashboard/appointments/:id/status` для личных визитов; общая валидация переходов `internal/service/appointmentstatus`; `UpdatePersonalAppointment` с guard по статусу и сбросом `confirmed` → `pending` при структурных правках; доход в сводке/трендах/топе услуг считается по тем же правилам видимости, что и список записей (назначение через `salon_masters` или личная запись); в списке записей поле `totalPriceCents` и колонка «Сумма»; денормализация `appointments.master_profile_id` при создании/смене мастера в дашборде салона; кнопка «Не пришёл» в `AppointmentDrawer`; UI `MasterPersonalAppointmentDrawer` + RTK `patchMasterAppointmentStatus` с инвалидацией финансовых тегов.
+
+### Последние изменения (2026-05-04)
+
+- **Кабинет мастера — навигация «Финансы»:** в `MasterDashboardPage` тип-гарда `isSection` не учитывал `section=finances`, из-за чего URL сбрасывался на профиль по умолчанию; добавлена ветка `finances`.
+
 ### Последние изменения (2026-05-03)
+
+- **Кабинет мастера — Async Client Autocomplete в личных записях:** в `CreateMasterAppointmentDrawer` и `MasterPersonalAppointmentDrawer` поле «Клиент» переведено на `freeSolo` autocomplete с асинхронным поиском по `master_clients`; при создании личной записи, если клиент не выбран из списка, фронтенд сначала создаёт `master_client`, затем запись визита с теми же именем/телефоном (и `clientUserId`, если доступен). Добавлен переиспользуемый компонент `entities/master/ui/MasterClientAsyncAutocomplete` и lazy-хук `useLazyGetMasterClientsQuery`.
 
 - **Календарь дашборда — зона «Перенести на другую дату» при скролле:** вьюпорт календаря (`DashboardCalendar`, `MasterCalendar`) переведён на колонку `flex` + `overflow: hidden`; вертикальный/горизонтальный скролл только у области сетки. Полоска `WeekBottomRescheduleZone` в `CalendarWeekGrid` остаётся под скроллом и всегда видна при перетаскивании записи. То же разбиение скролла для `CalendarDayStaffGrid` и месячной сетки (`CalendarMonthGrid`).
 
