@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig
+.web-exotic-builds
+.expo
+dist
+*.apk
+*.ipa
+.env
+.env.*
+!.env.example
+.webpack
