@@ -1,4 +1,4 @@
-module github.com/yourusername/beauty-marketplace
+module github.com/beauty-marketplace/backend
 
 go 1.24.0
 

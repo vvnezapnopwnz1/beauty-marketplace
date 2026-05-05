@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/repository"
 )
 
 var staffInvitePhoneRe = regexp.MustCompile(`^\+7\d{10}$`)

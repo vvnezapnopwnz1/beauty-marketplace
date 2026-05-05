@@ -3,7 +3,7 @@ package repository
 
 import (
     "context"
-    "github.com/yourusername/beauty-marketplace/pkg/models"
+    "github.com/beauty-marketplace/backend/pkg/models"
 )
 
 // DeviceRepository defines operations for device persistence

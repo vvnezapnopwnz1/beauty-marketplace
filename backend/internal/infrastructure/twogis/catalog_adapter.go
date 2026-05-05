@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/beauty-marketplace/internal/config"
-	"github.com/yourusername/beauty-marketplace/internal/errs"
-	"github.com/yourusername/beauty-marketplace/internal/model"
-	"github.com/yourusername/beauty-marketplace/internal/requestid"
+	"github.com/beauty-marketplace/backend/internal/config"
+	"github.com/beauty-marketplace/backend/internal/errs"
+	"github.com/beauty-marketplace/backend/internal/model"
+	"github.com/beauty-marketplace/backend/internal/requestid"
 	"go.uber.org/zap"
 )
 

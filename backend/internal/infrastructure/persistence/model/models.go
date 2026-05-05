@@ -156,17 +156,17 @@ type MasterService struct {
 // SalonMaster is a master's membership in a salon (formerly Staff).
 // Rows are never deleted when a master leaves: is_active=false + left_at=now().
 type SalonMaster struct {
-	ID                    uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	SalonID               uuid.UUID  `gorm:"type:uuid;not null;column:salon_id" json:"salonId"`
-	MasterID              *uuid.UUID `gorm:"type:uuid;column:master_id"`
-	DisplayName           string     `gorm:"column:display_name;not null" json:"displayName"`
-	DisplayNameOverride   *string    `gorm:"column:display_name_override"`
-	Role                  *string    `gorm:"column:role" json:"role,omitempty"`
-	Level                 *string    `gorm:"column:level" json:"level,omitempty"`
-	Bio                   *string    `gorm:"column:bio" json:"bio,omitempty"`
-	Phone                 *string    `gorm:"column:phone" json:"phone,omitempty"`
-	TelegramUsername      *string    `gorm:"column:telegram_username" json:"telegramUsername,omitempty"`
-	Email                 *string    `gorm:"column:email" json:"email,omitempty"`
+	ID                    uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	SalonID               uuid.UUID      `gorm:"type:uuid;not null;column:salon_id" json:"salonId"`
+	MasterID              *uuid.UUID     `gorm:"type:uuid;column:master_id"`
+	DisplayName           string         `gorm:"column:display_name;not null" json:"displayName"`
+	DisplayNameOverride   *string        `gorm:"column:display_name_override"`
+	Role                  *string        `gorm:"column:role" json:"role,omitempty"`
+	Level                 *string        `gorm:"column:level" json:"level,omitempty"`
+	Bio                   *string        `gorm:"column:bio" json:"bio,omitempty"`
+	Phone                 *string        `gorm:"column:phone" json:"phone,omitempty"`
+	TelegramUsername      *string        `gorm:"column:telegram_username" json:"telegramUsername,omitempty"`
+	Email                 *string        `gorm:"column:email" json:"email,omitempty"`
 	Color                 *string        `gorm:"column:color" json:"color,omitempty"`
 	JoinedAt              *time.Time     `gorm:"column:joined_at;type:date" json:"joinedAt,omitempty"`
 	LeftAt                *time.Time     `gorm:"column:left_at"`
@@ -355,11 +355,11 @@ type Appointment struct {
 	ServiceID       uuid.UUID  `gorm:"type:uuid;not null;column:service_id"`
 	StartsAt        time.Time  `gorm:"column:starts_at;not null"`
 	EndsAt          time.Time  `gorm:"column:ends_at;not null"`
-	Status         string     `gorm:"type:appointment_status;not null;default:pending;column:status"`
-	ClientNote     *string    `gorm:"column:client_note"`
-	SalonClientID  *uuid.UUID `gorm:"type:uuid;column:salon_client_id"`
-	CreatedAt      time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
-	UpdatedAt      time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
+	Status          string     `gorm:"type:appointment_status;not null;default:pending;column:status"`
+	ClientNote      *string    `gorm:"column:client_note"`
+	SalonClientID   *uuid.UUID `gorm:"type:uuid;column:salon_client_id"`
+	CreatedAt       time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
 }
 
 func (a *Appointment) BeforeCreate(tx *gorm.DB) error {
@@ -437,6 +437,46 @@ func (c *MasterClient) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (MasterClient) TableName() string { return "master_clients" }
+
+// MasterExpenseCategory represents a user-created expense category for a master.
+type MasterExpenseCategory struct {
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	MasterProfileID uuid.UUID `gorm:"type:uuid;not null;column:master_profile_id"`
+	Name            string    `gorm:"column:name;type:varchar(100);not null"`
+	Emoji           string    `gorm:"column:emoji;type:varchar(10);default:''"`
+	SortOrder       int       `gorm:"column:sort_order;not null;default:0"`
+	CreatedAt       time.Time `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+func (MasterExpenseCategory) TableName() string { return "master_expense_categories" }
+
+func (c *MasterExpenseCategory) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == uuid.Nil {
+		c.ID = uuid.New()
+	}
+	return nil
+}
+
+// MasterExpense represents a personal expense for a master.
+type MasterExpense struct {
+	ID              uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	MasterProfileID uuid.UUID  `gorm:"type:uuid;not null;column:master_profile_id"`
+	CategoryID      *uuid.UUID `gorm:"type:uuid;column:category_id"`
+	AppointmentID   *uuid.UUID `gorm:"type:uuid;column:appointment_id"`
+	AmountCents     int        `gorm:"column:amount_cents;not null"`
+	Description     string     `gorm:"column:description;type:text;default:''"`
+	ExpenseDate     time.Time  `gorm:"column:expense_date;type:date;not null"`
+	CreatedAt       time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+}
+
+func (MasterExpense) TableName() string { return "master_expenses" }
+
+func (e *MasterExpense) BeforeCreate(tx *gorm.DB) error {
+	if e.ID == uuid.Nil {
+		e.ID = uuid.New()
+	}
+	return nil
+}
 
 // SalonClientTag maps to salon_client_tags.
 // salon_id NULL = system tag visible to all.

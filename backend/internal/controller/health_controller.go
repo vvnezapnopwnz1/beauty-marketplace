@@ -3,7 +3,7 @@ package controller
 import (
 	"net/http"
 
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/service"
 	"go.uber.org/zap"
 )
 

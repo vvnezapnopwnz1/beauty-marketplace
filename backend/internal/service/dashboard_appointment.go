@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/service/appointmentstatus"
 	"gorm.io/gorm"
 )
 
@@ -121,6 +122,7 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 		totalDuration += svc.DurationMinutes
 	}
 
+	var masterProf *uuid.UUID
 	if in.StaffID != nil {
 		st, err := s.dash.GetStaff(ctx, salonID, *in.StaffID)
 		if err != nil {
@@ -128,6 +130,10 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 		}
 		if st == nil || !st.IsActive {
 			return nil, fmt.Errorf("staff not found")
+		}
+		if st.MasterID != nil {
+			m := *st.MasterID
+			masterProf = &m
 		}
 	}
 	name := trimSpace(in.GuestName)
@@ -143,15 +149,16 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 	end := in.StartsAt.Add(time.Duration(totalDuration) * time.Minute)
 
 	ap := &model.Appointment{
-		SalonID:        &salonID,
-		ServiceID:      primaryServiceID, // Legacy field for compatibility
-		SalonMasterID:  in.StaffID,
-		ClientUserID:   in.ClientUserID,
-		GuestName:      &name,
-		GuestPhoneE164: &phone,
-		StartsAt:       in.StartsAt.UTC(),
-		EndsAt:         end.UTC(),
-		Status:         "pending",
+		SalonID:         &salonID,
+		MasterProfileID: masterProf,
+		ServiceID:       primaryServiceID, // Legacy field for compatibility
+		SalonMasterID:   in.StaffID,
+		ClientUserID:    in.ClientUserID,
+		GuestName:       &name,
+		GuestPhoneE164:  &phone,
+		StartsAt:        in.StartsAt.UTC(),
+		EndsAt:          end.UTC(),
+		Status:          "pending",
 	}
 	if trimSpace(in.ClientNote) != "" {
 		n := trimSpace(in.ClientNote)
@@ -206,17 +213,6 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 	return ap, nil
 }
 
-func allowedStatusTransition(from, to string) bool {
-	switch from {
-	case "pending":
-		return to == "confirmed" || to == "cancelled_by_salon" || to == "cancelled_by_client" // reserved: client cancellation
-	case "confirmed":
-		return to == "completed" || to == "no_show" || to == "cancelled_by_salon" || to == "cancelled_by_client" // reserved: client cancellation
-	default:
-		return false
-	}
-}
-
 func (s *dashboardService) UpdateAppointmentStatus(ctx context.Context, salonID, appointmentID uuid.UUID, newStatus string) error {
 	a, err := s.dash.GetAppointment(ctx, salonID, appointmentID)
 	if err != nil {
@@ -225,7 +221,7 @@ func (s *dashboardService) UpdateAppointmentStatus(ctx context.Context, salonID,
 	if a == nil {
 		return gorm.ErrRecordNotFound
 	}
-	if !allowedStatusTransition(a.Status, newStatus) {
+	if !appointmentstatus.AllowedTransition(a.Status, newStatus) {
 		return fmt.Errorf("invalid status transition")
 	}
 	if err := s.dash.UpdateAppointmentStatus(ctx, salonID, appointmentID, newStatus); err != nil {
@@ -302,6 +298,7 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 
 	if in.ClearStaffID {
 		a.SalonMasterID = nil
+		a.MasterProfileID = nil
 	} else if in.StaffID != nil {
 		if *in.StaffID != uuid.Nil {
 			st, err := s.dash.GetStaff(ctx, salonID, *in.StaffID)
@@ -311,6 +308,14 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 			if st == nil {
 				return fmt.Errorf("staff not found")
 			}
+			if st.MasterID != nil {
+				m := *st.MasterID
+				a.MasterProfileID = &m
+			} else {
+				a.MasterProfileID = nil
+			}
+		} else {
+			a.MasterProfileID = nil
 		}
 		a.SalonMasterID = in.StaffID
 	}

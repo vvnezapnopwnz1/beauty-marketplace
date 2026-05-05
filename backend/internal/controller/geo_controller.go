@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/service"
 )
 
 type GeoController struct {

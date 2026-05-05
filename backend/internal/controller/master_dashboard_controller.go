@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/auth"
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/auth"
+	"github.com/beauty-marketplace/backend/internal/service"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -43,6 +43,23 @@ type masterPutApptBody struct {
 	ClientNote *string     `json:"clientNote,omitempty"`
 	GuestName  *string     `json:"guestName,omitempty"`
 	GuestPhone *string     `json:"guestPhone,omitempty"`
+}
+
+type masterPatchApptStatusBody struct {
+	Status string `json:"status"`
+}
+
+type masterExpenseCategoryBody struct {
+	Name  string  `json:"name"`
+	Emoji *string `json:"emoji,omitempty"`
+}
+
+type masterExpenseBody struct {
+	CategoryID    *uuid.UUID `json:"categoryId,omitempty"`
+	AppointmentID *uuid.UUID `json:"appointmentId,omitempty"`
+	AmountCents   int        `json:"amountCents"`
+	Description   *string    `json:"description,omitempty"`
+	ExpenseDate   string     `json:"expenseDate"`
 }
 
 func parseMasterPutApptBody(id uuid.UUID, body masterPutApptBody) (service.UpdateAppointmentInput, error) {
@@ -284,6 +301,28 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 			_ = json.NewEncoder(w).Encode(ap)
 			return
 		}
+		if len(parts) == 3 && parts[2] == "status" && r.Method == http.MethodPatch {
+			id, err := uuid.Parse(parts[1])
+			if err != nil {
+				jsonError(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+			var body masterPatchApptStatusBody
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Status == "" {
+				jsonError(w, "status required", http.StatusBadRequest)
+				return
+			}
+			if err := h.svc.PatchPersonalAppointmentStatus(r.Context(), userID, id, body.Status); err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					jsonError(w, "not found", http.StatusNotFound)
+					return
+				}
+				jsonError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if len(parts) == 2 && r.Method == http.MethodPut {
 			id, err := uuid.Parse(parts[1])
 			if err != nil {
@@ -463,6 +502,268 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
+		}
+		http.NotFound(w, r)
+	case "finances":
+		if len(parts) == 2 && parts[1] == "summary" && r.Method == http.MethodGet {
+			q := r.URL.Query()
+			source := q.Get("source")
+			if source == "" {
+				source = "all"
+			}
+			var from, to *time.Time
+			if v := q.Get("from"); v != "" {
+				if t, err := time.Parse("2006-01-02", v); err == nil {
+					utc := t.UTC()
+					from = &utc
+				}
+			}
+			if v := q.Get("to"); v != "" {
+				if t, err := time.Parse("2006-01-02", v); err == nil {
+					end := t.Add(24 * time.Hour).UTC()
+					to = &end
+				}
+			}
+			out, err := h.svc.GetFinanceSummary(r.Context(), userID, source, from, to)
+			if err != nil {
+				h.log.Error("master finance summary", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		if len(parts) == 2 && parts[1] == "trends" && r.Method == http.MethodGet {
+			q := r.URL.Query()
+			source := q.Get("source")
+			if source == "" {
+				source = "all"
+			}
+			var from, to *time.Time
+			if v := q.Get("from"); v != "" {
+				if t, err := time.Parse("2006-01-02", v); err == nil {
+					utc := t.UTC()
+					from = &utc
+				}
+			}
+			if v := q.Get("to"); v != "" {
+				if t, err := time.Parse("2006-01-02", v); err == nil {
+					end := t.Add(24 * time.Hour).UTC()
+					to = &end
+				}
+			}
+			out, err := h.svc.GetFinanceTrend(r.Context(), userID, source, from, to)
+			if err != nil {
+				h.log.Error("master finance trend", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		if len(parts) == 2 && parts[1] == "top-services" && r.Method == http.MethodGet {
+			q := r.URL.Query()
+			source := q.Get("source")
+			if source == "" {
+				source = "all"
+			}
+			var from, to *time.Time
+			if v := q.Get("from"); v != "" {
+				if t, err := time.Parse("2006-01-02", v); err == nil {
+					utc := t.UTC()
+					from = &utc
+				}
+			}
+			if v := q.Get("to"); v != "" {
+				if t, err := time.Parse("2006-01-02", v); err == nil {
+					end := t.Add(24 * time.Hour).UTC()
+					to = &end
+				}
+			}
+			out, err := h.svc.GetTopServices(r.Context(), userID, source, from, to)
+			if err != nil {
+				h.log.Error("master finance top services", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		if len(parts) == 2 && parts[1] == "categories" {
+			if r.Method == http.MethodGet {
+				out, err := h.svc.ListExpenseCategories(r.Context(), userID)
+				if err != nil {
+					h.log.Error("master finance categories", zap.Error(err))
+					jsonError(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+			if r.Method == http.MethodPost {
+				var body masterExpenseCategoryBody
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonError(w, "invalid json", http.StatusBadRequest)
+					return
+				}
+				out, err := h.svc.CreateExpenseCategory(r.Context(), userID, service.CreateMasterExpenseCategoryInput{
+					Name:  body.Name,
+					Emoji: body.Emoji,
+				})
+				if err != nil {
+					jsonError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+		}
+		if len(parts) == 3 && parts[1] == "categories" {
+			id, err := uuid.Parse(parts[2])
+			if err != nil {
+				jsonError(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+			if r.Method == http.MethodPut {
+				var body masterExpenseCategoryBody
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonError(w, "invalid json", http.StatusBadRequest)
+					return
+				}
+				out, err := h.svc.UpdateExpenseCategory(r.Context(), userID, id, service.CreateMasterExpenseCategoryInput{
+					Name:  body.Name,
+					Emoji: body.Emoji,
+				})
+				if err != nil {
+					jsonError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if out == nil {
+					jsonError(w, "not found", http.StatusNotFound)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+			if r.Method == http.MethodDelete {
+				if err := h.svc.DeleteExpenseCategory(r.Context(), userID, id); err != nil {
+					jsonError(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		if len(parts) == 2 && parts[1] == "expenses" {
+			if r.Method == http.MethodGet {
+				q := r.URL.Query()
+				var from, to *time.Time
+				if v := q.Get("from"); v != "" {
+					if t, err := time.Parse("2006-01-02", v); err == nil {
+						utc := t.UTC()
+						from = &utc
+					}
+				}
+				if v := q.Get("to"); v != "" {
+					if t, err := time.Parse("2006-01-02", v); err == nil {
+						end := t.Add(24 * time.Hour).UTC()
+						to = &end
+					}
+				}
+				page, _ := strconv.Atoi(q.Get("page"))
+				pageSize, _ := strconv.Atoi(q.Get("page_size"))
+				out, err := h.svc.ListExpenses(r.Context(), userID, from, to, page, pageSize)
+				if err != nil {
+					h.log.Error("master finance expenses", zap.Error(err))
+					jsonError(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+			if r.Method == http.MethodPost {
+				var body masterExpenseBody
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonError(w, "invalid json", http.StatusBadRequest)
+					return
+				}
+				out, err := h.svc.CreateExpense(r.Context(), userID, service.CreateMasterExpenseInput{
+					CategoryID:    body.CategoryID,
+					AppointmentID: body.AppointmentID,
+					AmountCents:   body.AmountCents,
+					Description:   body.Description,
+					ExpenseDate:   body.ExpenseDate,
+				})
+				if err != nil {
+					jsonError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+		}
+		if len(parts) == 3 && parts[1] == "expenses" {
+			id, err := uuid.Parse(parts[2])
+			if err != nil {
+				jsonError(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+			if r.Method == http.MethodPut {
+				var body masterExpenseBody
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					jsonError(w, "invalid json", http.StatusBadRequest)
+					return
+				}
+				out, err := h.svc.UpdateExpense(r.Context(), userID, id, service.CreateMasterExpenseInput{
+					CategoryID:    body.CategoryID,
+					AppointmentID: body.AppointmentID,
+					AmountCents:   body.AmountCents,
+					Description:   body.Description,
+					ExpenseDate:   body.ExpenseDate,
+				})
+				if err != nil {
+					jsonError(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if out == nil {
+					jsonError(w, "not found", http.StatusNotFound)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(out)
+				return
+			}
+			if r.Method == http.MethodDelete {
+				if err := h.svc.DeleteExpense(r.Context(), userID, id); err != nil {
+					jsonError(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		if len(parts) == 2 && parts[1] == "export" && r.Method == http.MethodGet {
+			q := r.URL.Query()
+			month := q.Get("month")
+			out, err := h.svc.ExportNpdReport(r.Context(), userID, month)
+			if err != nil {
+				h.log.Error("master finance export", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
 		}
 		http.NotFound(w, r)
 	default:

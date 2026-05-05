@@ -7,10 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/yourusername/beauty-marketplace/internal/auth"
-	"github.com/yourusername/beauty-marketplace/internal/config"
-	"github.com/yourusername/beauty-marketplace/internal/errs"
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/auth"
+	"github.com/beauty-marketplace/backend/internal/config"
+	"github.com/beauty-marketplace/backend/internal/errs"
+	"github.com/beauty-marketplace/backend/internal/service"
 	"go.uber.org/zap"
 )
 

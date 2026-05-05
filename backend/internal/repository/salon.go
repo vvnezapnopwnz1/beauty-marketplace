@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/model"
+	"github.com/beauty-marketplace/backend/internal/model"
 )
 
 // SalonRepository loads salons and related service lines from persistence.

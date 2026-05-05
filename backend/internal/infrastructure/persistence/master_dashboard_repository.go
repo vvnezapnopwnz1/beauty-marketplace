@@ -3,12 +3,14 @@ package persistence
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"gorm.io/gorm"
 )
 
@@ -220,6 +222,268 @@ func (r *masterDashboardRepository) DeclinePendingInvite(ctx context.Context, ma
 	return res.RowsAffected > 0, nil
 }
 
+type expenseAmountRow struct {
+	Date   time.Time `gorm:"column:date"`
+	Amount int64     `gorm:"column:amount"`
+}
+
+func (r *masterDashboardRepository) ListMasterExpenseCategories(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterExpenseCategory, error) {
+	var rows []model.MasterExpenseCategory
+	err := r.db.WithContext(ctx).
+		Where("master_profile_id = ?", masterProfileID).
+		Order("sort_order ASC, created_at DESC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (r *masterDashboardRepository) CreateMasterExpenseCategory(ctx context.Context, category *model.MasterExpenseCategory) error {
+	return r.db.WithContext(ctx).Create(category).Error
+}
+
+func (r *masterDashboardRepository) UpdateMasterExpenseCategory(ctx context.Context, category *model.MasterExpenseCategory) error {
+	res := r.db.WithContext(ctx).Model(&model.MasterExpenseCategory{}).
+		Where("id = ? AND master_profile_id = ?", category.ID, category.MasterProfileID).
+		Updates(map[string]any{
+			"name":       category.Name,
+			"emoji":      category.Emoji,
+			"sort_order": category.SortOrder,
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *masterDashboardRepository) DeleteMasterExpenseCategory(ctx context.Context, masterProfileID, categoryID uuid.UUID) error {
+	res := r.db.WithContext(ctx).Where("id = ? AND master_profile_id = ?", categoryID, masterProfileID).
+		Delete(&model.MasterExpenseCategory{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *masterDashboardRepository) ListMasterExpenses(ctx context.Context, masterProfileID uuid.UUID, from, to *time.Time, limit, offset int) ([]model.MasterExpense, int64, error) {
+	q := r.db.WithContext(ctx).Model(&model.MasterExpense{}).
+		Where("master_profile_id = ?", masterProfileID)
+	if from != nil {
+		q = q.Where("expense_date >= ?", *from)
+	}
+	if to != nil {
+		q = q.Where("expense_date <= ?", *to)
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var rows []model.MasterExpense
+	if err := q.Order("expense_date DESC, created_at DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+	return rows, total, nil
+}
+
+func (r *masterDashboardRepository) GetMasterExpenseByID(ctx context.Context, masterProfileID, expenseID uuid.UUID) (*model.MasterExpense, error) {
+	var row model.MasterExpense
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND master_profile_id = ?", expenseID, masterProfileID).
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (r *masterDashboardRepository) CreateMasterExpense(ctx context.Context, expense *model.MasterExpense) error {
+	return r.db.WithContext(ctx).Create(expense).Error
+}
+
+func (r *masterDashboardRepository) UpdateMasterExpense(ctx context.Context, expense *model.MasterExpense) error {
+	res := r.db.WithContext(ctx).Model(&model.MasterExpense{}).
+		Where("id = ? AND master_profile_id = ?", expense.ID, expense.MasterProfileID).
+		Updates(map[string]any{
+			"category_id":    expense.CategoryID,
+			"appointment_id": expense.AppointmentID,
+			"amount_cents":   expense.AmountCents,
+			"description":    expense.Description,
+			"expense_date":   expense.ExpenseDate,
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *masterDashboardRepository) DeleteMasterExpense(ctx context.Context, masterProfileID, expenseID uuid.UUID) error {
+	res := r.db.WithContext(ctx).
+		Where("id = ? AND master_profile_id = ?", expenseID, masterProfileID).
+		Delete(&model.MasterExpense{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *masterDashboardRepository) GetMasterFinanceSummary(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time) (int64, int64, error) {
+	var incomeRow expenseAmountRow
+	incomeSQL, incomeArgs := buildFinanceSQL(source, "a.starts_at::date", from, to)
+	incomeArgs = append([]interface{}{masterProfileID, masterProfileID}, incomeArgs...)
+	if err := r.db.WithContext(ctx).Raw(incomeSQL, incomeArgs...).Scan(&incomeRow).Error; err != nil {
+		return 0, 0, err
+	}
+
+	var expenseRow expenseAmountRow
+	expenseSQL, expenseArgs := buildExpenseSQL("expense_date", from, to)
+	expenseArgs = append([]interface{}{masterProfileID}, expenseArgs...)
+	if err := r.db.WithContext(ctx).Raw(expenseSQL, expenseArgs...).Scan(&expenseRow).Error; err != nil {
+		return 0, 0, err
+	}
+
+	return incomeRow.Amount, expenseRow.Amount, nil
+}
+
+func masterAppointmentVisibleSQL() string {
+	return `((a.salon_master_id IS NOT NULL AND EXISTS (SELECT 1 FROM salon_masters sm_vis WHERE sm_vis.id = a.salon_master_id AND sm_vis.master_id = ?)) OR (a.salon_id IS NULL AND a.master_profile_id = ?))`
+}
+
+func buildFinanceSQL(source, dateColumn string, from, to *time.Time) (string, []interface{}) {
+	clause := sourceFilter(source)
+	dateClause, args := buildDateRangeClause(dateColumn, from, to)
+	return `SELECT COALESCE(SUM(ali.price_cents), 0) AS amount
+FROM appointments a
+INNER JOIN appointment_line_items ali ON ali.appointment_id = a.id
+WHERE ` + masterAppointmentVisibleSQL() + `
+  AND a.status = 'completed'` + clause + dateClause, args
+}
+
+func buildExpenseSQL(dateColumn string, from, to *time.Time) (string, []interface{}) {
+	dateClause, args := buildDateRangeClause(dateColumn, from, to)
+	return `SELECT COALESCE(SUM(amount_cents), 0) AS amount
+FROM master_expenses
+WHERE master_profile_id = ?` + dateClause, args
+}
+
+func buildDateRangeClause(column string, from, to *time.Time) (string, []interface{}) {
+	clauses := []string{}
+	args := []interface{}{}
+	if from != nil {
+		clauses = append(clauses, column+" >= ?")
+		args = append(args, *from)
+	}
+	if to != nil {
+		clauses = append(clauses, column+" <= ?")
+		args = append(args, *to)
+	}
+	if len(clauses) == 0 {
+		return "", args
+	}
+	return " AND " + strings.Join(clauses, " AND "), args
+}
+
+func sourceFilter(source string) string {
+	switch source {
+	case "personal":
+		return " AND a.salon_id IS NULL"
+	case "salon":
+		return " AND a.salon_id IS NOT NULL"
+	default:
+		return ""
+	}
+}
+
+func (r *masterDashboardRepository) GetMasterRevenueTrend(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time) ([]repository.RepositoryMasterRevenueTrendRow, error) {
+	trendMap := map[string]repository.RepositoryMasterRevenueTrendRow{}
+
+	var incomes []expenseAmountRow
+	dateClause, dateArgs := buildDateRangeClause("a.starts_at::date", from, to)
+	incomeSQL := `SELECT date(a.starts_at) AS date, COALESCE(SUM(ali.price_cents), 0) AS amount
+FROM appointments a
+INNER JOIN appointment_line_items ali ON ali.appointment_id = a.id
+WHERE ` + masterAppointmentVisibleSQL() + `
+  AND a.status = 'completed'` + sourceFilter(source) + dateClause + `
+GROUP BY date(a.starts_at)
+ORDER BY date(a.starts_at) ASC`
+	incomeArgs := append([]interface{}{masterProfileID, masterProfileID}, dateArgs...)
+	if err := r.db.WithContext(ctx).Raw(incomeSQL, incomeArgs...).Scan(&incomes).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range incomes {
+		key := row.Date.Format("2006-01-02")
+		trendMap[key] = repository.RepositoryMasterRevenueTrendRow{Date: row.Date, IncomeCents: row.Amount}
+	}
+
+	var expenses []expenseAmountRow
+	expenseDateClause, expenseArgs := buildDateRangeClause("expense_date", from, to)
+	expenseSQL := `SELECT expense_date AS date, COALESCE(SUM(amount_cents), 0) AS amount
+FROM master_expenses
+WHERE master_profile_id = ?` + expenseDateClause + `
+GROUP BY expense_date
+ORDER BY expense_date ASC`
+	expenseQueryArgs := append([]interface{}{masterProfileID}, expenseArgs...)
+	if err := r.db.WithContext(ctx).Raw(expenseSQL, expenseQueryArgs...).Scan(&expenses).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range expenses {
+		key := row.Date.Format("2006-01-02")
+		entry := trendMap[key]
+		entry.Date = row.Date
+		entry.ExpenseCents = row.Amount
+		trendMap[key] = entry
+	}
+
+	results := make([]repository.RepositoryMasterRevenueTrendRow, 0, len(trendMap))
+	for _, item := range trendMap {
+		results = append(results, item)
+	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Date.Before(results[j].Date)
+	})
+	return results, nil
+}
+
+func (r *masterDashboardRepository) GetMasterTopServices(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time, limit int) ([]repository.RepositoryMasterTopServiceRow, error) {
+	var rows []repository.RepositoryMasterTopServiceRow
+	querySQL, queryArgs := buildTopServicesSQL(source, from, to, limit)
+	queryArgs = append([]interface{}{masterProfileID, masterProfileID}, queryArgs...)
+	if err := r.db.WithContext(ctx).Raw(querySQL, queryArgs...).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func buildTopServicesSQL(source string, from, to *time.Time, limit int) (string, []interface{}) {
+	dateClause, args := buildDateRangeClause("a.starts_at::date", from, to)
+	if limit < 1 {
+		limit = 10
+	}
+	query := `SELECT ali.service_name AS service_name, COALESCE(SUM(ali.price_cents), 0) AS income
+FROM appointments a
+INNER JOIN appointment_line_items ali ON ali.appointment_id = a.id
+WHERE ` + masterAppointmentVisibleSQL() + ` AND a.status = 'completed'` + sourceFilter(source) + dateClause + `
+GROUP BY ali.service_name
+ORDER BY income DESC
+LIMIT ?`
+	return query, append(args, limit)
+}
+
 func (r *masterDashboardRepository) applyMasterApptFilters(q *gorm.DB, f repository.MasterAppointmentListFilter) *gorm.DB {
 	if f.From != nil {
 		q = q.Where("a.starts_at >= ?", *f.From)
@@ -228,7 +492,17 @@ func (r *masterDashboardRepository) applyMasterApptFilters(q *gorm.DB, f reposit
 		q = q.Where("a.starts_at < ?", *f.To)
 	}
 	if f.Status != "" {
-		q = q.Where("a.status = ?", f.Status)
+		var st []string
+		for _, s := range strings.Split(f.Status, ",") {
+			if t := strings.TrimSpace(s); t != "" {
+				st = append(st, t)
+			}
+		}
+		if len(st) == 1 {
+			q = q.Where("a.status = ?", st[0])
+		} else if len(st) > 1 {
+			q = q.Where("a.status IN ?", st)
+		}
 	}
 	if f.Search != "" {
 		like := "%" + f.Search + "%"
@@ -285,10 +559,11 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 
 	var raw []struct {
 		model.Appointment
-		ServiceName string  `gorm:"column:service_name"`
-		SalonName   string  `gorm:"column:salon_name"`
-		ClientLabel string  `gorm:"column:client_label"`
-		ClientPhone *string `gorm:"column:client_phone"`
+		ServiceName     string  `gorm:"column:service_name"`
+		SalonName       string  `gorm:"column:salon_name"`
+		ClientLabel     string  `gorm:"column:client_label"`
+		ClientPhone     *string `gorm:"column:client_phone"`
+		TotalPriceCents int64   `gorm:"column:total_price_cents"`
 	}
 	q := r.db.WithContext(ctx).Table("appointments a").
 		Select(`a.*,
@@ -304,7 +579,10 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 				ELSE COALESCE(NULLIF(TRIM(sal.name_override), ''), 'Салон')
 			END AS salon_name,
 			COALESCE(NULLIF(TRIM(a.guest_name), ''), users.display_name, 'Гость') AS client_label,
-			a.guest_phone_e164 AS client_phone`).
+			a.guest_phone_e164 AS client_phone,
+			COALESCE((
+				SELECT SUM(li.price_cents) FROM appointment_line_items li WHERE li.appointment_id = a.id
+			), 0) AS total_price_cents`).
 		Joins("LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id").
 		Joins("LEFT JOIN services s ON s.id = a.service_id").
 		Joins("LEFT JOIN salons sal ON sal.id = a.salon_id").
@@ -317,11 +595,12 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 	out := make([]repository.MasterAppointmentListRow, len(raw))
 	for i := range raw {
 		out[i] = repository.MasterAppointmentListRow{
-			Appointment: raw[i].Appointment,
-			ServiceName: raw[i].ServiceName,
-			SalonName:   raw[i].SalonName,
-			ClientLabel: raw[i].ClientLabel,
-			ClientPhone: raw[i].ClientPhone,
+			Appointment:     raw[i].Appointment,
+			ServiceName:     raw[i].ServiceName,
+			SalonName:       raw[i].SalonName,
+			ClientLabel:     raw[i].ClientLabel,
+			ClientPhone:     raw[i].ClientPhone,
+			TotalPriceCents: raw[i].TotalPriceCents,
 		}
 	}
 	return out, total, nil
@@ -404,7 +683,7 @@ func (r *masterDashboardRepository) ListMasterClients(ctx context.Context, f rep
 	q := r.db.WithContext(ctx).Model(&model.MasterClient{}).Where("master_profile_id = ?", f.MasterProfileID)
 	if f.Search != "" {
 		like := "%" + f.Search + "%"
-		q = q.Where("(display_name ILIKE ? OR phone ILIKE ?)", like, like)
+		q = q.Where("(display_name ILIKE ? OR phone_e164 ILIKE ?)", like, like)
 	}
 
 	var total int64
@@ -414,7 +693,7 @@ func (r *masterDashboardRepository) ListMasterClients(ctx context.Context, f rep
 
 	allowed := map[string]string{
 		"displayName": "display_name",
-		"phone":       "phone",
+		"phone":       "phone_e164",
 		"createdAt":   "created_at",
 	}
 	col, ok := allowed[f.SortBy]

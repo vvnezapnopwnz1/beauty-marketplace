@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"gorm.io/gorm"
 )
 
@@ -102,4 +102,20 @@ func (r *appointmentRepository) ReplaceAppointmentLineItems(ctx context.Context,
 		}
 		return nil
 	})
+}
+
+func (r *appointmentRepository) UpdateStatusForPersonalMaster(ctx context.Context, appointmentID, masterProfileID uuid.UUID, status string) error {
+	res := r.db.WithContext(ctx).Model(&model.Appointment{}).
+		Where("id = ? AND salon_id IS NULL AND master_profile_id = ?", appointmentID, masterProfileID).
+		Updates(map[string]any{
+			"status":     status,
+			"updated_at": time.Now().UTC(),
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

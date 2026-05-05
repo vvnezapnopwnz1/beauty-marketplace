@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yourusername/beauty-marketplace/internal/errs"
-	"github.com/yourusername/beauty-marketplace/internal/model"
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/errs"
+	"github.com/beauty-marketplace/backend/internal/model"
+	"github.com/beauty-marketplace/backend/internal/service"
 	"go.uber.org/zap"
 )
 

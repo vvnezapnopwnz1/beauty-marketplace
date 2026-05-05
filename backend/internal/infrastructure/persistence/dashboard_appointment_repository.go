@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"gorm.io/gorm"
 )
 
@@ -195,14 +195,16 @@ func (r *dashboardRepository) UpdateAppointment(ctx context.Context, a *model.Ap
 	return r.db.WithContext(ctx).Model(&model.Appointment{}).
 		Where("id = ? AND salon_id = ?", a.ID, a.SalonID).
 		Updates(map[string]any{
-			"starts_at":        a.StartsAt,
-			"ends_at":          a.EndsAt,
-			"salon_master_id":  a.SalonMasterID,
-			"service_id":       a.ServiceID,
-			"client_note":      a.ClientNote,
-			"guest_name":       a.GuestName,
-			"guest_phone_e164": a.GuestPhoneE164,
-			"updated_at":       time.Now().UTC(),
+			"starts_at":          a.StartsAt,
+			"ends_at":            a.EndsAt,
+			"salon_master_id":    a.SalonMasterID,
+			"master_profile_id":  a.MasterProfileID,
+			"service_id":         a.ServiceID,
+			"client_note":        a.ClientNote,
+			"guest_name":         a.GuestName,
+			"guest_phone_e164":   a.GuestPhoneE164,
+			"status":             a.Status,
+			"updated_at":         time.Now().UTC(),
 		}).Error
 }
 

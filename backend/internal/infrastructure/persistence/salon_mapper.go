@@ -1,8 +1,8 @@
 package persistence
 
 import (
-	dbmodel "github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	"github.com/yourusername/beauty-marketplace/internal/model"
+	dbmodel "github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/model"
 )
 
 func dbSalonToDomain(s dbmodel.Salon) model.Salon {

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 )
 
 // AppointmentRepository persists booking rows.
@@ -25,4 +25,6 @@ type AppointmentRepository interface {
 	ReplaceAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID, items []model.AppointmentLineItem) error
 	// SetSalonClientID links an appointment to a salon_clients row.
 	SetSalonClientID(ctx context.Context, appointmentID, salonClientID uuid.UUID) error
+	// UpdateStatusForPersonalMaster sets status only for a personal appointment owned by the master profile.
+	UpdateStatusForPersonalMaster(ctx context.Context, appointmentID, masterProfileID uuid.UUID, status string) error
 }

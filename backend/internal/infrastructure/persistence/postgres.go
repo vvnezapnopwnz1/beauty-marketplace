@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yourusername/beauty-marketplace/internal/config"
-	"github.com/yourusername/beauty-marketplace/internal/devseed"
+	"github.com/beauty-marketplace/backend/internal/config"
+	"github.com/beauty-marketplace/backend/internal/devseed"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"

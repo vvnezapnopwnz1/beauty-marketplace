@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/joho/godotenv"
-	"github.com/yourusername/beauty-marketplace/internal/app"
+	"github.com/beauty-marketplace/backend/internal/app"
 )
 
 func main() {

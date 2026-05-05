@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yourusername/beauty-marketplace/internal/config"
+	"github.com/beauty-marketplace/backend/internal/config"
 )
 
 type CityRegion struct {

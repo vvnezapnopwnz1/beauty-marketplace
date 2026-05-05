@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 )
 
 func (s *dashboardService) GetSchedule(ctx context.Context, salonID uuid.UUID) ([]model.WorkingHour, error) {

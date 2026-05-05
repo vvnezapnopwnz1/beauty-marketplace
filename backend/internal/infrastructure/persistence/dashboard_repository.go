@@ -1,7 +1,7 @@
 package persistence
 
 import (
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"gorm.io/gorm"
 )
 

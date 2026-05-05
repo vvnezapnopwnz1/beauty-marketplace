@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/auth"
-	"github.com/yourusername/beauty-marketplace/internal/config"
-	"github.com/yourusername/beauty-marketplace/internal/requestid"
+	"github.com/beauty-marketplace/backend/internal/auth"
+	"github.com/beauty-marketplace/backend/internal/config"
+	"github.com/beauty-marketplace/backend/internal/requestid"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 )
 
 // MasterInviteRow is a pending salon_masters invite for the master cabinet.
@@ -28,11 +28,12 @@ type MasterActiveSalonRow struct {
 
 // MasterAppointmentListRow is one appointment visible to the master across salons.
 type MasterAppointmentListRow struct {
-	Appointment model.Appointment
-	ServiceName string
-	SalonName   string
-	ClientLabel string
-	ClientPhone *string
+	Appointment     model.Appointment
+	ServiceName     string
+	SalonName       string
+	ClientLabel     string
+	ClientPhone     *string
+	TotalPriceCents int64 `gorm:"column:total_price_cents"`
 }
 
 // MasterAppointmentListFilter filters master cross-salon appointments.
@@ -88,4 +89,30 @@ type MasterDashboardRepository interface {
 	CreateMasterClient(ctx context.Context, c *model.MasterClient) error
 	UpdateMasterClient(ctx context.Context, c *model.MasterClient) error
 	DeleteMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) error
+
+	ListMasterExpenseCategories(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterExpenseCategory, error)
+	CreateMasterExpenseCategory(ctx context.Context, category *model.MasterExpenseCategory) error
+	UpdateMasterExpenseCategory(ctx context.Context, category *model.MasterExpenseCategory) error
+	DeleteMasterExpenseCategory(ctx context.Context, masterProfileID, categoryID uuid.UUID) error
+
+	ListMasterExpenses(ctx context.Context, masterProfileID uuid.UUID, from, to *time.Time, limit, offset int) ([]model.MasterExpense, int64, error)
+	GetMasterExpenseByID(ctx context.Context, masterProfileID, expenseID uuid.UUID) (*model.MasterExpense, error)
+	CreateMasterExpense(ctx context.Context, expense *model.MasterExpense) error
+	UpdateMasterExpense(ctx context.Context, expense *model.MasterExpense) error
+	DeleteMasterExpense(ctx context.Context, masterProfileID, expenseID uuid.UUID) error
+
+	GetMasterFinanceSummary(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time) (int64, int64, error)
+	GetMasterRevenueTrend(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time) ([]RepositoryMasterRevenueTrendRow, error)
+	GetMasterTopServices(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time, limit int) ([]RepositoryMasterTopServiceRow, error)
+}
+
+type RepositoryMasterRevenueTrendRow struct {
+	Date         time.Time
+	IncomeCents  int64
+	ExpenseCents int64
+}
+
+type RepositoryMasterTopServiceRow struct {
+	ServiceName string
+	IncomeCents int64
 }

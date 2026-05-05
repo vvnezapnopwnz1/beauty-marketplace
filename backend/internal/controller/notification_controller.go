@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/auth"
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/auth"
+	"github.com/beauty-marketplace/backend/internal/service"
 	"go.uber.org/zap"
 )
 

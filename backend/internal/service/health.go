@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/repository"
 )
 
 // HealthService exposes application-level readiness checks.

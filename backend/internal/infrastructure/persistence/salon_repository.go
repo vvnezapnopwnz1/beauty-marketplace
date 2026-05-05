@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	dbmodel "github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	appmodel "github.com/yourusername/beauty-marketplace/internal/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	dbmodel "github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	appmodel "github.com/beauty-marketplace/backend/internal/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"gorm.io/gorm"
 )
 

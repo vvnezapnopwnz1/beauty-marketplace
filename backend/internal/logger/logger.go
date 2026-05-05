@@ -3,7 +3,7 @@ package logger
 import (
 	"fmt"
 
-	"github.com/yourusername/beauty-marketplace/internal/config"
+	"github.com/beauty-marketplace/backend/internal/config"
 	"go.uber.org/zap"
 )
 

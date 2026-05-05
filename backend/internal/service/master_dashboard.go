@@ -9,9 +9,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
-	"github.com/yourusername/beauty-marketplace/internal/servicecategory"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/service/appointmentstatus"
+	"github.com/beauty-marketplace/backend/internal/servicecategory"
 	"gorm.io/gorm"
 )
 
@@ -26,6 +27,7 @@ type MasterDashboardService interface {
 	ListAppointments(ctx context.Context, userID uuid.UUID, from, to *time.Time, status, search, source, sortBy, sortDir string, page, pageSize int) ([]MasterAppointmentDTO, int64, error)
 	CreatePersonalAppointment(ctx context.Context, userID uuid.UUID, in ManualAppointmentInput) (*model.Appointment, error)
 	UpdatePersonalAppointment(ctx context.Context, userID uuid.UUID, in UpdateAppointmentInput) error
+	PatchPersonalAppointmentStatus(ctx context.Context, userID, appointmentID uuid.UUID, newStatus string) error
 
 	// MasterServices
 	ListMasterServiceCategories(ctx context.Context) (*ServiceCategoriesResponse, error)
@@ -39,6 +41,21 @@ type MasterDashboardService interface {
 	CreateMasterClient(ctx context.Context, userID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error)
 	UpdateMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error)
 	DeleteMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) error
+
+	ListExpenseCategories(ctx context.Context, userID uuid.UUID) ([]MasterExpenseCategoryDTO, error)
+	CreateExpenseCategory(ctx context.Context, userID uuid.UUID, in CreateMasterExpenseCategoryInput) (*MasterExpenseCategoryDTO, error)
+	UpdateExpenseCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID, in CreateMasterExpenseCategoryInput) (*MasterExpenseCategoryDTO, error)
+	DeleteExpenseCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID) error
+
+	ListExpenses(ctx context.Context, userID uuid.UUID, from, to *time.Time, page, pageSize int) (*MasterExpenseListResponse, error)
+	CreateExpense(ctx context.Context, userID uuid.UUID, in CreateMasterExpenseInput) (*MasterExpenseDTO, error)
+	UpdateExpense(ctx context.Context, userID uuid.UUID, expenseID uuid.UUID, in CreateMasterExpenseInput) (*MasterExpenseDTO, error)
+	DeleteExpense(ctx context.Context, userID uuid.UUID, expenseID uuid.UUID) error
+
+	GetFinanceSummary(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) (*FinanceSummaryDTO, error)
+	GetFinanceTrend(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTrendPointDTO, error)
+	GetTopServices(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTopServiceDTO, error)
+	ExportNpdReport(ctx context.Context, userID uuid.UUID, month string) (map[string]any, error)
 }
 
 type MasterClientDTO struct {
@@ -115,18 +132,73 @@ type MasterSalonMembershipDTO struct {
 
 // MasterAppointmentDTO is GET /master-dashboard/appointments item.
 type MasterAppointmentDTO struct {
+	ID              uuid.UUID  `json:"id"`
+	SalonID         *uuid.UUID `json:"salonId,omitempty"`
+	SalonName       *string    `json:"salonName,omitempty"`
+	StartsAt        time.Time  `json:"startsAt"`
+	EndsAt          time.Time  `json:"endsAt"`
+	Status          string     `json:"status"`
+	ServiceName     string     `json:"serviceName"`
+	ClientLabel     string     `json:"clientLabel"`
+	ClientPhone     *string    `json:"clientPhone,omitempty"`
+	ClientNote      *string    `json:"clientNote,omitempty"`
+	ServiceID       uuid.UUID  `json:"serviceId"`
+	SalonMasterID   *uuid.UUID `json:"salonMasterId,omitempty"`
+	TotalPriceCents int64      `json:"totalPriceCents"`
+}
+
+type MasterExpenseCategoryDTO struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Emoji     string    `json:"emoji"`
+	SortOrder int       `json:"sortOrder"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type MasterExpenseDTO struct {
 	ID            uuid.UUID  `json:"id"`
-	SalonID       *uuid.UUID `json:"salonId,omitempty"`
-	SalonName     *string    `json:"salonName,omitempty"`
-	StartsAt      time.Time  `json:"startsAt"`
-	EndsAt        time.Time  `json:"endsAt"`
-	Status        string     `json:"status"`
-	ServiceName   string     `json:"serviceName"`
-	ClientLabel   string     `json:"clientLabel"`
-	ClientPhone   *string    `json:"clientPhone,omitempty"`
-	ClientNote    *string    `json:"clientNote,omitempty"`
-	ServiceID     uuid.UUID  `json:"serviceId"`
-	SalonMasterID *uuid.UUID `json:"salonMasterId,omitempty"`
+	CategoryID    *uuid.UUID `json:"categoryId,omitempty"`
+	CategoryName  *string    `json:"categoryName,omitempty"`
+	AppointmentID *uuid.UUID `json:"appointmentId,omitempty"`
+	AmountCents   int        `json:"amountCents"`
+	Description   string     `json:"description"`
+	ExpenseDate   string     `json:"expenseDate"`
+	CreatedAt     time.Time  `json:"createdAt"`
+}
+
+type MasterExpenseListResponse struct {
+	Items []MasterExpenseDTO `json:"items"`
+	Total int64              `json:"total"`
+}
+
+type FinanceSummaryDTO struct {
+	IncomeCents  int64 `json:"incomeCents"`
+	ExpenseCents int64 `json:"expenseCents"`
+	ProfitCents  int64 `json:"profitCents"`
+}
+
+type FinanceTrendPointDTO struct {
+	Date         string `json:"date"`
+	IncomeCents  int64  `json:"incomeCents"`
+	ExpenseCents int64  `json:"expenseCents"`
+}
+
+type FinanceTopServiceDTO struct {
+	ServiceName string `json:"serviceName"`
+	IncomeCents int64  `json:"incomeCents"`
+}
+
+type CreateMasterExpenseCategoryInput struct {
+	Name  string  `json:"name"`
+	Emoji *string `json:"emoji,omitempty"`
+}
+
+type CreateMasterExpenseInput struct {
+	CategoryID    *uuid.UUID `json:"categoryId,omitempty"`
+	AppointmentID *uuid.UUID `json:"appointmentId,omitempty"`
+	AmountCents   int        `json:"amountCents"`
+	Description   *string    `json:"description,omitempty"`
+	ExpenseDate   string     `json:"expenseDate"`
 }
 
 type masterDashboardService struct {
@@ -330,18 +402,19 @@ func (s *masterDashboardService) ListAppointments(ctx context.Context, userID uu
 			salonNamePtr = &sn
 		}
 		out[i] = MasterAppointmentDTO{
-			ID:            a.ID,
-			SalonID:       a.SalonID,
-			SalonName:     salonNamePtr,
-			StartsAt:      a.StartsAt,
-			EndsAt:        a.EndsAt,
-			Status:        a.Status,
-			ServiceName:   row.ServiceName,
-			ClientLabel:   row.ClientLabel,
-			ClientPhone:   row.ClientPhone,
-			ClientNote:    a.ClientNote,
-			ServiceID:     a.ServiceID,
-			SalonMasterID: a.SalonMasterID,
+			ID:              a.ID,
+			SalonID:         a.SalonID,
+			SalonName:       salonNamePtr,
+			StartsAt:        a.StartsAt,
+			EndsAt:          a.EndsAt,
+			Status:          a.Status,
+			ServiceName:     row.ServiceName,
+			ClientLabel:     row.ClientLabel,
+			ClientPhone:     row.ClientPhone,
+			ClientNote:      a.ClientNote,
+			ServiceID:       a.ServiceID,
+			SalonMasterID:   a.SalonMasterID,
+			TotalPriceCents: row.TotalPriceCents,
 		}
 	}
 	return out, total, nil
@@ -421,6 +494,55 @@ func (s *masterDashboardService) CreatePersonalAppointment(ctx context.Context, 
 	return ap, nil
 }
 
+func strFromPtr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return strings.TrimSpace(*p)
+}
+
+func personalAppointmentEnd(start time.Time, overrideStart *time.Time, totalDurationMinutes int) time.Time {
+	base := start
+	if overrideStart != nil {
+		base = overrideStart.UTC()
+	}
+	return base.Add(time.Duration(totalDurationMinutes) * time.Minute).UTC()
+}
+
+func (s *masterDashboardService) assertPersonalMasterAppointment(a *model.Appointment, mpID uuid.UUID) error {
+	if a.SalonID != nil {
+		return fmt.Errorf("appointment is not personal")
+	}
+	if a.MasterProfileID == nil || *a.MasterProfileID != mpID {
+		return fmt.Errorf("appointment not found or not personal")
+	}
+	return nil
+}
+
+func (s *masterDashboardService) PatchPersonalAppointmentStatus(ctx context.Context, userID, appointmentID uuid.UUID, newStatus string) error {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if mpID == uuid.Nil {
+		return fmt.Errorf("master profile required")
+	}
+	a, err := s.appts.FindByID(ctx, appointmentID)
+	if err != nil {
+		return err
+	}
+	if a == nil {
+		return gorm.ErrRecordNotFound
+	}
+	if err := s.assertPersonalMasterAppointment(a, mpID); err != nil {
+		return err
+	}
+	if !appointmentstatus.AllowedTransition(a.Status, newStatus) {
+		return fmt.Errorf("invalid status transition")
+	}
+	return s.appts.UpdateStatusForPersonalMaster(ctx, appointmentID, mpID, newStatus)
+}
+
 func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, userID uuid.UUID, in UpdateAppointmentInput) error {
 	mpID, err := s.masterProfileID(ctx, userID)
 	if err != nil {
@@ -430,7 +552,6 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 		return fmt.Errorf("master profile required")
 	}
 
-	// For Update, we need to find the appointment by MasterProfileID
 	a, err := s.appts.FindByID(ctx, in.AppointmentID)
 	if err != nil {
 		return err
@@ -438,10 +559,19 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 	if a == nil {
 		return gorm.ErrRecordNotFound
 	}
-	if a.MasterProfileID == nil || *a.MasterProfileID != mpID {
-		return fmt.Errorf("appointment not found or not personal")
+	if err := s.assertPersonalMasterAppointment(a, mpID); err != nil {
+		return err
+	}
+	if a.Status != "pending" && a.Status != "confirmed" {
+		return fmt.Errorf("appointment cannot be edited in current status")
 	}
 
+	hasStructuralChanges := len(in.ServiceIDs) > 0 ||
+		in.StartsAt != nil || in.EndsAt != nil ||
+		(in.GuestName != nil && strings.TrimSpace(*in.GuestName) != strFromPtr(a.GuestName)) ||
+		(in.GuestPhone != nil && strings.TrimSpace(*in.GuestPhone) != strFromPtr(a.GuestPhoneE164))
+
+	var servicesUpdated bool
 	if len(in.ServiceIDs) > 0 {
 		var services []model.MasterService
 		var totalDuration int
@@ -476,10 +606,19 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 		if err := s.appts.ReplaceAppointmentLineItems(ctx, a.ID, lineItems); err != nil {
 			return err
 		}
+		if in.EndsAt == nil {
+			a.EndsAt = personalAppointmentEnd(a.StartsAt, in.StartsAt, totalDuration)
+		}
+		servicesUpdated = true
 	}
 
 	if in.StartsAt != nil {
+		oldStart := a.StartsAt
 		a.StartsAt = in.StartsAt.UTC()
+		if in.EndsAt == nil && !servicesUpdated {
+			dur := a.EndsAt.Sub(oldStart)
+			a.EndsAt = a.StartsAt.Add(dur)
+		}
 	}
 	if in.EndsAt != nil {
 		a.EndsAt = in.EndsAt.UTC()
@@ -494,6 +633,12 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 		a.GuestPhoneE164 = in.GuestPhone
 	}
 
+	if a.EndsAt.Before(a.StartsAt) {
+		return fmt.Errorf("ends_at before starts_at")
+	}
+	if a.Status == "confirmed" && hasStructuralChanges {
+		a.Status = "pending"
+	}
 	return s.appts.Update(ctx, a)
 }
 
@@ -718,6 +863,365 @@ func (s *masterDashboardService) DeleteMasterClient(ctx context.Context, userID 
 		return fmt.Errorf("master profile required")
 	}
 	return s.repo.DeleteMasterClient(ctx, mpID, clientID)
+}
+
+func (s *masterDashboardService) ListExpenseCategories(ctx context.Context, userID uuid.UUID) ([]MasterExpenseCategoryDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	rows, err := s.repo.ListMasterExpenseCategories(ctx, mpID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]MasterExpenseCategoryDTO, len(rows))
+	for i, row := range rows {
+		out[i] = MasterExpenseCategoryDTO{
+			ID:        row.ID,
+			Name:      row.Name,
+			Emoji:     row.Emoji,
+			SortOrder: row.SortOrder,
+			CreatedAt: row.CreatedAt,
+		}
+	}
+	return out, nil
+}
+
+func (s *masterDashboardService) CreateExpenseCategory(ctx context.Context, userID uuid.UUID, in CreateMasterExpenseCategoryInput) (*MasterExpenseCategoryDTO, error) {
+	if strings.TrimSpace(in.Name) == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	category := &model.MasterExpenseCategory{
+		MasterProfileID: mpID,
+		Name:            strings.TrimSpace(in.Name),
+		Emoji:           strings.TrimSpace(ptrToString(in.Emoji)),
+	}
+	if err := s.repo.CreateMasterExpenseCategory(ctx, category); err != nil {
+		return nil, err
+	}
+	return &MasterExpenseCategoryDTO{
+		ID:        category.ID,
+		Name:      category.Name,
+		Emoji:     category.Emoji,
+		SortOrder: category.SortOrder,
+		CreatedAt: category.CreatedAt,
+	}, nil
+}
+
+func (s *masterDashboardService) UpdateExpenseCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID, in CreateMasterExpenseCategoryInput) (*MasterExpenseCategoryDTO, error) {
+	if strings.TrimSpace(in.Name) == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	category := &model.MasterExpenseCategory{
+		ID:              categoryID,
+		MasterProfileID: mpID,
+		Name:            strings.TrimSpace(in.Name),
+		Emoji:           strings.TrimSpace(ptrToString(in.Emoji)),
+	}
+	if err := s.repo.UpdateMasterExpenseCategory(ctx, category); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &MasterExpenseCategoryDTO{
+		ID:        category.ID,
+		Name:      category.Name,
+		Emoji:     category.Emoji,
+		SortOrder: category.SortOrder,
+		CreatedAt: category.CreatedAt,
+	}, nil
+}
+
+func (s *masterDashboardService) DeleteExpenseCategory(ctx context.Context, userID uuid.UUID, categoryID uuid.UUID) error {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if mpID == uuid.Nil {
+		return fmt.Errorf("master profile required")
+	}
+	return s.repo.DeleteMasterExpenseCategory(ctx, mpID, categoryID)
+}
+
+func (s *masterDashboardService) ListExpenses(ctx context.Context, userID uuid.UUID, from, to *time.Time, page, pageSize int) (*MasterExpenseListResponse, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	items, total, err := s.repo.ListMasterExpenses(ctx, mpID, from, to, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, err
+	}
+	categories, err := s.repo.ListMasterExpenseCategories(ctx, mpID)
+	if err != nil {
+		return nil, err
+	}
+	categoryByID := make(map[uuid.UUID]string, len(categories))
+	for _, c := range categories {
+		categoryByID[c.ID] = c.Name
+	}
+	out := make([]MasterExpenseDTO, len(items))
+	for i, item := range items {
+		var categoryName *string
+		if item.CategoryID != nil {
+			if name, ok := categoryByID[*item.CategoryID]; ok {
+				categoryName = &name
+			}
+		}
+		out[i] = MasterExpenseDTO{
+			ID:            item.ID,
+			CategoryID:    item.CategoryID,
+			CategoryName:  categoryName,
+			AppointmentID: item.AppointmentID,
+			AmountCents:   item.AmountCents,
+			Description:   item.Description,
+			ExpenseDate:   item.ExpenseDate.Format("2006-01-02"),
+			CreatedAt:     item.CreatedAt,
+		}
+	}
+	return &MasterExpenseListResponse{Items: out, Total: total}, nil
+}
+
+func (s *masterDashboardService) CreateExpense(ctx context.Context, userID uuid.UUID, in CreateMasterExpenseInput) (*MasterExpenseDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	if in.AmountCents <= 0 {
+		return nil, fmt.Errorf("amountCents must be greater than zero")
+	}
+	if strings.TrimSpace(in.ExpenseDate) == "" {
+		return nil, fmt.Errorf("expenseDate is required")
+	}
+	expenseDate, err := time.Parse("2006-01-02", in.ExpenseDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid expenseDate")
+	}
+	expense := &model.MasterExpense{
+		MasterProfileID: mpID,
+		CategoryID:      in.CategoryID,
+		AppointmentID:   in.AppointmentID,
+		AmountCents:     in.AmountCents,
+		Description:     strings.TrimSpace(ptrToString(in.Description)),
+		ExpenseDate:     expenseDate,
+	}
+	if err := s.repo.CreateMasterExpense(ctx, expense); err != nil {
+		return nil, err
+	}
+	return &MasterExpenseDTO{
+		ID:            expense.ID,
+		CategoryID:    expense.CategoryID,
+		AppointmentID: expense.AppointmentID,
+		AmountCents:   expense.AmountCents,
+		Description:   expense.Description,
+		ExpenseDate:   expense.ExpenseDate.Format("2006-01-02"),
+		CreatedAt:     expense.CreatedAt,
+	}, nil
+}
+
+func (s *masterDashboardService) UpdateExpense(ctx context.Context, userID uuid.UUID, expenseID uuid.UUID, in CreateMasterExpenseInput) (*MasterExpenseDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	if in.AmountCents <= 0 {
+		return nil, fmt.Errorf("amountCents must be greater than zero")
+	}
+	if strings.TrimSpace(in.ExpenseDate) == "" {
+		return nil, fmt.Errorf("expenseDate is required")
+	}
+	expenseDate, err := time.Parse("2006-01-02", in.ExpenseDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid expenseDate")
+	}
+	expense := &model.MasterExpense{
+		ID:              expenseID,
+		MasterProfileID: mpID,
+		CategoryID:      in.CategoryID,
+		AppointmentID:   in.AppointmentID,
+		AmountCents:     in.AmountCents,
+		Description:     strings.TrimSpace(ptrToString(in.Description)),
+		ExpenseDate:     expenseDate,
+	}
+	if err := s.repo.UpdateMasterExpense(ctx, expense); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &MasterExpenseDTO{
+		ID:            expense.ID,
+		CategoryID:    expense.CategoryID,
+		AppointmentID: expense.AppointmentID,
+		AmountCents:   expense.AmountCents,
+		Description:   expense.Description,
+		ExpenseDate:   expense.ExpenseDate.Format("2006-01-02"),
+		CreatedAt:     expense.CreatedAt,
+	}, nil
+}
+
+func (s *masterDashboardService) DeleteExpense(ctx context.Context, userID uuid.UUID, expenseID uuid.UUID) error {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if mpID == uuid.Nil {
+		return fmt.Errorf("master profile required")
+	}
+	return s.repo.DeleteMasterExpense(ctx, mpID, expenseID)
+}
+
+func (s *masterDashboardService) GetFinanceSummary(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) (*FinanceSummaryDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	income, expense, err := s.repo.GetMasterFinanceSummary(ctx, mpID, source, from, to)
+	if err != nil {
+		return nil, err
+	}
+	return &FinanceSummaryDTO{IncomeCents: income, ExpenseCents: expense, ProfitCents: income - expense}, nil
+}
+
+func (s *masterDashboardService) GetFinanceTrend(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTrendPointDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	rows, err := s.repo.GetMasterRevenueTrend(ctx, mpID, source, from, to)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FinanceTrendPointDTO, len(rows))
+	for i, row := range rows {
+		out[i] = FinanceTrendPointDTO{
+			Date:         row.Date.Format("2006-01-02"),
+			IncomeCents:  row.IncomeCents,
+			ExpenseCents: row.ExpenseCents,
+		}
+	}
+	return out, nil
+}
+
+func (s *masterDashboardService) GetTopServices(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTopServiceDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	rows, err := s.repo.GetMasterTopServices(ctx, mpID, source, from, to, 5)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FinanceTopServiceDTO, len(rows))
+	for i, row := range rows {
+		out[i] = FinanceTopServiceDTO{
+			ServiceName: row.ServiceName,
+			IncomeCents: row.IncomeCents,
+		}
+	}
+	return out, nil
+}
+
+func (s *masterDashboardService) ExportNpdReport(ctx context.Context, userID uuid.UUID, month string) (map[string]any, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+	if month == "" {
+		month = time.Now().Format("2006-01")
+	}
+	monthParsed, err := time.Parse("2006-01", month)
+	if err != nil {
+		return nil, fmt.Errorf("invalid month")
+	}
+	from := monthParsed
+	end := monthParsed.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	expenses, _, err := s.repo.ListMasterExpenses(ctx, mpID, &from, &end, 1000, 0)
+	if err != nil {
+		return nil, err
+	}
+	categories, err := s.repo.ListMasterExpenseCategories(ctx, mpID)
+	if err != nil {
+		return nil, err
+	}
+	categoryByID := make(map[uuid.UUID]string, len(categories))
+	for _, c := range categories {
+		categoryByID[c.ID] = c.Name
+	}
+	items := make([]map[string]any, len(expenses))
+	for i, expense := range expenses {
+		var categoryName *string
+		if expense.CategoryID != nil {
+			if name, ok := categoryByID[*expense.CategoryID]; ok {
+				categoryName = &name
+			}
+		}
+		items[i] = map[string]any{
+			"id":           expense.ID,
+			"categoryId":   expense.CategoryID,
+			"categoryName": categoryName,
+			"amountCents":  expense.AmountCents,
+			"description":  expense.Description,
+			"expenseDate":  expense.ExpenseDate.Format("2006-01-02"),
+		}
+	}
+	return map[string]any{
+		"month":      month,
+		"expenses":   items,
+		"totalCount": len(expenses),
+	}, nil
+}
+
+func ptrToString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func masterClientToDTO(m *model.MasterClient) MasterClientDTO {

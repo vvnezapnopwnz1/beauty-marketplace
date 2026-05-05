@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/beauty-marketplace/internal/errs"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/errs"
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

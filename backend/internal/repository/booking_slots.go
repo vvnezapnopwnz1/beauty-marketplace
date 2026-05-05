@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 )
 
 // SalonSlotMeta is the salon context needed to generate slots.

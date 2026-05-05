@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/service"
 )
 
 func (h *DashboardController) getSalonProfile(w http.ResponseWriter, r *http.Request, salonID uuid.UUID) {

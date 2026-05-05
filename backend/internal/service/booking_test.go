@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	domainmodel "github.com/yourusername/beauty-marketplace/internal/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	domainmodel "github.com/beauty-marketplace/backend/internal/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"gorm.io/gorm"
 )
 
@@ -92,6 +92,22 @@ func (f *fakeApptsRepo) FindServiceForSalon(ctx context.Context, salonID, servic
 }
 func (f *fakeApptsRepo) FindByMasterInRange(ctx context.Context, salonMasterID uuid.UUID, from, to time.Time) ([]model.Appointment, error) {
 	return f.appts, nil
+}
+func (f *fakeApptsRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.Appointment, error) {
+	for i := range f.appts {
+		if f.appts[i].ID == id {
+			cp := f.appts[i]
+			return &cp, nil
+		}
+	}
+	return nil, nil
+}
+func (f *fakeApptsRepo) Update(ctx context.Context, a *model.Appointment) error { return nil }
+func (f *fakeApptsRepo) ReplaceAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID, items []model.AppointmentLineItem) error {
+	return nil
+}
+func (f *fakeApptsRepo) UpdateStatusForPersonalMaster(ctx context.Context, appointmentID, masterProfileID uuid.UUID, status string) error {
+	return nil
 }
 func (f *fakeApptsRepo) SetSalonClientID(_ context.Context, _, _ uuid.UUID) error { return nil }
 

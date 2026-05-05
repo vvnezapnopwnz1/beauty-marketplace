@@ -6,8 +6,8 @@ import (
 	"sort"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/model"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/model"
+	"github.com/beauty-marketplace/backend/internal/repository"
 )
 
 // SalonFilter holds optional constraints for GetAllSalons.

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 )
 
 var phoneDashRe = regexp.MustCompile(`^\+7\d{10}$`)

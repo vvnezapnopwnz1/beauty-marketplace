@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/config"
-	"github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
-	domainrepo "github.com/yourusername/beauty-marketplace/internal/repository"
-	"github.com/yourusername/beauty-marketplace/internal/service"
+	"github.com/beauty-marketplace/backend/internal/config"
+	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	domainrepo "github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/service"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

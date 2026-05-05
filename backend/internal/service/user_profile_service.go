@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/beauty-marketplace/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/repository"
 )
 
 var usernameRe = regexp.MustCompile(`^[A-Za-z0-9_]{3,32}$`)

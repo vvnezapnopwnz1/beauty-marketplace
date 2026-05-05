@@ -4,7 +4,7 @@ package models
 import (
     "time"
 
-    model "github.com/yourusername/beauty-marketplace/internal/infrastructure/persistence/model"
+    model "github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 )
 
 // Device represents a registered mobile device for push notifications
