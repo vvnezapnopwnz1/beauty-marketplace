@@ -1,55 +1,60 @@
 import React from 'react';
-import { Stack } from 'expo-router';
+import { Slot } from 'expo-router';
 import { useAuthStore } from '../src/stores/authStore';
 import { useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { apiClient } from '../src/api/client';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_700Bold, DMSans_800ExtraBold } from '@expo-google-fonts/dm-sans';
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [isLoading, setIsLoading] = useState(true);
-  const { tokenPair, setTokenPair, setUser } = useAuthStore();
+  const [isReady, setIsReady] = useState(false);
+  const { tokenPair, setTokenPair } = useAuthStore();
+
+  const [fontsLoaded] = useFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_700Bold,
+    DMSans_800ExtraBold,
+    DMSerifDisplay_400Regular,
+  });
 
   useEffect(() => {
-    // Check for existing session on app start
-    const checkExistingSession = async () => {
+    async function prepare() {
       try {
+        // Restore session
         const tokenPairStr = await SecureStore.getItemAsync('tokenPair');
         if (tokenPairStr) {
           const storedTokenPair = JSON.parse(tokenPairStr);
           setTokenPair(storedTokenPair);
-          
-          // Fetch user data
-          // const response = await apiClient.get<User>('/users/me');
-          // setUser(response.data);
         }
-      } catch (error) {
-        console.error('Failed to restore session:', error);
+      } catch (e) {
+        console.warn(e);
       } finally {
-        setIsLoading(false);
+        setIsReady(true);
       }
-    };
+    }
 
-    checkExistingSession();
-  }, []);
+    prepare();
+  }, [setTokenPair]);
 
-  if (isLoading) {
-    // Show splash screen or loading indicator
+  useEffect(() => {
+    if (isReady && fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [isReady, fontsLoaded]);
+
+  if (!isReady || !fontsLoaded) {
     return null;
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      {!tokenPair ? (
-        // Unauthenticated user - show auth flow
-        <Stack.Screen name="(auth)" />
-      ) : (
-        // Authenticated user - show main app
-        <Stack.Screen name="(tabs)" />
-      )}
-    </Stack>
+    <SafeAreaProvider>
+      <Slot />
+    </SafeAreaProvider>
   );
 }

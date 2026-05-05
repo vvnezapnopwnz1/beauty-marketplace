@@ -10,11 +10,11 @@
     "resolveJsonModule": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "baseUrl": ".",
     "paths": {
-      "@actions/*": ["./actions/*"],
-      "@helpers/*": ["./helpers/*"],
-      "@fixtures/*": ["./fixtures/*"]
+      "/*": ["../src/*"],
+      "@actions/*": ["./e2e/actions/*"],
+      "@helpers/*": ["./e2e/helpers/*"],
+      "@fixtures/*": ["./e2e/fixtures/*"]
     }
   },
   "include": ["./**/*.ts"],

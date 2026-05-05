@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beautica Marketplace — RN App Brainstorm</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #f3e8ff 100%);
+    min-height: 100vh;
+    padding: 2rem;
+    color: #1a1a2e;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #831843;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: #6b7280;
+    margin-bottom: 2rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .card h3 {
+    font-size: 1.1rem;
+    color: #9333ea;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .card li {
+    padding: 0.4rem 0;
+    font-size: 0.95rem;
+    color: #374151;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .card li:last-child { border-bottom: none; }
+  .card li::before {
+    content: "•";
+    color: #d946ef;
+    font-weight: bold;
+    margin-right: 0.5rem;
+  }
+  .question-box {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    border-left: 4px solid #d946ef;
+  }
+  .question-box h2 {
+    font-size: 1.3rem;
+    color: #831843;
+    margin-bottom: 1rem;
+  }
+  .question-box p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #374151;
+  }
+  .tag {
+    display: inline-block;
+    background: #fce7f3;
+    color: #9d174d;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 0.3rem;
+    margin-bottom: 0.3rem;
+  }
+  .arrow {
+    text-align: center;
+    font-size: 2rem;
+    color: #d946ef;
+    margin: 1.5rem 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Beautica Marketplace</h1>
+  <p class="subtitle">Existing platform → React Native app brainstorm</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>🖥️ Current Web App</h3>
+      <ul>
+        <li><strong>Public:</strong> Search salons, browse services, guest booking</li>
+        <li><strong>Client:</strong> OTP auth, "My Appointments", notifications (SSE)</li>
+        <li><strong>Salon Dashboard:</strong> Calendar, staff, services, CRM, analytics</li>
+        <li><strong>Master Cabinet:</strong> Personal appointments, clients, services, finances</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Tech Stack</h3>
+      <ul>
+        <li><strong>Backend:</strong> Go 1.24, Fx DI, GORM, PostgreSQL</li>
+        <li><strong>Frontend:</strong> React + TS + Vite + MUI + Redux Toolkit</li>
+        <li><strong>Auth:</strong> OTP (SMS/Telegram) + JWT (2h access / 30d refresh)</li>
+        <li><strong>Integrations:</strong> 2GIS API (search, geocoding, places)</li>
+      </ul>
+      <div style="margin-top: 0.75rem;">
+        <span class="tag">Monorepo</span>
+        <span class="tag">REST API</span>
+        <span class="tag">SSE Streaming</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>👥 User Roles</h3>
+      <ul>
+        <li><strong>Guest:</strong> Browse & book without account</li>
+        <li><strong>Client:</strong> Registered user with bookings</li>
+        <li><strong>Master (individual):</strong> Private practice CRM</li>
+        <li><strong>Salon Staff:</strong> Owner, Admin, Receptionist</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="arrow">↓</div>
+
+  <div class="question-box">
+    <h2>First Question: Who is the RN app for?</h2>
+    <p>The existing web platform serves very different user types with very different needs. Before we design architecture, we need to decide <strong>which users the mobile app targets first.</strong></p>
+    <p style="margin-top: 1rem;">Should the RN app be:</p>
+    <ul style="margin-top: 0.75rem; padding-left: 1.5rem; line-height: 1.8;">
+      <li><strong>A client-facing app</strong> — browse salons, book appointments, manage bookings (like a mobile version of the public SPA)</li>
+      <li><strong>A salon staff app</strong> — calendar, appointments, CRM on-the-go (mobile dashboard)</li>
+      <li><strong>A master (individual) app</strong> — private practice management for solo beauticians</li>
+      <li><strong>All of the above</strong> — one app with role-based screens (most ambitious)</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

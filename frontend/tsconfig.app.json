@@ -17,15 +17,14 @@
     "noFallthroughCasesInSwitch": true,
     "strictNullChecks": true,
     "useUnknownInCatchVariables": false,
-
-    "baseUrl": ".",
     "paths": {
-      "@app/*": ["src/app/*"],
-      "@pages/*": ["src/pages/*"],
-      "@features/*": ["src/features/*"],
-      "@entities/*": ["src/entities/*"],
-      "@shared/*": ["src/shared/*"],
-      "@widgets/*": ["src/widgets/*"]
+      "/*": ["./*"],
+      "@app/*": ["./src/app/*"],
+      "@pages/*": ["./src/pages/*"],
+      "@features/*": ["./src/features/*"],
+      "@entities/*": ["./src/entities/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@widgets/*": ["./src/widgets/*"]
     }
   },
   "include": ["src"]

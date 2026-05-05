@@ -3,7 +3,7 @@ import type { TestContext } from '../helpers/test-context'
 import type { ApiHelpers } from '../helpers/api-helpers'
 import type { ActionFn } from './index'
 
-const OWNER_PHONE = globalThis.process?.env?.E2E_OWNER_PHONE || '+79001112233'
+const OWNER_PHONE = (globalThis as any).process?.env?.E2E_OWNER_PHONE || '+79001112233'
 
 export const notificationActions: Record<string, ActionFn> = {
   /**
@@ -24,7 +24,7 @@ export const notificationActions: Record<string, ActionFn> = {
     const activeServices = services.filter((s) => s.isActive !== false)
     let serviceId: string
     if (activeServices.length > 0) {
-      serviceId = activeServices[0].id
+      serviceId = activeServices[0].id as string
     } else {
       const svc = await api.createSalonService(OWNER_PHONE, salonId, {
         name: 'E2E Женская стрижка',
@@ -43,7 +43,7 @@ export const notificationActions: Record<string, ActionFn> = {
     const activeMasters = masters.filter((m) => m.isActive !== false)
     let salonMasterId: string
     if (activeMasters.length > 0) {
-      salonMasterId = activeMasters[0].id
+      salonMasterId = activeMasters[0].id as string
     } else {
       const master = await api.createSalonMaster(OWNER_PHONE, salonId, {
         displayName: 'E2E Мастер',

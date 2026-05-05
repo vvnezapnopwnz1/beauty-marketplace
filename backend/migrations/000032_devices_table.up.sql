@@ -1,5 +1,5 @@
--- Migration: 000032_devices_table.up.sql
--- Description: Create devices table for push notification registration
+-- Migration: 000032_devices_table
+-- Description: Create devices table for push notification registration with EAS
 -- Author: AI Agent
 
 CREATE TABLE devices (

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx *)",
       "Bash(npm run *)",
-      "Bash(mkdir *)"
+      "Bash(mkdir *)",
+      "Bash(/users/vvnezapnopwnz/.qwen/skills/brainstorming/scripts/start-server.sh *)",
+      "Bash(ls *)"
     ]
   },
   "$version": 3

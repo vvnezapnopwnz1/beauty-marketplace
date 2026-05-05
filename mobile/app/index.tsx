@@ -1,4 +1,13 @@
-import 'expo-router/entry';
+import React from 'react';
+import { Redirect } from 'expo-router';
+import { useAuthStore } from '../src/stores/authStore';
 
-// This is the entry point for Expo Router
-export default function Entry() {}
+export default function Index() {
+  const { tokenPair } = useAuthStore();
+  
+  if (!tokenPair) {
+    return <Redirect href="/(auth)/login" />;
+  }
+  
+  return <Redirect href="/(tabs)" />;
+}

@@ -1,6 +1,6 @@
 import { request, type APIRequestContext } from '@playwright/test'
 
-const env = globalThis.process?.env ?? {}
+const env = (globalThis as any).process?.env ?? {}
 const API_BASE = env.E2E_API_URL || 'http://localhost:8080'
 
 /**
