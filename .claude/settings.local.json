@@ -29,7 +29,9 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(awk '{print $1}')",
-      "Bash(grep -iE \"\\\\.env|credentials|\\\\.pem|secret|\\\\.key$|\\\\.p12|node_modules\")"
+      "Bash(grep -iE \"\\\\.env|credentials|\\\\.pem|secret|\\\\.key$|\\\\.p12|node_modules\")",
+      "Bash(git commit *)",
+      "Bash(git merge *)"
     ]
   }
 }
