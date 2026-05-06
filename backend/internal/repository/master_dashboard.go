@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/google/uuid"
 )
 
 // MasterInviteRow is a pending salon_masters invite for the master cabinet.
@@ -34,6 +34,11 @@ type MasterAppointmentListRow struct {
 	ClientLabel     string
 	ClientPhone     *string
 	TotalPriceCents int64 `gorm:"column:total_price_cents"`
+}
+
+type MasterAppointmentHeatmapDayRow struct {
+	Date  string `gorm:"column:date"`
+	Count int64  `gorm:"column:count"`
 }
 
 // MasterAppointmentListFilter filters master cross-salon appointments.
@@ -72,6 +77,7 @@ type MasterDashboardRepository interface {
 	AcceptPendingInvite(ctx context.Context, masterProfileID, salonMasterID uuid.UUID) (bool, error)
 	DeclinePendingInvite(ctx context.Context, masterProfileID, salonMasterID uuid.UUID) (bool, error)
 	ListMasterAppointments(ctx context.Context, f MasterAppointmentListFilter) ([]MasterAppointmentListRow, int64, error)
+	ListMasterAppointmentsHeatmap(ctx context.Context, masterProfileID uuid.UUID, monthStart, monthEnd time.Time) ([]MasterAppointmentHeatmapDayRow, int64, error)
 
 	// System service categories (global catalog; master cabinet picker).
 	ListSystemServiceCategories(ctx context.Context) ([]model.ServiceCategory, error)

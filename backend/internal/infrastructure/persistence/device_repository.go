@@ -60,6 +60,18 @@ func (r *deviceRepository) GetByUser(ctx context.Context, userID string) ([]mode
 	return devices, nil
 }
 
+func (r *deviceRepository) GetByUsers(ctx context.Context, userIDs []string) ([]models.Device, error) {
+	if len(userIDs) == 0 {
+		return []models.Device{}, nil
+	}
+	var devices []models.Device
+	err := r.db.WithContext(ctx).Where("user_id IN ?", userIDs).Find(&devices).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get devices for users: %w", err)
+	}
+	return devices, nil
+}
+
 func (r *deviceRepository) Update(ctx context.Context, device *models.Device) error {
 	result := r.db.WithContext(ctx).Save(device)
 	if result.Error != nil {

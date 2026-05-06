@@ -8,11 +8,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
 	"github.com/beauty-marketplace/backend/internal/service/appointmentstatus"
 	"github.com/beauty-marketplace/backend/internal/servicecategory"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -25,6 +25,8 @@ type MasterDashboardService interface {
 	DeclineInvite(ctx context.Context, userID, salonMasterID uuid.UUID) error
 	ListSalons(ctx context.Context, userID uuid.UUID) ([]MasterSalonMembershipDTO, error)
 	ListAppointments(ctx context.Context, userID uuid.UUID, from, to *time.Time, status, search, source, sortBy, sortDir string, page, pageSize int) ([]MasterAppointmentDTO, int64, error)
+	GetTodaySummary(ctx context.Context, userID uuid.UUID, date time.Time) (*MasterTodaySummaryDTO, error)
+	GetAppointmentsHeatmap(ctx context.Context, userID uuid.UUID, month time.Time) (*MasterAppointmentsHeatmapDTO, error)
 	CreatePersonalAppointment(ctx context.Context, userID uuid.UUID, in ManualAppointmentInput) (*model.Appointment, error)
 	UpdatePersonalAppointment(ctx context.Context, userID uuid.UUID, in UpdateAppointmentInput) error
 	PatchPersonalAppointmentStatus(ctx context.Context, userID, appointmentID uuid.UUID, newStatus string) error
@@ -56,6 +58,44 @@ type MasterDashboardService interface {
 	GetFinanceTrend(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTrendPointDTO, error)
 	GetTopServices(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTopServiceDTO, error)
 	ExportNpdReport(ctx context.Context, userID uuid.UUID, month string) (map[string]any, error)
+}
+
+type MasterTodayNextAppointmentDTO struct {
+	ID           uuid.UUID `json:"id"`
+	StartsAt     time.Time `json:"startsAt"`
+	ClientName   string    `json:"clientName"`
+	ServiceName  string    `json:"serviceName"`
+	MinutesUntil int       `json:"minutesUntil"`
+}
+
+type MasterTodayScheduleItemDTO struct {
+	ID          uuid.UUID `json:"id"`
+	StartsAt    time.Time `json:"startsAt"`
+	EndsAt      time.Time `json:"endsAt"`
+	ClientName  string    `json:"clientName"`
+	ServiceName string    `json:"serviceName"`
+	Status      string    `json:"status"`
+}
+
+type MasterTodaySummaryDTO struct {
+	Date              string                         `json:"date"`
+	AppointmentsCount int64                          `json:"appointmentsCount"`
+	RevenueCents      int64                          `json:"revenueCents"`
+	AttendanceRatePct int                            `json:"attendanceRatePct"`
+	NextAppointment   *MasterTodayNextAppointmentDTO `json:"nextAppointment,omitempty"`
+	SchedulePreview   []MasterTodayScheduleItemDTO   `json:"schedulePreview"`
+	WeeklyAttendance  []*int                         `json:"weeklyAttendance"`
+}
+
+type MasterAppointmentsHeatmapDayDTO struct {
+	Date  string `json:"date"`
+	Count int64  `json:"count"`
+}
+
+type MasterAppointmentsHeatmapDTO struct {
+	Month     string                            `json:"month"`
+	Days      []MasterAppointmentsHeatmapDayDTO `json:"days"`
+	MaxPerDay int64                             `json:"maxPerDay"`
 }
 
 type MasterClientDTO struct {
@@ -418,6 +458,151 @@ func (s *masterDashboardService) ListAppointments(ctx context.Context, userID uu
 		}
 	}
 	return out, total, nil
+}
+
+func dayBoundsUTC(date time.Time) (time.Time, time.Time) {
+	start := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	return start, start.Add(24 * time.Hour)
+}
+
+func (s *masterDashboardService) GetTodaySummary(ctx context.Context, userID uuid.UUID, date time.Time) (*MasterTodaySummaryDTO, error) {
+	from, to := dayBoundsUTC(date)
+	items, total, err := s.ListAppointments(ctx, userID, &from, &to, "", "", "", "starts_at", "asc", 1, 500)
+	if err != nil {
+		return nil, err
+	}
+
+	var revenueCents int64
+	attended := 0
+	totalAttendance := 0
+	for _, ap := range items {
+		if ap.Status == "completed" {
+			revenueCents += ap.TotalPriceCents
+			attended++
+			totalAttendance++
+			continue
+		}
+		if ap.Status == "no_show" {
+			totalAttendance++
+		}
+	}
+
+	attendanceRate := 0
+	if totalAttendance > 0 {
+		attendanceRate = int(float64(attended*100) / float64(totalAttendance))
+	}
+
+	var next *MasterTodayNextAppointmentDTO
+	now := time.Now().UTC()
+	for _, ap := range items {
+		if ap.StartsAt.Before(now) {
+			continue
+		}
+		if ap.Status == "cancelled" || strings.HasPrefix(ap.Status, "cancelled_") || ap.Status == "completed" || ap.Status == "no_show" {
+			continue
+		}
+		minutes := int(ap.StartsAt.Sub(now).Minutes())
+		if minutes < 0 {
+			minutes = 0
+		}
+		next = &MasterTodayNextAppointmentDTO{
+			ID:           ap.ID,
+			StartsAt:     ap.StartsAt,
+			ClientName:   ap.ClientLabel,
+			ServiceName:  ap.ServiceName,
+			MinutesUntil: minutes,
+		}
+		break
+	}
+
+	schedule := make([]MasterTodayScheduleItemDTO, 0, len(items))
+	for _, ap := range items {
+		schedule = append(schedule, MasterTodayScheduleItemDTO{
+			ID:          ap.ID,
+			StartsAt:    ap.StartsAt,
+			EndsAt:      ap.EndsAt,
+			ClientName:  ap.ClientLabel,
+			ServiceName: ap.ServiceName,
+			Status:      ap.Status,
+		})
+		if len(schedule) == 6 {
+			break
+		}
+	}
+
+	weekStart := from.AddDate(0, 0, -int((int(from.Weekday())+6)%7))
+	weekly := make([]*int, 7)
+	for i := 0; i < 7; i++ {
+		dayStart := weekStart.AddDate(0, 0, i)
+		if dayStart.After(from) {
+			continue
+		}
+		dayEnd := dayStart.Add(24 * time.Hour)
+		dayItems, _, dayErr := s.ListAppointments(ctx, userID, &dayStart, &dayEnd, "completed,no_show", "", "", "", "", 1, 500)
+		if dayErr != nil {
+			return nil, dayErr
+		}
+		dayCompleted := 0
+		dayTotal := 0
+		for _, ap := range dayItems {
+			if ap.Status == "completed" {
+				dayCompleted++
+				dayTotal++
+				continue
+			}
+			if ap.Status == "no_show" {
+				dayTotal++
+			}
+		}
+		if dayTotal == 0 {
+			continue
+		}
+		rate := int(float64(dayCompleted*100) / float64(dayTotal))
+		weekly[i] = &rate
+	}
+
+	return &MasterTodaySummaryDTO{
+		Date:              from.Format("2006-01-02"),
+		AppointmentsCount: total,
+		RevenueCents:      revenueCents,
+		AttendanceRatePct: attendanceRate,
+		NextAppointment:   next,
+		SchedulePreview:   schedule,
+		WeeklyAttendance:  weekly,
+	}, nil
+}
+
+func (s *masterDashboardService) GetAppointmentsHeatmap(ctx context.Context, userID uuid.UUID, month time.Time) (*MasterAppointmentsHeatmapDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return &MasterAppointmentsHeatmapDTO{
+			Month:     month.Format("2006-01"),
+			Days:      []MasterAppointmentsHeatmapDayDTO{},
+			MaxPerDay: 0,
+		}, nil
+	}
+
+	monthStart := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
+	monthEnd := monthStart.AddDate(0, 1, 0)
+	rows, maxPerDay, err := s.repo.ListMasterAppointmentsHeatmap(ctx, mpID, monthStart, monthEnd)
+	if err != nil {
+		return nil, err
+	}
+	days := make([]MasterAppointmentsHeatmapDayDTO, 0, len(rows))
+	for _, row := range rows {
+		days = append(days, MasterAppointmentsHeatmapDayDTO{
+			Date:  row.Date,
+			Count: row.Count,
+		})
+	}
+	return &MasterAppointmentsHeatmapDTO{
+		Month:     monthStart.Format("2006-01"),
+		Days:      days,
+		MaxPerDay: maxPerDay,
+	}, nil
 }
 
 func (s *masterDashboardService) CreatePersonalAppointment(ctx context.Context, userID uuid.UUID, in ManualAppointmentInput) (*model.Appointment, error) {

@@ -1,0 +1,20 @@
+appId: com.beautymarketplace.mobile
+name: Offline cache smoke
+---
+- launchApp
+- assertVisible: "Вход"
+- tapOn:
+    id: "login-phone-input"
+- inputText: "+79990000000"
+- tapOn:
+    id: "login-request-otp-button"
+- tapOn:
+    id: "login-code-input"
+- inputText: "1234"
+- tapOn:
+    id: "login-verify-otp-button"
+- assertVisible: "Сегодня"
+# Manual network toggle may differ per CI/device. This skeleton validates relaunch flow.
+- terminateApp
+- launchApp
+- assertVisible: "Сегодня"

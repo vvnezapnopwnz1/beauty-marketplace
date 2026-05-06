@@ -1,8 +1,10 @@
 import { create } from 'zustand';
+import * as SecureStore from 'expo-secure-store';
+import type { TokenPair, User } from '../api/types';
 
 interface AuthState {
-  tokenPair: { accessToken: string; refreshToken: string } | null;
-  user: { id: string; phone: string; effectiveRoles: string[] } | null;
+  tokenPair: TokenPair | null;
+  user: User | null;
   salonId: string | null;
 }
 
@@ -17,8 +19,18 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   tokenPair: null,
   user: null,
   salonId: null,
-  setTokenPair: (tokenPair) => set({ tokenPair }),
+  setTokenPair: (tokenPair) => {
+    if (tokenPair) {
+      void SecureStore.setItemAsync('tokenPair', JSON.stringify(tokenPair));
+    } else {
+      void SecureStore.deleteItemAsync('tokenPair');
+    }
+    set({ tokenPair });
+  },
   setUser: (user) => set({ user }),
   setSalonId: (salonId) => set({ salonId }),
-  logout: () => set({ tokenPair: null, user: null, salonId: null }),
+  logout: () => {
+    void SecureStore.deleteItemAsync('tokenPair');
+    set({ tokenPair: null, user: null, salonId: null });
+  },
 }));

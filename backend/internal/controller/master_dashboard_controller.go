@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/auth"
 	"github.com/beauty-marketplace/backend/internal/service"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -114,6 +114,29 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 	}
 
 	switch parts[0] {
+	case "today":
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			date := time.Now().UTC()
+			if rawDate := strings.TrimSpace(r.URL.Query().Get("date")); rawDate != "" {
+				parsed, err := time.Parse("2006-01-02", rawDate)
+				if err != nil {
+					jsonError(w, "date must be YYYY-MM-DD", http.StatusBadRequest)
+					return
+				}
+				date = parsed
+			}
+			out, err := h.svc.GetTodaySummary(r.Context(), userID, date)
+			if err != nil {
+				h.log.Error("master today summary", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
 	case "service-categories":
 		if len(parts) == 1 && r.Method == http.MethodGet {
 			out, err := h.svc.ListMasterServiceCategories(r.Context())
@@ -227,6 +250,26 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 		}
 		http.NotFound(w, r)
 	case "appointments":
+		if len(parts) == 2 && parts[1] == "heatmap" && r.Method == http.MethodGet {
+			month := time.Now().UTC()
+			if rawMonth := strings.TrimSpace(r.URL.Query().Get("month")); rawMonth != "" {
+				parsed, err := time.Parse("2006-01", rawMonth)
+				if err != nil {
+					jsonError(w, "month must be YYYY-MM", http.StatusBadRequest)
+					return
+				}
+				month = parsed
+			}
+			out, err := h.svc.GetAppointmentsHeatmap(r.Context(), userID, month)
+			if err != nil {
+				h.log.Error("master appointments heatmap", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
 		if len(parts) == 1 && r.Method == http.MethodGet {
 			q := r.URL.Query()
 			var from, to *time.Time

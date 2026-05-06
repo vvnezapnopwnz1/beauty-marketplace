@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/lib/pq"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -600,6 +600,30 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 		}
 	}
 	return out, total, nil
+}
+
+func (r *masterDashboardRepository) ListMasterAppointmentsHeatmap(ctx context.Context, masterProfileID uuid.UUID, monthStart, monthEnd time.Time) ([]repository.MasterAppointmentHeatmapDayRow, int64, error) {
+	rows := make([]repository.MasterAppointmentHeatmapDayRow, 0)
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT to_char(date(a.starts_at), 'YYYY-MM-DD') AS date, COUNT(*) AS count
+		FROM appointments a
+		LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id
+		WHERE (sm.master_id = ? OR a.master_profile_id = ?)
+		  AND a.starts_at >= ?
+		  AND a.starts_at < ?
+		GROUP BY date(a.starts_at)
+		ORDER BY date(a.starts_at) ASC
+	`, masterProfileID, masterProfileID, monthStart.UTC(), monthEnd.UTC()).Scan(&rows).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	var maxPerDay int64
+	for _, row := range rows {
+		if row.Count > maxPerDay {
+			maxPerDay = row.Count
+		}
+	}
+	return rows, maxPerDay, nil
 }
 
 func (r *masterDashboardRepository) ListSystemServiceCategories(ctx context.Context) ([]model.ServiceCategory, error) {

@@ -1,0 +1,36 @@
+export type PaletteKind = "light" | "dark";
+
+export type Palette = {
+  id: string;
+  label: string;
+  kind: PaletteKind;
+  bg: string;
+  surface: string;
+  surfaceAlt: string;
+  card: string;
+  border: string;
+  borderLight: string;
+  borderInset: string;
+  text: string;
+  textSoft: string;
+  muted: string;
+  textInverse: string;
+  accent: string;
+  accentLight: string;
+  accentBorder: string;
+  accentText: string;
+  luxe: string;
+  luxeLight: string;
+  luxeBorder: string;
+  green: string;
+  greenLight: string;
+  red: string;
+  redLight: string;
+  yellow: string;
+  yellowLight: string;
+  blue: string;
+  blueLight: string;
+  navBg: string;
+  statusBar: string;
+  scrim: string;
+};

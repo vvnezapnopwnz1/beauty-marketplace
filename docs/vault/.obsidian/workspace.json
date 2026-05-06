@@ -4,20 +4,82 @@
     "type": "split",
     "children": [
       {
-        "id": "7992b5c1973010bb",
+        "id": "a8d3088aaa53395c",
         "type": "tabs",
         "children": [
           {
-            "id": "a1cd97641129649f",
+            "id": "00a35a0a8deff959",
             "type": "leaf",
             "state": {
-              "type": "graph",
+              "type": "markdown",
+              "state": {
+                "file": "CLAUDE.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "CLAUDE"
+            }
+          },
+          {
+            "id": "579f7b4d324daa2e",
+            "type": "leaf",
+            "state": {
+              "type": "tasknotes-pomodoro-stats-view",
               "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "icon": "bar-chart",
+              "title": "Pomodoro stats"
+            }
+          },
+          {
+            "id": "e86ebf1cd7394260",
+            "type": "leaf",
+            "state": {
+              "type": "tasks-map-graph-view",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Tasks map"
+            }
+          },
+          {
+            "id": "8b7f8293a01470cc",
+            "type": "leaf",
+            "state": {
+              "type": "tasks-map-graph-view",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Tasks map"
+            }
+          },
+          {
+            "id": "be735932bdd44dc5",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "TaskNotes/Tasks/Добавить чат.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Добавить чат"
+            }
+          },
+          {
+            "id": "89d2bc3bbe6348f4",
+            "type": "leaf",
+            "state": {
+              "type": "bases",
+              "state": {
+                "file": "TaskNotes/Views/tasks-default.base",
+                "viewName": "Manual Order"
+              },
+              "icon": "tasknotes-simple",
+              "title": "tasks-default"
             }
           }
-        ]
+        ],
+        "currentTab": 5
       }
     ],
     "direction": "vertical"
@@ -90,6 +152,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "TaskNotes/Views/tasks-default.base",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,7 +162,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for tasks-default"
             }
           },
           {
@@ -108,12 +171,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "architecture/db-schema.md",
+                "file": "TaskNotes/Views/tasks-default.base",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from db-schema"
+              "title": "Outgoing links from tasks-default"
             }
           },
           {
@@ -138,7 +201,7 @@
               "type": "all-properties",
               "state": {
                 "sortOrder": "frequency",
-                "showSearch": false,
+                "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-archive",
@@ -151,16 +214,17 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "architecture/db-schema.md",
+                "file": "TaskNotes/Views/tasks-default.base",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of db-schema"
+              "title": "Outline of tasks-default"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "horizontal",
@@ -174,48 +238,56 @@
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
-      "bases:Create new base": false
+      "bases:Create new base": false,
+      "tasknotes:Open mini calendar view": false,
+      "tasknotes:Open calendar view": false,
+      "tasknotes:Open tasks view": false,
+      "tasknotes:Open agenda view": false,
+      "tasknotes:Open kanban board": false,
+      "tasknotes:Open pomodoro timer": false,
+      "tasknotes:Open pomodoro statistics": false,
+      "tasknotes:Create new task": false,
+      "tasks-map:Open tasks map view": false
     }
   },
-  "active": "246c7a60e247d2fa",
+  "active": "a094228f87092f19",
   "lastOpenFiles": [
+    "TaskNotes/Tasks/Улучшить дизайн мобильного приложения и изменить расположение элементов.md",
+    "TaskNotes/Tasks/Добавить чат.md",
+    "Untitled.canvas",
+    "product/chat-roadmap.md",
+    "TaskNotes/Views/tasks-default.base",
+    "TaskNotes/Tasks",
+    "TaskNotes/Views/calendar-default.base",
+    "TaskNotes/Views/mini-calendar-default.base",
+    "TaskNotes/Views/agenda-default.base",
+    "TaskNotes/Views/kanban-default.base",
+    "CLAUDE.md",
+    "glossary.md",
+    "product/context.md",
+    "TaskNotes/Views/relationships.base",
+    "TaskNotes/Views",
+    "TaskNotes",
+    "README.md",
+    "Untitled.base",
+    "2026-05-06.md",
+    "runbooks/add-db-migration.md",
+    "runbooks/add-dashboard-endpoint.md",
     "architecture/db-schema.md",
     "runbooks/session-end-update-status.md",
     "runbooks/add-frontend-feature-fsd.md",
-    "runbooks/add-dashboard-endpoint.md",
-    "runbooks/add-db-migration.md",
-    "runbooks",
     "adr/0005-salon-master-vs-master-profile.md",
     "adr/0004-jwt-auth-with-otp.md",
     "adr/0003-uber-fx-for-di.md",
     "adr/0002-fsd-architecture-frontend.md",
     "adr/0001-no-2gis-db-cache.md",
-    "adr",
-    "glossary.md",
     "architecture/code-map.md",
-    "README.md",
     "entities/service-categories.md",
     "entities/plan-unified-search.md",
     "entities/master-profiles-salon-masters.md",
     "entities/dashboard-i18n.md",
     "entities/entity-prototype.md",
     "entities/appointment-statuses.md",
-    "entities",
-    "plans/track4-dashboard-features.md",
-    "plans/track2-booking-slots.md",
-    "plans/salon_place_page.md",
-    "plans/phase1-agent-prompt.md",
-    "plans/multi-service-guest-booking.md",
-    "plans/calendar-upgrade-prompt.md",
-    "plans/bento-redesign-task.md",
-    "plans/beautica-strategic-directions.html",
-    "plans",
-    "product",
-    "Untitled.canvas",
-    "Untitled 1.canvas",
-    "app-pages-graph.html",
-    "frontend/src/pages/dashboard/ui/drawers",
-    "frontend/src/pages/dashboard/ui",
-    "frontend/src/pages/dashboard"
+    "Untitled 1.canvas"
   ]
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 )
 
 type AppointmentNotifier interface {

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Beauty Marketplace",
-    "slug": "beauty-marketplace",
+    "slug": "beautica",
     "scheme": "beautymarketplace",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -27,7 +27,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.beautymarketplace.app"
+      "bundleIdentifier": "com.beautymarketplace.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -42,9 +45,11 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "your-eas-project-id-here"
+        "projectId": "fe1c130c-2e3e-47b7-b966-f78f9424acb7"
       }
-    }
+    },
+    "owner": "vvnezapnopwnz"
   }
 }

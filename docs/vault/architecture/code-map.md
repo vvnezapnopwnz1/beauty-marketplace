@@ -33,6 +33,7 @@ code_pointers:
 | DnD перенос записи | `PUT .../appointments/:id` (см. dashboard) | `frontend/src/features/reschedule-appointment/`, `pages/dashboard/lib/dndCalendarUtils.ts` |
 | Dev auth/e2e bootstrap (`DEV_OTP_BYPASS_ANY`, `/api/dev/*`) | `backend/internal/config/config.go`, `backend/internal/service/auth.go`, `backend/internal/controller/dev_controller.go`, `backend/internal/controller/server.go` | `frontend/e2e/helpers/api-helpers.ts`, `frontend/e2e/playwright.config.ts`, `frontend/e2e/tests/flow-runner.spec.ts` |
 | E2E flow-runner (YAML сценарии + action registry) | — | `frontend/e2e/scenarios/flows.yaml`, `frontend/e2e/actions/index.ts` (+ `notification.actions.ts`), `frontend/e2e/helpers/flow-loader.ts` |
+| Mobile master app (Expo, FSD-lite) | `backend/internal/controller/master_dashboard_controller.go`, `backend/internal/controller/device_controller.go`, `backend/internal/push/expo_pusher.go` | `mobile/app/(tabs)/*`, `mobile/app/(settings)/*`, `mobile/src/entities/*`, `mobile/src/features/*`, `mobile/src/shared/*`, `mobile/src/api/dashboardClient.ts` |
 
 ## Связанные заметки
 

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
-import { useTheme } from '../../src/theme';
+import { useTheme } from '../../src/shared/theme/useTheme';
 import { AppointmentCard, Appointment } from '../../src/components/appointments/AppointmentCard';
 
 const TABS = ['Предстоящие', 'Прошедшие', 'Отмененные'];
 
-const DATA: Record<string, Appointment[]> = {
+const appointmentsByDate: Record<string, Appointment[]> = {
   'Сегодня, 7 мая': [
     { time: '10:00', name: 'Мария С.', phone: '+7 (900) 123-45-67', service: 'Стрижка и укладка', price: '2 500 ₽', dur: '1ч 15м', status: 'confirmed' },
     { time: '12:00', name: 'Ольга К.', phone: '+7 (900) 987-65-43', service: 'Окрашивание в один тон', price: '4 800 ₽', dur: '2ч 0м', status: 'pending' },
@@ -53,7 +53,7 @@ export default function AppointmentsScreen() {
 
         {/* List */}
         <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-          {Object.entries(DATA).map(([date, appointments]) => (
+          {Object.entries(appointmentsByDate).map(([date, appointments]) => (
             <View key={date} style={styles.group}>
               <Text style={[styles.dateHeader, { color: colors.muted }]}>{date}</Text>
               {appointments.map((item, i) => (

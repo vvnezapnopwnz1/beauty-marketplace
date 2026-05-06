@@ -18,6 +18,9 @@ type DeviceRepository interface {
 	// GetByUser fetches all devices for a given user
 	GetByUser(ctx context.Context, userID string) ([]models.Device, error)
 
+	// GetByUsers fetches all devices for provided users
+	GetByUsers(ctx context.Context, userIDs []string) ([]models.Device, error)
+
 	// Update replaces an existing device's token (for token rotation)
 	Update(ctx context.Context, device *models.Device) error
 

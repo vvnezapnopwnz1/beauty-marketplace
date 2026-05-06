@@ -258,7 +258,6 @@ cd frontend && npm run dev        # Vite → :5173
 ## Следующие шаги
 
 - [x] Схема БД под MVP — миграции в `backend/migrations/`
-- [x] Интеграция 2GIS — поиск/детали + unified search на бэкенде
 - [x] Логика расписания и записи — реальные слоты (`BookingService.GetAvailableSlots`, `GET /api/v1/salons/:id/slots` + `GET /api/v1/dashboard/slots`, `SlotPicker`/`PublicSlotPicker`), трек 2
 - [x] Гостевая запись на `SalonPage`: wizard в `GuestBookingDialog` (мульти-услуги → мастер → слот по `serviceIds` → сводка над контактами → submit), CTA «Записаться» в hero; публичные слоты — `serviceId` / `serviceIds`, `masterProfileId` **или** `salonMasterId` (не оба; иначе 400); дашборд показывает и фильтрует мульти-визиты через `appointment_line_items`
 - [x] Dual-mode маршрут на странице салона: `/salon/:id` и `/place/:externalId` + redirect при связке external_id

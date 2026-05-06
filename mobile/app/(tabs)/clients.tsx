@@ -1,31 +1,69 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { useTheme } from '../../src/theme';
-import { ClientCard, Client } from '../../src/components/clients/ClientCard';
+import React, { useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+} from "react-native";
+import { useTheme } from "../../src/shared/theme/useTheme";
+import {
+  deriveClientSegment,
+  type ClientSegment,
+  useMasterClientsQuery,
+} from "../../src/entities/clients/api";
 
-const CATEGORIES = ['Все', 'Постоянные', 'Новые', 'VIP'];
-
-const CLIENTS: Client[] = [
-  { id: '1', name: 'Мария Сидорова', phone: '+7 (900) 123-45-67', totalSpent: '15 400 ₽', tags: ['Постоянный'], color: '#5A9467' },
-  { id: '2', name: 'Ольга Кузнецова', phone: '+7 (900) 987-65-43', totalSpent: '4 800 ₽', tags: ['Новый'], color: '#C8A27E' },
-  { id: '3', name: 'Анна Котова', phone: '+7 (900) 555-44-33', totalSpent: '42 000 ₽', tags: ['VIP'], color: '#B24C4C' },
-  { id: '4', name: 'Дарья Морозова', phone: '+7 (900) 111-22-33', totalSpent: '8 200 ₽', tags: ['Постоянный'], color: '#8A78A8' },
-  { id: '5', name: 'Елена Белова', phone: '+7 (900) 444-55-66', totalSpent: '2 100 ₽', tags: ['Новый'], color: '#4A6D8C' },
+const SEGMENTS: Array<{ key: ClientSegment; label: string }> = [
+  { key: "all", label: "Все" },
+  { key: "regular", label: "Постоянные" },
+  { key: "new", label: "Новые" },
+  { key: "vip", label: "VIP" },
 ];
 
 export default function ClientsScreen() {
   const { colors, typography } = useTheme();
-  const [activeCat, setActiveCat] = useState(0);
-  const [search, setSearch] = useState('');
+  const [activeSegment, setActiveSegment] = useState<ClientSegment>("all");
+  const [search, setSearch] = useState("");
+  const { data = [], isLoading, isError } = useMasterClientsQuery(search);
+
+  const rows = useMemo(
+    () =>
+      data.length > 0
+        ? data.filter((item) => {
+            if (activeSegment === "all") {
+              return true;
+            }
+            return deriveClientSegment(item) === activeSegment;
+          })
+        : [],
+    [activeSegment, data],
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
       <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text, fontFamily: typography.fonts.serif }]}>Клиенты</Text>
+        <Text
+          style={[
+            styles.title,
+            { color: colors.text, fontFamily: typography.fonts.serif },
+          ]}
+        >
+          Клиенты
+        </Text>
 
         {/* Search */}
         <View style={styles.searchContainer}>
-          <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+          <View
+            style={[
+              styles.searchBox,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.borderLight,
+              },
+            ]}
+          >
             <Text style={[styles.searchIcon, { color: colors.muted }]}>🔍</Text>
             <TextInput
               placeholder="Поиск по имени или телефону"
@@ -39,27 +77,37 @@ export default function ClientsScreen() {
 
         {/* Categories */}
         <View style={styles.chipsWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
-            {CATEGORIES.map((cat, idx) => {
-              const isActive = activeCat === idx;
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsContainer}
+          >
+            {SEGMENTS.map((segment) => {
+              const isActive = activeSegment === segment.key;
               return (
                 <TouchableOpacity
-                  key={cat}
+                  key={segment.key}
                   activeOpacity={0.7}
-                  onPress={() => setActiveCat(idx)}
+                  onPress={() => setActiveSegment(segment.key)}
                   style={[
                     styles.chip,
-                    { 
-                      backgroundColor: isActive ? colors.accent : colors.surface,
-                      borderColor: isActive ? colors.accent : colors.borderLight,
-                    }
+                    {
+                      backgroundColor: isActive
+                        ? colors.accent
+                        : colors.surface,
+                      borderColor: isActive
+                        ? colors.accent
+                        : colors.borderLight,
+                    },
                   ]}
                 >
-                  <Text style={[
-                    styles.chipText,
-                    { color: isActive ? '#FFFFFF' : colors.textSoft }
-                  ]}>
-                    {cat}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: isActive ? colors.card : colors.textSoft },
+                    ]}
+                  >
+                    {segment.label}
                   </Text>
                 </TouchableOpacity>
               );
@@ -69,19 +117,60 @@ export default function ClientsScreen() {
 
         {/* List */}
         <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-          {CLIENTS.map((item) => (
-            <ClientCard key={item.id} item={item} />
-          ))}
+          {isLoading ? (
+            <Text style={[styles.stateText, { color: colors.muted }]}>
+              Загрузка клиентов...
+            </Text>
+          ) : null}
+          {isError ? (
+            <Text style={[styles.stateText, { color: colors.red }]}>
+              Не удалось загрузить список клиентов
+            </Text>
+          ) : null}
+          {!isLoading && !isError && rows.length === 0 ? (
+            <Text style={[styles.stateText, { color: colors.textSoft }]}>
+              Клиенты не найдены
+            </Text>
+          ) : null}
+          {rows.map((item) => {
+            const visits = item.visitCount ?? item.visitsCount ?? 0;
+            const segment = deriveClientSegment(item);
+            return (
+              <View
+                key={item.id}
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.borderLight,
+                  },
+                ]}
+              >
+                <Text style={[styles.name, { color: colors.text }]}>
+                  {item.displayName || "Без имени"}
+                </Text>
+                <Text style={[styles.meta, { color: colors.textSoft }]}>
+                  {item.phone || "Телефон не указан"}
+                </Text>
+                <Text style={[styles.meta, { color: colors.textSoft }]}>
+                  Визиты: {visits} · Сегмент: {segment.toUpperCase()}
+                </Text>
+              </View>
+            );
+          })}
           <View style={styles.spacer} />
         </ScrollView>
       </View>
 
       {/* FAB Placeholder */}
-      <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          { backgroundColor: colors.accent, shadowColor: colors.accent },
+        ]}
         activeOpacity={0.8}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={[styles.fabText, { color: colors.card }]}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -105,8 +194,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     height: 44,
     borderRadius: 14,
@@ -119,7 +208,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   chipsWrapper: {
     marginBottom: 16,
@@ -136,24 +225,42 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   list: {
     flex: 1,
     paddingHorizontal: 18,
   },
+  card: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    gap: 4,
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  meta: {
+    fontSize: 13,
+  },
+  stateText: {
+    fontSize: 14,
+    marginBottom: 10,
+  },
   spacer: {
     height: 80,
   },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
     right: 18,
     width: 48,
     height: 48,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
@@ -161,7 +268,6 @@ const styles = StyleSheet.create({
   },
   fabText: {
     fontSize: 22,
-    color: '#FFFFFF',
     marginTop: -2,
   },
 });

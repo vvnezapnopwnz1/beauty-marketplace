@@ -42,6 +42,10 @@ func (m *mockDeviceRepo) GetByUser(ctx context.Context, userID string) ([]models
 	return nil, nil
 }
 
+func (m *mockDeviceRepo) GetByUsers(ctx context.Context, userIDs []string) ([]models.Device, error) {
+	return nil, nil
+}
+
 func (m *mockDeviceRepo) Update(ctx context.Context, device *models.Device) error {
 	if m.updateFn != nil {
 		return m.updateFn(ctx, device)

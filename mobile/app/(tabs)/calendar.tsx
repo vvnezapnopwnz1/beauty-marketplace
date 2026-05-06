@@ -1,85 +1,87 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
-import { useTheme } from '../../src/theme';
-import { CalendarGrid } from '../../src/components/calendar/CalendarGrid';
-
-const DAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'];
-const DAYS_NUMS = ['5', '6', '7', '8', '9'];
+import React, { useMemo, useRef, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../../src/shared/theme/useTheme";
+import { useMasterAppointmentsQuery, type MasterAppointment } from "../../src/entities/appointments/api";
+import { useMeQuery } from "../../src/entities/me/api";
+import { MonthHeatmap } from "../../src/features/calendar/MonthHeatmap";
+import { MasterCalendar } from "../../src/features/calendar/MasterCalendar";
+import { useRescheduleAppointment } from "../../src/features/reschedule/useRescheduleAppointment";
+import { AppointmentQuickActionsSheet, type AppointmentQuickActionsSheetRef } from "../../src/features/calendar/AppointmentQuickActionsSheet";
 
 export default function CalendarScreen() {
-  const { colors, typography } = useTheme();
-  const [viewMode, setViewMode] = useState<'day' | 'week'>('week');
+  const { colors } = useTheme();
+  const [viewMode, setViewMode] = useState<"day" | "week">("week");
+  const [selected, setSelected] = useState<MasterAppointment | null>(null);
+  const sheetRef = useRef<AppointmentQuickActionsSheetRef>(null);
+  const now = useMemo(() => new Date(), []);
+
+  const from = useMemo(() => {
+    const d = new Date(now);
+    if (viewMode === "day") return d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() - d.getDay());
+    return d.toISOString().slice(0, 10);
+  }, [now, viewMode]);
+  const to = useMemo(() => {
+    const d = new Date(now);
+    if (viewMode === "day") d.setDate(d.getDate() + 1);
+    else d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  }, [now, viewMode]);
+
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const { data: me } = useMeQuery();
+  const isAdmin = (me?.effectiveRoles?.salonMemberships?.length ?? 0) > 0;
+  const { data } = useMasterAppointmentsQuery({ from, to, page: 1, pageSize: 100 });
+  const reschedule = useRescheduleAppointment();
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
-      {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.navBg, borderBottomColor: colors.borderLight }]}>
-        <View style={styles.headerTop}>
-          <Text style={[styles.title, { color: colors.text }]}>Май 2026</Text>
-          <View style={styles.toggleContainer}>
-            {['День', 'Неделя'].map((label, idx) => {
-              const mode = idx === 0 ? 'day' : 'week';
-              const isActive = viewMode === mode;
-              return (
-                <TouchableOpacity
-                  key={label}
-                  activeOpacity={0.7}
-                  onPress={() => setViewMode(mode)}
-                  style={[
-                    styles.toggleBtn,
-                    {
-                      backgroundColor: isActive ? colors.accent : 'transparent',
-                      borderColor: isActive ? 'transparent' : colors.border,
-                      borderWidth: isActive ? 0 : 1,
-                    }
-                  ]}
-                >
-                  <Text style={[
-                    styles.toggleText,
-                    { color: isActive ? '#FFFFFF' : colors.muted }
-                  ]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Day headers */}
-        <View style={styles.dayHeaders}>
-          {DAYS_SHORT.map((day, i) => (
-            <View key={i} style={styles.dayHeaderItem}>
-              <Text style={[styles.dayLabel, { color: colors.muted }]}>{day}</Text>
-              <View style={[
-                styles.dayNumContainer,
-                { backgroundColor: i === 2 ? colors.accent : 'transparent' }
-              ]}>
-                <Text style={[
-                  styles.dayNum,
-                  { 
-                    color: i === 2 ? '#FFFFFF' : colors.text,
-                    fontWeight: i === 2 ? '800' : '500'
-                  }
-                ]}>
-                  {DAYS_NUMS[i]}
+        <Text style={[styles.title, { color: colors.text }]}>Календарь</Text>
+        <View style={styles.toggleContainer}>
+          {(["day", "week"] as const).map((mode) => {
+            const isActive = viewMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                activeOpacity={0.8}
+                onPress={() => setViewMode(mode)}
+                style={[
+                  styles.toggleBtn,
+                  {
+                    backgroundColor: isActive ? colors.accent : "transparent",
+                    borderColor: isActive ? "transparent" : colors.border,
+                    borderWidth: isActive ? 0 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.toggleText, { color: isActive ? colors.textInverse : colors.muted }]}>
+                  {mode === "day" ? "День" : "Неделя"}
                 </Text>
-              </View>
-            </View>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
-      {/* Grid */}
-      <CalendarGrid />
+      <View style={styles.content}>
+        <MonthHeatmap month={month} />
+        <MasterCalendar
+          mode={viewMode}
+          isResourceMode={isAdmin}
+          appointments={data?.items ?? []}
+          onDragEnd={(appointment, nextStartsAt, nextEndsAt) =>
+            reschedule.mutate({ id: appointment.id, startsAt: nextStartsAt, endsAt: nextEndsAt })
+          }
+          onLongPressAppointment={(appointment) => {
+            setSelected(appointment);
+            sheetRef.current?.present();
+          }}
+        />
+      </View>
 
-      {/* FAB Placeholder (Task 23) */}
-      <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      <AppointmentQuickActionsSheet ref={sheetRef} appointment={selected} />
     </SafeAreaView>
   );
 }
@@ -88,75 +90,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  header: {
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  header: { paddingTop: 8, paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1 },
+  title: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
+  toggleContainer: { flexDirection: "row", gap: 8 },
   toggleBtn: {
     paddingVertical: 5,
     paddingHorizontal: 14,
     borderRadius: 100,
   },
-  toggleText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  dayHeaders: {
-    flexDirection: 'row',
-    paddingLeft: 30,
-  },
-  dayHeaderItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  dayLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dayNumContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    marginTop: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayNum: {
-    fontSize: 14,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 18,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  fabText: {
-    fontSize: 22,
-    color: '#FFFFFF',
-    marginTop: -2,
-  },
+  toggleText: { fontSize: 12, fontWeight: "700" },
+  content: { flex: 1, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14 },
 });
