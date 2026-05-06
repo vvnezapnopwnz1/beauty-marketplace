@@ -18,7 +18,17 @@ type NotificationService interface {
 	MarkAllRead(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateForUsers(ctx context.Context, userIDs []uuid.UUID, notifType, title, body string, data json.RawMessage) error
 	Subscribe(userID uuid.UUID) (<-chan repository.NotificationRow, func())
+	PublishEvent(userIDs []uuid.UUID, eventType string, data json.RawMessage)
 }
+
+// EventEnvelope is the over-the-wire SSE payload for non-notification events (e.g. chat).
+type EventEnvelope struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+// EventRowType marks a NotificationRow as an ephemeral event (not persisted).
+const EventRowType = "__event__"
 
 type NotificationCounters struct {
 	Unread int64
@@ -27,14 +37,24 @@ type NotificationCounters struct {
 
 type notificationService struct {
 	repo repository.NotificationRepository
+	pusher NotificationPusher
 
 	mu   sync.RWMutex
 	subs map[uuid.UUID]map[chan repository.NotificationRow]struct{}
 }
 
-func NewNotificationService(repo repository.NotificationRepository) NotificationService {
+type NotificationPusher interface {
+	PushForUsers(ctx context.Context, userIDs []string, title, body string, data json.RawMessage)
+}
+
+func NewNotificationService(repo repository.NotificationRepository, pushers ...NotificationPusher) NotificationService {
+	var pusher NotificationPusher
+	if len(pushers) > 0 {
+		pusher = pushers[0]
+	}
 	return &notificationService{
 		repo: repo,
+		pusher: pusher,
 		subs: make(map[uuid.UUID]map[chan repository.NotificationRow]struct{}),
 	}
 }
@@ -103,6 +123,13 @@ func (s *notificationService) CreateForUsers(
 			s.publish(*rows[i].UserID, created[i])
 		}
 	}
+	if s.pusher != nil {
+		userIDsStr := make([]string, 0, len(uniq))
+		for _, userID := range uniq {
+			userIDsStr = append(userIDsStr, userID.String())
+		}
+		go s.pusher.PushForUsers(context.Background(), userIDsStr, title, body, data)
+	}
 	return nil
 }
 
@@ -135,6 +162,32 @@ func (s *notificationService) publish(userID uuid.UUID, row repository.Notificat
 	channels := make([]chan repository.NotificationRow, 0, len(set))
 	for ch := range set {
 		channels = append(channels, ch)
+	}
+	s.mu.RUnlock()
+	for _, ch := range channels {
+		select {
+		case ch <- row:
+		default:
+		}
+	}
+}
+
+// PublishEvent delivers an arbitrary event (not persisted) to SSE channels of given users.
+func (s *notificationService) PublishEvent(userIDs []uuid.UUID, eventType string, data json.RawMessage) {
+	env := EventEnvelope{Type: eventType, Data: data}
+	payload, _ := json.Marshal(env)
+	row := repository.NotificationRow{
+		Type: EventRowType,
+		Data: payload,
+	}
+	s.mu.RLock()
+	channels := make([]chan repository.NotificationRow, 0)
+	for _, uid := range userIDs {
+		if set, ok := s.subs[uid]; ok {
+			for ch := range set {
+				channels = append(channels, ch)
+			}
+		}
 	}
 	s.mu.RUnlock()
 	for _, ch := range channels {

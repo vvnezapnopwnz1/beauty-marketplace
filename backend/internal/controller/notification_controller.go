@@ -153,6 +153,15 @@ func (h *NotificationController) Stream(w http.ResponseWriter, r *http.Request) 
 		case <-r.Context().Done():
 			return
 		case row := <-events:
+			if row.Type == service.EventRowType {
+				var env service.EventEnvelope
+				if err := json.Unmarshal(row.Data, &env); err == nil {
+					_, _ = w.Write([]byte("event: " + env.Type + "\n"))
+					_, _ = w.Write([]byte("data: " + string(env.Data) + "\n\n"))
+					flusher.Flush()
+				}
+				continue
+			}
 			payload, _ := json.Marshal(row)
 			_, _ = w.Write([]byte("event: notification\n"))
 			_, _ = w.Write([]byte("data: " + string(payload) + "\n\n"))

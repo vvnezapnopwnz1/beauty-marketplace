@@ -37,6 +37,7 @@ func NewHTTPServer(
 	dc *DeviceController,
 	claimCtrl *SalonClaimController,
 	devCtrl *DevController,
+	ch *ChatController,
 ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", hh.Health)
@@ -77,6 +78,13 @@ func NewHTTPServer(
 	mux.HandleFunc("POST /api/v1/notifications/read-all", withCORS(auth.RequireAuth(jwtMgr, nh.MarkAllRead)))
 	mux.HandleFunc("GET /api/v1/notifications/stream", withCORS(auth.RequireAuth(jwtMgr, nh.Stream)))
 	mux.HandleFunc("POST /api/v1/devices", withCORS(auth.RequireAuth(jwtMgr, dc.Register)))
+
+	// Chat (Phase 1: external, appointment-bound)
+	mux.HandleFunc("GET /api/v1/chat/appointments/{appointmentId}/room", withCORS(auth.RequireAuth(jwtMgr, ch.GetRoomForAppointment)))
+	mux.HandleFunc("GET /api/v1/chat/rooms/by-token/{token}", withCORS(ch.GetRoomByToken))
+	mux.HandleFunc("GET /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.ListMessages)))
+	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.PostMessage)))
+	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/read", withCORS(auth.RequireAuth(jwtMgr, ch.MarkRead)))
 
 	// Salon claim (JWT required)
 	mux.HandleFunc("POST /api/v1/salons/claim", withCORS(auth.RequireAuth(jwtMgr, claimCtrl.SubmitClaim)))

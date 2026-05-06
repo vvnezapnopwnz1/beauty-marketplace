@@ -1,7 +1,9 @@
 package app
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/beauty-marketplace/backend/internal/auth"
 	"github.com/beauty-marketplace/backend/internal/config"
@@ -9,6 +11,7 @@ import (
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/twogis"
 	applogger "github.com/beauty-marketplace/backend/internal/logger"
+	"github.com/beauty-marketplace/backend/internal/push"
 	"github.com/beauty-marketplace/backend/internal/repository"
 	"github.com/beauty-marketplace/backend/internal/service"
 	"go.uber.org/fx"
@@ -18,6 +21,13 @@ import (
 
 func provideJWTManager(cfg *config.Config) *auth.JWTManager {
 	return auth.NewJWTManager(cfg.JWTSecret)
+}
+
+func provideNotificationService(
+	repo repository.NotificationRepository,
+	expo *push.ExpoPusher,
+) service.NotificationService {
+	return service.NewNotificationService(repo, expo)
 }
 
 // New builds the fx application graph for the HTTP API.
@@ -65,6 +75,10 @@ func New() *fx.App {
 			),
 			persistence.NewDeviceRepository,
 			fx.Annotate(
+				persistence.NewChatRepository,
+				fx.As(new(repository.ChatRepository)),
+			),
+			fx.Annotate(
 				twogis.NewCatalogAdapter,
 				fx.As(new(service.PlacesProvider)),
 			),
@@ -83,11 +97,17 @@ func New() *fx.App {
 			service.NewMasterDashboardService,
 			service.NewUserRolesService,
 			service.NewUserProfileService,
-			service.NewNotificationService,
+			push.NewExpoPusher,
+			provideNotificationService,
 			service.NewAppointmentNotifier,
 			service.NewAuthService,
 			service.NewStaffPhoneOTPService,
 			service.NewDeviceService,
+			service.NewAppointmentChatResolver,
+			service.NewChatBroadcaster,
+			service.NewChatService,
+			service.NewAppointmentChatHook,
+			service.NewChatArchiver,
 			controller.NewHealthController,
 			controller.NewSalonController,
 			controller.NewPlacesController,
@@ -103,8 +123,25 @@ func New() *fx.App {
 			controller.NewNotificationController,
 			controller.NewDeviceController,
 			controller.NewDevController,
+			controller.NewChatController,
 			controller.NewHTTPServer,
 		),
 		fx.Invoke(func(*http.Server) {}),
+		fx.Invoke(func(c service.ChatService, p *push.ExpoPusher) {
+			c.SetPusher(p)
+		}),
+		fx.Invoke(func(lc fx.Lifecycle, a *service.ChatArchiver) {
+			ctx, cancel := context.WithCancel(context.Background())
+			lc.Append(fx.Hook{
+				OnStart: func(_ context.Context) error {
+					a.Start(ctx, time.Hour)
+					return nil
+				},
+				OnStop: func(_ context.Context) error {
+					cancel()
+					return nil
+				},
+			})
+		}),
 	)
 }

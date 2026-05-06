@@ -1,0 +1,37 @@
+package repository
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/beauty-marketplace/backend/internal/model"
+)
+
+type AppointmentChatRow struct {
+	AppointmentID   uuid.UUID
+	MasterUserID    *uuid.UUID
+	OwnerUserIDs    []uuid.UUID
+	ReceptionistIDs []uuid.UUID
+	GuestUserID     *uuid.UUID
+	GuestPhone      string
+}
+
+type ChatRepository interface {
+	GetRoomByAppointment(ctx context.Context, appointmentID uuid.UUID) (*model.ChatRoom, error)
+	GetRoomByID(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error)
+	GetRoomByAccessToken(ctx context.Context, token uuid.UUID) (*model.ChatRoom, error)
+	CreateRoom(ctx context.Context, room *model.ChatRoom) error
+	UpdateRoomStatus(ctx context.Context, roomID uuid.UUID, status model.ChatRoomStatus, readonlyAt *time.Time) error
+	UnlockRoomFirstReply(ctx context.Context, roomID uuid.UUID) error
+
+	InsertMessage(ctx context.Context, msg *model.ChatMessage) error
+	ListMessages(ctx context.Context, roomID uuid.UUID, limit, offset int) ([]model.ChatMessage, error)
+
+	MarkAllReadInRoom(ctx context.Context, roomID, userID uuid.UUID) error
+
+	FindRoomsToReadonly(ctx context.Context, completedBefore time.Time) ([]model.ChatRoom, error)
+
+	GetAppointmentChatContext(ctx context.Context, appointmentID uuid.UUID) (AppointmentChatRow, error)
+}
