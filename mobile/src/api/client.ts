@@ -1,147 +1,98 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { AUTH } from './endpoints';
+import { ApiError, fromAxiosError } from './errors';
 import { useAuthStore } from '../stores/authStore';
-import { AUTH_ENDPOINTS } from './endpoints';
-import { LoginRequest, LoginResponse, TokenPair } from './types';
 
-class ApiClient {
-  private axiosInstance: AxiosInstance;
-  private isRefreshing = false;
-  private failedQueue: Array<{
-    resolve: (value?: unknown) => void;
-    reject: (reason?: unknown) => void;
-  }> = [];
+type PendingRequest = {
+  config: AxiosRequestConfig;
+  resolve: (r: AxiosResponse) => void;
+  reject: (e: any) => void;
+};
 
-  constructor() {
-    this.axiosInstance = axios.create({
-      timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+const instance: AxiosInstance = axios.create({
+  // callers use full URLs from endpoints, so no baseURL here
+  timeout: 15_000,
+  headers: { 'Content-Type': 'application/json' },
+});
 
-    // Request interceptor to add auth token
-    this.axiosInstance.interceptors.request.use(
-      async (config) => {
-        const tokenPair = useAuthStore.getState().tokenPair;
-        if (tokenPair?.accessToken) {
-          config.headers.Authorization = `Bearer ${tokenPair.accessToken}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
+let isRefreshing = false;
+let queue: PendingRequest[] = [];
 
-    // Response interceptor to handle token refresh
-    this.axiosInstance.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          if (this.isRefreshing) {
-            return new Promise((resolve, reject) => {
-              this.failedQueue.push({ resolve, reject });
-            }).then(() => {
-              return this.axiosInstance(originalRequest);
-            }).catch(() => {
-              return Promise.reject(error);
-            });
-          }
-
-          originalRequest._retry = true;
-          this.isRefreshing = true;
-
-          try {
-            const newTokenPair = await this.refreshAccessToken();
-            this.processQueue(null, newTokenPair.accessToken);
-            originalRequest.headers.Authorization = `Bearer ${newTokenPair.accessToken}`;
-            return this.axiosInstance(originalRequest);
-          } catch (refreshError) {
-            this.processQueue(refreshError, null);
-            useAuthStore.getState().logout();
-            return Promise.reject(refreshError);
-          } finally {
-            this.isRefreshing = false;
-          }
-        }
-
-        return Promise.reject(error);
-      }
-    );
-  }
-
-  private async refreshAccessToken(): Promise<TokenPair> {
-    const refreshToken = useAuthStore.getState().tokenPair?.refreshToken;
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
+function processQueue(error: any, token?: string) {
+  queue.forEach(({ resolve, reject, config }) => {
+    if (error) reject(error);
+    else if (token) {
+      config.headers = { ...(config.headers ?? {}), Authorization: `Bearer ${token}` };
+      resolve(instance.request(config as AxiosRequestConfig));
     }
+  });
+  queue = [];
+}
 
-    try {
-      const response = await this.axiosInstance.post<{ tokenPair: TokenPair }>(
-        AUTH_ENDPOINTS.verifyOTP,
-        { refreshToken }
-      );
-      
-      const newTokenPair = response.data.tokenPair;
-      useAuthStore.getState().setTokenPair(newTokenPair);
-      
-      // Save to secure store
-      await SecureStore.setItemAsync('tokenPair', JSON.stringify(newTokenPair));
-      
-      return newTokenPair;
-    } catch (error) {
-      throw new Error('Failed to refresh access token');
-    }
+async function refreshToken(refreshToken: string) {
+  const resp = await axios.post(
+    AUTH.refresh,
+    { refreshToken },
+    { headers: { 'Content-Type': 'application/json' } },
+  );
+  return resp.data as { accessToken: string; refreshToken: string; expiresAt?: number };
+}
+
+instance.interceptors.request.use((config) => {
+  const tokenPair = useAuthStore.getState().tokenPair;
+  if (tokenPair?.accessToken) {
+    config.headers = { ...(config.headers ?? {}), Authorization: `Bearer ${tokenPair.accessToken}` };
   }
+  return config;
+});
 
-  private processQueue(error: unknown, token: string | null = null) {
-    this.failedQueue.forEach(({ resolve, reject }) => {
-      if (error) {
-        reject(error);
-      } else if (token) {
-        resolve(token);
+instance.interceptors.response.use(
+  (r) => r,
+  async (err) => {
+    const originalConfig = err.config as AxiosRequestConfig & { _retry?: boolean };
+    if (!originalConfig) return Promise.reject(fromAxiosError(err));
+
+    const status = err.response?.status;
+    if (status === 401 && !originalConfig._retry) {
+      originalConfig._retry = true;
+      const refresh = useAuthStore.getState().tokenPair?.refreshToken;
+      if (!refresh) {
+        useAuthStore.getState().logout();
+        return Promise.reject(fromAxiosError(err));
       }
-    });
-    
-    this.failedQueue = [];
-  }
 
-  public async login(data: LoginRequest): Promise<LoginResponse> {
-    const response = await this.axiosInstance.post<LoginResponse>(
-      AUTH_ENDPOINTS.verifyOTP,
-      data
-    );
-    
-    // Save tokens to secure store
-    await SecureStore.setItemAsync('tokenPair', JSON.stringify(response.data.tokenPair));
-    
-    return response.data;
-  }
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          queue.push({ config: originalConfig, resolve, reject });
+        });
+      }
 
-  public async logout(): Promise<void> {
-    await SecureStore.deleteItemAsync('tokenPair');
-  }
+      isRefreshing = true;
+      try {
+        const tokens = await refreshToken(refresh);
+        useAuthStore.getState().setTokenPair({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+        processQueue(null, tokens.accessToken);
+        return instance.request(originalConfig);
+      } catch (e) {
+        processQueue(e, undefined);
+        useAuthStore.getState().logout();
+        return Promise.reject(fromAxiosError(e));
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    return Promise.reject(fromAxiosError(err));
+  },
+);
 
-  public get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.get<T>(url, config);
-  }
-
-  public post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.post<T>(url, data, config);
-  }
-
-  public put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.put<T>(url, data, config);
-  }
-
-  public patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.patch<T>(url, data, config);
-  }
-
-  public delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
-    return this.axiosInstance.delete<T>(url, config);
+export async function apiRequest<T = any>(config: AxiosRequestConfig): Promise<T> {
+  try {
+    const resp = await instance.request<T>(config);
+    return resp.data;
+  } catch (e) {
+    throw fromAxiosError(e);
   }
 }
 
-export const apiClient = new ApiClient();
+export default instance;
+// end of file
