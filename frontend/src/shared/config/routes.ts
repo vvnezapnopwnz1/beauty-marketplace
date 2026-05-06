@@ -16,7 +16,10 @@ export const ROUTES = {
   FOR_MASTERS: '/for-masters',
   ADMIN_CLAIMS: '/admin/claims',
   ONBOARDING: '/dashboard/:salonId/onboarding',
+  GUEST_CHAT: '/chat/:accessToken',
 } as const
+
+export const guestChatPath = (accessToken: string) => `/chat/${accessToken}`
 
 export const salonPath = (id: string) => `/salon/${id}`
 

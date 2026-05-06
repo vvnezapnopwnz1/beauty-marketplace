@@ -43,6 +43,7 @@ import {
 } from '@entities/appointment'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone, toRuE164 } from '@shared/lib/formatPhone'
+import { AppointmentChatSection } from './AppointmentChatSection'
 
 type DrawerAppointment = DashboardAppointment & {
   serviceId?: string
@@ -805,6 +806,9 @@ export function AppointmentDrawer({
               </Stack>
             )}
           </Stack>
+          {appointment?.id && !showEditForm && (
+            <AppointmentChatSection appointmentId={appointment.id} />
+          )}
         </Box>
 
         <Box

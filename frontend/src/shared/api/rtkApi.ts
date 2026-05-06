@@ -37,6 +37,8 @@ export const rtkApi = createApi({
         'FinanceSummary',
         'FinanceCategories',
         'FinanceExpenses',
+        'ChatRoom',
+        'ChatMessages',
     ],
     endpoints: () => ({}),
 });
