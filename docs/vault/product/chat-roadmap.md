@@ -1,6 +1,6 @@
 ---
 title: Чат — дорожная карта
-updated: 2026-05-07
+updated: 2026-05-07-followup
 source_of_truth: true
 ---
 
@@ -18,33 +18,38 @@ source_of_truth: true
 - Frontend: `entities/chat` (RTK Query + `useChatStream`), `features/chat-window` (Bubble/Composer/Window/Trigger), стандалон-страница `/chat/:accessToken`, embed-аккордеон в `AppointmentDrawer` дашборда салона.
 - Mobile: `src/api/chat.ts`, polling-хук `src/lib/chat/useChatStream.ts`, `ChatScreen` + `ChatBubble`.
 
-### Phase 1 follow-up (надо сделать перед мерджем в master)
+### Phase 1 follow-up (закрыто 2026-05-07)
 
-**1. Тесты (целая отдельная сессия).** Для бэкенда: unit на `MaskContacts`, `chatService.SendMessage` (RBAC + lock rule + masking + readonly), `chatService.ListMessages`, `chatArchiver.RunOnce`, controller-тест `ChatController.PostMessage` (auth-user vs accessToken). Для фронта: RTL на `ChatWindow` (lock state + readonly + own/other разметка), MSW для RTK. Для мобайла: unit на `useChatStream` (polling-логика), компонент-тест `ChatScreen`.
+Ветка: `chore/chat-phase1-followup` поверх master. План:
+[`docs/superpowers/plans/2026-05-07-chat-phase1-followup.md`](../../superpowers/plans/2026-05-07-chat-phase1-followup.md).
 
-**2. Code review pass.** Линтер уже подсветил замечания в `chat_service.go` (slices.Contains, unused param `room` в `broadcast`). Пройтись по всему чат-коду на YAGNI, нейминг, error handling, dedup payload-формирования, тип-хелперы.
+#### Что закрыто
 
-**3. Подключение `AppointmentChatHook` в существующие callsites.** Сейчас хук создан, но не вызывается. Нужно вставить вызовы в:
-   - `backend/internal/service/booking.go` — после `notifier.NotifySalonMembers(... "appointment.created" ...)` добавить `chatHook.OnAppointmentCreated(ctx, appt.ID)`
-   - `backend/internal/service/dashboard_appointment.go` — рядом с `appointment.status_changed` событиями вызывать `OnAppointmentStatusChanged`/`OnAppointmentRescheduled` соответственно
-   - Прокинуть `*AppointmentChatHook` через Fx в зависимые сервисы (Booking, DashboardAppointment, MasterDashboard).
+- **Спасены in-progress фиксы из рабочей копии** (4 коммита):
+  - `chat_service.go` — `EnsureRoomForAppointment` теперь явно ставит `ID` и `AccessToken` через `uuid.New()`. Без этого GORM вставлял nil UUID (DB-defaults через `RETURNING` не подхватывались).
+  - `chat_repository.go` — убран бутафорский фильтр `salon_members.status = 'active'` (такой колонки нет, см. `migrations/000001`); добавлена роль `admin` к списку (enum: `owner`, `admin`, `receptionist`). Без этого фикса участники-управленцы никогда не получали SSE-уведомления.
+  - Эндпоинт переименован `/chat/rooms/by-token/{token}` → `/chat/external/rooms/{token}` синхронно в backend, frontend и mobile.
+  - `AppointmentDrawer` показывает чат и в режиме редактирования.
+  - Frontend `useChatStream` переключён с native `EventSource` (не шлёт Bearer) на fetch+ReadableStream через `authFetch`.
+- **#3 — `AppointmentChatHook` подключён в callsites:** `BookingService.CreateGuestBooking` → `OnAppointmentCreated`; `DashboardService.UpdateAppointmentStatus` → `OnAppointmentStatusChanged`; `DashboardService.UpdateAppointment` (когда `StartsAt` действительно меняется) → новый event `appointment.rescheduled` + `OnAppointmentRescheduled`. Хук инжектится через Fx в обе службы.
+- **#6 — SSE для гостя:** добавлен endpoint `GET /api/v1/chat/external/rooms/{token}/stream` с per-room subscriber registry в `ChatBroadcaster` (BroadcastToRoom + SubscribeRoom). `chat_service.broadcast` шлёт payload и в существующий per-user `notifications/stream`, и в новый per-room канал. Frontend `useChatStream` для гостя ходит на новый URL plain `fetch`'ом без auth-фетча. Решение: токен комнаты как credential (не короткоживущий JWT).
+- **#4 — Frontend integration:**
+  - i18n-ключи `chat.*` добавлены в `ru.json`/`en.json`; `ChatWindow`, `ChatTrigger`, `AppointmentChatSection`, `GuestChatPage` подключены к `useTranslation`.
+  - `AppointmentDrawer` пробрасывает `currentUserId` из auth-слайса в `AppointmentChatSection` → `ChatWindow` → `ChatBubble`. Own/other теперь различается.
+  - **MePage:** в `entities/user-appointment/AppointmentCard` встроен collapsible-чат (Accordion) для записей в статусах pending/confirmed/completed. Кэнсельнутые/no-show — без чата.
+- **#5 — Mobile integration:** новый route `mobile/app/chat/[appointmentId].tsx` мountит `ChatScreen`; `AppointmentQuickActionsSheet` получил кнопку «Чат» с навигацией; `_layout.tsx` регистрирует `Notifications.addNotificationResponseReceivedListener` для deep-link на push с `data.type === 'chat.message'`. Backend payload chat-сообщения теперь включает `type` и `appointmentId`, чтобы push-tap имел контекст.
 
-**4. Frontend integration gaps.**
-   - `/me` (`MePage`): встроить `ChatTrigger`+`ChatWindow` в карточку `UserAppointment` (зарегистрированный гость). Не сделано в Phase 1.
-   - `currentUserId` в `AppointmentDrawer` дашборда: пробросить из auth-стора, чтобы Bubble различал own/other (сейчас все сообщения отображаются как «не свои»).
-   - i18n: ru/en ключи `chat.*` (placeholder, lockHint, readonly, title) — сейчас строки захардкожены.
-   - Unread counter в `ChatTrigger` — добавить query/derive из `listMessages` + `markRoomRead` баланса.
+#### Что отложено сознательно
 
-**5. Mobile integration gaps.**
-   - Открытие `ChatScreen` из `AppointmentQuickActionsSheet` (или из карточки записи) — добавить кнопку «Чат» с навигацией.
-   - Обработка push с `data.type === 'chat.message'` в `mobile/app/_layout.tsx` или в notification handler — глубокий линк на конкретную комнату.
-   - Заменить polling-хук на нативный `EventSource` (например `react-native-sse`) при первой возможности.
+- **#1 (тесты).** Не делали в этой сессии — frontend и mobile не имеют тестового рантайма (vitest/jest/RTL/MSW), это отдельный сетап. Backend chat-тесты тоже не написаны. Тесты — отдельная сессия после стабилизации Phase 2.
+- **#2 (lint polish).** `slices.Contains` в `assertCanRead`/`collectParticipants`, dedup payload-marshal, и неиспользуемый `room` в `broadcast` — отмечены инструментами, но не реализованы. (Сейчас `room` используется для enrichment payload — больше не unused.)
+- **Unread counter в `ChatTrigger`.** `ChatTrigger` пока нигде не смонтирован (dead code) — счётчик не имеет видимого эффекта. Нужен либо backend extension `unreadCount` в `getRoomForAppointment`, либо клиентская approxima­ция. Перенесено в Phase 2C.
+- **`react-native-sse` для нативного EventSource.** Mobile продолжает использовать polling fallback. Замена → Phase 2C.
 
-**6. SSE-аутентификация для standalone guest-страницы.** Сейчас `useChatStream` подключается к `/api/v1/notifications/stream`, который требует JWT. Анонимный гость не получает live-обновления — только при ре-fetch через polling/refetch. Решение: либо отдельный SSE-эндпоинт `/api/v1/chat/rooms/:roomId/stream?accessToken=...`, либо короткоживущий guest-JWT при `getRoomByToken`.
+#### Notes
 
-**7. Conflated commit.** Коммит `c2c7460` (mobile chat) случайно включил pre-existing user changes в `mobile/src/api/endpoints.ts` (~41 удалений в diff'е). При желании — переделать через `git rebase -i` + разделить хунки. Не блокер.
-
-**8. Smoke-тесты вручную.** Прогнать сценарии из секции Final verification плана: гость через access_token, мастер через дашборд, маскировка, переход в readonly через 24ч.
+- **#7 (conflated commit `c2c7460`)** — ложная тревога. Diff показал, что 41 «удаление» — это refactor `mobile/src/api/endpoints.ts` от хардкода `localhost:8080` к LAN-host detection через Expo Metro (`resolveApiOrigin`, `replaceLoopbackWithMetroHost`). Фикс корректный, переписывать историю не надо.
+- **#8 (smoke-тесты)** — отложено до интеграционного прохода. Сценарии остаются в плане 2026-05-07-chat-phase1-followup, секция Phase 10.4.
 
 ## Phase 2 — отложено (НЕ ЗАБЫТЬ)
 
@@ -70,6 +75,11 @@ source_of_truth: true
 - Авто-ответы мастера (быстрый шаблон при занятости)
 - Эскалация на админа, если мастер не ответил за N минут
 - Owner-only режим супервизии (выделенный экран чтения всех чатов салона)
+- **Unread counter в `ChatTrigger`.** Перенесено из Phase 1 follow-up — нужен backend `unreadCount` (left-join `chat_message_reads` minus own messages) либо клиентская approxima­ция через localStorage last-seen-id. Сам `ChatTrigger` пока не смонтирован.
+- **`react-native-sse`** — заменить mobile polling-хук на нативный `EventSource`.
+- **Тестовая инфраструктура.** Vitest+RTL+MSW для frontend и jest-expo+RNTL для mobile. Без этого нельзя писать chat-tests (а заодно и любые другие).
+- **Backend chat-тесты:** `MaskContacts`, `chatService.SendMessage` (RBAC + lock + masking + readonly), `ListMessages`, `chatArchiver.RunOnce`, `ChatController.PostMessage` + `StreamGuest`.
+- **Lint polish для `chat_service.go`:** `slices.Contains` в трёх местах, dedup payload-marshalling.
 
 ## Зависимости Phase 2 от Phase 1
 
