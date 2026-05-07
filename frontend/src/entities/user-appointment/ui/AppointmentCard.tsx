@@ -1,8 +1,23 @@
-import { Box, Chip, Skeleton, Stack, Typography } from '@mui/material'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Chip,
+  Skeleton,
+  Stack,
+  Typography,
+} from '@mui/material'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import ContentCutOutlinedIcon from '@mui/icons-material/ContentCutOutlined'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { useTranslation } from 'react-i18next'
+import { ChatWindow } from '@features/chat-window'
+import { useAppSelector } from '@app/store'
+import { selectUser } from '@features/auth-by-phone/model/authSlice'
 import type { AppointmentStatus, UserAppointment } from '../model/types'
 
 // ─── status config ────────────────────────────────────────────────────────────
@@ -78,10 +93,14 @@ interface Props {
 }
 
 export function AppointmentCard({ appt }: Props) {
+  const { t } = useTranslation()
+  const currentUser = useAppSelector(selectUser)
   const cfg = fallbackStatus(appt.status)
   const { date, time } = formatDateTime(appt.startsAt)
   const { time: timeEnd } = formatDateTime(appt.endsAt)
   const price = formatPrice(appt.priceCents)
+
+  const chatVisible = appt.status === 'pending' || appt.status === 'confirmed' || appt.status === 'completed'
 
   return (
     <Box
@@ -187,6 +206,37 @@ export function AppointmentCard({ appt }: Props) {
           >
             💬 {appt.clientNote}
           </Typography>
+        )}
+
+        {chatVisible && (
+          <Accordion
+            disableGutters
+            elevation={0}
+            sx={{
+              mt: 1.5,
+              bgcolor: 'transparent',
+              '&:before': { display: 'none' },
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1.5,
+              overflow: 'hidden',
+            }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 36, py: 0 }}>
+              <ChatBubbleOutlineIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+              <Typography variant="caption" color="text.secondary">
+                {t('chat.title')}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 0 }}>
+              <Box sx={{ height: 360 }}>
+                <ChatWindow
+                  appointmentId={appt.id}
+                  currentUserId={currentUser?.id}
+                />
+              </Box>
+            </AccordionDetails>
+          </Accordion>
         )}
       </Box>
     </Box>
