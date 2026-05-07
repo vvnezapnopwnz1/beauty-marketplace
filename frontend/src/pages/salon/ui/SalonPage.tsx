@@ -67,6 +67,7 @@ export function SalonPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
+  const [_inquiryChatOpen, setInquiryChatOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -246,14 +247,24 @@ export function SalonPage() {
             )}
           </Stack>
           {view.mode === 'salon' && view.canBookOnline && (
-            <Button
-              variant="contained"
-              size="medium"
-              sx={{ mt: 1.5, alignSelf: 'flex-start', borderRadius: '12px', fontWeight: 600 }}
-              onClick={() => setBookingDialogOpen(true)}
-            >
-              Записаться
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1.5, alignSelf: 'flex-start' }}>
+              <Button
+                variant="contained"
+                size="medium"
+                sx={{ borderRadius: '12px', fontWeight: 600 }}
+                onClick={() => setBookingDialogOpen(true)}
+              >
+                Записаться
+              </Button>
+              <Button
+                variant="outlined"
+                size="medium"
+                sx={{ borderRadius: '12px', fontWeight: 600 }}
+                onClick={() => setInquiryChatOpen(true)}
+              >
+                Задать вопрос
+              </Button>
+            </Box>
           )}
         </Box>
       </Box>

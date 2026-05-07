@@ -33,4 +33,9 @@ export type Palette = {
   navBg: string;
   statusBar: string;
   scrim: string;
+  hair: string;
+  nails: string;
+  brows: string;
+  makeup: string;
+  massage: string;
 };

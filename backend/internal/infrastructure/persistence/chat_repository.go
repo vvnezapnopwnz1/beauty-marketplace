@@ -33,6 +33,19 @@ func (r *chatRepository) GetRoomByAppointment(ctx context.Context, appointmentID
 	return &room, nil
 }
 
+func (r *chatRepository) GetRoomBySalon(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error) {
+	var room model.ChatRoom
+	if err := r.db.WithContext(ctx).
+		Where("salon_id = ? AND type = ?", salonID, model.ChatRoomTypeInquiry).
+		First(&room).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &room, nil
+}
+
 func (r *chatRepository) GetRoomByID(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error) {
 	var room model.ChatRoom
 	if err := r.db.WithContext(ctx).First(&room, "id = ?", id).Error; err != nil {
@@ -183,6 +196,52 @@ func (r *chatRepository) GetAppointmentChatContext(ctx context.Context, apptID u
 		if masterRow.MasterUserID != nil {
 			out.MasterUserID = masterRow.MasterUserID
 		}
+	}
+
+	return out, nil
+}
+
+func (r *chatRepository) GetSalonChatContext(ctx context.Context, salonID uuid.UUID) (repository.SalonChatRow, error) {
+	// Get salon staff members
+	var members []struct {
+		UserID uuid.UUID
+		Role   string
+	}
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT user_id, role FROM salon_members
+		WHERE salon_id = ? AND role IN ('owner','admin','receptionist')`,
+		salonID).Scan(&members).Error; err != nil {
+		return repository.SalonChatRow{}, err
+	}
+
+	// Get all masters for the salon
+	var masters []struct {
+		UserID uuid.UUID
+	}
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT mp.user_id 
+		FROM master_profiles mp
+		JOIN salon_masters sm ON sm.master_id = mp.id
+		WHERE sm.salon_id = ? AND sm.is_active = true`,
+		salonID).Scan(&masters).Error; err != nil {
+		return repository.SalonChatRow{}, err
+	}
+
+	out := repository.SalonChatRow{
+		SalonID: salonID,
+	}
+
+	for _, m := range members {
+		switch m.Role {
+		case "owner":
+			out.OwnerUserIDs = append(out.OwnerUserIDs, m.UserID)
+		case "admin", "receptionist":
+			out.ReceptionistUserIDs = append(out.ReceptionistUserIDs, m.UserID)
+		}
+	}
+
+	for _, m := range masters {
+		out.MasterUserIDs = append(out.MasterUserIDs, m.UserID)
 	}
 
 	return out, nil

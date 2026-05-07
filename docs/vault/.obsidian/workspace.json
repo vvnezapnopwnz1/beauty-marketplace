@@ -22,16 +22,6 @@
             }
           },
           {
-            "id": "579f7b4d324daa2e",
-            "type": "leaf",
-            "state": {
-              "type": "tasknotes-pomodoro-stats-view",
-              "state": {},
-              "icon": "bar-chart",
-              "title": "Pomodoro stats"
-            }
-          },
-          {
             "id": "e86ebf1cd7394260",
             "type": "leaf",
             "state": {
@@ -52,34 +42,21 @@
             }
           },
           {
-            "id": "be735932bdd44dc5",
+            "id": "f674b0a1c36ccbf0",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "TaskNotes/Tasks/Добавить чат.md",
+                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Добавить чат"
-            }
-          },
-          {
-            "id": "89d2bc3bbe6348f4",
-            "type": "leaf",
-            "state": {
-              "type": "bases",
-              "state": {
-                "file": "TaskNotes/Views/tasks-default.base",
-                "viewName": "Manual Order"
-              },
-              "icon": "tasknotes-simple",
-              "title": "tasks-default"
+              "title": "Детали записи в frontend"
             }
           }
         ],
-        "currentTab": 5
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -152,7 +129,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "TaskNotes/Views/tasks-default.base",
+                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -162,7 +139,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for tasks-default"
+              "title": "Backlinks for Детали записи в frontend"
             }
           },
           {
@@ -171,12 +148,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "TaskNotes/Views/tasks-default.base",
+                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from tasks-default"
+              "title": "Outgoing links from Детали записи в frontend"
             }
           },
           {
@@ -214,13 +191,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "TaskNotes/Views/tasks-default.base",
+                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of tasks-default"
+              "title": "Outline of Детали записи в frontend"
             }
           }
         ],
@@ -250,22 +227,24 @@
       "tasks-map:Open tasks map view": false
     }
   },
-  "active": "a094228f87092f19",
+  "active": "f674b0a1c36ccbf0",
   "lastOpenFiles": [
     "TaskNotes/Tasks/Улучшить дизайн мобильного приложения и изменить расположение элементов.md",
     "TaskNotes/Tasks/Добавить чат.md",
+    "TaskNotes/Tasks/Детали записи в frontend.md",
+    "TaskNotes/Tasks/Что то сделать с календарем в приложении - Неделя и Месяц - визуально лучше и действительно как календарь в мобильном приложении, запустить claude design чтобы придумал дизайн и воплотить через библиотеку какую нибудь.md",
+    "TaskNotes/Views/tasks-default.base",
+    "TaskNotes/Views/agenda-default.base",
+    "CLAUDE.md",
+    "TaskNotes/Views/relationships.base",
     "Untitled.canvas",
     "product/chat-roadmap.md",
-    "TaskNotes/Views/tasks-default.base",
     "TaskNotes/Tasks",
     "TaskNotes/Views/calendar-default.base",
     "TaskNotes/Views/mini-calendar-default.base",
-    "TaskNotes/Views/agenda-default.base",
     "TaskNotes/Views/kanban-default.base",
-    "CLAUDE.md",
     "glossary.md",
     "product/context.md",
-    "TaskNotes/Views/relationships.base",
     "TaskNotes/Views",
     "TaskNotes",
     "README.md",
@@ -286,8 +265,6 @@
     "entities/plan-unified-search.md",
     "entities/master-profiles-salon-masters.md",
     "entities/dashboard-i18n.md",
-    "entities/entity-prototype.md",
-    "entities/appointment-statuses.md",
     "Untitled 1.canvas"
   ]
 }

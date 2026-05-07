@@ -244,18 +244,35 @@ export function MasterPage() {
                     ))}
                   </Stack>
                 )}
-                <Button
-                  variant="contained"
-                  onClick={() => navigate(salonPath(s.salonId))}
-                  sx={{
-                    borderRadius: 100,
-                    bgcolor: '#6B0606',
-                    color: '#DFBFA8',
-                    '&:hover': { bgcolor: '#8a0707' },
-                  }}
-                >
-                  Записаться
-                </Button>
+                <Stack direction="row" gap={1}>
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate(salonPath(s.salonId))}
+                    sx={{
+                      borderRadius: 100,
+                      bgcolor: '#6B0606',
+                      color: '#DFBFA8',
+                      '&:hover': { bgcolor: '#8a0707' },
+                    }}
+                  >
+                    Записаться
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      // TODO: Open inquiry chat for this salon
+                      console.log('Open inquiry chat for salon:', s.salonId)
+                    }}
+                    sx={{
+                      borderRadius: 100,
+                      borderColor: '#6B0606',
+                      color: '#6B0606',
+                      '&:hover': { borderColor: '#8a0707', color: '#8a0707' },
+                    }}
+                  >
+                    Задать вопрос
+                  </Button>
+                </Stack>
               </Box>
             </Card>
           ))}

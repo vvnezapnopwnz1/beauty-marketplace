@@ -38,6 +38,8 @@ func NewHTTPServer(
 	claimCtrl *SalonClaimController,
 	devCtrl *DevController,
 	ch *ChatController,
+	fh *FileController,
+	qh *QuickReplyController,
 ) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", hh.Health)
@@ -86,6 +88,25 @@ func NewHTTPServer(
 	mux.HandleFunc("GET /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.ListMessages)))
 	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.PostMessage)))
 	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/read", withCORS(auth.RequireAuth(jwtMgr, ch.MarkRead)))
+
+	// Chat (Phase 2A: inquiry, pre-booking)
+	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms", withCORS(auth.OptionalAuth(jwtMgr, ch.CreateInquiryRoom)))
+	mux.HandleFunc("GET /api/v1/chat/inquiry/rooms/{roomId}", withCORS(auth.OptionalAuth(jwtMgr, ch.GetInquiryRoom)))
+	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.PostInquiryMessage)))
+	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms/{roomId}/messages-with-attachment", withCORS(auth.OptionalAuth(jwtMgr, ch.PostInquiryMessageWithAttachment)))
+	mux.HandleFunc("GET /api/v1/chat/inquiry/rooms/{roomId}/stream", withCORS(ch.StreamInquiryMessages))
+
+	// File storage for chat attachments
+	mux.HandleFunc("POST /api/v1/files/upload", withCORS(auth.OptionalAuth(jwtMgr, fh.UploadFile)))
+	mux.HandleFunc("GET /api/v1/files/{filename}", withCORS(fh.ServeFile))
+	mux.HandleFunc("DELETE /api/v1/files/{filename}", withCORS(auth.RequireAuth(jwtMgr, fh.DeleteFile)))
+
+	// Quick replies for inquiry chat
+	mux.HandleFunc("GET /api/v1/chat/salons/{salonId}/quick-replies", withCORS(auth.OptionalAuth(jwtMgr, qh.GetQuickReplies)))
+	mux.HandleFunc("POST /api/v1/chat/salons/{salonId}/quick-replies", withCORS(auth.RequireAuth(jwtMgr, qh.CreateQuickReply)))
+	mux.HandleFunc("PUT /api/v1/chat/salons/{salonId}/quick-replies/{replyId}", withCORS(auth.RequireAuth(jwtMgr, qh.UpdateQuickReply)))
+	mux.HandleFunc("DELETE /api/v1/chat/salons/{salonId}/quick-replies/{replyId}", withCORS(auth.RequireAuth(jwtMgr, qh.DeleteQuickReply)))
+	mux.HandleFunc("POST /api/v1/chat/salons/{salonId}/quick-replies/reorder", withCORS(auth.RequireAuth(jwtMgr, qh.ReorderQuickReplies)))
 
 	// Salon claim (JWT required)
 	mux.HandleFunc("POST /api/v1/salons/claim", withCORS(auth.RequireAuth(jwtMgr, claimCtrl.SubmitClaim)))

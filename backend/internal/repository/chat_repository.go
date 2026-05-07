@@ -18,8 +18,16 @@ type AppointmentChatRow struct {
 	GuestPhone      string
 }
 
+type SalonChatRow struct {
+	SalonID             uuid.UUID
+	OwnerUserIDs        []uuid.UUID
+	ReceptionistUserIDs []uuid.UUID
+	MasterUserIDs       []uuid.UUID
+}
+
 type ChatRepository interface {
 	GetRoomByAppointment(ctx context.Context, appointmentID uuid.UUID) (*model.ChatRoom, error)
+	GetRoomBySalon(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByID(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByAccessToken(ctx context.Context, token uuid.UUID) (*model.ChatRoom, error)
 	CreateRoom(ctx context.Context, room *model.ChatRoom) error
@@ -34,4 +42,5 @@ type ChatRepository interface {
 	FindRoomsToReadonly(ctx context.Context, completedBefore time.Time) ([]model.ChatRoom, error)
 
 	GetAppointmentChatContext(ctx context.Context, appointmentID uuid.UUID) (AppointmentChatRow, error)
+	GetSalonChatContext(ctx context.Context, salonID uuid.UUID) (SalonChatRow, error)
 }

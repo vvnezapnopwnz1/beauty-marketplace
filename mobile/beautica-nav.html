@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beautica — Mobile Navigation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0a0a0f; overflow: hidden; }
+    ::-webkit-scrollbar { width: 2px; height: 2px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(212,84,122,0.25); border-radius: 10px; }
+    * { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="vela/theme.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel">
+  const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+  // ─── SHARED DATA ────────────────────────────────────────────────────────────
+  const MASTERS = [
+    { id: 'm1', name: 'Виктория', initials: 'ВС', role: 'Маникюр', cat: 'nails' },
+    { id: 'm2', name: 'Анна',     initials: 'АМ', role: 'Волосы',   cat: 'hair' },
+    { id: 'm3', name: 'Карина',   initials: 'КЛ', role: 'Брови',    cat: 'brows' },
+    { id: 'm4', name: 'Маша',     initials: 'МК', role: 'Макияж',   cat: 'makeup' },
+    { id: 'm5', name: 'Лена',     initials: 'ЛП', role: 'Массаж',   cat: 'massage' },
+  ];
+
+  function mkA(dayOffset, sh, sm, eh, em, service, client, cat, price, masterId, status='confirmed') {
+    const base = new Date(2026, 3, 13);
+    base.setDate(base.getDate() + dayOffset);
+    const s = new Date(base); s.setHours(sh, sm, 0, 0);
+    const e = new Date(base); e.setHours(eh, em, 0, 0);
+    return { id: `${masterId}-${sh}${sm}-${dayOffset}`, start: s, end: e, service, client, cat, price, masterId, status };
+  }
+
+  const APPTS = [
+    mkA(0, 10, 0,  11, 0,  'Маникюр гель',     'Анна К.',    'nails',   2800, 'm1', 'confirmed'),
+    mkA(0, 11,30,  13, 0,  'Стрижка+укладка',  'Ольга М.',   'hair',    4500, 'm2', 'pending'),
+    mkA(0, 14, 0,  14,30,  'Коррекция бровей', 'Лена Р.',    'brows',   1200, 'm3', 'confirmed'),
+    mkA(0, 10,30,  12, 0,  'Макияж',           'Алиса Д.',   'makeup',  5000, 'm4', 'confirmed'),
+    mkA(0, 15, 0,  17, 0,  'Окрашивание',      'Марина П.',  'hair',    8500, 'm2', 'pending'),
+    mkA(0,  9, 0,  10,30,  'Массаж лица',      'Юлия Н.',    'massage', 4000, 'm5', 'completed'),
+    mkA(0, 12, 0,  13,30,  'СПА-маникюр',      'Вера Т.',    'nails',   3800, 'm1', 'confirmed'),
+    mkA(0, 14, 0,  15,30,  'Ламинирование',    'Катя С.',    'brows',   2500, 'm3', 'confirmed'),
+    mkA(1,  9, 0,  10,30,  'Педикюр',          'Светлана В.','nails',   3200, 'm1', 'confirmed'),
+    mkA(1, 11, 0,  12,30,  'Стрижка',          'Оля П.',     'hair',    3200, 'm2', 'pending'),
+    mkA(1, 13,30,  14,30,  'Ламинирование',    'Катя С.',    'brows',   2500, 'm3', 'confirmed'),
+    mkA(2, 10, 0,  11,30,  'СПА-маникюр',      'Вера Т.',    'nails',   3800, 'm1', 'confirmed'),
+    mkA(2, 14, 0,  16, 0,  'Кератин',          'Ирина Ф.',   'hair',    9000, 'm2', 'confirmed'),
+    mkA(3,  9,30,  11, 0,  'Массаж тела',      'Дарья К.',   'massage', 5500, 'm5', 'confirmed'),
+    mkA(4, 10, 0,  11, 0,  'Макияж',           'Женя Л.',    'makeup',  4800, 'm4', 'confirmed'),
+    mkA(5, 10,30,  12,30,  'Свадебный макияж', 'Катя Н.',    'makeup',  9000, 'm4', 'pending'),
+    mkA(6, 11, 0,  12,30,  'Стрижка',          'Вика Р.',    'hair',    3500, 'm2', 'confirmed'),
+  ];
+
+  const DAYS_SHORT = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
+  const START_H = 8;
+  const HOUR_PX = 64;
+
+  function toY(date) { return ((date.getHours() - START_H) * 60 + date.getMinutes()) * (HOUR_PX / 60); }
+  function toH(start, end) { return Math.max(24, (end - start) / 60000 * (HOUR_PX / 60)); }
+  function fmt(d) { return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+  function svcColor(t, cat) {
+    return { hair: t.hair, nails: t.nails, massage: t.massage, brows: t.brows, makeup: t.makeup }[cat] || t.accent;
+  }
+
+  function getWeekDates() {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(2026, 3, 13); d.setDate(d.getDate() + i); return d;
+    });
+  }
+  const WEEK_DATES = getWeekDates();
+
+  // ─── STATUS CONFIG ──────────────────────────────────────────────────────────
+  const STATUS_CFG = {
+    confirmed:  { label: 'Подтверждена', dot: '#2A9E6A' },
+    pending:    { label: 'Ожидает',      dot: '#C4800A' },
+    completed:  { label: 'Завершена',    dot: '#4A90D4' },
+    cancelled_by_salon: { label: 'Отмена', dot: '#C04040' },
+    no_show:    { label: 'Не пришёл',   dot: '#888' },
+  };
+
+  // ─── ICONS ──────────────────────────────────────────────────────────────────
+  const IC = {
+    calendar: (c, sz=22) => <svg width={sz} height={sz} viewBox="0 0 22 22" fill="none"><rect x="3" y="4.5" width="16" height="14" rx="3" stroke={c} strokeWidth="1.6"/><line x1="3" y1="9" x2="19" y2="9" stroke={c} strokeWidth="1.6"/><line x1="8" y1="2.5" x2="8" y2="6.5" stroke={c} strokeWidth="1.6" strokeLinecap="round"/><line x1="14" y1="2.5" x2="14" y2="6.5" stroke={c} strokeWidth="1.6" strokeLinecap="round"/><rect x="7" y="12" width="2" height="2" rx="0.5" fill={c}/><rect x="10.5" y="12" width="2" height="2" rx="0.5" fill={c}/><rect x="7" y="15" width="2" height="2" rx="0.5" fill={c}/></svg>,
+    list: (c, sz=22) => <svg width={sz} height={sz} viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="3" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="3" y="9.5" width="16" height="3" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="3" y="14" width="10" height="3" rx="1.5" stroke={c} strokeWidth="1.5"/></svg>,
+    clients: (c, sz=22) => <svg width={sz} height={sz} viewBox="0 0 22 22" fill="none"><circle cx="8" cy="8" r="3" stroke={c} strokeWidth="1.5"/><path d="M2 18c0-3 2.5-4.5 6-4.5s6 1.5 6 4.5" stroke={c} strokeWidth="1.5" strokeLinecap="round"/><path d="M16 13.5c1.5.5 3 1.5 3 4.5" stroke={c} strokeWidth="1.5" strokeLinecap="round"/><path d="M14 5a3 3 0 1 1 0 6" stroke={c} strokeWidth="1.5" strokeLinecap="round"/></svg>,
+    profile: (c, sz=22) => <svg width={sz} height={sz} viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="3.5" stroke={c} strokeWidth="1.5"/><path d="M4 19c0-3.5 3-6 7-6s7 2.5 7 6" stroke={c} strokeWidth="1.5" strokeLinecap="round"/></svg>,
+    more: (c, sz=22) => <svg width={sz} height={sz} viewBox="0 0 22 22" fill="none"><circle cx="6" cy="11" r="1.5" fill={c}/><circle cx="11" cy="11" r="1.5" fill={c}/><circle cx="16" cy="11" r="1.5" fill={c}/></svg>,
+    plus: (sz=20) => <svg width={sz} height={sz} viewBox="0 0 20 20" fill="none"><line x1="10" y1="4" x2="10" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="4" y1="10" x2="16" y2="10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>,
+    chevRight: (c, sz=16) => <svg width={sz} height={sz} viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    bell: (c, sz=20) => <svg width={sz} height={sz} viewBox="0 0 20 20" fill="none"><path d="M10 3a5 5 0 0 1 5 5v3l1.5 2H3.5L5 11V8a5 5 0 0 1 5-5z" stroke={c} strokeWidth="1.5" strokeLinejoin="round"/><path d="M8.5 17a1.5 1.5 0 0 0 3 0" stroke={c} strokeWidth="1.5"/></svg>,
+    services: (c, sz=20) => <svg width={sz} height={sz} viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="7" height="7" rx="2" stroke={c} strokeWidth="1.5"/><rect x="11" y="3" width="7" height="7" rx="2" stroke={c} strokeWidth="1.5"/><rect x="2" y="12" width="7" height="7" rx="2" stroke={c} strokeWidth="1.5"/><rect x="11" y="12" width="7" height="7" rx="2" stroke={c} strokeWidth="1.5"/></svg>,
+    schedule: (c, sz=20) => <svg width={sz} height={sz} viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke={c} strokeWidth="1.5"/><path d="M10 6v4l3 2" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    salon: (c, sz=20) => <svg width={sz} height={sz} viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6v9H3V9z" stroke={c} strokeWidth="1.5" strokeLinejoin="round"/><rect x="7" y="12" width="3" height="6" rx="1" stroke={c} strokeWidth="1.3"/><rect x="11" y="12" width="3" height="4" rx="1" stroke={c} strokeWidth="1.3"/></svg>,
+    finance: (c, sz=20) => <svg width={sz} height={sz} viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="16" height="12" rx="2.5" stroke={c} strokeWidth="1.5"/><path d="M2 9h16" stroke={c} strokeWidth="1.5"/><circle cx="6" cy="13" r="1.2" fill={c}/><path d="M10 12h4" stroke={c} strokeWidth="1.3" strokeLinecap="round"/></svg>,
+    notif: (c, sz=20) => <svg width={sz} height={sz} viewBox="0 0 20 20" fill="none"><path d="M10 3a5 5 0 0 1 5 5v3l1.5 2H3.5L5 11V8a5 5 0 0 1 5-5z" stroke={c} strokeWidth="1.5" strokeLinejoin="round"/><path d="M8.5 17a1.5 1.5 0 0 0 3 0" stroke={c} strokeWidth="1.5"/></svg>,
+    search: (c, sz=18) => <svg width={sz} height={sz} viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5" stroke={c} strokeWidth="1.5"/><line x1="11.5" y1="11.5" x2="16" y2="16" stroke={c} strokeWidth="1.5" strokeLinecap="round"/></svg>,
+    star: (c, sz=14) => <svg width={sz} height={sz} viewBox="0 0 14 14" fill="none"><path d="M7 1l1.5 4H13L9.5 8l1.5 4-4-2.5L3 12l1.5-4L1 5h4.5z" fill={c}/></svg>,
+    back: (c, sz=18) => <svg width={sz} height={sz} viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9l5 5" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  };
+
+  // ─── CALENDAR SCREEN (C-Day + C-Week) ───────────────────────────────────────
+  function CalendarScreen({ t, calView, setCalView }) {
+    const [selDay, setSelDay] = useState(0);
+    const [selAppt, setSelAppt] = useState(null);
+    const scrollRef = useRef(null);
+    const nowPct = (14 * 60 + 30 - 8 * 60) / (13 * 60);
+
+    const date = new Date(2026, 3, 13 + selDay);
+    const appts = APPTS.filter(a => a.start.toDateString() === date.toDateString())
+      .sort((a, b) => a.start - b.start);
+
+    const dayRevs = WEEK_DATES.map(d => APPTS.filter(a => a.start.toDateString() === d.toDateString()).reduce((s,a)=>s+a.price,0));
+    const maxRev = Math.max(...dayRevs);
+
+    function heatmap(di) {
+      const d = WEEK_DATES[di];
+      return HOURS.map(h => APPTS.filter(a => a.start.toDateString() === d.toDateString() && a.start.getHours() === h).length);
+    }
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, position: 'relative' }}>
+
+        {/* Header */}
+        <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Апрель 2026</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 26, fontWeight: 500, color: t.text, letterSpacing: '-0.5px', lineHeight: 1.1 }}>
+                {calView === 'day' ? `${13 + selDay} апреля` : '13 – 19 апр'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* View switcher */}
+              <div style={{ display: 'flex', background: t.surfaceEl, borderRadius: 10, padding: 3, border: `1px solid ${t.border}` }}>
+                {['День', 'Нед'].map((v, i) => {
+                  const key = i === 0 ? 'day' : 'week';
+                  const isAct = calView === key;
+                  return <div key={i} onClick={() => setCalView(key)}
+                    style={{ padding: '4px 10px', borderRadius: 7, background: isAct ? t.surface : 'transparent',
+                      fontSize: 11, fontWeight: isAct ? 600 : 400, color: isAct ? t.accent : t.textMuted,
+                      border: isAct ? `1px solid ${t.border}` : '1px solid transparent', cursor: 'pointer', transition: 'all 0.15s' }}>{v}</div>;
+                })}
+              </div>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: t.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                {IC.search(t.accent, 16)}
+              </div>
+            </div>
+          </div>
+
+          {/* DAY VIEW: week strip */}
+          {calView === 'day' && (
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+              {DAYS_SHORT.map((d, i) => {
+                const dc = new Date(2026, 3, 13 + i);
+                const cnt = APPTS.filter(a => a.start.toDateString() === dc.toDateString()).length;
+                const isActive = i === selDay;
+                return (
+                  <button key={i} onClick={() => setSelDay(i)}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '7px 0 8px', borderRadius: 12,
+                      background: isActive ? t.accent : 'transparent', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? 'rgba(255,255,255,0.7)' : t.textMuted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{d}</span>
+                    <span style={{ fontFamily: "'Cormorant', serif", fontSize: 18, fontWeight: isActive ? 600 : 400, color: isActive ? '#fff' : t.text, lineHeight: 1.2 }}>{13 + i}</span>
+                    <div style={{ display: 'flex', gap: 2, marginTop: 3, height: 4 }}>
+                      {Array.from({ length: Math.min(cnt, 4) }).map((_, di) => (
+                        <div key={di} style={{ width: 4, height: 4, borderRadius: '50%', background: isActive ? 'rgba(255,255,255,0.6)' : t.accent, opacity: isActive ? 1 : 0.5 }} />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* WEEK VIEW: day columns with rev bars */}
+          {calView === 'week' && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
+                {WEEK_DATES.map((d, i) => {
+                  const rev = dayRevs[i];
+                  const cnt = APPTS.filter(a => a.start.toDateString() === d.toDateString()).length;
+                  const isActive = i === selDay;
+                  const revPct = maxRev > 0 ? rev / maxRev : 0;
+                  return (
+                    <button key={i} onClick={() => setSelDay(i)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px 6px', borderRadius: 12,
+                        background: isActive ? t.accentSoft : t.surfaceEl,
+                        border: `1.5px solid ${isActive ? t.accent : t.borderSub}`, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? t.accent : t.textMuted, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{DAYS_SHORT[i]}</span>
+                      <span style={{ fontFamily: "'Cormorant', serif", fontSize: 16, fontWeight: isActive ? 600 : 400, color: isActive ? t.accent : t.text, lineHeight: 1 }}>{13 + i}</span>
+                      <div style={{ width: '80%', height: 20, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                        <div style={{ width: '100%', height: `${Math.max(2, revPct * 20)}px`, borderRadius: 2, background: isActive ? t.accent : `${t.accent}40`, transition: 'height 0.3s' }} />
+                      </div>
+                      <span style={{ fontSize: 8, color: isActive ? t.accent : t.textMuted }}>{cnt}зап</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Heatmap */}
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ fontSize: 9, color: t.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>Загруженность по часам</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                  {WEEK_DATES.map((d, di) => {
+                    const hm = heatmap(di);
+                    const isActive = di === selDay;
+                    return (
+                      <button key={di} onClick={() => setSelDay(di)}
+                        style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: 0, background: 'none', border: 'none', cursor: 'pointer' }}>
+                        {hm.map((cnt, hi) => (
+                          <div key={hi} style={{ height: 4, borderRadius: 2,
+                            background: cnt > 0 ? (isActive ? t.accent : svcColor(t, APPTS.find(a => a.start.toDateString() === d.toDateString() && a.start.getHours() === HOURS[hi])?.cat || 'other')) : t.surfaceEl,
+                            opacity: cnt > 0 ? Math.min(1, 0.4 + cnt * 0.3) : 0.3 }} />
+                        ))}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Stats strip */}
+        <div style={{ margin: '0 16px 10px', padding: '9px 14px', background: t.surfaceEl, borderRadius: 12, border: `1px solid ${t.border}`, display: 'flex', flexShrink: 0 }}>
+          {[
+            { label: 'Записей', value: appts.length },
+            { label: 'Выручка', value: `${(appts.reduce((s,a) => s+a.price,0)/1000).toFixed(1)}к ₽` },
+            { label: 'Свободно', value: '3 ч' },
+          ].map((s, i) => (
+            <div key={i} style={{ flex: 1, textAlign: 'center', borderRight: i < 2 ? `1px solid ${t.border}` : 'none' }}>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 17, fontWeight: 500, color: i === 1 ? t.accent : t.text }}>{s.value}</div>
+              <div style={{ fontSize: 9, color: t.textMuted, marginTop: 1 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Divider label */}
+        <div style={{ padding: '0 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <span style={{ fontFamily: "'Cormorant', serif", fontSize: 16, color: t.text, fontWeight: 500 }}>
+            {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][selDay]}, {13 + selDay} апр
+          </span>
+          <span style={{ fontSize: 11, color: t.textMuted }}>{appts.length} записей</span>
+        </div>
+
+        {/* Timeline vis strip */}
+        <div style={{ position: 'relative', height: 7, borderRadius: 4, background: t.surfaceEl, margin: '0 16px 10px', overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ position: 'absolute', left: `${nowPct * 100}%`, top: 0, bottom: 0, width: 2, background: t.accent, borderRadius: 1, zIndex: 2 }} />
+          {appts.map(a => {
+            const left = ((a.start.getHours() * 60 + a.start.getMinutes() - 8 * 60) / (13 * 60)) * 100;
+            const w = Math.max(1, ((a.end - a.start) / 60000) / (13 * 60) * 100);
+            return <div key={a.id} style={{ position: 'absolute', left: `${left}%`, width: `${w}%`, top: 0, bottom: 0, background: svcColor(t, a.cat), opacity: 0.75, borderRadius: 2 }} />;
+          })}
+        </div>
+
+        {/* Agenda list */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
+          {appts.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: t.textMuted, fontSize: 13 }}>Нет записей</div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {appts.map(a => {
+              const c = svcColor(t, a.cat);
+              const master = MASTERS.find(m => m.id === a.masterId);
+              const dur = Math.round((a.end - a.start) / 60000);
+              const st = STATUS_CFG[a.status] || STATUS_CFG.confirmed;
+              return (
+                <div key={a.id} onClick={() => setSelAppt(a)}
+                  style={{ display: 'flex', gap: 10, alignItems: 'stretch', cursor: 'pointer' }}>
+                  <div style={{ width: 40, flexShrink: 0, textAlign: 'right', paddingTop: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{fmt(a.start)}</div>
+                    <div style={{ fontSize: 9, color: t.textMuted, marginTop: 1 }}>{dur}м</div>
+                  </div>
+                  <div style={{ width: 2, background: `${c}50`, borderRadius: 1, position: 'relative', flexShrink: 0 }}>
+                    <div style={{ position: 'absolute', top: 10, left: -3, width: 8, height: 8, borderRadius: '50%', background: c, border: `2px solid ${t.bg}` }} />
+                  </div>
+                  <div style={{ flex: 1, background: t.surfaceEl, borderRadius: 12, padding: '9px 11px', border: `1px solid ${t.border}`, marginBottom: 2 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: c, flex: 1, marginRight: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.service}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: t.text, flexShrink: 0 }}>{a.price.toLocaleString('ru')} ₽</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div style={{ width: 16, height: 16, borderRadius: '50%', background: `${c}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 700, color: c }}>{master?.initials}</div>
+                        <span style={{ fontSize: 10, color: t.textSub }}>{a.client}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: st.dot, flexShrink: 0 }} />
+                        <span style={{ fontSize: 9, color: t.textMuted }}>{st.label}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Appointment sheet */}
+        {selAppt && <ApptSheet appt={selAppt} t={t} onClose={() => setSelAppt(null)} />}
+      </div>
+    );
+  }
+
+  // ─── APPOINTMENTS SCREEN ────────────────────────────────────────────────────
+  function ApptsScreen({ t }) {
+    const [filter, setFilter] = useState('all');
+    const [selAppt, setSelAppt] = useState(null);
+
+    const filters = [
+      { id: 'all', label: 'Все' },
+      { id: 'pending', label: 'Ожидают' },
+      { id: 'confirmed', label: 'Подтв.' },
+      { id: 'completed', label: 'Завершены' },
+    ];
+
+    const allAppts = [...APPTS].sort((a,b) => a.start - b.start);
+    const filtered = filter === 'all' ? allAppts : allAppts.filter(a => a.status === filter);
+
+    const pendingCount = APPTS.filter(a => a.status === 'pending').length;
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
+        {/* Header */}
+        <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>Управление</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 26, fontWeight: 500, color: t.text, letterSpacing: '-0.4px' }}>Записи</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {IC.search(t.textMuted, 18)}
+            </div>
+          </div>
+
+          {/* Filter pills */}
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 12 }}>
+            {filters.map(f => {
+              const isAct = filter === f.id;
+              return (
+                <button key={f.id} onClick={() => setFilter(f.id)}
+                  style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 100,
+                    background: isAct ? t.accent : t.surfaceEl,
+                    border: `1px solid ${isAct ? t.accent : t.border}`,
+                    color: isAct ? '#fff' : t.textSub, fontSize: 12, fontWeight: isAct ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  {f.label}
+                  {f.id === 'pending' && pendingCount > 0 && (
+                    <span style={{ background: isAct ? 'rgba(255,255,255,0.3)' : t.warning, color: isAct ? '#fff' : '#fff', fontSize: 9, fontWeight: 700, borderRadius: 100, padding: '1px 5px', lineHeight: 1.5 }}>{pendingCount}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
+          {filtered.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: t.textMuted, fontSize: 13 }}>Нет записей</div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filtered.map(a => {
+              const c = svcColor(t, a.cat);
+              const master = MASTERS.find(m => m.id === a.masterId);
+              const st = STATUS_CFG[a.status] || STATUS_CFG.confirmed;
+              const dur = Math.round((a.end - a.start) / 60000);
+              return (
+                <div key={a.id} onClick={() => setSelAppt(a)}
+                  style={{ background: t.surfaceEl, borderRadius: 14, padding: '12px 14px',
+                    border: `1px solid ${t.border}`, cursor: 'pointer', transition: 'all 0.15s',
+                    display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {/* Color stripe */}
+                  <div style={{ width: 4, height: 44, borderRadius: 2, background: c, flexShrink: 0 }} />
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{a.service}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: t.text, flexShrink: 0 }}>{a.price.toLocaleString('ru')} ₽</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: t.textSub, marginBottom: 5 }}>{a.client} · {master?.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontSize: 10, color: t.textMuted }}>
+                        {a.start.getDate()} апр · {fmt(a.start)} – {fmt(a.end)} · {dur}мин
+                      </div>
+                    </div>
+                  </div>
+                  {/* Status */}
+                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 100, background: `${st.dot}18`, border: `1px solid ${st.dot}30` }}>
+                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: st.dot }} />
+                      <span style={{ fontSize: 9, color: st.dot, fontWeight: 600 }}>{st.label}</span>
+                    </div>
+                    {IC.chevRight(t.textMuted, 14)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {selAppt && <ApptSheet appt={selAppt} t={t} onClose={() => setSelAppt(null)} />}
+      </div>
+    );
+  }
+
+  // ─── CLIENTS SCREEN ─────────────────────────────────────────────────────────
+  const CLIENTS = [
+    { id: 'c1', name: 'Анна Козлова',   phone: '+7 916 123-45-67', visits: 8, spent: 32400, tag: 'vip', lastVisit: '10 апр', initials: 'АК', cat: 'nails' },
+    { id: 'c2', name: 'Ольга Морозова', phone: '+7 903 234-56-78', visits: 3, spent: 12600, tag: 'new', lastVisit: '13 апр', initials: 'ОМ', cat: 'hair' },
+    { id: 'c3', name: 'Марина Петрова', phone: '+7 926 345-67-89', visits: 12, spent: 58200, tag: 'vip', lastVisit: '8 апр', initials: 'МП', cat: 'makeup' },
+    { id: 'c4', name: 'Алиса Давыдова', phone: '+7 915 456-78-90', visits: 5, spent: 21000, tag: null, lastVisit: '5 апр', initials: 'АД', cat: 'massage' },
+    { id: 'c5', name: 'Лена Романова',  phone: '+7 985 567-89-01', visits: 2, spent: 7800, tag: 'new', lastVisit: '13 апр', initials: 'ЛР', cat: 'brows' },
+    { id: 'c6', name: 'Вера Тихонова',  phone: '+7 967 678-90-12', visits: 9, spent: 41400, tag: 'vip', lastVisit: '12 апр', initials: 'ВТ', cat: 'nails' },
+    { id: 'c7', name: 'Катя Соловьёва', phone: '+7 977 789-01-23', visits: 4, spent: 16800, tag: null, lastVisit: '11 апр', initials: 'КС', cat: 'hair' },
+  ];
+
+  function ClientsScreen({ t }) {
+    const [selClient, setSelClient] = useState(null);
+    const TAG_CFG = { vip: { label: 'VIP', bg: `${t.warning}22`, color: t.warning }, new: { label: 'Новый', bg: t.accentSoft, color: t.accent } };
+
+    if (selClient) {
+      const c = selClient;
+      const color = svcColor(t, c.cat);
+      const cAppts = APPTS.filter(a => a.client.split(' ')[0] === c.name.split(' ')[1] || c.id === 'c1' && a.client === 'Анна К.' || c.id === 'c3' && a.client === 'Марина П.').slice(0, 3);
+      return (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
+            <button onClick={() => setSelClient(null)} style={{ background: t.surfaceEl, border: `1px solid ${t.border}`, borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>{IC.back(t.text, 16)}</button>
+            <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, fontWeight: 500, color: t.text }}>Профиль клиента</div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+            {/* Avatar block */}
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color, border: `2px solid ${color}40`, flexShrink: 0 }}>{c.initials}</div>
+              <div>
+                <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, fontWeight: 500, color: t.text, marginBottom: 2 }}>{c.name}</div>
+                <div style={{ fontSize: 12, color: t.textMuted }}>{c.phone}</div>
+              </div>
+            </div>
+            {/* Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+              {[['Визитов', c.visits], ['Потрачено', `${(c.spent/1000).toFixed(1)}к ₽`], ['Последний', c.lastVisit], ['Теги', c.tag ? TAG_CFG[c.tag]?.label : '—']].map(([k, v]) => (
+                <div key={k} style={{ background: t.surfaceEl, borderRadius: 12, padding: '10px 12px', border: `1px solid ${t.border}` }}>
+                  <div style={{ fontSize: 10, color: t.textMuted, marginBottom: 3 }}>{k}</div>
+                  <div style={{ fontFamily: "'Cormorant', serif", fontSize: 18, fontWeight: 500, color: t.text }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {/* Recent appointments */}
+            <div style={{ fontFamily: "'Cormorant', serif", fontSize: 16, color: t.text, marginBottom: 10, fontWeight: 500 }}>История визитов</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {APPTS.slice(0, 4).map(a => {
+                const cc = svcColor(t, a.cat);
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: t.surfaceEl, borderRadius: 10, border: `1px solid ${t.border}` }}>
+                    <div style={{ width: 3, height: 32, borderRadius: 2, background: cc, flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: cc }}>{a.service}</div>
+                      <div style={{ fontSize: 10, color: t.textMuted }}>{a.start.getDate()} апр · {fmt(a.start)}</div>
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{a.price.toLocaleString('ru')} ₽</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
+        <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>База</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 26, fontWeight: 500, color: t.text, letterSpacing: '-0.4px' }}>Клиенты</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {IC.search(t.textMuted, 18)}
+            </div>
+          </div>
+          {/* Search bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: t.surfaceEl, border: `1px solid ${t.border}`, borderRadius: 12, padding: '8px 12px', marginBottom: 14 }}>
+            {IC.search(t.textMuted, 15)}
+            <span style={{ fontSize: 13, color: t.textMuted }}>Поиск клиента...</span>
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        <div style={{ display: 'flex', gap: 8, padding: '0 16px', marginBottom: 12, flexShrink: 0 }}>
+          {[{ label: 'Всего', val: CLIENTS.length }, { label: 'VIP', val: CLIENTS.filter(c=>c.tag==='vip').length }, { label: 'Новые', val: CLIENTS.filter(c=>c.tag==='new').length }].map((s, i) => (
+            <div key={i} style={{ flex: 1, background: t.surfaceEl, borderRadius: 10, padding: '9px 0', textAlign: 'center', border: `1px solid ${t.border}` }}>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, fontWeight: 500, color: i===1?t.warning:i===2?t.accent:t.text }}>{s.val}</div>
+              <div style={{ fontSize: 10, color: t.textMuted }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {CLIENTS.map(c => {
+              const color = svcColor(t, c.cat);
+              const tagCfg = c.tag ? TAG_CFG[c.tag] : null;
+              return (
+                <div key={c.id} onClick={() => setSelClient(c)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: t.surfaceEl, borderRadius: 14, border: `1px solid ${t.border}`, cursor: 'pointer' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color, flexShrink: 0 }}>{c.initials}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                      {tagCfg && <span style={{ fontSize: 9, fontWeight: 700, color: tagCfg.color, background: tagCfg.bg, borderRadius: 100, padding: '2px 7px', flexShrink: 0 }}>{tagCfg.label}</span>}
+                    </div>
+                    <div style={{ fontSize: 11, color: t.textMuted }}>{c.visits} визитов · {(c.spent/1000).toFixed(0)}к ₽ · был {c.lastVisit}</div>
+                  </div>
+                  {IC.chevRight(t.textMuted, 14)}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PROFILE SCREEN ─────────────────────────────────────────────────────────
+  function ProfileScreen({ t }) {
+    const pendingInvites = 1;
+    const stats = [
+      { label: 'Визитов', value: '248' },
+      { label: 'Клиентов', value: '64' },
+      { label: 'Рейтинг', value: '4.9' },
+    ];
+    return (
+      <div style={{ height: '100%', overflowY: 'auto', background: t.bg }}>
+        {/* Hero */}
+        <div style={{ padding: '14px 20px 16px', background: `linear-gradient(160deg, ${t.accent}18 0%, transparent 80%)`, borderBottom: `1px solid ${t.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: `${t.accent}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cormorant', serif", fontSize: 24, fontWeight: 500, color: t.accent, border: `2px solid ${t.accent}40` }}>ВС</div>
+              <div style={{ position: 'absolute', bottom: 1, right: 1, width: 14, height: 14, borderRadius: '50%', background: t.success, border: `2px solid ${t.bg}` }} />
+            </div>
+            <div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, fontWeight: 500, color: t.text, marginBottom: 1 }}>Виктория С.</div>
+              <div style={{ fontSize: 12, color: t.textMuted }}>Мастер маникюра</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                {IC.star(t.warning, 12)}
+                <span style={{ fontSize: 12, color: t.text, fontWeight: 600 }}>4.9</span>
+                <span style={{ fontSize: 11, color: t.textMuted }}>(136 отзывов)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {stats.map((s, i) => (
+              <div key={i} style={{ flex: 1, background: t.surfaceEl, borderRadius: 12, padding: '10px 8px', textAlign: 'center', border: `1px solid ${t.border}` }}>
+                <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, fontWeight: 500, color: i === 2 ? t.warning : t.text }}>{s.value}</div>
+                <div style={{ fontSize: 9, color: t.textMuted, marginTop: 1 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Sections */}
+        <div style={{ padding: '14px 16px' }}>
+          {/* Invites badge if any */}
+          {pendingInvites > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: `${t.accent}12`, borderRadius: 14, border: `1.5px solid ${t.accent}40`, marginBottom: 14, cursor: 'pointer' }}>
+              {IC.salon(t.accent, 18)}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Приглашение в салон</div>
+                <div style={{ fontSize: 11, color: t.textMuted }}>«Студия Bloom» хочет добавить вас</div>
+              </div>
+              <span style={{ background: t.accent, color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 100, padding: '2px 7px' }}>{pendingInvites}</span>
+            </div>
+          )}
+
+          {[
+            { label: 'Мои данные', items: [
+              { icon: IC.profile(t.textMuted, 18), label: 'Личная информация', sub: 'Имя, фото, контакты' },
+              { icon: IC.star(t.textMuted, 16), label: 'Портфолио', sub: '24 работы' },
+            ]},
+            { label: 'Безопасность', items: [
+              { icon: IC.schedule(t.textMuted, 18), label: 'Уведомления', sub: 'Push и Telegram' },
+            ]},
+          ].map(section => (
+            <div key={section.label} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>{section.label}</div>
+              <div style={{ background: t.surfaceEl, borderRadius: 14, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+                {section.items.map((item, i) => (
+                  <div key={item.label}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px',
+                      borderBottom: i < section.items.length - 1 ? `1px solid ${t.border}` : 'none', cursor: 'pointer' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: t.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{item.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: t.text }}>{item.label}</div>
+                      <div style={{ fontSize: 11, color: t.textMuted }}>{item.sub}</div>
+                    </div>
+                    {IC.chevRight(t.textMuted, 14)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── MORE / OVERVIEW SCREEN (Bento) ─────────────────────────────────────────
+  function MoreScreen({ t }) {
+    const [roleMode, setRoleMode] = useState('master'); // 'master' | 'salon'
+    const [selSalon, setSelSalon] = useState('bloom');
+    const isDark = t.dark;
+
+    // palette helpers — each bento card gets its own gradient personality
+    const gradients = {
+      blush:   isDark ? `linear-gradient(135deg, ${t.accent}30 0%, ${t.accent}08 100%)` : `linear-gradient(135deg, #fce4ec 0%, #fce9f0 100%)`,
+      sage:    isDark ? `linear-gradient(135deg, ${t.massage}28 0%, ${t.massage}06 100%)` : `linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%)`,
+      amber:   isDark ? `linear-gradient(135deg, ${t.brows}28 0%, ${t.brows}06 100%)` : `linear-gradient(135deg, #fff8e1 0%, #fffde7 100%)`,
+      violet:  isDark ? `linear-gradient(135deg, ${t.nails}28 0%, ${t.nails}06 100%)` : `linear-gradient(135deg, #ede7f6 0%, #f3e5f5 100%)`,
+      sky:     isDark ? `linear-gradient(135deg, ${t.makeup}28 0%, ${t.makeup}06 100%)` : `linear-gradient(135deg, #e3f2fd 0%, #e8f5e9 100%)`,
+      ink:     isDark ? `linear-gradient(135deg, #1a1830 0%, #0e0c1e 100%)` : `linear-gradient(135deg, #1a1830 0%, #2d1b4e 100%)`,
+    };
+
+    const salons = [
+      { id: 'bloom', name: 'Студия Bloom', role: 'Мастер', city: 'Москва' },
+      { id: 'royal', name: 'Royal Beauty', role: 'Администратор', city: 'Москва' },
+    ];
+
+    // Quick action pills
+    const quickActions = [
+      { id: 'services', label: 'Услуги',       color: t.nails,   bg: `${t.nails}20`,   icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke={t.nails} strokeWidth="1.4"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke={t.nails} strokeWidth="1.4"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke={t.nails} strokeWidth="1.4"/><rect x="10" y="10" width="6" height="6" rx="1.5" stroke={t.nails} strokeWidth="1.4"/></svg> },
+      { id: 'schedule', label: 'Расписание',   color: t.hair,    bg: `${t.hair}20`,    icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6" stroke={t.hair} strokeWidth="1.4"/><path d="M9 5.5V9l2.5 1.5" stroke={t.hair} strokeWidth="1.4" strokeLinecap="round"/></svg> },
+      { id: 'finance',  label: 'Финансы',      color: t.massage, bg: `${t.massage}20`, icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1.5" y="4" width="15" height="11" rx="2" stroke={t.massage} strokeWidth="1.4"/><path d="M1.5 8h15" stroke={t.massage} strokeWidth="1.4"/><circle cx="5" cy="12" r="1" fill={t.massage}/></svg> },
+      { id: 'analytics',label: 'Аналитика',   color: t.makeup,  bg: `${t.makeup}20`,  icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 13l4-4 3 3 3-4 4 2" stroke={t.makeup} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+      { id: 'notif',    label: 'Уведомл.',     color: t.accent,  bg: `${t.accent}20`,  icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2.5a4.5 4.5 0 0 1 4.5 4.5v2.5l1.5 2H3L4.5 9.5V7A4.5 4.5 0 0 1 9 2.5z" stroke={t.accent} strokeWidth="1.4"/><path d="M7.5 15.5a1.5 1.5 0 0 0 3 0" stroke={t.accent} strokeWidth="1.4"/></svg>, badge: 3 },
+      { id: 'settings', label: 'Настройки',    color: t.textMuted, bg: `${t.textMuted}15`, icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2.5" stroke={t.textMuted} strokeWidth="1.4"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.4 3.4l1.4 1.4M13.2 13.2l1.4 1.4M3.4 14.6l1.4-1.4M13.2 4.8l1.4-1.4" stroke={t.textMuted} strokeWidth="1.3" strokeLinecap="round"/></svg> },
+    ];
+
+    // Weekly revenue sparkline data
+    const sparkData = [28, 45, 38, 62, 55, 71, 48];
+    const sparkMax = Math.max(...sparkData);
+
+    return (
+      <div style={{ height: '100%', overflowY: 'auto', background: t.bg }}>
+        {/* ── Header + Role Switcher ─────────────────────────── */}
+        <div style={{ padding: '14px 16px 12px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>Overview</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 26, fontWeight: 500, color: t.text, letterSpacing: '-0.4px', lineHeight: 1 }}>Ещё</div>
+            </div>
+            {/* Mode toggle */}
+            <div style={{ display: 'flex', background: t.surfaceEl, borderRadius: 14, padding: 3, border: `1px solid ${t.border}` }}>
+              {[['master','Мастер'],['salon','Салон']].map(([mode, label]) => {
+                const isAct = roleMode === mode;
+                return <div key={mode} onClick={() => setRoleMode(mode)}
+                  style={{ padding: '5px 12px', borderRadius: 11, background: isAct ? t.accent : 'transparent',
+                    fontSize: 11, fontWeight: isAct ? 700 : 400, color: isAct ? '#fff' : t.textMuted,
+                    cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>{label}</div>;
+              })}
+            </div>
+          </div>
+
+          {/* Salon selector (shown in salon mode) */}
+          {roleMode === 'salon' && (
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, marginBottom: 4 }}>
+              {salons.map(s => {
+                const isAct = selSalon === s.id;
+                return <button key={s.id} onClick={() => setSelSalon(s.id)}
+                  style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px',
+                    borderRadius: 100, border: `1.5px solid ${isAct ? t.accent : t.border}`,
+                    background: isAct ? t.accentSoft : t.surfaceEl, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: isAct ? t.accent : t.surfaceHi, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: isAct ? '#fff' : t.textMuted }}>
+                    {s.name[0]}
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: isAct ? t.accent : t.text, lineHeight: 1.2 }}>{s.name}</div>
+                    <div style={{ fontSize: 9, color: t.textMuted }}>{s.role}</div>
+                  </div>
+                </button>;
+              })}
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: '0 12px 80px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* ── HERO CARD — Revenue + Sparkline ──────────────── */}
+          <div style={{ borderRadius: 22, background: gradients.ink, padding: '18px 18px 16px', position: 'relative', overflow: 'hidden', minHeight: 130 }}>
+            {/* decorative circle */}
+            <div style={{ position: 'absolute', top: -28, right: -28, width: 110, height: 110, borderRadius: '50%', background: `${t.accent}18` }} />
+            <div style={{ position: 'absolute', bottom: -18, right: 30, width: 64, height: 64, borderRadius: '50%', background: `${t.nails}14` }} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 4 }}>Выручка · Апрель</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 36, fontWeight: 500, color: '#fff', letterSpacing: '-1px', lineHeight: 1, marginBottom: 12 }}>
+                48 200 <span style={{ fontSize: 18, fontWeight: 300, opacity: 0.7 }}>₽</span>
+              </div>
+              {/* Sparkline */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 28 }}>
+                {sparkData.map((v, i) => (
+                  <div key={i} style={{ flex: 1, height: `${(v / sparkMax) * 28}px`, borderRadius: '3px 3px 0 0',
+                    background: i === sparkData.length-1 ? t.accent : 'rgba(255,255,255,0.25)', transition: 'height 0.3s' }} />
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Пн</span>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Вс</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── QUICK ACTIONS ROW — round pill cards ─────────── */}
+          <div>
+            <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 8, paddingLeft: 4 }}>Разделы</div>
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+              {quickActions.map(qa => (
+                <button key={qa.id}
+                  style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0' }}>
+                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: qa.bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: `1px solid ${qa.color}25`, position: 'relative',
+                    boxShadow: `0 2px 10px ${qa.color}18` }}>
+                    {qa.icon}
+                    {qa.badge && <div style={{ position: 'absolute', top: 2, right: 2, width: 14, height: 14, borderRadius: '50%', background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff', border: `1.5px solid ${t.bg}` }}>{qa.badge}</div>}
+                  </div>
+                  <span style={{ fontSize: 9, color: t.textSub, fontWeight: 500, whiteSpace: 'nowrap' }}>{qa.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── BENTO GRID ROW 1: Services (wide) + Schedule (narrow) ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 10 }}>
+            {/* Services card */}
+            <div style={{ borderRadius: 20, background: gradients.violet, padding: '16px', position: 'relative', overflow: 'hidden', minHeight: 140, cursor: 'pointer' }}>
+              <div style={{ position: 'absolute', bottom: -16, right: -16, width: 80, height: 80, borderRadius: '50%', background: `${t.nails}18` }} />
+              <div style={{ fontSize: 10, color: t.nails, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>Услуги</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 28, fontWeight: 500, color: t.text, lineHeight: 1, marginBottom: 8 }}>18</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {[['Маникюр', 5], ['Волосы', 7], ['Брови', 3]].map(([name, cnt]) => (
+                  <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ height: 3, width: `${cnt * 7}px`, borderRadius: 2, background: t.nails, opacity: 0.6 }} />
+                    <span style={{ fontSize: 9.5, color: t.textSub }}>{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Schedule card */}
+            <div style={{ borderRadius: 20, background: gradients.sage, padding: '16px', position: 'relative', overflow: 'hidden', minHeight: 140, cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ position: 'absolute', top: -14, right: -14, width: 60, height: 60, borderRadius: '50%', background: `${t.massage}18` }} />
+              <div style={{ fontSize: 10, color: t.massage, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 8 }}>График</div>
+              <div style={{ flex: 1 }}>
+                {['Пн','Вт','Ср','Чт','Пт'].map((d, i) => (
+                  <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                    <span style={{ fontSize: 9, color: t.textMuted, width: 16 }}>{d}</span>
+                    <div style={{ flex: 1, height: 5, borderRadius: 3,
+                      background: i < 4 ? `${t.massage}60` : `${t.border}` }} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: t.massage, fontWeight: 600 }}>9:00–20:00</div>
+            </div>
+          </div>
+
+          {/* ── BENTO GRID ROW 2: Salons (narrow) + Finance (wide) ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.55fr', gap: 10 }}>
+            {/* Salons card */}
+            <div style={{ borderRadius: 20, background: gradients.amber, padding: '16px', position: 'relative', overflow: 'hidden', minHeight: 130, cursor: 'pointer' }}>
+              <div style={{ position: 'absolute', bottom: -12, left: -12, width: 60, height: 60, borderRadius: '50%', background: `${t.brows}20` }} />
+              <div style={{ fontSize: 10, color: t.brows, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>Салоны</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 28, fontWeight: 500, color: t.text, lineHeight: 1, marginBottom: 10 }}>2</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {salons.map(s => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: `${t.brows}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: t.brows }}>{s.name[0]}</div>
+                    <span style={{ fontSize: 9.5, color: t.textSub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Finance card */}
+            <div style={{ borderRadius: 20, background: gradients.sage, padding: '16px', position: 'relative', overflow: 'hidden', minHeight: 130, cursor: 'pointer' }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: `${t.massage}14` }} />
+              <div style={{ fontSize: 10, color: t.massage, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>Финансы</div>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, fontWeight: 500, color: t.text, lineHeight: 1 }}>48.2к</div>
+                  <div style={{ fontSize: 9, color: t.textMuted }}>Доход</div>
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, fontWeight: 500, color: t.error, lineHeight: 1 }}>12.4к</div>
+                  <div style={{ fontSize: 9, color: t.textMuted }}>Расход</div>
+                </div>
+              </div>
+              {/* Mini bars */}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 24 }}>
+                {[60,80,45,90,70,55,85].map((v,i) => (
+                  <div key={i} style={{ flex: 1, height: `${v * 0.24}px`, borderRadius: '2px 2px 0 0', background: i===5 ? t.massage : `${t.massage}45` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── NOTIFICATIONS CARD — full width ─────────────── */}
+          <div style={{ borderRadius: 20, background: gradients.blush, padding: '16px', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
+            <div style={{ position: 'absolute', top: -20, right: -20, width: 90, height: 90, borderRadius: '50%', background: `${t.accent}12` }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, color: t.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 2 }}>Уведомления</div>
+                <div style={{ fontFamily: "'Cormorant', serif", fontSize: 18, fontWeight: 500, color: t.text }}>3 непрочитанных</div>
+              </div>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 14px ${t.accent}40` }}>
+                {IC.bell('#fff', 18)}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                { text: 'Новая запись: Анна К., Маникюр', time: '2 мин', dot: t.success },
+                { text: 'Запись подтверждена: Ольга М.', time: '15 мин', dot: t.info },
+                { text: 'Приглашение в салон Royal Beauty', time: '1 ч', dot: t.accent },
+              ].map((n, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', borderRadius: 10 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: n.dot, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 11, color: t.text, lineHeight: 1.3 }}>{n.text}</span>
+                  <span style={{ fontSize: 9, color: t.textMuted, flexShrink: 0 }}>{n.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── ANALYTICS CARD ───────────────────────────────── */}
+          <div style={{ borderRadius: 20, background: gradients.sky, padding: '16px', overflow: 'hidden', cursor: 'pointer' }}>
+            <div style={{ fontSize: 10, color: t.makeup, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 10 }}>Аналитика · Апрель</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+              {[
+                { label: 'Записей', val: '47', sub: '+12%', pos: true },
+                { label: 'Конверсия', val: '68%', sub: '+4%', pos: true },
+                { label: 'Ср. чек', val: '3.2к', sub: '-2%', pos: false },
+              ].map(s => (
+                <div key={s.label} style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.55)', borderRadius: 12, padding: '10px 8px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, fontWeight: 500, color: t.text, lineHeight: 1 }}>{s.val}</div>
+                  <div style={{ fontSize: 9, color: t.textMuted, marginTop: 2 }}>{s.label}</div>
+                  <div style={{ fontSize: 9, color: s.pos ? t.success : t.error, fontWeight: 600, marginTop: 2 }}>{s.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ─── APPOINTMENT DRAWER — full entity form ──────────────────────────────────
+  function ApptSheet({ appt, t, onClose }) {
+    const [tab, setTab] = useState('details'); // 'details' | 'edit'
+    const [form, setForm] = useState({
+      client:   appt.client,
+      phone:    '+7 916 123-45-67',
+      service:  appt.service,
+      masterId: appt.masterId,
+      date:     `${appt.start.getDate()} апреля 2026`,
+      timeStart: fmt(appt.start),
+      timeEnd:   fmt(appt.end),
+      price:     appt.price,
+      status:    appt.status,
+      comment:   '',
+    });
+    const [saving, setSaving] = useState(false);
+
+    const c = svcColor(t, appt.cat);
+    const master = MASTERS.find(m => m.id === appt.masterId);
+    const st = STATUS_CFG[appt.status] || STATUS_CFG.confirmed;
+
+    const statusOptions = [
+      { value: 'pending',   label: 'Ожидает',     dot: '#C4800A' },
+      { value: 'confirmed', label: 'Подтверждена', dot: '#2A9E6A' },
+      { value: 'completed', label: 'Завершена',    dot: '#4A90D4' },
+      { value: 'cancelled_by_salon', label: 'Отмена', dot: '#C04040' },
+      { value: 'no_show',   label: 'Не пришёл',   dot: '#888' },
+    ];
+
+    function Field({ label, children }) {
+      return (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>{label}</div>
+          {children}
+        </div>
+      );
+    }
+
+    function Input({ value, onChange, placeholder }) {
+      return (
+        <div style={{ background: t.input, border: `1.5px solid ${t.inputBorder}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center' }}>
+          <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: t.text, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
+        </div>
+      );
+    }
+
+    function handleSave() {
+      setSaving(true);
+      setTimeout(() => { setSaving(false); onClose(); }, 900);
+    }
+
+    return (
+      <div onClick={onClose}
+        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 50,
+          display: 'flex', alignItems: 'flex-end', backdropFilter: 'blur(8px)' }}>
+        <div onClick={e => e.stopPropagation()}
+          style={{ width: '100%', background: t.surface, borderRadius: '24px 24px 0 0',
+            border: `1px solid ${t.border}`, maxHeight: '88%', display: 'flex', flexDirection: 'column' }}>
+
+          {/* Handle */}
+          <div style={{ padding: '12px 20px 0', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: '0 auto 14px' }} />
+
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              {/* Color badge */}
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: `${c}18`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: `1.5px solid ${c}35`, flexShrink: 0 }}>
+                <div style={{ width: 14, height: 14, borderRadius: '50%', background: c }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, color: t.text, fontWeight: 500, lineHeight: 1.1, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.service}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 100, background: `${st.dot}18`, border: `1px solid ${st.dot}30` }}>
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: st.dot }} />
+                    <span style={{ fontSize: 10, color: st.dot, fontWeight: 600 }}>{st.label}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: t.textMuted }}>{appt.start.getDate()} апр · {fmt(appt.start)}</span>
+                </div>
+              </div>
+              <button onClick={onClose}
+                style={{ width: 30, height: 30, borderRadius: '50%', background: t.surfaceEl, border: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="2" x2="10" y2="10" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round"/><line x1="10" y1="2" x2="2" y2="10" stroke={t.textMuted} strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', background: t.surfaceEl, borderRadius: 12, padding: 3, border: `1px solid ${t.border}`, marginBottom: 0 }}>
+              {[['details','Детали'],['edit','Редактировать']].map(([key, label]) => {
+                const isAct = tab === key;
+                return <div key={key} onClick={() => setTab(key)}
+                  style={{ flex: 1, textAlign: 'center', padding: '7px 0', borderRadius: 9,
+                    background: isAct ? t.surface : 'transparent',
+                    fontSize: 12, fontWeight: isAct ? 600 : 400,
+                    color: isAct ? t.accent : t.textMuted,
+                    border: isAct ? `1px solid ${t.border}` : '1px solid transparent',
+                    cursor: 'pointer', transition: 'all 0.15s' }}>{label}</div>;
+              })}
+            </div>
+          </div>
+
+          {/* Scrollable content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px' }}>
+            {tab === 'details' ? (
+              <div>
+                {/* Detail rows */}
+                {[
+                  { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke={t.textMuted} strokeWidth="1.3"/><path d="M2 12c0-2.5 2-4 5-4s5 1.5 5 4" stroke={t.textMuted} strokeWidth="1.3" strokeLinecap="round"/></svg>, label: 'Клиент', value: appt.client },
+                  { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke={c} strokeWidth="1.3"/><path d="M2 12c0-2.5 2-4 5-4s5 1.5 5 4" stroke={c} strokeWidth="1.3" strokeLinecap="round"/></svg>, label: 'Мастер', value: master?.name || '—', valueColor: c },
+                  { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2.5" width="11" height="10" rx="2" stroke={t.textMuted} strokeWidth="1.3"/><line x1="1.5" y1="6" x2="12.5" y2="6" stroke={t.textMuted} strokeWidth="1.3"/></svg>, label: 'Дата', value: `${appt.start.getDate()} апреля 2026` },
+                  { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke={t.textMuted} strokeWidth="1.3"/><path d="M7 4v3l2 1.5" stroke={t.textMuted} strokeWidth="1.3" strokeLinecap="round"/></svg>, label: 'Время', value: `${fmt(appt.start)} – ${fmt(appt.end)}` },
+                  { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5l1.3 3.5h3.7l-3 2.2 1.2 3.5L7 8.5l-3.2 2.2 1.2-3.5-3-2.2h3.7z" stroke={t.textMuted} strokeWidth="1.2" fill="none"/></svg>, label: 'Услуга', value: appt.service },
+                  { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke={t.textMuted} strokeWidth="1.3"/><path d="M1 6h12" stroke={t.textMuted} strokeWidth="1.3"/><circle cx="4" cy="9.5" r="0.8" fill={t.textMuted}/></svg>, label: 'Стоимость', value: `${appt.price.toLocaleString('ru')} ₽`, valueColor: t.accent },
+                ].map(row => (
+                  <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: `1px solid ${t.borderSub}` }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: t.surfaceEl, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{row.icon}</div>
+                    <span style={{ flex: 1, fontSize: 12, color: t.textMuted }}>{row.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: row.valueColor || t.text }}>{row.value}</span>
+                  </div>
+                ))}
+
+                {/* Action buttons by status */}
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {appt.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button style={{ flex: 1, padding: '12px 0', borderRadius: 100, background: `${t.success}18`, border: `1.5px solid ${t.success}40`, color: t.success, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                        ✓ Подтвердить
+                      </button>
+                      <button style={{ flex: 1, padding: '12px 0', borderRadius: 100, background: `${t.error}12`, border: `1.5px solid ${t.error}30`, color: t.error, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                        Отменить
+                      </button>
+                    </div>
+                  )}
+                  {appt.status === 'confirmed' && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button style={{ flex: 1, padding: '12px 0', borderRadius: 100, background: `${t.info}18`, border: `1.5px solid ${t.info}40`, color: t.info, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                        Завершить
+                      </button>
+                      <button style={{ flex: 1, padding: '12px 0', borderRadius: 100, background: `${t.error}12`, border: `1.5px solid ${t.error}30`, color: t.error, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                        Не пришёл
+                      </button>
+                    </div>
+                  )}
+                  <button onClick={() => setTab('edit')}
+                    style={{ width: '100%', padding: '13px 0', borderRadius: 100, background: t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    Редактировать запись
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* EDIT FORM */
+              <div>
+                <Field label="Клиент">
+                  <Input value={form.client} onChange={v => setForm(f => ({...f, client: v}))} placeholder="Имя клиента" />
+                </Field>
+                <Field label="Телефон">
+                  <Input value={form.phone} onChange={v => setForm(f => ({...f, phone: v}))} placeholder="+7 ..." />
+                </Field>
+                <Field label="Услуга">
+                  <div style={{ background: t.input, border: `1.5px solid ${t.inputBorder}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                    <span style={{ fontSize: 13, color: t.text }}>{form.service}</span>
+                    {IC.chevRight(t.textMuted, 14)}
+                  </div>
+                </Field>
+                <Field label="Мастер">
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+                    {MASTERS.map(m => {
+                      const mc = svcColor(t, m.cat);
+                      const isAct = form.masterId === m.id;
+                      return <button key={m.id} onClick={() => setForm(f => ({...f, masterId: m.id}))}
+                        style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                          background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: isAct ? `${mc}30` : t.surfaceEl,
+                          border: `2px solid ${isAct ? mc : t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 700, color: isAct ? mc : t.textMuted, transition: 'all 0.15s' }}>
+                          {m.initials}
+                        </div>
+                        <span style={{ fontSize: 9, color: isAct ? mc : t.textMuted, fontWeight: isAct ? 700 : 400 }}>{m.name}</span>
+                      </button>;
+                    })}
+                  </div>
+                </Field>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Field label="Время начала">
+                    <Input value={form.timeStart} onChange={v => setForm(f => ({...f, timeStart: v}))} placeholder="10:00" />
+                  </Field>
+                  <Field label="Время конца">
+                    <Input value={form.timeEnd} onChange={v => setForm(f => ({...f, timeEnd: v}))} placeholder="11:00" />
+                  </Field>
+                </div>
+                <Field label="Стоимость (₽)">
+                  <Input value={String(form.price)} onChange={v => setForm(f => ({...f, price: Number(v) || 0}))} placeholder="0" />
+                </Field>
+                <Field label="Статус">
+                  <div style={{ background: t.input, border: `1.5px solid ${t.inputBorder}`, borderRadius: 12, overflow: 'hidden' }}>
+                    {statusOptions.map((opt, i) => {
+                      const isAct = form.status === opt.value;
+                      return (
+                        <div key={opt.value} onClick={() => setForm(f => ({...f, status: opt.value}))}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                            background: isAct ? `${opt.dot}12` : 'transparent',
+                            borderTop: i > 0 ? `1px solid ${t.borderSub}` : 'none', cursor: 'pointer' }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: opt.dot, flexShrink: 0 }} />
+                          <span style={{ flex: 1, fontSize: 13, color: isAct ? t.text : t.textSub, fontWeight: isAct ? 600 : 400 }}>{opt.label}</span>
+                          {isAct && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3.5 3.5 5.5-6" stroke={opt.dot} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Field>
+                <Field label="Комментарий">
+                  <div style={{ background: t.input, border: `1.5px solid ${t.inputBorder}`, borderRadius: 12, padding: '10px 12px' }}>
+                    <textarea value={form.comment} onChange={e => setForm(f => ({...f, comment: e.target.value}))}
+                      placeholder="Заметка к записи..."
+                      style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: t.text, fontFamily: "'Plus Jakarta Sans', sans-serif", resize: 'none', minHeight: 56, lineHeight: 1.5 }} />
+                  </div>
+                </Field>
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 4, paddingBottom: 8 }}>
+                  <button onClick={() => setTab('details')}
+                    style={{ flex: 1, padding: '13px 0', borderRadius: 100, background: t.surfaceEl, border: `1px solid ${t.border}`, color: t.textSub, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    Назад
+                  </button>
+                  <button onClick={handleSave}
+                    style={{ flex: 2, padding: '13px 0', borderRadius: 100, background: saving ? `${t.accent}80` : t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif", transition: 'background 0.2s' }}>
+                    {saving ? 'Сохранение...' : 'Сохранить'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── BOTTOM NAV ─────────────────────────────────────────────────────────────
+  // Three nav concept variants
+  function BottomNavA({ active, setActive, t }) {
+    // Concept A: Floating pill bar with frosted glass + active pill indicator
+    const items = [
+      { id: 'calendar', label: 'Календарь', icon: (c) => IC.calendar(c, 22) },
+      { id: 'appts',    label: 'Записи',    icon: (c) => IC.list(c, 22) },
+      { id: 'clients',  label: 'Клиенты',   icon: (c) => IC.clients(c, 22) },
+      { id: 'profile',  label: 'Профиль',   icon: (c) => IC.profile(c, 22) },
+      { id: 'more',     label: 'Ещё',       icon: (c) => IC.more(c, 22) },
+    ];
+    const PENDING_BADGE = { appts: 2, profile: 1 };
+    return (
+      <div style={{ padding: '8px 12px 4px', background: t.bg, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', background: t.surface, borderRadius: 24,
+          border: `1px solid ${t.border}`, padding: '6px 6px',
+          boxShadow: `0 -2px 20px ${t.dark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.08)'}` }}>
+          {items.map(item => {
+            const isActive = active === item.id;
+            const badge = PENDING_BADGE[item.id];
+            return (
+              <button key={item.id} onClick={() => setActive(item.id)}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px 6px',
+                  borderRadius: 18, background: isActive ? t.accentSoft : 'transparent',
+                  border: `1.5px solid ${isActive ? t.accent + '60' : 'transparent'}`,
+                  cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}>
+                {item.icon(isActive ? t.accent : t.textMuted)}
+                <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 400, color: isActive ? t.accent : t.textMuted, letterSpacing: '0.1px', whiteSpace: 'nowrap' }}>{item.label}</span>
+                {badge && <div style={{ position: 'absolute', top: 5, right: '18%', width: 14, height: 14, borderRadius: '50%', background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff', border: `1.5px solid ${t.surface}` }}>{badge}</div>}
+              </button>
+            );
+          })}
+        </div>
+        {/* Home indicator */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+          <div style={{ width: 120, height: 4, borderRadius: 2, background: t.text, opacity: 0.2 }} />
+        </div>
+      </div>
+    );
+  }
+
+  function BottomNavB({ active, setActive, t }) {
+    // Concept B: Pill labels only for active, minimal icons + center FAB bump
+    const items = [
+      { id: 'calendar', label: 'Календарь', icon: (c, sz) => IC.calendar(c, sz) },
+      { id: 'appts',    label: 'Записи',    icon: (c, sz) => IC.list(c, sz) },
+      { id: 'fab',      label: null, fab: true },
+      { id: 'clients',  label: 'Клиенты',   icon: (c, sz) => IC.clients(c, sz) },
+      { id: 'more',     label: 'Ещё',       icon: (c, sz) => IC.more(c, sz) },
+    ];
+    return (
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', background: t.surface, borderTop: `1px solid ${t.border}`, padding: '8px 4px 8px' }}>
+          {items.map(item => {
+            if (item.fab) return (
+              <div key="fab" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <button style={{ width: 50, height: 50, borderRadius: '50%', background: t.accent, border: `3px solid ${t.surface}`,
+                  boxShadow: `0 4px 20px ${t.accent}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  marginTop: -20 }}>
+                  {IC.plus(20)}
+                </button>
+              </div>
+            );
+            const isActive = active === item.id;
+            return (
+              <button key={item.id} onClick={() => setActive(item.id)}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                  background: 'none', border: 'none', cursor: 'pointer', color: isActive ? t.accent : t.textMuted,
+                  transition: 'all 0.15s', padding: '4px 0' }}>
+                {item.icon(isActive ? t.accent : t.textMuted, 22)}
+                {isActive
+                  ? <span style={{ fontSize: 10, fontWeight: 700, color: t.accent }}>{item.label}</span>
+                  : <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'transparent' }} />}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 4 }}>
+          <div style={{ width: 120, height: 4, borderRadius: 2, background: t.text, opacity: 0.15 }} />
+        </div>
+      </div>
+    );
+  }
+
+  function BottomNavC({ active, setActive, t }) {
+    // Concept C: Segmented with top-accent line, icon+label always shown
+    const items = [
+      { id: 'calendar', label: 'Календарь', icon: (c, sz) => IC.calendar(c, sz) },
+      { id: 'appts',    label: 'Записи',    icon: (c, sz) => IC.list(c, sz) },
+      { id: 'clients',  label: 'Клиенты',   icon: (c, sz) => IC.clients(c, sz) },
+      { id: 'profile',  label: 'Профиль',   icon: (c, sz) => IC.profile(c, sz) },
+      { id: 'more',     label: 'Ещё',       icon: (c, sz) => IC.more(c, sz) },
+    ];
+    const BADGE = { appts: 2 };
+    return (
+      <div style={{ background: t.surface, flexShrink: 0, borderTop: `1px solid ${t.border}` }}>
+        <div style={{ display: 'flex' }}>
+          {items.map(item => {
+            const isActive = active === item.id;
+            const badge = BADGE[item.id];
+            return (
+              <button key={item.id} onClick={() => setActive(item.id)}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                  padding: '10px 4px 8px', background: 'none', border: 'none', cursor: 'pointer',
+                  position: 'relative', transition: 'all 0.15s',
+                  borderTop: `2px solid ${isActive ? t.accent : 'transparent'}` }}>
+                {item.icon(isActive ? t.accent : t.textMuted, 22)}
+                <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 400, color: isActive ? t.accent : t.textMuted }}>{item.label}</span>
+                {badge && <div style={{ position: 'absolute', top: 8, left: '54%', width: 14, height: 14, borderRadius: '50%', background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff', border: `1.5px solid ${t.surface}` }}>{badge}</div>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', paddingBottom: 4 }}>
+          <div style={{ width: 120, height: 4, borderRadius: 2, background: t.text, opacity: 0.15 }} />
+        </div>
+      </div>
+    );
+  }
+
+  // ─── STATUS BAR ─────────────────────────────────────────────────────────────
+  function StatusBar({ t }) {
+    return (
+      <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0, background: t.bg }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>9:41</span>
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><rect x="0" y="3" width="3" height="9" rx="1" fill={t.text} opacity="0.4"/><rect x="4" y="2" width="3" height="10" rx="1" fill={t.text} opacity="0.6"/><rect x="8" y="0" width="3" height="12" rx="1" fill={t.text} opacity="0.8"/><rect x="12" y="0" width="3" height="12" rx="1" fill={t.text}/></svg>
+          <svg width="15" height="12" viewBox="0 0 15 12" fill="none"><path d="M7.5 2.5C9.5 2.5 11.3 3.3 12.6 4.6L13.8 3.4C12.2 1.8 10 0.8 7.5 0.8C5 0.8 2.8 1.8 1.2 3.4L2.4 4.6C3.7 3.3 5.5 2.5 7.5 2.5Z" fill={t.text}/><path d="M7.5 5.5C8.7 5.5 9.8 6 10.6 6.8L11.8 5.6C10.7 4.6 9.2 4 7.5 4C5.8 4 4.3 4.6 3.2 5.6L4.4 6.8C5.2 6 6.3 5.5 7.5 5.5Z" fill={t.text}/><circle cx="7.5" cy="9.5" r="1.5" fill={t.text}/></svg>
+          <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke={t.text} strokeOpacity="0.35"/><rect x="2" y="2" width="16" height="8" rx="2" fill={t.text}/><path d="M23 4.5v3a1.5 1.5 0 0 0 0-3z" fill={t.text} opacity="0.4"/></svg>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PHONE SCREEN SHELL ──────────────────────────────────────────────────────
+  function PhoneShell({ t, navVariant, label, children }) {
+    const [active, setActive] = useState('calendar');
+    const [calView, setCalView] = useState('day');
+
+    const screen = useMemo(() => {
+      if (active === 'calendar') return <CalendarScreen t={t} calView={calView} setCalView={setCalView} />;
+      if (active === 'appts')    return <ApptsScreen t={t} />;
+      if (active === 'clients')  return <ClientsScreen t={t} />;
+      if (active === 'profile')  return <ProfileScreen t={t} />;
+      if (active === 'more')     return <MoreScreen t={t} />;
+      return <CalendarScreen t={t} calView={calView} setCalView={setCalView} />;
+    }, [active, calView, t]);
+
+    const NavComponent = navVariant === 'A' ? BottomNavA : navVariant === 'B' ? BottomNavB : BottomNavC;
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, overflow: 'hidden', position: 'relative', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <StatusBar t={t} />
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+          {screen}
+        </div>
+        <NavComponent active={active} setActive={setActive} t={t} />
+      </div>
+    );
+  }
+
+  // ─── MAIN APP ────────────────────────────────────────────────────────────────
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "themeId": "ivoryDay",
+    "navVariant": "A"
+  }/*EDITMODE-END*/;
+
+  function App() {
+    const [tweaks, setTweakState] = useState(TWEAK_DEFAULTS);
+    const setTweak = useCallback((key, val) => {
+      const update = typeof key === 'object' ? key : { [key]: val };
+      setTweakState(prev => {
+        const next = { ...prev, ...update };
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits: next }, '*');
+        return next;
+      });
+    }, []);
+
+    const t = VELA.variants[tweaks.themeId] || VELA.variants.ivoryDay;
+    const themeKeys = Object.keys(VELA.variants);
+
+    useEffect(() => {
+      const handler = (e) => {
+        if (e.data?.type === '__activate_edit_mode') {
+          document.getElementById('tweaks-root').style.display = 'block';
+        } else if (e.data?.type === '__deactivate_edit_mode') {
+          document.getElementById('tweaks-root').style.display = 'none';
+        }
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+      return () => window.removeEventListener('message', handler);
+    }, []);
+
+    const navVariants = [
+      { id: 'A', label: 'A — Floating Pill', sub: 'Капсула с активным pill · badge' },
+      { id: 'B', label: 'B — FAB Center', sub: 'FAB по центру · активный label' },
+      { id: 'C', label: 'C — Top Accent Line', sub: 'Верхняя линия · сегменты' },
+    ];
+
+    return (
+      <div style={{ width: '100%', height: '100%', background: '#0a0a0f', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <DesignCanvas>
+          <DCSection id="navs" title="Bottom Nav — 3 Concepts">
+            {navVariants.map(nv => (
+              <DCArtboard key={nv.id} id={`nav-${nv.id}`} label={nv.label} width={390} height={844}>
+                <PhoneShell t={t} navVariant={nv.id} />
+              </DCArtboard>
+            ))}
+          </DCSection>
+        </DesignCanvas>
+
+        <div id="tweaks-root" style={{ display: 'none', position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+          <TweaksPanel onClose={() => {
+            document.getElementById('tweaks-root').style.display = 'none';
+            window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+          }}>
+            <TweakSection title="Theme">
+              <TweakSelect
+                label="Color Scheme"
+                value={tweaks.themeId}
+                options={themeKeys.map(k => ({ value: k, label: VELA.variants[k].name }))}
+                onChange={v => setTweak('themeId', v)}
+              />
+            </TweakSection>
+          </TweaksPanel>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

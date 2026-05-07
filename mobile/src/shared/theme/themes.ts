@@ -40,6 +40,11 @@ export const THEMES: ThemePalette[] = [
     navBg: "#FFFFFF",
     statusBar: "#2A2218",
     scrim: "rgba(42,34,24,0.28)",
+    hair: "#C97A56",
+    nails: "#A06B8E",
+    brows: "#B0884A",
+    makeup: "#7E96BD",
+    massage: "#6E9B7C",
   },
   {
     id: "sandDune",
@@ -74,6 +79,11 @@ export const THEMES: ThemePalette[] = [
     navBg: "#FFFFFF",
     statusBar: "#2B2218",
     scrim: "rgba(43,34,24,0.28)",
+    hair: "#C77A30",
+    nails: "#A0738B",
+    brows: "#A88040",
+    makeup: "#7891B5",
+    massage: "#5F8E6F",
   },
   {
     id: "slateStone",
@@ -108,6 +118,11 @@ export const THEMES: ThemePalette[] = [
     navBg: "#FFFFFF",
     statusBar: "#26221C",
     scrim: "rgba(38,34,28,0.28)",
+    hair: "#C26E44",
+    nails: "#9F718B",
+    brows: "#A2853E",
+    makeup: "#7E94B6",
+    massage: "#5F8E6F",
   },
   {
     id: "linenTea",
@@ -142,6 +157,11 @@ export const THEMES: ThemePalette[] = [
     navBg: "#FFFFFF",
     statusBar: "#2C241D",
     scrim: "rgba(44,36,29,0.28)",
+    hair: "#A87A5F",
+    nails: "#A98199",
+    brows: "#A98445",
+    makeup: "#7C90B5",
+    massage: "#5F8E70",
   },
 ];
 

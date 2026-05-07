@@ -35,6 +35,8 @@ services:
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
     ports:
       - "8080:8080"
+    volumes:
+      - uploads_data:/uploads
 
   bot:
     build:
@@ -92,3 +94,4 @@ services:
 volumes:
   pgdata:
   openobserve_data:
+  uploads_data:

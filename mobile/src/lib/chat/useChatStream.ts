@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { listMessages, type ChatMessage } from '../api/chat';
+import { listMessages, type ChatMessage } from '../../api/chat';
 
 /**
  * Polls the chat room every 5 seconds and pushes only new messages to the

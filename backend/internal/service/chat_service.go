@@ -45,12 +45,25 @@ type SendMessageParams struct {
 	AccessToken  *uuid.UUID // anonymous guest path
 }
 
+type SendMessageWithAttachmentParams struct {
+	RoomID              uuid.UUID
+	Body                string
+	SenderUserID        *uuid.UUID
+	AccessToken         *uuid.UUID // anonymous guest path
+	AttachmentURL       string
+	AttachmentType      string
+	AttachmentFilename  string
+	AttachmentSizeBytes int
+}
+
 type ChatService interface {
 	EnsureRoomForAppointment(ctx context.Context, appointmentID uuid.UUID) (*model.ChatRoom, error)
+	EnsureRoomForInquiry(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error)
 	GetRoom(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByAccessToken(ctx context.Context, token uuid.UUID) (*model.ChatRoom, error)
 
 	SendMessage(ctx context.Context, p SendMessageParams) (*model.ChatMessage, error)
+	SendMessageWithAttachment(ctx context.Context, p SendMessageWithAttachmentParams) (*model.ChatMessage, error)
 	PostSystemMessage(ctx context.Context, roomID uuid.UUID, body string) (*model.ChatMessage, error)
 
 	ListMessages(ctx context.Context, roomID uuid.UUID, requesterUserID *uuid.UUID, accessToken *uuid.UUID, limit, offset int) ([]model.ChatMessage, error)
@@ -86,6 +99,26 @@ func (s *chatService) EnsureRoomForAppointment(ctx context.Context, apptID uuid.
 		AppointmentID:         &apptID,
 		Status:                model.ChatRoomStatusActive,
 		LockedUntilFirstReply: true,
+		AccessToken:           uuid.New(),
+	}
+	if err := s.repo.CreateRoom(ctx, room); err != nil {
+		return nil, err
+	}
+	return room, nil
+}
+
+func (s *chatService) EnsureRoomForInquiry(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error) {
+	if existing, err := s.repo.GetRoomBySalon(ctx, salonID); err != nil {
+		return nil, err
+	} else if existing != nil && existing.Type == model.ChatRoomTypeInquiry {
+		return existing, nil
+	}
+	room := &model.ChatRoom{
+		ID:                    uuid.New(),
+		Type:                  model.ChatRoomTypeInquiry,
+		SalonID:               &salonID,
+		Status:                model.ChatRoomStatusActive,
+		LockedUntilFirstReply: true, // Apply "first step" rule to inquiry rooms
 		AccessToken:           uuid.New(),
 	}
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
@@ -342,4 +375,81 @@ func filterUUID(in []uuid.UUID, exclude *uuid.UUID) []uuid.UUID {
 		}
 	}
 	return out
+}
+
+// SendMessageWithAttachment sends a message with attachment
+func (s *chatService) SendMessageWithAttachment(ctx context.Context, p SendMessageWithAttachmentParams) (*model.ChatMessage, error) {
+	if p.RoomID == uuid.Nil || p.Body == "" {
+		return nil, ErrChatInvalidParams
+	}
+	if p.AttachmentURL == "" {
+		return nil, ErrChatInvalidParams
+	}
+
+	room, err := s.repo.GetRoomByID(ctx, p.RoomID)
+	if err != nil {
+		return nil, err
+	}
+	if room == nil {
+		return nil, ErrChatRoomNotFound
+	}
+	if room.Status == model.ChatRoomStatusReadonly {
+		return nil, ErrChatRoomReadonly
+	}
+
+	// Determine sender role and user ID
+	senderRole, senderUserID, err := s.resolveSender(ctx, p.RoomID, p.SenderUserID, p.AccessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply guest lock rule
+	if senderRole == model.ChatSenderRoleGuest && room.LockedUntilFirstReply {
+		// Check if there are any existing messages from staff
+		messages, err := s.repo.ListMessages(ctx, p.RoomID, 1, 0)
+		if err != nil {
+			return nil, err
+		}
+		hasStaffReply := false
+		for _, msg := range messages {
+			if msg.SenderRole != model.ChatSenderRoleGuest {
+				hasStaffReply = true
+				break
+			}
+		}
+		if !hasStaffReply {
+			return nil, ErrChatGuestLocked
+		}
+	}
+
+	// Create message with attachment
+	msg := &model.ChatMessage{
+		ID:                  uuid.New(),
+		RoomID:              p.RoomID,
+		SenderUserID:        senderUserID,
+		SenderRole:          senderRole,
+		Body:                p.Body,
+		IsSystem:            false,
+		AttachmentURL:       &p.AttachmentURL,
+		AttachmentType:      &p.AttachmentType,
+		AttachmentFilename:  &p.AttachmentFilename,
+		AttachmentSizeBytes: &p.AttachmentSizeBytes,
+	}
+
+	if err := s.repo.InsertMessage(ctx, msg); err != nil {
+		return nil, err
+	}
+
+	// Unlock room after first guest message
+	if room.LockedUntilFirstReply && senderRole == model.ChatSenderRoleGuest {
+		if err := s.repo.UnlockRoomFirstReply(ctx, p.RoomID); err != nil {
+			// Log error but don't fail the message
+			// TODO: Add proper logging
+		}
+	}
+
+	// Broadcast to participants
+	s.broadcastMessage(ctx, msg, room)
+
+	return msg, nil
 }

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import {
   deriveClientSegment,
@@ -115,6 +116,48 @@ export default function ClientsScreen() {
           </ScrollView>
         </View>
 
+        {/* Summary stats */}
+        <View style={styles.summaryRow}>
+          {[
+            { label: "Всего", value: data.length, color: colors.text },
+            {
+              label: "VIP",
+              value: data.filter((c) => deriveClientSegment(c) === "vip")
+                .length,
+              color: colors.yellow,
+            },
+            {
+              label: "Новые",
+              value: data.filter((c) => deriveClientSegment(c) === "new")
+                .length,
+              color: colors.accent,
+            },
+          ].map((s) => (
+            <View
+              key={s.label}
+              style={[
+                styles.summaryCell,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.borderLight,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.summaryValue,
+                  { color: s.color, fontFamily: typography.fonts.serif },
+                ]}
+              >
+                {s.value}
+              </Text>
+              <Text style={[styles.summaryLabel, { color: colors.muted }]}>
+                {s.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
         {/* List */}
         <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
           {isLoading ? (
@@ -135,6 +178,23 @@ export default function ClientsScreen() {
           {rows.map((item) => {
             const visits = item.visitCount ?? item.visitsCount ?? 0;
             const segment = deriveClientSegment(item);
+            const initials = (item.displayName ?? "•")
+              .split(" ")
+              .map((s) => s[0])
+              .slice(0, 2)
+              .join("")
+              .toUpperCase();
+            const tagCfg =
+              segment === "vip"
+                ? { label: "VIP", color: colors.yellow, bg: colors.yellowLight }
+                : segment === "new"
+                  ? {
+                      label: "Новый",
+                      color: colors.accent,
+                      bg: colors.accentLight,
+                    }
+                  : null;
+
             return (
               <View
                 key={item.id}
@@ -146,15 +206,49 @@ export default function ClientsScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.name, { color: colors.text }]}>
-                  {item.displayName || "Без имени"}
-                </Text>
-                <Text style={[styles.meta, { color: colors.textSoft }]}>
-                  {item.phone || "Телефон не указан"}
-                </Text>
-                <Text style={[styles.meta, { color: colors.textSoft }]}>
-                  Визиты: {visits} · Сегмент: {segment.toUpperCase()}
-                </Text>
+                <View
+                  style={[
+                    styles.avatar,
+                    { backgroundColor: colors.accentLight },
+                  ]}
+                >
+                  <Text style={[styles.avatarText, { color: colors.accent }]}>
+                    {initials}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={styles.titleLine}>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.name, { color: colors.text }]}
+                    >
+                      {item.displayName || "Без имени"}
+                    </Text>
+                    {tagCfg ? (
+                      <View
+                        style={[styles.tag, { backgroundColor: tagCfg.bg }]}
+                      >
+                        <Text
+                          style={{
+                            color: tagCfg.color,
+                            fontSize: 9,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {tagCfg.label}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={{ fontSize: 11, color: colors.muted }}>
+                    {visits} визитов{item.phone ? ` · ${item.phone}` : ""}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={14}
+                  color={colors.muted}
+                />
               </View>
             );
           })}
@@ -227,24 +321,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+  summaryRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 18,
+    marginBottom: 12,
+  },
+  summaryCell: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  summaryValue: { fontSize: 20, fontWeight: "500" },
+  summaryLabel: { fontSize: 10 },
   list: {
     flex: 1,
     paddingHorizontal: 18,
   },
   card: {
-    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    gap: 4,
+    borderWidth: 1,
+    marginBottom: 7,
   },
-  name: {
-    fontSize: 16,
-    fontWeight: "700",
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  meta: {
-    fontSize: 13,
+  avatarText: { fontSize: 13, fontWeight: "700" },
+  titleLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 2,
   },
+  name: { fontSize: 13, fontWeight: "600", flex: 1 },
+  tag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 100 },
   stateText: {
     fontSize: 14,
     marginBottom: 10,

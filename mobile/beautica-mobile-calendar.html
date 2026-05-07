@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beautica — Mobile Calendar Exploration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0a0a0f; overflow: hidden; }
+    ::-webkit-scrollbar { width: 3px; height: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(224,92,140,0.3); border-radius: 10px; }
+    * { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="vela/theme.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel">
+  // ─── SHARED DATA & HELPERS ──────────────────────────────────────────────────
+  const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+  const THEME_ID = 'roseNight';
+
+  const MASTERS = [
+    { id: 'm1', name: 'Виктория', initials: 'ВС', role: 'Маникюр', cat: 'nails' },
+    { id: 'm2', name: 'Анна',     initials: 'АМ', role: 'Волосы',   cat: 'hair' },
+    { id: 'm3', name: 'Карина',   initials: 'КЛ', role: 'Брови',    cat: 'brows' },
+    { id: 'm4', name: 'Маша',     initials: 'МК', role: 'Макияж',   cat: 'makeup' },
+    { id: 'm5', name: 'Лена',     initials: 'ЛП', role: 'Массаж',   cat: 'massage' },
+  ];
+
+  function mkA(dayOffset, sh, sm, eh, em, service, client, cat, price, masterId) {
+    const base = new Date(2026, 3, 13);
+    base.setDate(base.getDate() + dayOffset);
+    const s = new Date(base); s.setHours(sh, sm, 0, 0);
+    const e = new Date(base); e.setHours(eh, em, 0, 0);
+    return { id: `${masterId}-${sh}${sm}-${dayOffset}`, start: s, end: e, service, client, cat, price, masterId };
+  }
+
+  const APPTS = [
+    mkA(0, 10, 0,  11, 0,  'Маникюр гель',     'Анна К.',    'nails',   2800, 'm1'),
+    mkA(0, 11,30,  13, 0,  'Стрижка+укладка',  'Ольга М.',   'hair',    4500, 'm2'),
+    mkA(0, 14, 0,  14,30,  'Коррекция бровей', 'Лена Р.',    'brows',   1200, 'm3'),
+    mkA(0, 10,30,  12, 0,  'Макияж',           'Алиса Д.',   'makeup',  5000, 'm4'),
+    mkA(0, 15, 0,  17, 0,  'Окрашивание',      'Марина П.',  'hair',    8500, 'm2'),
+    mkA(0,  9, 0,  10,30,  'Массаж лица',      'Юлия Н.',    'massage', 4000, 'm5'),
+    mkA(0, 12, 0,  13,30,  'СПА-маникюр',      'Вера Т.',    'nails',   3800, 'm1'),
+    mkA(0, 14, 0,  15,30,  'Ламинирование',    'Катя С.',    'brows',   2500, 'm3'),
+    mkA(0, 13, 0,  14,30,  'Свадебный макияж', 'Катя Н.',    'makeup',  9000, 'm4'),
+    mkA(0, 11, 0,  13, 0,  'Антицеллюлитный',  'Дарья К.',   'massage', 5500, 'm5'),
+    mkA(1,  9, 0,  10,30,  'Педикюр',          'Светлана В.','nails',   3200, 'm1'),
+    mkA(1, 11, 0,  12,30,  'Стрижка',          'Оля П.',     'hair',    3200, 'm2'),
+    mkA(1, 13,30,  14,30,  'Ламинирование',    'Катя С.',    'brows',   2500, 'm3'),
+    mkA(1, 10, 0,  11,30,  'Дневной макияж',   'Лиза В.',    'makeup',  3800, 'm4'),
+    mkA(1, 16, 0,  17,30,  'Массаж лица',      'Юлия Н.',    'massage', 4000, 'm5'),
+    mkA(2, 10, 0,  11,30,  'СПА-маникюр',      'Вера Т.',    'nails',   3800, 'm1'),
+    mkA(2, 14, 0,  16, 0,  'Кератин',          'Ирина Ф.',   'hair',    9000, 'm2'),
+    mkA(3,  9,30,  11, 0,  'Массаж тела',      'Дарья К.',   'massage', 5500, 'm5'),
+    mkA(3, 11,30,  12, 0,  'Брови',            'Наташа П.',  'brows',   1800, 'm3'),
+    mkA(3, 13, 0,  14,30,  'Стрижка',          'Соня М.',    'hair',    3200, 'm2'),
+    mkA(4, 10, 0,  11, 0,  'Макияж',           'Женя Л.',    'makeup',  4800, 'm4'),
+    mkA(4, 12, 0,  14, 0,  'Мелирование',      'Лера С.',    'hair',    7500, 'm2'),
+    mkA(5, 10,30,  12,30,  'Свадебный макияж', 'Катя Н.',    'makeup',  9000, 'm4'),
+    mkA(5, 13, 0,  14, 0,  'Маникюр',          'Аня В.',     'nails',   2600, 'm1'),
+    mkA(6, 11, 0,  12,30,  'Стрижка',          'Вика Р.',    'hair',    3500, 'm2'),
+    mkA(6, 14, 0,  15, 0,  'Маникюр',          'Поля С.',    'nails',   2800, 'm1'),
+  ];
+
+  const DAYS_SHORT = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8..20
+  const START_H = 8;
+  const HOUR_PX = 64;
+
+  function toY(date) {
+    return ((date.getHours() - START_H) * 60 + date.getMinutes()) * (HOUR_PX / 60);
+  }
+  function toH(start, end) {
+    return Math.max(24, (end - start) / 60000 * (HOUR_PX / 60));
+  }
+  function fmt(d) {
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  function svcColor(t, cat) {
+    const m = { hair: t.hair, nails: t.nails, massage: t.massage, brows: t.brows, makeup: t.makeup };
+    return m[cat] || t.accent;
+  }
+
+  function getWeekDates(baseDate) {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(2026, 3, 13);
+      d.setDate(d.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  }
+
+  const WEEK_DATES = getWeekDates();
+  const DAY_DATE = new Date(2026, 3, 13); // Monday April 13
+
+  // ─── APPROACH A: COMPACT COLUMN (Day) ──────────────────────────────────────
+  // Each master gets their own horizontal lane. Swipe between masters.
+  function DayViewA({ t }) {
+    const [activeMaster, setActiveMaster] = useState(0);
+    const [selAppt, setSelAppt] = useState(null);
+    const scrollRef = useRef(null);
+    const m = MASTERS[activeMaster];
+    const color = svcColor(t, m.cat);
+    const appts = APPTS.filter(a => a.masterId === m.id && a.start.toDateString() === DAY_DATE.toDateString());
+    const nowY = ((14) * 60 + 30) * (HOUR_PX / 60); // mock 14:30
+
+    useEffect(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = 5 * HOUR_PX;
+    }, [activeMaster]);
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* Header */}
+        <div style={{ padding: '14px 16px 10px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 500, letterSpacing: '0.6px', textTransform: 'uppercase' }}>Понедельник</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 26, fontWeight: 500, color: t.text, letterSpacing: '-0.5px', lineHeight: 1.1 }}>13 апреля</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: t.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke={t.accent} strokeWidth="1.5"/><line x1="10" y1="10" x2="14" y2="14" stroke={t.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </div>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: t.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><line x1="3" y1="7.5" x2="12" y2="7.5" stroke={t.accent} strokeWidth="1.5" strokeLinecap="round"/><line x1="7.5" y1="3" x2="7.5" y2="12" stroke={t.accent} strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Master pills */}
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+            {MASTERS.map((ms, i) => {
+              const mc = svcColor(t, ms.cat);
+              const isActive = i === activeMaster;
+              const cnt = APPTS.filter(a => a.masterId === ms.id && a.start.toDateString() === DAY_DATE.toDateString()).length;
+              return (
+                <button key={ms.id} onClick={() => setActiveMaster(i)}
+                  style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 100, border: `1.5px solid ${isActive ? mc : t.border}`, background: isActive ? `${mc}18` : t.surfaceEl, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: `${mc}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: mc }}>{ms.initials}</div>
+                  <span style={{ fontSize: 12, fontWeight: isActive ? 600 : 400, color: isActive ? mc : t.textSub, whiteSpace: 'nowrap' }}>{ms.name}</span>
+                  {cnt > 0 && <span style={{ width: 16, height: 16, borderRadius: '50%', background: isActive ? mc : t.border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: isActive ? '#fff' : t.textMuted }}>{cnt}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Day stats strip */}
+        <div style={{ margin: '0 16px 10px', padding: '10px 14px', background: t.surfaceEl, borderRadius: 12, border: `1px solid ${t.border}`, display: 'flex', gap: 0 }}>
+          {[
+            { label: 'Записей', value: appts.length },
+            { label: 'Выручка', value: `${(appts.reduce((s,a) => s+a.price,0)/1000).toFixed(1)}к` },
+            { label: 'Свободно', value: `${3}ч` },
+          ].map((s, i) => (
+            <div key={i} style={{ flex: 1, textAlign: 'center', borderRight: i < 2 ? `1px solid ${t.border}` : 'none' }}>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 18, fontWeight: 500, color: i === 1 ? color : t.text }}>{s.value}</div>
+              <div style={{ fontSize: 10, color: t.textMuted, marginTop: 1 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Timeline */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+          <div style={{ position: 'relative', paddingLeft: 52 }}>
+            {/* Hour rows */}
+            {HOURS.map(h => (
+              <div key={h} style={{ height: HOUR_PX, borderBottom: `1px solid ${t.borderSub}`, position: 'relative' }}>
+                <div style={{ position: 'absolute', left: -52, top: 0, width: 46, display: 'flex', alignItems: 'flex-start', paddingTop: 4, justifyContent: 'flex-end', paddingRight: 8 }}>
+                  <span style={{ fontSize: 10, color: t.textMuted, fontWeight: 500 }}>{h}:00</span>
+                </div>
+                <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: t.borderSub, opacity: 0.4 }} />
+              </div>
+            ))}
+
+            {/* Now indicator */}
+            <div style={{ position: 'absolute', top: nowY, left: 0, right: 16, zIndex: 5, pointerEvents: 'none' }}>
+              <div style={{ height: 2, background: t.accent, marginLeft: -6, borderRadius: 1 }}>
+                <div style={{ width: 9, height: 9, borderRadius: '50%', background: t.accent, position: 'absolute', left: -4, top: -3.5 }} />
+              </div>
+            </div>
+
+            {/* Appointments */}
+            {appts.map(a => {
+              const top = toY(a.start);
+              const height = toH(a.start, a.end);
+              const c = svcColor(t, a.cat);
+              const short = height < 40;
+              return (
+                <div key={a.id} onClick={() => setSelAppt(a)}
+                  style={{ position: 'absolute', top: top + 2, left: 4, right: 16, height: height - 4,
+                    borderRadius: 10, background: `${c}1A`, borderLeft: `3px solid ${c}`,
+                    padding: short ? '4px 8px' : '8px 10px', cursor: 'pointer', overflow: 'hidden',
+                    boxShadow: `0 2px 12px ${c}20`, transition: 'all 0.15s' }}>
+                  <div style={{ fontSize: short ? 10 : 12, fontWeight: 700, color: c, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.service}</div>
+                  {!short && <div style={{ fontSize: 10, color: t.textSub, marginTop: 2 }}>{a.client}</div>}
+                  {!short && height > 52 && <div style={{ fontSize: 10, color: t.textMuted, marginTop: 1 }}>{fmt(a.start)} – {fmt(a.end)}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Appointment detail sheet */}
+        {selAppt && (
+          <div onClick={() => setSelAppt(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'flex-end', backdropFilter: 'blur(4px)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: t.surface, borderRadius: '20px 20px 0 0', padding: '20px 20px 32px', border: `1px solid ${t.border}` }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: '0 auto 16px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: svcColor(t, selAppt.cat) }} />
+                <span style={{ fontFamily: "'Cormorant', serif", fontSize: 20, color: t.text, fontWeight: 500 }}>{selAppt.service}</span>
+              </div>
+              {[['Клиент', selAppt.client], ['Время', `${fmt(selAppt.start)} – ${fmt(selAppt.end)}`], ['Стоимость', `${selAppt.price.toLocaleString('ru')} ₽`]].map(([k,v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${t.borderSub}`, fontSize: 13 }}>
+                  <span style={{ color: t.textMuted }}>{k}</span>
+                  <span style={{ color: t.text, fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button style={{ flex: 1, padding: '11px 0', borderRadius: 100, background: t.surfaceEl, border: `1px solid ${t.border}`, color: t.textSub, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Отменить</button>
+                <button style={{ flex: 2, padding: '11px 0', borderRadius: 100, background: t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Редактировать</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── APPROACH B: TIMELINE CASCADE (Day) ────────────────────────────────────
+  // Unified timeline. Bold typographic treatment. Full-width appointment cards.
+  function DayViewB({ t }) {
+    const [selDay, setSelDay] = useState(0);
+    const [selAppt, setSelAppt] = useState(null);
+    const scrollRef = useRef(null);
+    const nowY = ((14) * 60 + 30) * (HOUR_PX / 60);
+
+    const date = new Date(2026, 3, 13 + selDay);
+    const appts = APPTS.filter(a => a.start.toDateString() === date.toDateString());
+    const apptsByHour = {};
+    appts.forEach(a => {
+      const hKey = a.start.getHours();
+      if (!apptsByHour[hKey]) apptsByHour[hKey] = [];
+      apptsByHour[hKey].push(a);
+    });
+
+    useEffect(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = 5 * HOUR_PX;
+    }, [selDay]);
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* Header */}
+        <div style={{ padding: '14px 16px 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 28, fontWeight: 400, color: t.text, letterSpacing: '-0.5px' }}>
+                <span style={{ color: t.accent }}>{13 + selDay}</span>
+                <span style={{ color: t.textMuted, fontSize: 16, fontWeight: 300 }}> апр</span>
+              </div>
+              <div style={{ fontSize: 10, color: t.textMuted, fontWeight: 500, letterSpacing: '1px', textTransform: 'uppercase', marginTop: 1 }}>
+                {['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'][selDay]} · {appts.length} записей
+              </div>
+            </div>
+            <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, fontWeight: 500, color: t.accent }}>
+              {(appts.reduce((s,a) => s+a.price,0)/1000).toFixed(0)}к ₽
+            </div>
+          </div>
+
+          {/* Day strip */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+            {DAYS_SHORT.map((d, i) => {
+              const dc = new Date(2026, 3, 13 + i);
+              const cnt = APPTS.filter(a => a.start.toDateString() === dc.toDateString()).length;
+              const isActive = i === selDay;
+              return (
+                <button key={i} onClick={() => setSelDay(i)}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 0', borderRadius: 10, border: `1.5px solid ${isActive ? t.accent : 'transparent'}`, background: isActive ? t.accentSoft : t.surfaceEl, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <span style={{ fontSize: 9, color: isActive ? t.accent : t.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{d}</span>
+                  <span style={{ fontFamily: "'Cormorant', serif", fontSize: 16, fontWeight: isActive ? 600 : 400, color: isActive ? t.accent : t.text, lineHeight: 1 }}>{13 + i}</span>
+                  {cnt > 0 && <div style={{ width: cnt > 3 ? 14 : cnt * 5, height: 3, borderRadius: 2, background: isActive ? t.accent : t.textMuted, opacity: isActive ? 1 : 0.5 }} />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Timeline cascade */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ position: 'relative', marginLeft: 48, marginRight: 16 }}>
+            {HOURS.map(h => {
+              const hAppts = apptsByHour[h] || [];
+              return (
+                <div key={h} style={{ position: 'relative', minHeight: HOUR_PX }}>
+                  {/* Time label */}
+                  <div style={{ position: 'absolute', left: -48, top: 0, width: 40, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: 2, paddingRight: 8, gap: 1 }}>
+                    <span style={{ fontSize: 10, color: h === 14 ? t.accent : t.textMuted, fontWeight: h === 14 ? 700 : 400 }}>{h}:00</span>
+                  </div>
+                  {/* Hour divider */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: t.borderSub }} />
+
+                  {/* Appointment cascade */}
+                  {hAppts.length > 0 && (
+                    <div style={{ paddingTop: 4, paddingBottom: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {hAppts.map(a => {
+                        const c = svcColor(t, a.cat);
+                        const dur = Math.round((a.end - a.start) / 60000);
+                        const master = MASTERS.find(m => m.id === a.masterId);
+                        return (
+                          <div key={a.id} onClick={() => setSelAppt(a)}
+                            style={{ borderRadius: 12, background: `${c}14`, border: `1px solid ${c}30`,
+                              padding: '10px 12px', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center', transition: 'all 0.15s' }}>
+                            <div style={{ width: 4, height: '100%', minHeight: 36, borderRadius: 2, background: c, flexShrink: 0, alignSelf: 'stretch' }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: c, marginBottom: 2 }}>{a.service}</div>
+                              <div style={{ fontSize: 11, color: t.textSub }}>{a.client} · {master?.name}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{fmt(a.start)}</div>
+                              <div style={{ fontSize: 10, color: t.textMuted }}>{dur}мин</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* FAB */}
+        <div style={{ position: 'absolute', bottom: 80, right: 16, width: 48, height: 48, borderRadius: '50%', background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 20px ${t.accent}50`, cursor: 'pointer' }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><line x1="9" y1="3" x2="9" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="3" y1="9" x2="15" y2="9" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+        </div>
+
+        {selAppt && (
+          <div onClick={() => setSelAppt(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'flex-end', backdropFilter: 'blur(4px)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: t.surface, borderRadius: '20px 20px 0 0', padding: '20px 20px 32px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: '0 auto 16px' }} />
+              <div style={{ fontSize: 11, color: svcColor(t, selAppt.cat), fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>{selAppt.cat}</div>
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, color: t.text, fontWeight: 500, marginBottom: 14 }}>{selAppt.service}</div>
+              {[['Клиент', selAppt.client], ['Время', `${fmt(selAppt.start)} – ${fmt(selAppt.end)}`], ['Стоимость', `${selAppt.price.toLocaleString('ru')} ₽`]].map(([k,v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${t.borderSub}`, fontSize: 13 }}>
+                  <span style={{ color: t.textMuted }}>{k}</span>
+                  <span style={{ color: t.text, fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button style={{ flex: 1, padding: '11px 0', borderRadius: 100, background: t.surfaceEl, border: `1px solid ${t.border}`, color: t.textSub, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Отменить</button>
+                <button style={{ flex: 2, padding: '11px 0', borderRadius: 100, background: t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Редактировать</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── APPROACH C: AGENDA+GRID HYBRID (Day) ──────────────────────────────────
+  // Mini month strip at top, timeline below. Full-bleed accent for selected day.
+  function DayViewC({ t }) {
+    const [selDay, setSelDay] = useState(0);
+    const [selAppt, setSelAppt] = useState(null);
+    const scrollRef = useRef(null);
+    const nowPct = (14 * 60 + 30 - 8 * 60) / (13 * 60); // 8am–9pm
+
+    const date = new Date(2026, 3, 13 + selDay);
+    const appts = APPTS.filter(a => a.start.toDateString() === date.toDateString())
+      .sort((a, b) => a.start - b.start);
+
+    const cats = [...new Set(appts.map(a => a.cat))];
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* Top hero — accent background */}
+        <div style={{ background: `linear-gradient(160deg, ${t.accent}22 0%, transparent 100%)`, padding: '14px 16px 0', flexShrink: 0, borderBottom: `1px solid ${t.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, color: t.text, fontWeight: 500, letterSpacing: '-0.3px' }}>
+              апрель <span style={{ color: t.accent }}>2026</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ fontSize: 11, color: t.textMuted, padding: '4px 10px', borderRadius: 100, border: `1px solid ${t.border}`, background: t.surfaceEl }}>День</div>
+              <div style={{ fontSize: 11, color: t.accent, padding: '4px 10px', borderRadius: 100, border: `1px solid ${t.accent}`, background: t.accentSoft }}>Все</div>
+            </div>
+          </div>
+
+          {/* Week strip with dot density */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
+            {DAYS_SHORT.map((d, i) => {
+              const dc = new Date(2026, 3, 13 + i);
+              const cnt = APPTS.filter(a => a.start.toDateString() === dc.toDateString()).length;
+              const isActive = i === selDay;
+              return (
+                <button key={i} onClick={() => setSelDay(i)}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 10px', borderRadius: 12,
+                    background: isActive ? t.accent : 'transparent',
+                    border: 'none', cursor: 'pointer', transition: 'all 0.15s', position: 'relative' }}>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? 'rgba(255,255,255,0.7)' : t.textMuted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{d}</span>
+                  <span style={{ fontFamily: "'Cormorant', serif", fontSize: 18, fontWeight: isActive ? 600 : 400, color: isActive ? '#fff' : t.text, lineHeight: 1.2 }}>{13 + i}</span>
+                  {/* Dot count */}
+                  <div style={{ display: 'flex', gap: 2, marginTop: 3, height: 4 }}>
+                    {Array.from({ length: Math.min(cnt, 4) }).map((_, di) => (
+                      <div key={di} style={{ width: 4, height: 4, borderRadius: '50%', background: isActive ? 'rgba(255,255,255,0.6)' : t.accent }} />
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Category filter */}
+        <div style={{ display: 'flex', gap: 6, padding: '10px 16px', overflowX: 'auto', flexShrink: 0 }}>
+          {[['Все', null], ...cats.map(c => [c, c])].map(([label, catFilter]) => {
+            const cc = catFilter ? svcColor(t, catFilter) : t.accent;
+            return (
+              <button key={label}
+                style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 100, border: `1px solid ${cc}50`, background: !catFilter ? t.accentSoft : `${cc}14`, color: !catFilter ? t.accent : cc, fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                {label === 'nails' ? 'Ногти' : label === 'hair' ? 'Волосы' : label === 'brows' ? 'Брови' : label === 'makeup' ? 'Макияж' : label === 'massage' ? 'Массаж' : label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Scrollable agenda */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 16px' }}>
+          {/* Timeline vis strip */}
+          <div style={{ position: 'relative', height: 8, borderRadius: 4, background: t.surfaceEl, margin: '4px 0 16px', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', left: `${nowPct * 100}%`, top: 0, bottom: 0, width: 2, background: t.accent, borderRadius: 1 }} />
+            {appts.map(a => {
+              const left = ((a.start.getHours() * 60 + a.start.getMinutes() - 8 * 60) / (13 * 60)) * 100;
+              const w = Math.max(1, ((a.end - a.start) / 60000) / (13 * 60) * 100);
+              return <div key={a.id} style={{ position: 'absolute', left: `${left}%`, width: `${w}%`, top: 0, bottom: 0, background: svcColor(t, a.cat), opacity: 0.7, borderRadius: 2 }} />;
+            })}
+          </div>
+
+          {appts.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: t.textMuted, fontSize: 13 }}>Записей нет</div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {appts.map(a => {
+              const c = svcColor(t, a.cat);
+              const master = MASTERS.find(m => m.id === a.masterId);
+              const dur = Math.round((a.end - a.start) / 60000);
+              return (
+                <div key={a.id} onClick={() => setSelAppt(a)}
+                  style={{ display: 'flex', gap: 12, alignItems: 'stretch', cursor: 'pointer', padding: '2px 0', transition: 'all 0.15s' }}>
+                  {/* Time column */}
+                  <div style={{ width: 44, flexShrink: 0, textAlign: 'right', paddingTop: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{fmt(a.start)}</div>
+                    <div style={{ fontSize: 10, color: t.textMuted, marginTop: 1 }}>{dur}м</div>
+                  </div>
+                  {/* Line */}
+                  <div style={{ width: 2, background: `${c}50`, borderRadius: 1, position: 'relative', flexShrink: 0 }}>
+                    <div style={{ position: 'absolute', top: 10, left: -3, width: 8, height: 8, borderRadius: '50%', background: c, border: `2px solid ${t.bg}` }} />
+                  </div>
+                  {/* Card */}
+                  <div style={{ flex: 1, background: t.surfaceEl, borderRadius: 12, padding: '10px 12px', border: `1px solid ${t.border}`, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: c }}>{a.service}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{a.price.toLocaleString('ru')} ₽</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: `${c}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: c }}>{master?.initials}</div>
+                      <span style={{ fontSize: 11, color: t.textSub }}>{a.client}</span>
+                      <span style={{ fontSize: 10, color: t.textMuted }}>· {master?.name}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {selAppt && (
+          <div onClick={() => setSelAppt(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'flex-end', backdropFilter: 'blur(4px)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: t.surface, borderRadius: '20px 20px 0 0', padding: '20px 20px 32px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: '0 auto 16px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${svcColor(t, selAppt.cat)}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: svcColor(t, selAppt.cat) }} />
+                </div>
+                <span style={{ fontFamily: "'Cormorant', serif", fontSize: 20, color: t.text, fontWeight: 500 }}>{selAppt.service}</span>
+              </div>
+              {[['Клиент', selAppt.client], ['Время', `${fmt(selAppt.start)} – ${fmt(selAppt.end)}`], ['Стоимость', `${selAppt.price.toLocaleString('ru')} ₽`]].map(([k,v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${t.borderSub}`, fontSize: 13 }}>
+                  <span style={{ color: t.textMuted }}>{k}</span>
+                  <span style={{ color: t.text, fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button style={{ flex: 1, padding: '11px 0', borderRadius: 100, background: t.surfaceEl, border: `1px solid ${t.border}`, color: t.textSub, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Отменить</button>
+                <button style={{ flex: 2, padding: '11px 0', borderRadius: 100, background: t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Редактировать</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── APPROACH A: WEEK VIEW — Horizontal Scroll Columns ─────────────────────
+  function WeekViewA({ t }) {
+    const [selAppt, setSelAppt] = useState(null);
+    const scrollRef = useRef(null);
+    const nowY = ((14) * 60 + 30) * (HOUR_PX / 60);
+
+    useEffect(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = 5 * HOUR_PX;
+    }, []);
+
+    const COL_W = 76;
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* Header */}
+        <div style={{ padding: '14px 16px 10px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, color: t.text, fontWeight: 500, letterSpacing: '-0.3px' }}>
+              13–19 <span style={{ color: t.accent }}>апр</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: t.surfaceEl, border: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: t.textSub, cursor: 'pointer' }}>‹</div>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: t.surfaceEl, border: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: t.textSub, cursor: 'pointer' }}>›</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky day headers */}
+        <div style={{ display: 'flex', flexShrink: 0, borderBottom: `1px solid ${t.border}`, background: t.bg }}>
+          <div style={{ width: 36, flexShrink: 0 }} />
+          {WEEK_DATES.map((d, i) => {
+            const cnt = APPTS.filter(a => a.start.toDateString() === d.toDateString()).length;
+            const isToday = i === 0;
+            return (
+              <div key={i} style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0', borderLeft: `1px solid ${t.borderSub}` }}>
+                <div style={{ fontSize: 9, color: isToday ? t.accent : t.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{DAYS_SHORT[i]}</div>
+                <div style={{ width: 26, height: 26, borderRadius: '50%', background: isToday ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontFamily: "'Cormorant', serif", fontSize: 15, fontWeight: isToday ? 700 : 400, color: isToday ? '#fff' : t.text }}>{13 + i}</span>
+                </div>
+                {cnt > 0 && <div style={{ marginTop: 3, display: 'flex', gap: 1.5 }}>{Array.from({length: Math.min(cnt, 4)}).map((_,di) => <div key={di} style={{ width: 3.5, height: 3.5, borderRadius: '50%', background: isToday ? t.accent : t.textMuted, opacity: 0.7 }} />)}</div>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Scrollable grid */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', position: 'relative', minWidth: 36 + 7 * COL_W }}>
+            {/* Time labels */}
+            <div style={{ width: 36, flexShrink: 0, position: 'sticky', left: 0, zIndex: 4, background: t.bg, borderRight: `1px solid ${t.border}` }}>
+              {HOURS.map(h => (
+                <div key={h} style={{ height: HOUR_PX, borderBottom: `1px solid ${t.borderSub}`, display: 'flex', alignItems: 'flex-start', paddingTop: 4, justifyContent: 'center' }}>
+                  <span style={{ fontSize: 9, color: t.textMuted }}>{h}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Day columns */}
+            {WEEK_DATES.map((date, di) => {
+              const dayAppts = APPTS.filter(a => a.start.toDateString() === date.toDateString());
+              const isToday = di === 0;
+              return (
+                <div key={di} style={{ width: COL_W, flexShrink: 0, position: 'relative', borderLeft: `1px solid ${t.borderSub}`, background: isToday ? `${t.accent}04` : 'transparent' }}>
+                  {HOURS.map(h => (
+                    <div key={h} style={{ height: HOUR_PX, borderBottom: `1px solid ${t.borderSub}` }}>
+                      <div style={{ height: 1, background: t.borderSub, opacity: 0.4, marginTop: HOUR_PX / 2 }} />
+                    </div>
+                  ))}
+                  {isToday && (
+                    <div style={{ position: 'absolute', top: nowY, left: 0, right: 0, zIndex: 5, pointerEvents: 'none' }}>
+                      <div style={{ height: 1.5, background: t.accent }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: t.accent, position: 'absolute', left: -3, top: -2.5 }} />
+                      </div>
+                    </div>
+                  )}
+                  {dayAppts.map(a => {
+                    const top = toY(a.start);
+                    const height = toH(a.start, a.end);
+                    const c = svcColor(t, a.cat);
+                    const short = height < 28;
+                    return (
+                      <div key={a.id} onClick={() => setSelAppt(a)}
+                        style={{ position: 'absolute', top: top + 1, left: 2, right: 2, height: height - 2,
+                          borderRadius: 6, background: `${c}1C`, borderLeft: `2.5px solid ${c}`,
+                          padding: short ? '2px 3px' : '3px 5px', cursor: 'pointer', overflow: 'hidden',
+                          boxShadow: `0 1px 6px ${c}18`, transition: 'all 0.15s', zIndex: 2 }}>
+                        <div style={{ fontSize: short ? 8 : 9, fontWeight: 700, color: c, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.service}</div>
+                        {!short && height > 46 && <div style={{ fontSize: 8, color: t.textSub, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.client}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {selAppt && (
+          <div onClick={() => setSelAppt(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'flex-end', backdropFilter: 'blur(4px)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: t.surface, borderRadius: '20px 20px 0 0', padding: '20px 20px 32px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: '0 auto 16px' }} />
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, color: t.text, fontWeight: 500, marginBottom: 14 }}>{selAppt.service}</div>
+              {[['Клиент', selAppt.client], ['Время', `${fmt(selAppt.start)} – ${fmt(selAppt.end)}`], ['Стоимость', `${selAppt.price.toLocaleString('ru')} ₽`]].map(([k,v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${t.borderSub}`, fontSize: 13 }}>
+                  <span style={{ color: t.textMuted }}>{k}</span><span style={{ color: t.text, fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button style={{ flex: 1, padding: '11px 0', borderRadius: 100, background: t.surfaceEl, border: `1px solid ${t.border}`, color: t.textSub, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Закрыть</button>
+                <button style={{ flex: 2, padding: '11px 0', borderRadius: 100, background: t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Изменить</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── APPROACH B: WEEK VIEW — Master Lanes ──────────────────────────────────
+  // Horizontal strip of master avatars; vertical timeline shows all their appointments stacked
+  function WeekViewB({ t }) {
+    const [activeMaster, setActiveMaster] = useState(null); // null = all
+    const [selDay, setSelDay] = useState(null);
+    const [selAppt, setSelAppt] = useState(null);
+    const scrollRef = useRef(null);
+
+    useEffect(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = 4 * HOUR_PX;
+    }, []);
+
+    const filteredAppts = activeMaster
+      ? APPTS.filter(a => a.masterId === activeMaster)
+      : APPTS;
+
+    const nowY = ((14) * 60 + 30) * (HOUR_PX / 60);
+    const COL_W = 72;
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* Header */}
+        <div style={{ padding: '12px 16px 10px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, color: t.text, fontWeight: 500 }}>
+              нед. 13–19 <span style={{ color: t.accent }}>апр</span>
+            </div>
+            <div style={{ fontSize: 11, color: t.textMuted, padding: '4px 10px', border: `1px solid ${t.border}`, borderRadius: 100, background: t.surfaceEl }}>Сегодня</div>
+          </div>
+
+          {/* Master filter row */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 2, alignItems: 'center' }}>
+            <button onClick={() => setActiveMaster(null)}
+              style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', background: 'none', border: 'none' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: !activeMaster ? t.accent : t.surfaceEl, border: `2px solid ${!activeMaster ? t.accent : t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="4" cy="4.5" r="2" fill={!activeMaster ? '#fff' : t.textMuted}/><circle cx="9" cy="4.5" r="2" fill={!activeMaster ? '#fff' : t.textMuted}/><path d="M1 11c0-2 1.5-3 3-3s3 1 3 3" stroke={!activeMaster ? '#fff' : t.textMuted} strokeWidth="1.2" strokeLinecap="round" fill="none"/><path d="M7 11c0-2 1-3 2-3s3 1 3 3" stroke={!activeMaster ? '#fff' : t.textMuted} strokeWidth="1.2" strokeLinecap="round" fill="none"/></svg>
+              </div>
+              <span style={{ fontSize: 8, color: !activeMaster ? t.accent : t.textMuted, fontWeight: !activeMaster ? 700 : 400 }}>Все</span>
+            </button>
+            {MASTERS.map(m => {
+              const c = svcColor(t, m.cat);
+              const isActive = activeMaster === m.id;
+              const cnt = APPTS.filter(a => a.masterId === m.id).length;
+              return (
+                <button key={m.id} onClick={() => setActiveMaster(isActive ? null : m.id)}
+                  style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', background: 'none', border: 'none' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${c}22`, border: `2px solid ${isActive ? c : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: c, transition: 'all 0.15s' }}>
+                    {m.initials}
+                  </div>
+                  <span style={{ fontSize: 8, color: isActive ? c : t.textMuted, fontWeight: isActive ? 700 : 400 }}>{m.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Day headers row */}
+        <div style={{ display: 'flex', flexShrink: 0, borderBottom: `1px solid ${t.border}`, background: t.surfaceEl }}>
+          <div style={{ width: 36, flexShrink: 0 }} />
+          {WEEK_DATES.map((d, i) => {
+            const cnt = filteredAppts.filter(a => a.start.toDateString() === d.toDateString()).length;
+            const rev = filteredAppts.filter(a => a.start.toDateString() === d.toDateString()).reduce((s,a) => s+a.price, 0);
+            const isToday = i === 0;
+            return (
+              <div key={i} onClick={() => setSelDay(i === selDay ? null : i)}
+                style={{ width: COL_W, flexShrink: 0, textAlign: 'center', padding: '7px 4px', borderLeft: `1px solid ${t.borderSub}`, cursor: 'pointer',
+                  background: selDay === i ? `${t.accent}14` : 'transparent', transition: 'background 0.15s' }}>
+                <div style={{ fontSize: 9, color: isToday ? t.accent : t.textMuted, textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: 600, marginBottom: 2 }}>{DAYS_SHORT[i]}</div>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: isToday ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                  <span style={{ fontFamily: "'Cormorant', serif", fontSize: 14, fontWeight: isToday ? 700 : 400, color: isToday ? '#fff' : t.text }}>{13 + i}</span>
+                </div>
+                {rev > 0 && <div style={{ fontSize: 8, color: t.textMuted, marginTop: 2 }}>{(rev/1000).toFixed(0)}к</div>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Grid */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', minWidth: 36 + 7 * COL_W, position: 'relative' }}>
+            {/* Time */}
+            <div style={{ width: 36, flexShrink: 0, position: 'sticky', left: 0, zIndex: 4, background: t.bg, borderRight: `1px solid ${t.border}` }}>
+              {HOURS.map(h => (
+                <div key={h} style={{ height: HOUR_PX, borderBottom: `1px solid ${t.borderSub}`, display: 'flex', alignItems: 'flex-start', paddingTop: 4, justifyContent: 'center' }}>
+                  <span style={{ fontSize: 9, color: t.textMuted }}>{h}</span>
+                </div>
+              ))}
+            </div>
+
+            {WEEK_DATES.map((date, di) => {
+              const dayAppts = filteredAppts.filter(a => a.start.toDateString() === date.toDateString());
+              const isToday = di === 0;
+              const isSel = selDay === di;
+              return (
+                <div key={di} style={{ width: COL_W, flexShrink: 0, position: 'relative', borderLeft: `1px solid ${t.borderSub}`, background: isSel ? `${t.accent}08` : isToday ? `${t.accent}04` : 'transparent' }}>
+                  {HOURS.map(h => (
+                    <div key={h} style={{ height: HOUR_PX, borderBottom: `1px solid ${t.borderSub}` }}>
+                      <div style={{ height: 1, background: t.borderSub, opacity: 0.35, marginTop: HOUR_PX/2 }} />
+                    </div>
+                  ))}
+                  {isToday && (
+                    <div style={{ position: 'absolute', top: nowY, left: 0, right: 0, zIndex: 5, pointerEvents: 'none' }}>
+                      <div style={{ height: 1.5, background: t.accent }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: t.accent, position: 'absolute', left: -3, top: -2.25 }} />
+                      </div>
+                    </div>
+                  )}
+                  {dayAppts.map(a => {
+                    const top = toY(a.start);
+                    const height = toH(a.start, a.end);
+                    const c = svcColor(t, a.cat);
+                    const short = height < 28;
+                    return (
+                      <div key={a.id} onClick={() => setSelAppt(a)}
+                        style={{ position: 'absolute', top: top + 1, left: 2, right: 2, height: height - 2,
+                          borderRadius: 6, background: `${c}22`, borderLeft: `2.5px solid ${c}`,
+                          padding: short ? '2px 3px' : '3px 5px', cursor: 'pointer', overflow: 'hidden',
+                          transition: 'all 0.15s', zIndex: 2 }}>
+                        <div style={{ fontSize: short ? 8 : 9, fontWeight: 700, color: c, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.service}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {selAppt && (
+          <div onClick={() => setSelAppt(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'flex-end', backdropFilter: 'blur(4px)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: t.surface, borderRadius: '20px 20px 0 0', padding: '20px 20px 32px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: '0 auto 16px' }} />
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, color: t.text, fontWeight: 500, marginBottom: 14 }}>{selAppt.service}</div>
+              {[['Клиент', selAppt.client], ['Время', `${fmt(selAppt.start)} – ${fmt(selAppt.end)}`], ['Стоимость', `${selAppt.price.toLocaleString('ru')} ₽`]].map(([k,v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${t.borderSub}`, fontSize: 13 }}>
+                  <span style={{ color: t.textMuted }}>{k}</span><span style={{ color: t.text, fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+              <button onClick={() => setSelAppt(null)} style={{ width: '100%', marginTop: 16, padding: '11px 0', borderRadius: 100, background: t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Редактировать</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── APPROACH C: WEEK VIEW — Compact Heatmap ───────────────────────────────
+  // Mini calendar week at top, density heatmap per day, tap to see day agenda
+  function WeekViewC({ t }) {
+    const [selDay, setSelDay] = useState(0);
+    const [selAppt, setSelAppt] = useState(null);
+
+    const date = new Date(2026, 3, 13 + selDay);
+    const selAppts = APPTS.filter(a => a.start.toDateString() === date.toDateString())
+      .sort((a, b) => a.start - b.start);
+
+    // Revenue per day
+    const dayRevs = WEEK_DATES.map(d => APPTS.filter(a => a.start.toDateString() === d.toDateString()).reduce((s,a)=>s+a.price,0));
+    const maxRev = Math.max(...dayRevs);
+
+    // Count per hour per day for heatmap
+    function heatmap(di) {
+      const d = WEEK_DATES[di];
+      return HOURS.map(h => {
+        const cnt = APPTS.filter(a => a.start.toDateString() === d.toDateString() && a.start.getHours() === h).length;
+        return cnt;
+      });
+    }
+
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* Week overview header */}
+        <div style={{ padding: '14px 16px 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Cormorant', serif", fontSize: 22, color: t.text, fontWeight: 500 }}>
+              Неделя <span style={{ color: t.accent }}>13–19</span>
+            </div>
+            <div style={{ fontSize: 11, color: t.textMuted }}>
+              <span style={{ color: t.text, fontWeight: 600 }}>{(dayRevs.reduce((a,b)=>a+b,0)/1000).toFixed(0)}к ₽</span> итого
+            </div>
+          </div>
+
+          {/* Day columns with revenue bars */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 14 }}>
+            {WEEK_DATES.map((d, i) => {
+              const rev = dayRevs[i];
+              const cnt = APPTS.filter(a => a.start.toDateString() === d.toDateString()).length;
+              const isActive = i === selDay;
+              const isToday = i === 0;
+              const revPct = maxRev > 0 ? rev / maxRev : 0;
+              return (
+                <button key={i} onClick={() => setSelDay(i)}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', borderRadius: 12,
+                    background: isActive ? t.accentSoft : t.surfaceEl,
+                    border: `1.5px solid ${isActive ? t.accent : t.borderSub}`, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? t.accent : t.textMuted, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{DAYS_SHORT[i]}</span>
+                  <span style={{ fontFamily: "'Cormorant', serif", fontSize: 16, fontWeight: isActive ? 600 : 400, color: isActive ? t.accent : t.text, lineHeight: 1 }}>{13 + i}</span>
+                  {/* Revenue bar */}
+                  <div style={{ width: '100%', height: 24, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                    <div style={{ width: '100%', height: `${Math.max(3, revPct * 24)}px`, borderRadius: 3, background: isActive ? t.accent : `${t.accent}40`, transition: 'height 0.3s' }} />
+                  </div>
+                  <span style={{ fontSize: 8, color: isActive ? t.accent : t.textMuted, fontWeight: 500 }}>{cnt}зап</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Heatmap row */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 9, color: t.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>Загруженность по часам</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+              {WEEK_DATES.map((d, di) => {
+                const hm = heatmap(di);
+                const isActive = di === selDay;
+                return (
+                  <button key={di} onClick={() => setSelDay(di)}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: 0, background: 'none', border: 'none', cursor: 'pointer' }}>
+                    {hm.map((cnt, hi) => (
+                      <div key={hi} style={{ height: 4, borderRadius: 2, background: cnt > 0 ? (isActive ? t.accent : svcColor(t, APPTS.find(a => a.start.toDateString() === d.toDateString() && a.start.getHours() === HOURS[hi])?.cat || 'other')) : t.surfaceEl, opacity: cnt > 0 ? Math.min(1, 0.4 + cnt * 0.3) : 0.3 }} />
+                    ))}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Selected day agenda */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px', borderTop: `1px solid ${t.border}' ` }}>
+          <div style={{ padding: '10px 0 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontFamily: "'Cormorant', serif", fontSize: 18, color: t.text, fontWeight: 500 }}>
+              {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][selDay]}, {13 + selDay} апр
+            </span>
+            <span style={{ fontSize: 11, color: t.accent, fontWeight: 600 }}>{(dayRevs[selDay]/1000).toFixed(1)}к ₽</span>
+          </div>
+
+          {selAppts.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: t.textMuted, fontSize: 12 }}>Нет записей</div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {selAppts.map(a => {
+              const c = svcColor(t, a.cat);
+              const master = MASTERS.find(m => m.id === a.masterId);
+              return (
+                <div key={a.id} onClick={() => setSelAppt(a)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, background: t.surfaceEl, border: `1px solid ${t.borderSub}`, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <div style={{ width: 3, height: 36, borderRadius: 2, background: c, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: c, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.service}</div>
+                    <div style={{ fontSize: 10, color: t.textSub, marginTop: 2 }}>{a.client} · {master?.name}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{fmt(a.start)}</div>
+                    <div style={{ fontSize: 10, color: t.textMuted }}>{a.price.toLocaleString('ru')} ₽</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {selAppt && (
+          <div onClick={() => setSelAppt(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'flex-end', backdropFilter: 'blur(4px)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: t.surface, borderRadius: '20px 20px 0 0', padding: '20px 20px 32px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: '0 auto 16px' }} />
+              <div style={{ fontFamily: "'Cormorant', serif", fontSize: 20, color: t.text, fontWeight: 500, marginBottom: 14 }}>{selAppt.service}</div>
+              {[['Клиент', selAppt.client], ['Время', `${fmt(selAppt.start)} – ${fmt(selAppt.end)}`], ['Стоимость', `${selAppt.price.toLocaleString('ru')} ₽`]].map(([k,v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: `1px solid ${t.borderSub}`, fontSize: 13 }}>
+                  <span style={{ color: t.textMuted }}>{k}</span><span style={{ color: t.text, fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+              <button onClick={() => setSelAppt(null)} style={{ width: '100%', marginTop: 16, padding: '11px 0', borderRadius: 100, background: t.accent, border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Редактировать</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── BOTTOM NAV ─────────────────────────────────────────────────────────────
+  function BottomNav({ active, t }) {
+    const items = [
+      { id: 'calendar', icon: (<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.5"/><line x1="3" y1="8" x2="17" y2="8" stroke="currentColor" strokeWidth="1.5"/><line x1="7" y1="2" x2="7" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="13" y1="2" x2="13" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>), label: 'Календарь' },
+      { id: 'clients', icon: (<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4 17c0-3.5 2.5-5.5 6-5.5s6 2 6 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>), label: 'Клиенты' },
+      { id: 'add', icon: (<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="currentColor"/><line x1="10" y1="6" x2="10" y2="14" stroke="white" strokeWidth="2" strokeLinecap="round"/><line x1="6" y1="10" x2="14" y2="10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>), label: '' },
+      { id: 'analytics', icon: (<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="10" width="4" height="7" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="8" y="6" width="4" height="11" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="13" y="3" width="4" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>), label: 'Отчёты' },
+      { id: 'settings', icon: (<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2M5.05 5.05l1.41 1.41M13.54 13.54l1.41 1.41M5.05 14.95l1.41-1.41M13.54 6.46l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>), label: 'Настройки' },
+    ];
+    return (
+      <div style={{ height: 58, background: t.surface, borderTop: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+        {items.map(item => {
+          const isActive = active === item.id;
+          const isAdd = item.id === 'add';
+          return (
+            <button key={item.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', cursor: 'pointer', color: isAdd ? t.accent : isActive ? t.accent : t.textMuted, padding: '6px 0' }}>
+              {item.icon}
+              {item.label && <span style={{ fontSize: 9, fontWeight: isActive ? 600 : 400 }}>{item.label}</span>}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ─── PHONE WRAPPER ───────────────────────────────────────────────────────────
+  function PhoneScreen({ label, children, t, viewType }) {
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg, overflow: 'hidden', position: 'relative', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        {/* Status bar */}
+        <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0, background: t.bg }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>9:41</span>
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><rect x="0" y="3" width="3" height="9" rx="1" fill={t.text} opacity="0.4"/><rect x="4" y="2" width="3" height="10" rx="1" fill={t.text} opacity="0.6"/><rect x="8" y="0" width="3" height="12" rx="1" fill={t.text} opacity="0.8"/><rect x="12" y="0" width="3" height="12" rx="1" fill={t.text}/></svg>
+            <svg width="15" height="12" viewBox="0 0 15 12" fill="none"><path d="M7.5 2.5C9.5 2.5 11.3 3.3 12.6 4.6L13.8 3.4C12.2 1.8 10 0.8 7.5 0.8C5 0.8 2.8 1.8 1.2 3.4L2.4 4.6C3.7 3.3 5.5 2.5 7.5 2.5Z" fill={t.text}/><path d="M7.5 5.5C8.7 5.5 9.8 6 10.6 6.8L11.8 5.6C10.7 4.6 9.2 4 7.5 4C5.8 4 4.3 4.6 3.2 5.6L4.4 6.8C5.2 6 6.3 5.5 7.5 5.5Z" fill={t.text}/><circle cx="7.5" cy="9.5" r="1.5" fill={t.text}/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke={t.text} strokeOpacity="0.35"/><rect x="2" y="2" width="16" height="8" rx="2" fill={t.text}/><path d="M23 4.5v3a1.5 1.5 0 0 0 0-3z" fill={t.text} opacity="0.4"/></svg>
+          </div>
+        </div>
+
+        {/* View toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px 8px', flexShrink: 0 }}>
+          <div style={{ flex: 1, display: 'flex', gap: 1, background: t.surfaceEl, borderRadius: 10, padding: 3, border: `1px solid ${t.border}` }}>
+            {['День', 'Неделя', 'Месяц'].map((v, i) => {
+              const isAct = (viewType === 'day' && i === 0) || (viewType === 'week' && i === 1) || (viewType === 'month' && i === 2);
+              return (
+                <div key={i} style={{ flex: 1, textAlign: 'center', padding: '5px 0', borderRadius: 7, background: isAct ? t.surface : 'transparent', fontSize: 11, fontWeight: isAct ? 600 : 400, color: isAct ? t.accent : t.textMuted, border: isAct ? `1px solid ${t.border}` : '1px solid transparent', transition: 'all 0.15s', cursor: 'pointer' }}>
+                  {v}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+          {children}
+        </div>
+
+        {/* Bottom nav */}
+        <BottomNav active="calendar" t={t} />
+      </div>
+    );
+  }
+
+  // ─── MAIN APP ────────────────────────────────────────────────────────────────
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "themeId": "ivoryDay",
+    "variant": "week"
+  }/*EDITMODE-END*/;
+
+  function App() {
+    const [tweaks, setTweakState] = useState(TWEAK_DEFAULTS);
+    const setTweak = useCallback((key, val) => {
+      const update = typeof key === 'object' ? key : { [key]: val };
+      setTweakState(prev => {
+        const next = { ...prev, ...update };
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits: next }, '*');
+        return next;
+      });
+    }, []);
+
+    const t = VELA.variants[tweaks.themeId] || VELA.variants.roseNight;
+
+    // Tweaks panel protocol
+    useEffect(() => {
+      const handler = (e) => {
+        if (e.data?.type === '__activate_edit_mode') {
+          document.getElementById('tweaks-root').style.display = 'block';
+        } else if (e.data?.type === '__deactivate_edit_mode') {
+          document.getElementById('tweaks-root').style.display = 'none';
+        }
+      };
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+      return () => window.removeEventListener('message', handler);
+    }, []);
+
+    const themeOptions = Object.values(VELA.variants).map(v => v.name);
+    const themeKeys = Object.keys(VELA.variants);
+
+    // Day view renders
+    const dayViews = [
+      { label: 'A — Master Lanes', sub: 'Filter by master · Timeline grid', comp: <DayViewA t={t} /> },
+      { label: 'B — Timeline Cascade', sub: 'Day strip · Chronological cards', comp: <DayViewB t={t} /> },
+      { label: 'C — Agenda + Strip', sub: 'Visual timeline bar · Agenda list', comp: <DayViewC t={t} /> },
+    ];
+    const weekViews = [
+      { label: 'A — 7-Day Grid', sub: 'Classic week grid · Horizontal scroll', comp: <WeekViewA t={t} /> },
+      { label: 'B — Master Filter', sub: 'Avatar filter · Revenue per day', comp: <WeekViewB t={t} /> },
+      { label: 'C — Heatmap + Agenda', sub: 'Density visualization · Day drill-down', comp: <WeekViewC t={t} /> },
+    ];
+
+    const views = tweaks.variant === 'day' ? dayViews : weekViews;
+
+    return (
+      <div style={{ width: '100%', height: '100%', background: '#0a0a0f', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <DesignCanvas>
+          <DCSection id="day" title={tweaks.variant === 'day' ? 'Day View — 3 Approaches' : 'Week View — 3 Approaches'}>
+            {views.map((v, i) => (
+              <DCArtboard key={v.label} id={`${tweaks.variant}-${i}`} label={v.label} width={390} height={844}>
+                <PhoneScreen t={t} viewType={tweaks.variant} label={v.label}>
+                  {v.comp}
+                </PhoneScreen>
+              </DCArtboard>
+            ))}
+          </DCSection>
+        </DesignCanvas>
+
+        {/* Tweaks panel */}
+        <div id="tweaks-root" style={{ display: 'none', position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+          <TweaksPanel onClose={() => {
+            document.getElementById('tweaks-root').style.display = 'none';
+            window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+          }}>
+            <TweakSection title="View Type">
+              <TweakRadio
+                label="Calendar View"
+                value={tweaks.variant}
+                options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }]}
+                onChange={v => setTweak('variant', v)}
+              />
+            </TweakSection>
+            <TweakSection title="Theme">
+              <TweakSelect
+                label="Color Scheme"
+                value={tweaks.themeId}
+                options={themeKeys.map((k, i) => ({ value: k, label: themeOptions[i] }))}
+                onChange={v => setTweak('themeId', v)}
+              />
+            </TweakSection>
+          </TweaksPanel>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

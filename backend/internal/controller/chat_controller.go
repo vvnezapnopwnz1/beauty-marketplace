@@ -30,6 +30,19 @@ type postMessageRequest struct {
 	AccessToken string `json:"accessToken,omitempty"`
 }
 
+type createInquiryRoomRequest struct {
+	SalonID string `json:"salonId"`
+}
+
+type postMessageWithAttachmentRequest struct {
+	Body                string `json:"body"`
+	AccessToken         string `json:"accessToken,omitempty"`
+	AttachmentURL       string `json:"attachmentUrl"`
+	AttachmentType      string `json:"attachmentType"`
+	AttachmentFilename  string `json:"attachmentFilename"`
+	AttachmentSizeBytes int    `json:"attachmentSizeBytes"`
+}
+
 func (h *ChatController) PostMessage(w http.ResponseWriter, r *http.Request) {
 	roomID, err := uuid.Parse(r.PathValue("roomId"))
 	if err != nil {
@@ -180,6 +193,236 @@ func (h *ChatController) StreamGuest(w http.ResponseWriter, r *http.Request) {
 	room, err := h.svc.GetRoomByAccessToken(r.Context(), tok)
 	if err != nil {
 		writeChatError(w, err)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	flusher.Flush()
+
+	ch := make(chan []byte, 16)
+	unsubscribe := h.broadcaster.SubscribeRoom(room.ID, ch)
+	defer unsubscribe()
+
+	keepalive := time.NewTicker(25 * time.Second)
+	defer keepalive.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case payload := <-ch:
+			if _, err := fmt.Fprintf(w, "event: chat.message\ndata: %s\n\n", payload); err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-keepalive.C:
+			if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}
+}
+
+// CreateInquiryRoom creates a new inquiry chat room for a salon
+func (h *ChatController) CreateInquiryRoom(w http.ResponseWriter, r *http.Request) {
+	var req createInquiryRoomRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.SalonID == "" {
+		http.Error(w, "salonId required", http.StatusBadRequest)
+		return
+	}
+
+	salonID, err := uuid.Parse(req.SalonID)
+	if err != nil {
+		http.Error(w, "invalid salonId", http.StatusBadRequest)
+		return
+	}
+
+	room, err := h.svc.EnsureRoomForInquiry(r.Context(), salonID)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(room)
+}
+
+// GetInquiryRoom returns inquiry room details
+func (h *ChatController) GetInquiryRoom(w http.ResponseWriter, r *http.Request) {
+	roomID, err := uuid.Parse(r.PathValue("roomId"))
+	if err != nil {
+		http.Error(w, "invalid roomId", http.StatusBadRequest)
+		return
+	}
+
+	room, err := h.svc.GetRoom(r.Context(), roomID)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+
+	if room.Type != "inquiry" {
+		http.Error(w, "not an inquiry room", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(room)
+}
+
+// PostInquiryMessage sends a message to an inquiry room
+func (h *ChatController) PostInquiryMessage(w http.ResponseWriter, r *http.Request) {
+	roomID, err := uuid.Parse(r.PathValue("roomId"))
+	if err != nil {
+		http.Error(w, "invalid roomId", http.StatusBadRequest)
+		return
+	}
+
+	var req postMessageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.Body == "" {
+		http.Error(w, "body required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify it's an inquiry room
+	room, err := h.svc.GetRoom(r.Context(), roomID)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+	if room.Type != "inquiry" {
+		http.Error(w, "not an inquiry room", http.StatusBadRequest)
+		return
+	}
+
+	params := service.SendMessageParams{RoomID: roomID, Body: req.Body}
+	if uid, ok := auth.UserIDFromCtx(r.Context()); ok {
+		params.SenderUserID = &uid
+	}
+	if req.AccessToken != "" {
+		tok, err := uuid.Parse(req.AccessToken)
+		if err != nil {
+			http.Error(w, "invalid accessToken", http.StatusBadRequest)
+			return
+		}
+		params.AccessToken = &tok
+	}
+	if params.SenderUserID == nil && params.AccessToken == nil {
+		http.Error(w, "auth required", http.StatusUnauthorized)
+		return
+	}
+
+	msg, err := h.svc.SendMessage(r.Context(), params)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(msg)
+}
+
+// PostInquiryMessageWithAttachment sends a message with attachment to an inquiry room
+func (h *ChatController) PostInquiryMessageWithAttachment(w http.ResponseWriter, r *http.Request) {
+	roomID, err := uuid.Parse(r.PathValue("roomId"))
+	if err != nil {
+		http.Error(w, "invalid roomId", http.StatusBadRequest)
+		return
+	}
+
+	var req postMessageWithAttachmentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.Body == "" {
+		http.Error(w, "body required", http.StatusBadRequest)
+		return
+	}
+	if req.AttachmentURL == "" {
+		http.Error(w, "attachmentUrl required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify it's an inquiry room
+	room, err := h.svc.GetRoom(r.Context(), roomID)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+	if room.Type != "inquiry" {
+		http.Error(w, "not an inquiry room", http.StatusBadRequest)
+		return
+	}
+
+	params := service.SendMessageWithAttachmentParams{
+		RoomID:              roomID,
+		Body:                req.Body,
+		AttachmentURL:       req.AttachmentURL,
+		AttachmentType:      req.AttachmentType,
+		AttachmentFilename:  req.AttachmentFilename,
+		AttachmentSizeBytes: req.AttachmentSizeBytes,
+	}
+	if uid, ok := auth.UserIDFromCtx(r.Context()); ok {
+		params.SenderUserID = &uid
+	}
+	if req.AccessToken != "" {
+		tok, err := uuid.Parse(req.AccessToken)
+		if err != nil {
+			http.Error(w, "invalid accessToken", http.StatusBadRequest)
+			return
+		}
+		params.AccessToken = &tok
+	}
+	if params.SenderUserID == nil && params.AccessToken == nil {
+		http.Error(w, "auth required", http.StatusUnauthorized)
+		return
+	}
+
+	msg, err := h.svc.SendMessageWithAttachment(r.Context(), params)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(msg)
+}
+
+// StreamInquiryMessages provides SSE stream for inquiry room
+func (h *ChatController) StreamInquiryMessages(w http.ResponseWriter, r *http.Request) {
+	roomID, err := uuid.Parse(r.PathValue("roomId"))
+	if err != nil {
+		http.Error(w, "invalid roomId", http.StatusBadRequest)
+		return
+	}
+
+	// Verify it's an inquiry room
+	room, err := h.svc.GetRoom(r.Context(), roomID)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+	if room.Type != "inquiry" {
+		http.Error(w, "not an inquiry room", http.StatusBadRequest)
 		return
 	}
 

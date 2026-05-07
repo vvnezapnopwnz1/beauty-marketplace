@@ -1,19 +1,23 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
+import { View, Text, FlatList, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../../src/shared/theme/useTheme";
-import { useMasterAppointmentsQuery } from "../../src/entities/appointments/api";
-
-const FILTERS = [
-  { label: "Все", value: "" },
-  { label: "Предстоящие", value: "pending,confirmed" },
-  { label: "Прошедшие", value: "completed" },
-  { label: "Отменённые", value: "cancelled,cancelled_client,cancelled_staff,no_show" },
-];
+import {
+  useMasterAppointmentsQuery,
+  type MasterAppointment,
+} from "../../src/entities/appointments/api";
+import {
+  AppointmentFilters,
+  type FilterId,
+} from "../../src/features/appointments/AppointmentFilters";
+import { AppointmentListCard } from "../../src/features/appointments/AppointmentListCard";
+import { AppointmentSheet } from "../../src/features/appointments/AppointmentSheet";
 
 export default function RecordsScreen() {
-  const { colors } = useTheme();
-  const [status, setStatus] = useState("");
+  const { colors, typography } = useTheme();
+  const [filter, setFilter] = useState<FilterId>("all");
+  const [openAppt, setOpenAppt] = useState<MasterAppointment | null>(null);
+
   const range = useMemo(() => {
     const now = new Date();
     const from = new Date(now);
@@ -26,62 +30,95 @@ export default function RecordsScreen() {
     };
   }, []);
 
+  const apiStatus = filter === "all" ? "" : filter;
   const { data, isLoading, isError } = useMasterAppointmentsQuery({
     from: range.from,
     to: range.to,
-    status,
+    status: apiStatus,
     page: 1,
-    pageSize: 50,
+    pageSize: 100,
   });
+
+  const items = data?.items ?? [];
+  const pendingCount = items.filter((i) => i.status === "pending").length;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
-      <View style={styles.wrap}>
-        <View style={styles.filters}>
-          {FILTERS.map((f) => {
-            const active = status === f.value;
-            return (
-              <TouchableOpacity
-                key={f.label}
-                onPress={() => setStatus(f.value)}
-                style={[styles.filterBtn, { backgroundColor: active ? colors.accent : colors.surface }]}
-              >
-                <Text style={{ color: active ? colors.textInverse : colors.text }}>{f.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.eyebrow, { color: colors.muted }]}>
+              УПРАВЛЕНИЕ
+            </Text>
+            <Text
+              style={[
+                styles.title,
+                { color: colors.text, fontFamily: typography.fonts.serif },
+              ]}
+            >
+              Записи
+            </Text>
+          </View>
         </View>
-
-        {isLoading ? <Text style={{ color: colors.muted }}>Загрузка записей...</Text> : null}
-        {isError ? <Text style={{ color: colors.red }}>Не удалось загрузить записи</Text> : null}
-        {!isLoading && data && data.items.length === 0 ? <Text style={{ color: colors.muted }}>Записей нет</Text> : null}
-
-        <FlatList
-          data={data?.items ?? []}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.borderLight }]}>
-              <Text style={[styles.name, { color: colors.text }]}>{item.clientLabel}</Text>
-              <Text style={{ color: colors.textSoft }}>{item.serviceName}</Text>
-              <Text style={{ color: colors.textSoft }}>
-                {new Date(item.startsAt).toLocaleString("ru-RU")} - {new Date(item.endsAt).toLocaleTimeString("ru-RU")}
-              </Text>
-              <Text style={{ color: colors.accent }}>{(item.totalPriceCents / 100).toLocaleString("ru-RU")} RUB</Text>
-            </View>
-          )}
-          contentContainerStyle={styles.list}
+        <AppointmentFilters
+          active={filter}
+          onChange={setFilter}
+          pendingCount={pendingCount}
         />
       </View>
+
+      {isLoading ? (
+        <Text style={[styles.state, { color: colors.muted }]}>Загрузка...</Text>
+      ) : null}
+      {isError ? (
+        <Text style={[styles.state, { color: colors.red }]}>
+          Не удалось загрузить
+        </Text>
+      ) : null}
+
+      <FlatList
+        data={items}
+        keyExtractor={(it) => it.id}
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
+          <AppointmentListCard
+            appointment={item as any}
+            onPress={() => setOpenAppt(item)}
+          />
+        )}
+        ListEmptyComponent={
+          !isLoading ? (
+            <Text style={[styles.state, { color: colors.muted }]}>
+              Нет записей
+            </Text>
+          ) : null
+        }
+      />
+
+      <AppointmentSheet
+        appointment={openAppt}
+        onClose={() => setOpenAppt(null)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  wrap: { flex: 1, padding: 16 },
-  filters: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
-  filterBtn: { borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
-  list: { paddingBottom: 60 },
-  card: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 10 },
-  name: { fontSize: 16, fontWeight: "700" },
+  header: { paddingHorizontal: 16, paddingTop: 12 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  title: { fontSize: 26, fontWeight: "500", letterSpacing: -0.4 },
+  list: { paddingHorizontal: 16, paddingBottom: 16 },
+  state: { textAlign: "center", paddingVertical: 24, fontSize: 13 },
 });
