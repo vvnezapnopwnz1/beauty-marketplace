@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
+import { authFetch } from '@shared/api/authApi';
 import { chatApi } from '../api/chatApi';
 import type { ChatMessage } from '../model/types';
 
@@ -15,9 +16,7 @@ export interface ChatStreamPayload {
 export interface UseChatStreamOptions {
     roomId: string | undefined;
     accessToken?: string;
-    /** Origin for SSE. Defaults to current origin. Authenticated users share the
-     * same /notifications/stream as notifications; the JWT cookie/header is sent
-     * automatically by the browser. */
+    /** Origin for SSE. Defaults to current origin. */
     streamUrl?: string;
 }
 
@@ -26,17 +25,15 @@ export function useChatStream({ roomId, accessToken, streamUrl }: UseChatStreamO
 
     useEffect(() => {
         if (!roomId) return;
+        // Guest SSE is not implemented on backend yet (Phase 1 follow-up),
+        // avoid opening unauthorized /notifications/stream without Bearer token.
+        if (accessToken) return;
         const url = streamUrl ?? '/api/v1/notifications/stream';
-        let es: EventSource;
-        try {
-            es = new EventSource(url, { withCredentials: true });
-        } catch {
-            return;
-        }
+        const controller = new AbortController();
+        let stopped = false;
 
-        const onMessage = (ev: MessageEvent) => {
+        const handleChatMessage = (payload: ChatStreamPayload) => {
             try {
-                const payload = JSON.parse(ev.data) as ChatStreamPayload;
                 if (payload.roomId !== roomId) return;
                 dispatch(
                     chatApi.util.updateQueryData(
@@ -61,10 +58,56 @@ export function useChatStream({ roomId, accessToken, streamUrl }: UseChatStreamO
             }
         };
 
-        es.addEventListener('chat.message', onMessage as EventListener);
+        const start = async () => {
+            try {
+                const res = await authFetch(url, {
+                    method: 'GET',
+                    headers: { Accept: 'text/event-stream' },
+                    signal: controller.signal,
+                });
+                if (!res.ok || !res.body) return;
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (!stopped) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+
+                    const blocks = buffer.split('\n\n');
+                    buffer = blocks.pop() ?? '';
+                    for (const block of blocks) {
+                        const lines = block.split('\n');
+                        let eventType = '';
+                        const dataLines: string[] = [];
+                        for (const line of lines) {
+                            if (line.startsWith('event:')) {
+                                eventType = line.slice(6).trim();
+                                continue;
+                            }
+                            if (line.startsWith('data:')) {
+                                dataLines.push(line.slice(5).trim());
+                            }
+                        }
+                        if (eventType !== 'chat.message' || dataLines.length === 0) continue;
+                        try {
+                            handleChatMessage(JSON.parse(dataLines.join('\n')) as ChatStreamPayload);
+                        } catch {
+                            // ignore malformed events
+                        }
+                    }
+                }
+            } catch {
+                // silent: stream is best-effort
+            }
+        };
+
+        void start();
         return () => {
-            es.removeEventListener('chat.message', onMessage as EventListener);
-            es.close();
+            stopped = true;
+            controller.abort();
         };
     }, [roomId, accessToken, streamUrl, dispatch]);
 }
