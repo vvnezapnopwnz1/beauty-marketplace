@@ -1,6 +1,7 @@
 import { Badge, Drawer, Fab } from '@mui/material';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface ChatTriggerProps {
     unreadCount?: number;
@@ -9,6 +10,7 @@ export interface ChatTriggerProps {
 }
 
 export function ChatTrigger({ unreadCount = 0, children, drawerWidth = 380 }: ChatTriggerProps) {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     return (
         <>
@@ -21,7 +23,7 @@ export function ChatTrigger({ unreadCount = 0, children, drawerWidth = 380 }: Ch
                     zIndex: (t) => t.zIndex.modal + 1,
                 }}
                 onClick={() => setOpen((v) => !v)}
-                aria-label="Открыть чат"
+                aria-label={open ? t('chat.closeAria') : t('chat.openAria')}
             >
                 <Badge
                     badgeContent={unreadCount}

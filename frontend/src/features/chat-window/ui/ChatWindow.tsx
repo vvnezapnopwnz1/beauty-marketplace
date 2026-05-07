@@ -1,5 +1,6 @@
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     useChatStream,
     useGetRoomForAppointmentQuery,
@@ -32,6 +33,8 @@ export function ChatWindow({
     roomStatusOverride,
     lockedOverride,
 }: ChatWindowProps) {
+    const { t } = useTranslation();
+
     const skipRoomQuery = !appointmentId || Boolean(roomIdOverride);
     const room = useGetRoomForAppointmentQuery(appointmentId ?? '', {
         skip: skipRoomQuery,
@@ -102,7 +105,7 @@ export function ChatWindow({
                     variant="caption"
                     sx={{ p: 1, color: 'text.secondary', textAlign: 'center' }}
                 >
-                    Чат закрыт.
+                    {t('chat.readonly')}
                 </Typography>
             )}
             {guestLocked && !isReadonly && (
@@ -110,15 +113,15 @@ export function ChatWindow({
                     variant="caption"
                     sx={{ p: 1, color: 'text.secondary', textAlign: 'center' }}
                 >
-                    Сообщение отправлено мастеру. Дождитесь ответа, чтобы продолжить диалог.
+                    {t('chat.lockedAfterFirst')}
                 </Typography>
             )}
             <ChatComposer
                 disabled={composerDisabled}
                 placeholder={
                     isAnonGuest && locked
-                        ? 'Можно отправить одно сообщение мастеру'
-                        : 'Сообщение…'
+                        ? t('chat.lockHint')
+                        : t('chat.placeholder')
                 }
                 onSubmit={async (body) => {
                     await send({ roomId, body, accessToken }).unwrap();

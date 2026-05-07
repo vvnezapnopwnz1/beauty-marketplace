@@ -44,6 +44,8 @@ import {
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone, toRuE164 } from '@shared/lib/formatPhone'
 import { AppointmentChatSection } from './AppointmentChatSection'
+import { useAppSelector } from '@app/store'
+import { selectUser } from '@features/auth-by-phone/model/authSlice'
 
 type DrawerAppointment = DashboardAppointment & {
   serviceId?: string
@@ -129,6 +131,7 @@ export function AppointmentDrawer({
 }: AppointmentDrawerProps) {
   const d = useDashboardPalette()
   const { inputBaseSx, textareaSx, selectMenuSx } = useDashboardFormStyles()
+  const currentUser = useAppSelector(selectUser)
   const [services, setServices] = useState<DashboardServiceRow[]>([])
   const [staff, setStaff] = useState<DashboardStaffRow[]>([])
   const [info, setInfo] = useState<string | null>(null)
@@ -807,7 +810,7 @@ export function AppointmentDrawer({
             )}
           </Stack>
           {appointment?.id && (
-            <AppointmentChatSection appointmentId={appointment.id} />
+            <AppointmentChatSection appointmentId={appointment.id} currentUserId={currentUser?.id} />
           )}
         </Box>
 

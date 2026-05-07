@@ -285,5 +285,17 @@
       "salonOwnerText": "Have a salon?",
       "salonOwnerLink": "Add venue"
     }
+  },
+  "chat": {
+    "title": "Appointment chat",
+    "placeholder": "Type a message",
+    "send": "Send",
+    "lockHint": "You can send one message to the master before the conversation starts.",
+    "lockedAfterFirst": "Wait for the master to reply to continue.",
+    "readonly": "This chat is closed.",
+    "empty": "No messages yet.",
+    "systemPrefix": "System",
+    "openAria": "Open chat",
+    "closeAria": "Close chat"
   }
 }
