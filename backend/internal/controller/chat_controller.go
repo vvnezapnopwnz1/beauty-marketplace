@@ -3,8 +3,10 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -14,12 +16,13 @@ import (
 )
 
 type ChatController struct {
-	svc service.ChatService
-	log *zap.Logger
+	svc         service.ChatService
+	broadcaster service.ChatBroadcaster
+	log         *zap.Logger
 }
 
-func NewChatController(svc service.ChatService, log *zap.Logger) *ChatController {
-	return &ChatController{svc: svc, log: log}
+func NewChatController(svc service.ChatService, broadcaster service.ChatBroadcaster, log *zap.Logger) *ChatController {
+	return &ChatController{svc: svc, broadcaster: broadcaster, log: log}
 }
 
 type postMessageRequest struct {
@@ -163,6 +166,57 @@ func (h *ChatController) MarkRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// StreamGuest delivers chat.message events for a single room to anonymous
+// guests authenticated by the room's access token. The token is the credential —
+// no JWT or cookie is required.
+func (h *ChatController) StreamGuest(w http.ResponseWriter, r *http.Request) {
+	tok, err := uuid.Parse(r.PathValue("token"))
+	if err != nil {
+		http.Error(w, "invalid token", http.StatusBadRequest)
+		return
+	}
+	room, err := h.svc.GetRoomByAccessToken(r.Context(), tok)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	flusher.Flush()
+
+	ch := make(chan []byte, 16)
+	unsubscribe := h.broadcaster.SubscribeRoom(room.ID, ch)
+	defer unsubscribe()
+
+	keepalive := time.NewTicker(25 * time.Second)
+	defer keepalive.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case payload := <-ch:
+			if _, err := fmt.Fprintf(w, "event: chat.message\ndata: %s\n\n", payload); err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-keepalive.C:
+			if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}
 }
 
 func writeChatError(w http.ResponseWriter, err error) {

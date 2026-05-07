@@ -82,6 +82,7 @@ func NewHTTPServer(
 	// Chat (Phase 1: external, appointment-bound)
 	mux.HandleFunc("GET /api/v1/chat/appointments/{appointmentId}/room", withCORS(auth.RequireAuth(jwtMgr, ch.GetRoomForAppointment)))
 	mux.HandleFunc("GET /api/v1/chat/external/rooms/{token}", withCORS(ch.GetRoomByToken))
+	mux.HandleFunc("GET /api/v1/chat/external/rooms/{token}/stream", withCORS(ch.StreamGuest))
 	mux.HandleFunc("GET /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.ListMessages)))
 	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.PostMessage)))
 	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/read", withCORS(auth.RequireAuth(jwtMgr, ch.MarkRead)))

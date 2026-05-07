@@ -34,6 +34,8 @@ type AppointmentResolver interface {
 
 type ChatBroadcaster interface {
 	BroadcastChatMessage(ctx context.Context, recipientUserIDs []uuid.UUID, payload json.RawMessage)
+	BroadcastToRoom(ctx context.Context, roomID uuid.UUID, payload json.RawMessage)
+	SubscribeRoom(roomID uuid.UUID, ch chan<- []byte) (unsubscribe func())
 }
 
 type SendMessageParams struct {
@@ -280,10 +282,8 @@ func (s *chatService) assertCanRead(ctx context.Context, room *model.ChatRoom, u
 }
 
 func (s *chatService) broadcast(ctx context.Context, room *model.ChatRoom, parts ChatParticipants, msg *model.ChatMessage, exclude *uuid.UUID) {
+	_ = room
 	rcpts := filterUUID(collectParticipants(parts), exclude)
-	if len(rcpts) == 0 {
-		return
-	}
 	payload, _ := json.Marshal(map[string]any{
 		"roomId":     msg.RoomID,
 		"messageId":  msg.ID,
@@ -293,7 +293,13 @@ func (s *chatService) broadcast(ctx context.Context, room *model.ChatRoom, parts
 		"createdAt":  msg.CreatedAt,
 	})
 	if s.broadcaster != nil {
-		s.broadcaster.BroadcastChatMessage(ctx, rcpts, payload)
+		if len(rcpts) > 0 {
+			s.broadcaster.BroadcastChatMessage(ctx, rcpts, payload)
+		}
+		s.broadcaster.BroadcastToRoom(ctx, msg.RoomID, payload)
+	}
+	if len(rcpts) == 0 {
+		return
 	}
 	if s.pusher != nil {
 		ids := make([]string, 0, len(rcpts))
