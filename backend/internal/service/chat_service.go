@@ -79,10 +79,12 @@ func (s *chatService) EnsureRoomForAppointment(ctx context.Context, apptID uuid.
 		return existing, nil
 	}
 	room := &model.ChatRoom{
+		ID:                    uuid.New(),
 		Type:                  model.ChatRoomTypeExternal,
 		AppointmentID:         &apptID,
 		Status:                model.ChatRoomStatusActive,
 		LockedUntilFirstReply: true,
+		AccessToken:           uuid.New(),
 	}
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
 		return nil, err

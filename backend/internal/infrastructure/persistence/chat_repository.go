@@ -155,7 +155,7 @@ func (r *chatRepository) GetAppointmentChatContext(ctx context.Context, apptID u
 		}
 		if err := r.db.WithContext(ctx).Raw(`
 			SELECT user_id, role FROM salon_members
-			WHERE salon_id = ? AND status = 'active' AND role IN ('owner','receptionist')`,
+			WHERE salon_id = ? AND role IN ('owner','admin','receptionist')`,
 			*apptRow.SalonID).Scan(&members).Error; err != nil {
 			return repository.AppointmentChatRow{}, err
 		}
@@ -163,7 +163,7 @@ func (r *chatRepository) GetAppointmentChatContext(ctx context.Context, apptID u
 			switch m.Role {
 			case "owner":
 				out.OwnerUserIDs = append(out.OwnerUserIDs, m.UserID)
-			case "receptionist":
+			case "admin", "receptionist":
 				out.ReceptionistIDs = append(out.ReceptionistIDs, m.UserID)
 			}
 		}
