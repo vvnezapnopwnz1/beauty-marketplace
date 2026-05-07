@@ -282,16 +282,20 @@ func (s *chatService) assertCanRead(ctx context.Context, room *model.ChatRoom, u
 }
 
 func (s *chatService) broadcast(ctx context.Context, room *model.ChatRoom, parts ChatParticipants, msg *model.ChatMessage, exclude *uuid.UUID) {
-	_ = room
 	rcpts := filterUUID(collectParticipants(parts), exclude)
-	payload, _ := json.Marshal(map[string]any{
+	body := map[string]any{
+		"type":       "chat.message",
 		"roomId":     msg.RoomID,
 		"messageId":  msg.ID,
 		"senderRole": msg.SenderRole,
 		"body":       msg.Body,
 		"isSystem":   msg.IsSystem,
 		"createdAt":  msg.CreatedAt,
-	})
+	}
+	if room != nil && room.AppointmentID != nil {
+		body["appointmentId"] = *room.AppointmentID
+	}
+	payload, _ := json.Marshal(body)
 	if s.broadcaster != nil {
 		if len(rcpts) > 0 {
 			s.broadcaster.BroadcastChatMessage(ctx, rcpts, payload)

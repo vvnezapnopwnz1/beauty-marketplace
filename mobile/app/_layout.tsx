@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Slot } from "expo-router";
+import { Slot, router } from "expo-router";
+import Constants from "expo-constants";
 import { useAuthStore } from "../src/stores/authStore";
 import * as SecureStore from "expo-secure-store";
 import * as SplashScreen from "expo-splash-screen";
@@ -74,6 +75,31 @@ export default function RootLayout() {
        void registerExpoPushToken().catch(() => {});
     }
   }, [tokenPair?.accessToken]);
+
+  // Deep-link push taps to /chat/[appointmentId] when payload type is "chat.message".
+  useEffect(() => {
+    if (Platform.OS === 'web' || Constants.executionEnvironment === 'storeClient') {
+      return;
+    }
+    let subscription: { remove: () => void } | undefined;
+    void (async () => {
+      const Notifications = await import('expo-notifications');
+      subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = (response.notification.request.content.data ?? {}) as {
+          type?: string;
+          appointmentId?: string;
+        };
+        if (data.type !== 'chat.message' || !data.appointmentId) return;
+        router.push({
+          pathname: '/chat/[appointmentId]',
+          params: { appointmentId: data.appointmentId },
+        });
+      });
+    })();
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
 
   // On web, if fonts fail or take too long, we still want to show SOMETHING
   if (!isReady) {

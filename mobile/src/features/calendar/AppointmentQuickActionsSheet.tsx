@@ -1,6 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Modal, Pressable } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import apiClient from "../../api/client";
 import { MASTER } from "../../api/endpoints";
 import type { MasterAppointment } from "../../entities/appointments/api";
@@ -83,6 +84,21 @@ export const AppointmentQuickActionsSheet = forwardRef<AppointmentQuickActionsSh
             }}
           >
             <Text style={{ color: colors.text }}>Не пришёл</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.action, { borderColor: colors.borderLight }]}
+            onPress={() => {
+              if (!appointment) return;
+              setVisible(false);
+              router.push({
+                pathname: "/chat/[appointmentId]",
+                params: { appointmentId: appointment.id },
+              });
+            }}
+            disabled={!appointment}
+          >
+            <Text style={{ color: colors.text }}>Чат</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
