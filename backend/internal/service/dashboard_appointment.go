@@ -255,6 +255,9 @@ func (s *dashboardService) UpdateAppointmentStatus(ctx context.Context, salonID,
 		"to":            newStatus,
 	})
 	s.notifier.NotifySalonMembers(ctx, salonID, a.SalonMasterID, "appointment.status_changed", "Статус записи изменен", "Запись обновлена", payload)
+	if s.chatHook != nil {
+		s.chatHook.OnAppointmentStatusChanged(ctx, appointmentID, newStatus)
+	}
 	return nil
 }
 
@@ -340,12 +343,12 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 		}
 		a.SalonMasterID = in.StaffID
 	}
+	originalStart := a.StartsAt
 	if in.StartsAt != nil {
-		oldStart := a.StartsAt
 		a.StartsAt = in.StartsAt.UTC()
 		// If only start changed, shift ends_at by same amount if not explicitly provided
 		if in.EndsAt == nil && !servicesUpdated {
-			dur := a.EndsAt.Sub(oldStart)
+			dur := a.EndsAt.Sub(originalStart)
 			a.EndsAt = a.StartsAt.Add(dur)
 		}
 	}
@@ -396,5 +399,24 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 	if a.Status == "confirmed" && hasStructuralChanges {
 		a.Status = "pending"
 	}
-	return s.dash.UpdateAppointment(ctx, a)
+
+	if err := s.dash.UpdateAppointment(ctx, a); err != nil {
+		return err
+	}
+
+	if in.StartsAt != nil && !originalStart.Equal(a.StartsAt) {
+		if s.notifier != nil {
+			payload, _ := json.Marshal(map[string]any{
+				"appointmentId": a.ID,
+				"salonId":       salonID,
+				"fromStartsAt":  originalStart,
+				"toStartsAt":    a.StartsAt,
+			})
+			s.notifier.NotifySalonMembers(ctx, salonID, a.SalonMasterID, "appointment.rescheduled", "Запись перенесена", "Время записи изменилось", payload)
+		}
+		if s.chatHook != nil {
+			s.chatHook.OnAppointmentRescheduled(ctx, a.ID, a.StartsAt)
+		}
+	}
+	return nil
 }

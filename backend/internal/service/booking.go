@@ -38,6 +38,7 @@ type bookingService struct {
 	tgLinks     repository.TelegramLinkRepository
 	tgOutbox    repository.TelegramOutboxWriter
 	notifier    AppointmentNotifier
+	chatHook    *AppointmentChatHook
 	now         func() time.Time
 }
 
@@ -51,6 +52,7 @@ func NewBookingService(
 	tgLinks repository.TelegramLinkRepository,
 	tgOutbox repository.TelegramOutboxWriter,
 	notifier AppointmentNotifier,
+	chatHook *AppointmentChatHook,
 ) BookingService {
 	return &bookingService{
 		salons:   salons,
@@ -61,6 +63,7 @@ func NewBookingService(
 		tgLinks:  tgLinks,
 		tgOutbox: tgOutbox,
 		notifier: notifier,
+		chatHook: chatHook,
 		now:      time.Now,
 	}
 }
@@ -354,6 +357,10 @@ func (s *bookingService) CreateGuestBooking(ctx context.Context, in GuestBooking
 			"guestPhone":    in.PhoneE164,
 		})
 		s.notifier.NotifySalonMembers(ctx, in.SalonID, appt.SalonMasterID, "appointment.created", "Новая запись", "Появилась новая запись в расписании", payload)
+	}
+
+	if s.chatHook != nil {
+		s.chatHook.OnAppointmentCreated(ctx, appt.ID)
 	}
 
 	// Best-effort: notify the guest via Telegram if they have linked their account.
