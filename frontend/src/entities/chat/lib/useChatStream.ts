@@ -25,10 +25,12 @@ export function useChatStream({ roomId, accessToken, streamUrl }: UseChatStreamO
 
     useEffect(() => {
         if (!roomId) return;
-        // Guest SSE is not implemented on backend yet (Phase 1 follow-up),
-        // avoid opening unauthorized /notifications/stream without Bearer token.
-        if (accessToken) return;
-        const url = streamUrl ?? '/api/v1/notifications/stream';
+        const isGuest = Boolean(accessToken);
+        const url =
+            streamUrl ??
+            (isGuest
+                ? `/api/v1/chat/external/rooms/${accessToken}/stream`
+                : '/api/v1/notifications/stream');
         const controller = new AbortController();
         let stopped = false;
 
@@ -60,11 +62,17 @@ export function useChatStream({ roomId, accessToken, streamUrl }: UseChatStreamO
 
         const start = async () => {
             try {
-                const res = await authFetch(url, {
-                    method: 'GET',
-                    headers: { Accept: 'text/event-stream' },
-                    signal: controller.signal,
-                });
+                const res = isGuest
+                    ? await fetch(url, {
+                          method: 'GET',
+                          headers: { Accept: 'text/event-stream' },
+                          signal: controller.signal,
+                      })
+                    : await authFetch(url, {
+                          method: 'GET',
+                          headers: { Accept: 'text/event-stream' },
+                          signal: controller.signal,
+                      });
                 if (!res.ok || !res.body) return;
 
                 const reader = res.body.getReader();
