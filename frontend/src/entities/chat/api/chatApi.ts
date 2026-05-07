@@ -17,7 +17,7 @@ export const chatApi = rtkApi.injectEndpoints({
             providesTags: (room) => (room ? [{ type: 'ChatRoom', id: room.id }] : []),
         }),
         getRoomByToken: builder.query<ChatRoom, string>({
-            query: (token) => ({ url: `/api/v1/chat/rooms/by-token/${token}` }),
+            query: (token) => ({ url: `/api/v1/chat/external/rooms/${token}` }),
         }),
         listMessages: builder.query<{ messages: ChatMessage[] }, ListMessagesArg>({
             query: ({ roomId, accessToken, limit = 100, offset = 0 }) => {

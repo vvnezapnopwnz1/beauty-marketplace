@@ -116,7 +116,7 @@ export const DEVICE_ENDPOINTS = DEVICES;
 export const CHAT = {
   roomForAppointment: (appointmentId: string) =>
     `${API_V1}/chat/appointments/${appointmentId}/room`,
-  roomByToken: (token: string) => `${API_V1}/chat/rooms/by-token/${token}`,
+  roomByToken: (token: string) => `${API_V1}/chat/external/rooms/${token}`,
   messages: (roomId: string) => `${API_V1}/chat/rooms/${roomId}/messages`,
   read: (roomId: string) => `${API_V1}/chat/rooms/${roomId}/read`,
 } as const;
