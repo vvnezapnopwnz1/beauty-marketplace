@@ -806,7 +806,7 @@ export function AppointmentDrawer({
               </Stack>
             )}
           </Stack>
-          {appointment?.id && !showEditForm && (
+          {appointment?.id && (
             <AppointmentChatSection appointmentId={appointment.id} />
           )}
         </Box>
