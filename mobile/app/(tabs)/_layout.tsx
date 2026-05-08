@@ -4,6 +4,7 @@ import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { CenterFabButton } from "../../src/features/nav/CenterFabButton";
+import { CreateActionSheet } from "../../src/features/nav/CreateActionSheet";
 import { useCreateAction } from "../../src/features/nav/CreateActionContext";
 
 type FeatherName = React.ComponentProps<typeof Feather>["name"];
@@ -50,6 +51,7 @@ export default function TabLayout() {
         <Tabs.Screen name="services" options={{ href: null }} />
       </Tabs>
       <CenterFabButton onPress={open} />
+      <CreateActionSheet />
     </View>
   );
 }
