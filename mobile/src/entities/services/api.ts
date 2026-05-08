@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../../api/client";
 import { MASTER } from "../../api/endpoints";
 
@@ -18,6 +18,30 @@ export function useMasterServicesQuery() {
     queryFn: async () => {
       const { data } = await apiClient.get<MasterService[]>(MASTER.services);
       return data;
+    },
+  });
+}
+
+export type CreateMasterServiceInput = {
+  name: string;
+  durationMinutes: number;
+  priceCents?: number | null;
+  categorySlug?: string | null;
+  description?: string | null;
+};
+
+export function useCreateMasterServiceMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateMasterServiceInput) => {
+      const { data } = await apiClient.post<MasterService>(
+        MASTER.services,
+        input,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["services"] });
     },
   });
 }
