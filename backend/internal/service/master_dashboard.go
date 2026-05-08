@@ -817,6 +817,10 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 	if in.GuestPhone != nil {
 		a.GuestPhoneE164 = in.GuestPhone
 	}
+	if in.TotalCents != nil {
+		a.TotalCents = in.TotalCents
+		a.TotalSource = "manual"
+	}
 
 	if a.EndsAt.Before(a.StartsAt) {
 		return fmt.Errorf("ends_at before starts_at")

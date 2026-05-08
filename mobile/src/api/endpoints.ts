@@ -94,6 +94,9 @@ export const MASTER_ENDPOINTS = MASTER;
 
 export const DASHBOARD = {
   root: `${API_V1}/dashboard/`,
+  appointment: (id: string) => `${API_V1}/dashboard/appointments/${id}`,
+  appointmentStatus: (id: string) =>
+    `${API_V1}/dashboard/appointments/${id}/status`,
 } as const;
 export const DASHBOARD_ENDPOINTS = DASHBOARD;
 

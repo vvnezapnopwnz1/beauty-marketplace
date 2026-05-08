@@ -4,12 +4,15 @@ import { MASTER } from "../../api/endpoints";
 
 export type MasterAppointment = {
   id: string;
+  /** Present for salon visits; personal visits omit this. */
+  salonId?: string;
   startsAt: string;
   endsAt: string;
   status: string;
   serviceName: string;
   clientLabel: string;
   clientPhone?: string;
+  clientNote?: string;
   totalPriceCents: number;
 };
 

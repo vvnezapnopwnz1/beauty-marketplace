@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../../src/shared/theme/useTheme";
@@ -25,19 +25,22 @@ const MONTH_RU = [
   "Декабрь",
 ];
 
+function startOfWeek(date: Date): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // Monday-based
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export default function CalendarScreen() {
   const { colors } = useTheme();
-  const [view, setView] = useState<"day" | "week">("day");
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const [openAppt, setOpenAppt] = useState<MasterAppointment | null>(null);
+  const today = useMemo(() => new Date(), []);
+  const todayWeekStart = useMemo(() => startOfWeek(today), [today]);
+  const todayIdx = (today.getDay() + 6) % 7;
 
-  const weekStart = useMemo(() => {
-    const now = new Date();
-    const d = new Date(now);
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // Monday-based
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+  const [weekStart, setWeekStart] = useState<Date>(todayWeekStart);
+  const [selectedIdx, setSelectedIdx] = useState(todayIdx);
+  const [openAppt, setOpenAppt] = useState<MasterAppointment | null>(null);
 
   const range = useMemo(() => {
     const from = weekStart;
@@ -56,16 +59,29 @@ export default function CalendarScreen() {
     pageSize: 200,
   });
 
-  const monthLabel = `${MONTH_RU[weekStart.getMonth()]} ${weekStart.getFullYear()}`;
+  const shiftWeek = useCallback((deltaDays: number) => {
+    setWeekStart((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + deltaDays);
+      return next;
+    });
+  }, []);
+
+  const onPrevWeek = useCallback(() => shiftWeek(-7), [shiftWeek]);
+  const onNextWeek = useCallback(() => shiftWeek(7), [shiftWeek]);
+  const onToday = useCallback(() => {
+    setWeekStart(todayWeekStart);
+    setSelectedIdx(todayIdx);
+  }, [todayWeekStart, todayIdx]);
+
   const selectedDate = new Date(weekStart);
   selectedDate.setDate(weekStart.getDate() + selectedIdx);
+  const monthLabel = `${MONTH_RU[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
   const rangeLabel =
-    view === "day"
-      ? `${selectedDate.getDate()} ${MONTH_RU[selectedDate.getMonth()].toLowerCase().slice(0, -1)}я`.replace(
-          "ья",
-          "я",
-        )
-      : `${weekStart.getDate()} – ${weekStart.getDate() + 6} ${MONTH_RU[weekStart.getMonth()].slice(0, 3).toLowerCase()}`;
+    `${selectedDate.getDate()} ${MONTH_RU[selectedDate.getMonth()].toLowerCase().slice(0, -1)}я`.replace(
+      "ья",
+      "я",
+    );
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
@@ -73,12 +89,12 @@ export default function CalendarScreen() {
         <CalendarHeader
           monthLabel={monthLabel}
           rangeLabel={rangeLabel}
-          view={view}
-          onChangeView={setView}
+          onPrevWeek={onPrevWeek}
+          onNextWeek={onNextWeek}
+          onToday={onToday}
         />
       </View>
       <MasterCalendar
-        mode={view}
         weekStart={weekStart}
         selectedIndex={selectedIdx}
         appointments={data?.items ?? []}

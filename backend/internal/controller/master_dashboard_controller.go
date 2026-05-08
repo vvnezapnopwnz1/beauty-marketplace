@@ -43,6 +43,7 @@ type masterPutApptBody struct {
 	ClientNote *string     `json:"clientNote,omitempty"`
 	GuestName  *string     `json:"guestName,omitempty"`
 	GuestPhone *string     `json:"guestPhone,omitempty"`
+	TotalCents *int64      `json:"totalCents,omitempty"`
 }
 
 type masterPatchApptStatusBody struct {
@@ -82,6 +83,7 @@ func parseMasterPutApptBody(id uuid.UUID, body masterPutApptBody) (service.Updat
 	in.ClientNote = body.ClientNote
 	in.GuestName = body.GuestName
 	in.GuestPhone = body.GuestPhone
+	in.TotalCents = body.TotalCents
 	return in, nil
 }
 

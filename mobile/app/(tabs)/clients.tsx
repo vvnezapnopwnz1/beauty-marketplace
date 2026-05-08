@@ -32,7 +32,7 @@ export default function ClientsScreen() {
   const rows = useMemo(
     () =>
       data.length > 0
-        ? data.filter((item) => {
+        ? data?.filter((item) => {
             if (activeSegment === "all") {
               return true;
             }
@@ -122,14 +122,18 @@ export default function ClientsScreen() {
             { label: "Всего", value: data.length, color: colors.text },
             {
               label: "VIP",
-              value: data.filter((c) => deriveClientSegment(c) === "vip")
-                .length,
+              value:
+                data.length > 0
+                  ? data?.filter((c) => deriveClientSegment(c) === "vip").length
+                  : 0,
               color: colors.yellow,
             },
             {
               label: "Новые",
-              value: data.filter((c) => deriveClientSegment(c) === "new")
-                .length,
+              value:
+                data.length > 0
+                  ? data?.filter((c) => deriveClientSegment(c) === "new").length
+                  : 0,
               color: colors.accent,
             },
           ].map((s) => (

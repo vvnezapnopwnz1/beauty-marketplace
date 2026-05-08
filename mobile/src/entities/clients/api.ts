@@ -20,6 +20,13 @@ export function deriveClientSegment(client: MasterClient): ClientSegment {
   return "new";
 }
 
+type MasterClientsResponse = {
+  items: MasterClient[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export function useMasterClientsQuery(search?: string) {
   return useQuery({
     queryKey: ["clients", { search: search?.trim() ?? "" }],
@@ -29,10 +36,10 @@ export function useMasterClientsQuery(search?: string) {
         query.set("search", search.trim());
       }
       const suffix = query.toString();
-      const { data } = await apiClient.get<MasterClient[]>(
+      const { data } = await apiClient.get<MasterClientsResponse>(
         suffix ? `${MASTER.clients}?${suffix}` : MASTER.clients
       );
-      return data;
+      return data.items ?? [];
     },
   });
 }

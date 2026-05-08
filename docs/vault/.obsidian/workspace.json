@@ -47,16 +47,87 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
+                "file": "TaskNotes/Tasks/Улучшить дизайн мобильного приложения и изменить расположение элементов.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Детали записи в frontend"
+              "title": "Улучшить дизайн мобильного приложения и изменить расположение элементов"
+            }
+          },
+          {
+            "id": "b27217f94b48c558",
+            "type": "leaf",
+            "state": {
+              "type": "bases",
+              "state": {
+                "file": "TaskNotes/Views/kanban-default.base",
+                "viewName": "Kanban Board"
+              },
+              "icon": "tasknotes-simple",
+              "title": "kanban-default"
+            }
+          },
+          {
+            "id": "17d63d584f743625",
+            "type": "leaf",
+            "state": {
+              "type": "tasks-map-graph-view",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Tasks map"
+            }
+          },
+          {
+            "id": "c3f6b2a1da62b975",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "TaskNotes/Tasks/Улучшить дизайн мобильного приложения и изменить расположение элементов.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Улучшить дизайн мобильного приложения и изменить расположение элементов"
+            }
+          },
+          {
+            "id": "68fce9191b511d92",
+            "type": "leaf",
+            "state": {
+              "type": "tasks-map-graph-view",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Tasks map"
+            }
+          },
+          {
+            "id": "56666e892424ae29",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "TaskNotes/Tasks/Разобраться с табом Календарь и Записи.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Разобраться с табом Календарь и Записи"
+            }
+          },
+          {
+            "id": "72b01ff6a15a5802",
+            "type": "leaf",
+            "state": {
+              "type": "tasks-map-graph-view",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Tasks map"
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 8
       }
     ],
     "direction": "vertical"
@@ -129,7 +200,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
+                "file": "TaskNotes/Tasks/Разобраться с табом Календарь и Записи.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -139,7 +210,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Детали записи в frontend"
+              "title": "Backlinks for Разобраться с табом Календарь и Записи"
             }
           },
           {
@@ -148,12 +219,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
+                "file": "TaskNotes/Tasks/Разобраться с табом Календарь и Записи.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Детали записи в frontend"
+              "title": "Outgoing links from Разобраться с табом Календарь и Записи"
             }
           },
           {
@@ -191,13 +262,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "TaskNotes/Tasks/Детали записи в frontend.md",
+                "file": "TaskNotes/Tasks/Разобраться с табом Календарь и Записи.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Детали записи в frontend"
+              "title": "Outline of Разобраться с табом Календарь и Записи"
             }
           }
         ],
@@ -227,22 +298,24 @@
       "tasks-map:Open tasks map view": false
     }
   },
-  "active": "f674b0a1c36ccbf0",
+  "active": "56666e892424ae29",
   "lastOpenFiles": [
     "TaskNotes/Tasks/Улучшить дизайн мобильного приложения и изменить расположение элементов.md",
+    "TaskNotes/Tasks/Разобраться с табом Календарь и Записи.md",
     "TaskNotes/Tasks/Добавить чат.md",
     "TaskNotes/Tasks/Детали записи в frontend.md",
     "TaskNotes/Tasks/Что то сделать с календарем в приложении - Неделя и Месяц - визуально лучше и действительно как календарь в мобильном приложении, запустить claude design чтобы придумал дизайн и воплотить через библиотеку какую нибудь.md",
+    "TaskNotes/Tasks/Task-1778242310466.md",
+    "TaskNotes/Views/kanban-default.base",
     "TaskNotes/Views/tasks-default.base",
     "TaskNotes/Views/agenda-default.base",
+    "TaskNotes/Views/calendar-default.base",
+    "TaskNotes/Views/mini-calendar-default.base",
     "CLAUDE.md",
     "TaskNotes/Views/relationships.base",
     "Untitled.canvas",
     "product/chat-roadmap.md",
     "TaskNotes/Tasks",
-    "TaskNotes/Views/calendar-default.base",
-    "TaskNotes/Views/mini-calendar-default.base",
-    "TaskNotes/Views/kanban-default.base",
     "glossary.md",
     "product/context.md",
     "TaskNotes/Views",
@@ -264,7 +337,6 @@
     "entities/service-categories.md",
     "entities/plan-unified-search.md",
     "entities/master-profiles-salon-masters.md",
-    "entities/dashboard-i18n.md",
     "Untitled 1.canvas"
   ]
 }

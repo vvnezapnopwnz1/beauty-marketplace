@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Slot, router } from "expo-router";
@@ -27,6 +27,11 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const { tokenPair, setTokenPair } = useAuthStore();
+  const setTokenPairRef = useRef(setTokenPair);
+
+  useEffect(() => {
+    setTokenPairRef.current = setTokenPair;
+  }, [setTokenPair]);
 
   const [fontsLoaded] = useFonts({
     DMSans_400Regular,
@@ -44,7 +49,7 @@ export default function RootLayout() {
         const tokenPairStr = await SecureStore.getItemAsync("tokenPair");
         if (tokenPairStr) {
           const storedTokenPair = JSON.parse(tokenPairStr);
-          setTokenPair(storedTokenPair);
+          setTokenPairRef.current(storedTokenPair);
           console.log("[RootLayout] Auth restored");
         }
       } catch (e) {
@@ -56,10 +61,10 @@ export default function RootLayout() {
     }
 
     prepare();
-  }, [setTokenPair]);
+  }, []);
 
   useEffect(() => {
-    if (isReady && (fontsLoaded || Platform.OS === 'web')) {
+    if (isReady && (fontsLoaded || Platform.OS === "web")) {
       console.log("[RootLayout] Hiding splash screen");
       SplashScreen.hideAsync().catch(() => {});
     }
@@ -69,32 +74,39 @@ export default function RootLayout() {
     if (!tokenPair?.accessToken) {
       return;
     }
-    if (Platform.OS === 'web') {
-       console.log("[RootLayout] Web detected, skipping push token registration");
+    if (Platform.OS === "web") {
+      console.log(
+        "[RootLayout] Web detected, skipping push token registration",
+      );
     } else {
-       void registerExpoPushToken().catch(() => {});
+      void registerExpoPushToken().catch(() => {});
     }
   }, [tokenPair?.accessToken]);
 
   // Deep-link push taps to /chat/[appointmentId] when payload type is "chat.message".
   useEffect(() => {
-    if (Platform.OS === 'web' || Constants.executionEnvironment === 'storeClient') {
+    if (
+      Platform.OS === "web" ||
+      Constants.executionEnvironment === "storeClient"
+    ) {
       return;
     }
     let subscription: { remove: () => void } | undefined;
     void (async () => {
-      const Notifications = await import('expo-notifications');
-      subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = (response.notification.request.content.data ?? {}) as {
-          type?: string;
-          appointmentId?: string;
-        };
-        if (data.type !== 'chat.message' || !data.appointmentId) return;
-        router.push({
-          pathname: '/chat/[appointmentId]',
-          params: { appointmentId: data.appointmentId },
-        });
-      });
+      const Notifications = await import("expo-notifications");
+      subscription = Notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          const data = (response.notification.request.content.data ?? {}) as {
+            type?: string;
+            appointmentId?: string;
+          };
+          if (data.type !== "chat.message" || !data.appointmentId) return;
+          router.push({
+            pathname: "/chat/[appointmentId]",
+            params: { appointmentId: data.appointmentId },
+          });
+        },
+      );
     })();
     return () => {
       subscription?.remove();
@@ -107,7 +119,7 @@ export default function RootLayout() {
     return null;
   }
 
-  if (!fontsLoaded && Platform.OS !== 'web') {
+  if (!fontsLoaded && Platform.OS !== "web") {
     console.log("[RootLayout] Fonts still loading on native...");
     return null;
   }
