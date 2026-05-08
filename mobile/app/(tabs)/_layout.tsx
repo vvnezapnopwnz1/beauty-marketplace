@@ -28,10 +28,6 @@ export default function TabLayout() {
         options={{ title: "Календарь", tabBarIcon: tabIcon("calendar") }}
       />
       <Tabs.Screen
-        name="records"
-        options={{ title: "Записи", tabBarIcon: tabIcon("list") }}
-      />
-      <Tabs.Screen
         name="clients"
         options={{ title: "Клиенты", tabBarIcon: tabIcon("users") }}
       />

@@ -15,7 +15,7 @@ const TAB_META: Record<string, { label: string; icon: IconName }> = {
   more: { label: "Ещё", icon: "dots-horizontal" },
 };
 
-const ORDER = ["calendar", "records", "clients", "profile", "more"] as const;
+const ORDER = ["calendar", "clients", "profile", "more"] as const;
 
 type Props = BottomTabBarProps & {
   badges?: Partial<Record<(typeof ORDER)[number], number>>;
