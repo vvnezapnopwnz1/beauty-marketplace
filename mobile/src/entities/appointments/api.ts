@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../../api/client";
 import { MASTER } from "../../api/endpoints";
 
@@ -49,6 +49,29 @@ export function useMasterAppointmentsQuery(params: RecordsParams) {
         `${MASTER.appointments}?${search.toString()}`
       );
       return data;
+    },
+  });
+}
+
+export type CreatePersonalAppointmentInput = {
+  serviceIds: string[];
+  startsAt: string;
+  guestName: string;
+  guestPhone: string;
+  clientNote?: string;
+  clientUserId?: string;
+};
+
+export function useCreatePersonalAppointmentMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreatePersonalAppointmentInput) => {
+      const { data } = await apiClient.post(MASTER.appointments, input);
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["appointments"] });
+      void qc.invalidateQueries({ queryKey: ["today"] });
     },
   });
 }
