@@ -91,7 +91,7 @@ export function MoreScreen() {
                 { color: colors.text, fontFamily: typography.fonts.serif },
               ]}
             >
-              Ещё
+              Бизнес
             </Text>
           </View>
           <RoleModeToggle mode={mode} onChange={setMode} />

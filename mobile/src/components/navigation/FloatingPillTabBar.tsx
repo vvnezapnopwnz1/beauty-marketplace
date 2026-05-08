@@ -12,7 +12,7 @@ const TAB_META: Record<string, { label: string; icon: IconName }> = {
   records: { label: "Записи", icon: "format-list-bulleted-square" },
   clients: { label: "Клиенты", icon: "account-group-outline" },
   profile: { label: "Профиль", icon: "account-outline" },
-  more: { label: "Ещё", icon: "dots-horizontal" },
+  more: { label: "Бизнес", icon: "view-grid-outline" },
 };
 
 const ORDER = ["calendar", "clients", "profile", "more"] as const;

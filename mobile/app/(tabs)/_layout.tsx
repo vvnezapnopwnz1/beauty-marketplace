@@ -37,7 +37,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="more"
-        options={{ title: "Ещё", tabBarIcon: tabIcon("more-horizontal") }}
+        options={{ title: "Бизнес", tabBarIcon: tabIcon("grid") }}
       />
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="appointments" options={{ href: null }} />
