@@ -657,6 +657,7 @@ func (s *masterDashboardService) CreatePersonalAppointment(ctx context.Context, 
 	}
 
 	var lineItems []model.AppointmentLineItem
+	var baseTotal int64
 	for i, svc := range services {
 		li := model.AppointmentLineItem{
 			AppointmentID:   ap.ID,
@@ -669,8 +670,18 @@ func (s *masterDashboardService) CreatePersonalAppointment(ctx context.Context, 
 		if svc.PriceCents != nil {
 			li.PriceCents = int64(*svc.PriceCents)
 		}
+		baseTotal += li.PriceCents
 		lineItems = append(lineItems, li)
 	}
+	totalState := computeTotalState(baseTotal, "calculated", nil, nil)
+	if in.TotalCents != nil {
+		totalState = applyTotalUpdate(totalState, baseTotal, appointmentTotalUpdate{
+			ExplicitManualTotal: in.TotalCents,
+		})
+	}
+	ap.TotalCents = &totalState.TotalCents
+	ap.TotalSource = totalState.TotalSource
+	ap.ManualDeltaCents = &totalState.ManualDeltaCents
 
 	if err := s.appts.CreateWithLineItems(ctx, ap, lineItems); err != nil {
 		return nil, err
@@ -705,6 +716,14 @@ func (s *masterDashboardService) assertPersonalMasterAppointment(a *model.Appoin
 }
 
 func (s *masterDashboardService) PatchPersonalAppointmentStatus(ctx context.Context, userID, appointmentID uuid.UUID, newStatus string) error {
+	if !appointmentstatus.IsKnownStatus(newStatus) {
+		return fmt.Errorf("invalid status")
+	}
+	// Personal appointments belong to master context, so salon-specific cancellation
+	// is not a valid target status here.
+	if newStatus == "cancelled_by_salon" {
+		return fmt.Errorf("invalid status transition")
+	}
 	mpID, err := s.masterProfileID(ctx, userID)
 	if err != nil {
 		return err
@@ -747,7 +766,7 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 	if err := s.assertPersonalMasterAppointment(a, mpID); err != nil {
 		return err
 	}
-	if a.Status != "pending" && a.Status != "confirmed" {
+	if !appointmentstatus.CanEditFields(a.Status) {
 		return fmt.Errorf("appointment cannot be edited in current status")
 	}
 
@@ -756,7 +775,18 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 		(in.GuestName != nil && strings.TrimSpace(*in.GuestName) != strFromPtr(a.GuestName)) ||
 		(in.GuestPhone != nil && strings.TrimSpace(*in.GuestPhone) != strFromPtr(a.GuestPhoneE164))
 
+	currentLineItems, err := s.appts.ListAppointmentLineItems(ctx, a.ID)
+	if err != nil {
+		return err
+	}
+	var currentBaseTotal int64
+	for _, item := range currentLineItems {
+		currentBaseTotal += item.PriceCents
+	}
+	currentTotalState := computeTotalState(currentBaseTotal, a.TotalSource, a.TotalCents, a.ManualDeltaCents)
+
 	var servicesUpdated bool
+	nextBaseTotal := currentBaseTotal
 	if len(in.ServiceIDs) > 0 {
 		var services []model.MasterService
 		var totalDuration int
@@ -788,6 +818,10 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 			}
 			lineItems = append(lineItems, li)
 		}
+		nextBaseTotal = 0
+		for _, item := range lineItems {
+			nextBaseTotal += item.PriceCents
+		}
 		if err := s.appts.ReplaceAppointmentLineItems(ctx, a.ID, lineItems); err != nil {
 			return err
 		}
@@ -817,10 +851,14 @@ func (s *masterDashboardService) UpdatePersonalAppointment(ctx context.Context, 
 	if in.GuestPhone != nil {
 		a.GuestPhoneE164 = in.GuestPhone
 	}
-	if in.TotalCents != nil {
-		a.TotalCents = in.TotalCents
-		a.TotalSource = "manual"
-	}
+	nextTotalState := applyTotalUpdate(currentTotalState, nextBaseTotal, appointmentTotalUpdate{
+		ServicesUpdated:          servicesUpdated,
+		ExplicitManualTotal:      in.TotalCents,
+		ResetToCalculatedIfEmpty: true,
+	})
+	a.TotalCents = &nextTotalState.TotalCents
+	a.TotalSource = nextTotalState.TotalSource
+	a.ManualDeltaCents = &nextTotalState.ManualDeltaCents
 
 	if a.EndsAt.Before(a.StartsAt) {
 		return fmt.Errorf("ends_at before starts_at")

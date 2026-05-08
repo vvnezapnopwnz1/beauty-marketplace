@@ -26,24 +26,44 @@ export default function TabLayout() {
           headerShown: false,
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.muted,
-          tabBarStyle: { borderTopWidth: 1, borderTopColor: colors.border },
+          tabBarStyle: {
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            // gap: 3,
+            paddingBottom: 8,
+          },
+          tabBarItemStyle: {},
         }}
       >
         <Tabs.Screen
           name="calendar"
-          options={{ title: "Календарь", tabBarIcon: tabIcon("calendar") }}
+          options={{
+            title: "Календарь",
+            tabBarIcon: tabIcon("calendar"),
+          }}
         />
         <Tabs.Screen
           name="clients"
-          options={{ title: "Клиенты", tabBarIcon: tabIcon("users") }}
+          options={{
+            title: "Клиенты",
+            tabBarIcon: tabIcon("users"),
+            tabBarItemStyle: { marginRight: 40 },
+          }}
         />
         <Tabs.Screen
           name="more"
-          options={{ title: "Бизнес", tabBarIcon: tabIcon("grid") }}
+          options={{
+            title: "Бизнес",
+            tabBarIcon: tabIcon("grid"),
+            tabBarItemStyle: { marginLeft: 40 },
+          }}
         />
         <Tabs.Screen
           name="profile"
-          options={{ title: "Профиль", tabBarIcon: tabIcon("user") }}
+          options={{
+            title: "Профиль",
+            tabBarIcon: tabIcon("user"),
+          }}
         />
         <Tabs.Screen name="index" options={{ href: null }} />
         <Tabs.Screen name="appointments" options={{ href: null }} />

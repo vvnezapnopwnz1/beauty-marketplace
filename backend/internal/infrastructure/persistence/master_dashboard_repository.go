@@ -578,7 +578,11 @@ func (r *masterDashboardRepository) ListMasterAppointments(ctx context.Context, 
 			END AS salon_name,
 			COALESCE(NULLIF(TRIM(a.guest_name), ''), users.display_name, 'Гость') AS client_label,
 			a.guest_phone_e164 AS client_phone,
-			COALESCE(a.total_cents, 0) AS total_price_cents`).
+			COALESCE(
+				a.total_cents,
+				(SELECT SUM(ali.price_cents) FROM appointment_line_items ali WHERE ali.appointment_id = a.id),
+				0
+			) AS total_price_cents`).
 		Joins("LEFT JOIN salon_masters sm ON a.salon_master_id = sm.id").
 		Joins("LEFT JOIN services s ON s.id = a.service_id").
 		Joins("LEFT JOIN salons sal ON sal.id = a.salon_id").

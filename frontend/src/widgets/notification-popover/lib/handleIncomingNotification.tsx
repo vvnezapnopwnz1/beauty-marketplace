@@ -8,7 +8,7 @@ import { Box, Typography } from '@mui/material'
 export const handleIncomingNotification =
   (
     navigate: NavigateFunction,
-    confirmAppointment: (appointmentId: string) => Promise<boolean>,
+    confirmAppointment: (appointmentId: string, currentStatus?: string | null) => Promise<boolean>,
     isConfirming: (appointmentId: string) => boolean,
     markSeen: (id: string) => Promise<unknown>,
     markRead: (id: string) => Promise<unknown>,
@@ -34,7 +34,9 @@ export const handleIncomingNotification =
             closeOnClick: false,
             onClick: async () => {
               if (isConfirming(appointmentId)) return
-              const ok = await confirmAppointment(appointmentId)
+              const currentStatus =
+                typeof notification.data?.status === 'string' ? notification.data.status : null
+              const ok = await confirmAppointment(appointmentId, currentStatus)
               if (ok) {
                 closeSnackbar(snackbarKey)
                 void markRead(notification.id)

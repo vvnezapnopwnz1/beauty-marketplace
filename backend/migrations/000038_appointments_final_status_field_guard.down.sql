@@ -1,0 +1,2 @@
+DROP TRIGGER IF EXISTS appointments_guard_final_status_field_updates ON appointments;
+DROP FUNCTION IF EXISTS appointments_guard_final_status_field_updates();

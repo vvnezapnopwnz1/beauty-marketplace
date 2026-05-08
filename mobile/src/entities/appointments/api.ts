@@ -6,14 +6,22 @@ export type MasterAppointment = {
   id: string;
   /** Present for salon visits; personal visits omit this. */
   salonId?: string;
+  serviceId?: string;
   startsAt: string;
   endsAt: string;
-  status: string;
+  status:
+    | "pending"
+    | "confirmed"
+    | "completed"
+    | "cancelled_by_salon"
+    | "cancelled_by_client"
+    | "no_show";
   serviceName: string;
   clientLabel: string;
   clientPhone?: string;
   clientNote?: string;
   totalPriceCents: number;
+  totalSource?: "calculated" | "manual";
 };
 
 export type MasterAppointmentsResponse = {
@@ -60,6 +68,7 @@ export type CreatePersonalAppointmentInput = {
   guestPhone: string;
   clientNote?: string;
   clientUserId?: string;
+  totalCents?: number;
 };
 
 export function useCreatePersonalAppointmentMutation() {

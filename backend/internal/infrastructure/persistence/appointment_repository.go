@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -102,6 +102,15 @@ func (r *appointmentRepository) ReplaceAppointmentLineItems(ctx context.Context,
 		}
 		return nil
 	})
+}
+
+func (r *appointmentRepository) ListAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID) ([]model.AppointmentLineItem, error) {
+	var rows []model.AppointmentLineItem
+	err := r.db.WithContext(ctx).
+		Where("appointment_id = ?", appointmentID).
+		Order("sort_order ASC").
+		Find(&rows).Error
+	return rows, err
 }
 
 func (r *appointmentRepository) UpdateStatusForPersonalMaster(ctx context.Context, appointmentID, masterProfileID uuid.UUID, status string) error {

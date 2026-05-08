@@ -82,7 +82,12 @@ export default function CalendarScreen() {
     };
   }, [mode, weekStart, today]);
 
-  const apiStatus = filter === "all" || filter === "today" ? "" : filter;
+  const apiStatus =
+    filter === "all" || filter === "today"
+      ? ""
+      : filter === "cancelled"
+        ? "cancelled_by_salon,cancelled_by_client"
+        : filter;
 
   const { data, isLoading, isError } = useMasterAppointmentsQuery({
     from: range.from,

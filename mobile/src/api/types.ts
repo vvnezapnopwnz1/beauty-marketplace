@@ -36,7 +36,13 @@ export interface Appointment {
   serviceId: string;
   startTime: string;
   endTime: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'completed'
+    | 'cancelled_by_salon'
+    | 'cancelled_by_client'
+    | 'no_show';
   notes?: string;
   createdAt: string;
   updatedAt: string;

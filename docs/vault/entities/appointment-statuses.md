@@ -1,6 +1,6 @@
 ---
 title: appointment statuses
-updated: 2026-05-05
+updated: 2026-05-09
 source_of_truth: mirror
 code_pointers: []
 ---
@@ -14,7 +14,7 @@ code_pointers: []
 | `pending`             | Ожидает           | Запись создана (вручную владельцем или клиентом онлайн), ожидает подтверждения салона                    |
 | `confirmed`           | Подтверждена      | Владелец/администратор салона подтвердил запись                                                          |
 | `cancelled_by_salon`  | Отмена            | Запись отменена со стороны салона                                                                        |
-| `cancelled_by_client` | Отменена клиентом | Запись отменена клиентом _(зарезервировано — переход не реализован до появления клиентского интерфейса)_ |
+| `cancelled_by_client` | Отменена клиентом | Запись отменена клиентом |
 | `completed`           | Завершена         | Визит состоялся                                                                                          |
 | `no_show`             | Не пришёл         | Клиент не явился на подтверждённую запись                                                                |
 
@@ -38,20 +38,10 @@ code_pointers: []
   * зарезервировано, переход не реализован
 ```
 
-### Допустимые переходы (бэкенд, `allowedStatusTransition`)
+### Допустимые переходы (бэкенд, `AllowedTransition`)
 
-| Из          | В                     | Кем                                      |
-| ----------- | --------------------- | ---------------------------------------- |
-| `pending`   | `confirmed`           | Салон                                    |
-| `pending`   | `cancelled_by_salon`  | Салон                                    |
-| `pending`   | `cancelled_by_client` | _(зарезервировано)_                      |
-| `confirmed` | `completed`           | Салон                                    |
-| `confirmed` | `no_show`             | Салон                                    |
-| `confirmed` | `cancelled_by_salon`  | Салон                                    |
-| `confirmed` | `cancelled_by_client` | _(зарезервировано)_                      |
-| `confirmed` | `pending`             | Автоматически при редактировании деталей |
-
-`completed`, `cancelled_by_salon`, `cancelled_by_client`, `no_show` — **терминальные**: переходов из них нет.
+Текущее правило: переход статуса разрешён между любыми разными валидными значениями (`pending`, `confirmed`, `completed`, `cancelled_by_salon`, `cancelled_by_client`, `no_show`), включая переходы из финальных статусов.  
+Ограничение на «опасные» переходы из финалов реализуется на уровне клиента через confirm-dialog.
 
 ---
 
@@ -63,12 +53,38 @@ code_pointers: []
 | --------------------- | -------------------- | ------------------------------------------------------------------------------------ |
 | `pending`             | Да                   | Статус остаётся `pending`                                                            |
 | `confirmed`           | Да                   | **Статус автоматически сбрасывается в `pending`** (требует повторного подтверждения) |
-| `completed`           | Нет                  | Ошибка на бэкенде                                                                    |
-| `cancelled_by_salon`  | Нет                  | Ошибка на бэкенде                                                                    |
-| `cancelled_by_client` | Нет                  | Ошибка на бэкенде                                                                    |
-| `no_show`             | Нет                  | Ошибка на бэкенде                                                                    |
+| `completed`           | Нет                  | Ошибка на бэкенде + DB trigger guard                                                 |
+| `cancelled_by_salon`  | Нет                  | Ошибка на бэкенде + DB trigger guard                                                 |
+| `cancelled_by_client` | Нет                  | Ошибка на бэкенде + DB trigger guard                                                 |
+| `no_show`             | Нет                  | Ошибка на бэкенде + DB trigger guard                                                 |
 
 **Обоснование сброса `confirmed` → `pending`:** редактирование ключевых параметров (время, услуга, мастер) меняет суть записи, которую салон подтверждал. Повторное подтверждение гарантирует, что владелец видит актуальные данные.
+
+---
+
+## Финансы, расчёты и аналитика
+
+- Доходы и агрегаты в дашборде считаются от текущего `status` записи (в первую очередь от `completed`).
+- Поэтому исправление ошибочно выставленного финального статуса (например, `completed` → `no_show`) **должно быть разрешено**: это возвращает корректные суммы и посещаемость без ручных правок в БД.
+- Одновременно для защиты финансовой целостности в финальных статусах запрещено менять поля записи (услуги, время, сумму, клиента): это принудительно обеспечивается и сервисом, и DB-trigger (`000038_appointments_final_status_field_guard`).
+- Итоговая модель:  
+  - **статус можно исправить** (с confirm в клиентах),  
+  - **данные записи в финале неизменяемы**.
+
+---
+
+## Ролевые ограничения и доменная семантика
+
+- `cancelled_by_salon` — статус салонного контура; в master personal flow такой переход запрещён.
+- Для личных записей мастера разрешены переходы без «салонной» отмены: `pending|confirmed|completed|cancelled_by_client|no_show`.
+- В backend это дополнительно защищено в `MasterDashboardService.PatchPersonalAppointmentStatus`.
+
+---
+
+## Известные риски и дальнейшие усиления
+
+- При rollback из `cancelled_*`/`no_show` в активные статусы может потребоваться проверка конфликтов слотов (если слот уже занят другой записью).
+- Confirm-dialog в клиентах снижает риск мисклика, но не заменяет аудит изменений; для прод-уровня рекомендуется отдельный журнал статусных переходов (кто/когда/откуда).
 
 ---
 
@@ -76,7 +92,7 @@ code_pointers: []
 
 - **Владелец / администратор салона** — все переходы через дашборд (`PATCH /api/v1/dashboard/appointments/:id/status`)
 - **Мастер (личная запись)** — смена статуса только для визитов без салона (`salon_id IS NULL`), владелец `master_profile_id` совпадает с профилем пользователя: `PATCH /api/v1/master-dashboard/appointments/:id/status`
-- **Клиент** — `cancelled_by_client` зарезервирован для будущей клиентской части (не реализовано)
+- **Клиент** — `cancelled_by_client` используется как активный статус отмены клиентом
 - **Система** — автоматический сброс `confirmed` → `pending` при редактировании деталей (салон и личная запись в кабинете мастера)
 
 ---
@@ -91,6 +107,7 @@ code_pointers: []
 | `backend/internal/service/appointmentstatus/transition.go` | Общая функция `AllowedTransition` — допустимые переходы (дашборд салона и кабинет мастера)     |
 | `backend/internal/service/dashboard_appointment.go`   | `UpdateAppointment` — guard по статусу + авто-сброс; создание/обновление записи — `master_profile_id` по `salon_masters.master_id` при назначенном мастере |
 | `backend/internal/service/master_dashboard.go`        | `PatchPersonalAppointmentStatus`, `UpdatePersonalAppointment` — личные записи                        |
+| `backend/migrations/000038_appointments_final_status_field_guard.up.sql` | DB trigger: запрет изменения полей записи в финальных статусах (разрешён только status-change) |
 | `backend/internal/controller/dashboard_controller.go` | `PATCH .../appointments/:id/status` и `PUT .../appointments/:id`                                     |
 | `backend/internal/controller/master_dashboard_controller.go` | `PATCH .../master-dashboard/appointments/:id/status`                                        |
 
@@ -113,7 +130,7 @@ code_pointers: []
 | --------------------------------------- | -------------------------------------------------------------- |
 | `pending`                               | «Подтвердить» → `confirmed`, «Отменить» → `cancelled_by_salon` |
 | `confirmed`                             | «Завершить» → `completed`, «Не пришёл» → `no_show`, «Отменить» → `cancelled_by_salon` |
-| `completed` / `cancelled_*` / `no_show` | «Закрыть» (read-only)                                          |
+| `completed` / `cancelled_*` / `no_show` | Поля read-only, но смена статуса доступна только после confirm |
 
 ---
 

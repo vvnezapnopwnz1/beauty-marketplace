@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	domainmodel "github.com/beauty-marketplace/backend/internal/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -105,6 +105,9 @@ func (f *fakeApptsRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.Appo
 func (f *fakeApptsRepo) Update(ctx context.Context, a *model.Appointment) error { return nil }
 func (f *fakeApptsRepo) ReplaceAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID, items []model.AppointmentLineItem) error {
 	return nil
+}
+func (f *fakeApptsRepo) ListAppointmentLineItems(ctx context.Context, appointmentID uuid.UUID) ([]model.AppointmentLineItem, error) {
+	return nil, nil
 }
 func (f *fakeApptsRepo) UpdateStatusForPersonalMaster(ctx context.Context, appointmentID, masterProfileID uuid.UUID, status string) error {
 	return nil
@@ -214,7 +217,9 @@ func (f *fakeAuthRepo) UpdateDisplayName(ctx context.Context, userID uuid.UUID, 
 	return nil
 }
 
-func (f *fakeAuthRepo) SaveRefreshToken(ctx context.Context, rt *model.RefreshToken) error { return nil }
+func (f *fakeAuthRepo) SaveRefreshToken(ctx context.Context, rt *model.RefreshToken) error {
+	return nil
+}
 
 func (f *fakeAuthRepo) FindRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error) {
 	return nil, gorm.ErrRecordNotFound

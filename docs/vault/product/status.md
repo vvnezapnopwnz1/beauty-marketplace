@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-05-08
+updated: 2026-05-09
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -12,6 +12,13 @@ code_pointers:
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
 ### Последние изменения (2026-05-08)
+
+- **Статусы appointment — confirm-guard + immutability финальных статусов:** backend policy в `appointmentstatus` унифицирована (`IsKnownStatus`, `IsFinalStatus`, `CanEditFields`, расширенный `AllowedTransition`), а для БД добавлена миграция `000038_appointments_final_status_field_guard` с триггером, запрещающим изменение полей записи в финальных статусах (разрешен только status-change). На web добавлены общие helpers `shared/lib/appointmentStatus.ts` и confirm-проверки перед сменой статуса из финальных состояний во всех ключевых точках (drawers, appointments grid, overview, notification action). На mobile синхронизирован enum-контракт (`cancelled_by_salon`/`cancelled_by_client` вместо legacy-литералов), добавлены confirm-диалоги при смене статуса из финальных состояний, отключено редактирование полей для финальных статусов, исправлен status endpoint routing salon vs personal и обработка ошибок status-mutation.
+- **Фикс доменной роли в Master Dashboard:** убран баг, при котором мастер мог выставить статус `cancelled_by_salon` для личной записи. Ограничение введено на двух уровнях: UI (web/mobile) и backend (`PatchPersonalAppointmentStatus`), чтобы прямой API-вызов также не позволял этот переход.
+
+- **Цена записи при add/remove услуг с ручной корректировкой (`manual_delta_cents`):** добавлена миграция `000037_appointment_manual_delta` и новая модель пересчёта стоимости в `Create/Update` для салонных и личных записей: итог хранится как `base(line_items) + manual_delta`, при ручном `totalCents` дельта пересчитывается от актуальной базы, при изменении услуг в manual-режиме дельта сохраняется, а при удалении последней услуги стоимость и дельта сбрасываются в `0` (`total_source=calculated`). Обновлены backend-модели/репозитории для персиста `manual_delta_cents`, добавлены unit-тесты `internal/service/appointment_total_test.go`.
+- **Mobile — редактирование записи:** в `AppointmentEditTab` для личных записей мастера добавлен выбор нескольких услуг с отправкой `serviceIds` в `PUT /master-dashboard/appointments/:id`; для салонных записей услуга остаётся read-only. Добавлен индикатор режима цены (`авто`/`изменена вручную`). В `AppointmentDetailsTab` исправлен `PATCH status`: для салонных записей теперь вызывается dashboard endpoint с `X-Salon-Id`, для личных — master endpoint.
+- **Master Dashboard — корректный `totalPriceCents` в списке записей:** исправлен расчет и хранение суммы для личных записей мастера (`CreatePersonalAppointment`/`UpdatePersonalAppointment` теперь заполняют `appointments.total_cents` и `total_source`). Для обратной совместимости список `/api/v1/master-dashboard/appointments` получил SQL-fallback: если `total_cents` пустой у исторических строк, сумма берется из `appointment_line_items` (`SUM(price_cents)`), иначе как раньше из `appointments.total_cents`.
 
 - **Mobile — навигация мастера v2 (по плану `docs/superpowers/plans/2026-05-08-mobile-master-nav-v2.md`):** объединены табы «Календарь» и «Записи» через локальный SegmentedControl `Календарь | Список` (компонент `mobile/src/features/calendar/CalendarViewToggle.tsx`); расширены чипы `AppointmentFilters` (`today`, `cancelled`) и добавлен опциональный поиск по клиенту (`displayName` + `phone`). Удалён роут `(tabs)/records.tsx` и его слот в `_layout.tsx`. Таб «Ещё» переименован в **«Бизнес»** (иконка `grid`). По центру нижней навигации — overlay-FAB `+` (`mobile/src/features/nav/CenterFabButton.tsx`), который через `CreateActionContext` открывает `CreateActionSheet` с весами: крупная primary-карточка «Новая запись» и две secondary-строки «Новый клиент» / «Новая услуга». Добавлены три формы создания: `app/appointments/new.tsx` (с empty-state онбординга «У вас ещё нет услуг» → `/services/new`), `app/clients/new.tsx`, `app/services/new.tsx`. Под капотом — новые мутации `useCreatePersonalAppointmentMutation`, `useCreateMasterClientMutation`, `useCreateMasterServiceMutation` (бэкенд POST уже был доступен в `/master-dashboard/{appointments,clients,services}`).
 

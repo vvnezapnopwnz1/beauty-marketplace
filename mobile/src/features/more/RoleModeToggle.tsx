@@ -14,6 +14,7 @@ export function RoleModeToggle({ mode, onChange }: Props) {
         return (
           <Pressable
             key={m}
+            disabled={m === "salon" ? true : false}
             onPress={() => onChange(m)}
             style={[styles.btn, active && { backgroundColor: colors.accent }]}
           >

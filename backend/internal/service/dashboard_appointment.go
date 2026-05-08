@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
 	"github.com/beauty-marketplace/backend/internal/service/appointmentstatus"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -167,20 +167,22 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 		StartsAt:        in.StartsAt.UTC(),
 		EndsAt:          end.UTC(),
 		Status:          "pending",
-		TotalCents:      in.TotalCents,
 	}
-	if in.TotalCents != nil {
-		ap.TotalSource = "manual"
-	} else {
-		ap.TotalSource = "calculated"
-		var total int64
-		for _, svc := range services {
-			if svc.PriceCents != nil {
-				total += *svc.PriceCents
-			}
+	var baseTotal int64
+	for _, svc := range services {
+		if svc.PriceCents != nil {
+			baseTotal += *svc.PriceCents
 		}
-		ap.TotalCents = &total
 	}
+	totalState := computeTotalState(baseTotal, "calculated", nil, nil)
+	if in.TotalCents != nil {
+		totalState = applyTotalUpdate(totalState, baseTotal, appointmentTotalUpdate{
+			ExplicitManualTotal: in.TotalCents,
+		})
+	}
+	ap.TotalCents = &totalState.TotalCents
+	ap.TotalSource = totalState.TotalSource
+	ap.ManualDeltaCents = &totalState.ManualDeltaCents
 	if trimSpace(in.ClientNote) != "" {
 		n := trimSpace(in.ClientNote)
 		ap.ClientNote = &n
@@ -235,6 +237,9 @@ func (s *dashboardService) CreateManualAppointment(ctx context.Context, salonID 
 }
 
 func (s *dashboardService) UpdateAppointmentStatus(ctx context.Context, salonID, appointmentID uuid.UUID, newStatus string) error {
+	if !appointmentstatus.IsKnownStatus(newStatus) {
+		return fmt.Errorf("invalid status")
+	}
 	a, err := s.dash.GetAppointment(ctx, salonID, appointmentID)
 	if err != nil {
 		return err
@@ -269,14 +274,25 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 	if a == nil {
 		return gorm.ErrRecordNotFound
 	}
-	if a.Status != "pending" && a.Status != "confirmed" {
+	if !appointmentstatus.CanEditFields(a.Status) {
 		return fmt.Errorf("appointment cannot be edited in current status")
 	}
 
 	hasStructuralChanges := len(in.ServiceIDs) > 0 || in.StaffID != nil || in.ClearStaffID ||
 		in.StartsAt != nil || in.EndsAt != nil || in.GuestName != nil || in.GuestPhone != nil
 
+	currentLineItems, err := s.dash.ListAppointmentLineItems(ctx, a.ID)
+	if err != nil {
+		return err
+	}
+	var currentBaseTotal int64
+	for _, item := range currentLineItems {
+		currentBaseTotal += item.PriceCents
+	}
+	currentTotalState := computeTotalState(currentBaseTotal, a.TotalSource, a.TotalCents, a.ManualDeltaCents)
+
 	var servicesUpdated bool
+	nextBaseTotal := currentBaseTotal
 	if len(in.ServiceIDs) > 0 {
 		var services []model.SalonService
 		var totalDuration int
@@ -307,7 +323,12 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 			if svc.PriceCents != nil {
 				li.PriceCents = *svc.PriceCents
 			}
+			nextBaseTotal += li.PriceCents
 			lineItems = append(lineItems, li)
+		}
+		nextBaseTotal = 0
+		for _, item := range lineItems {
+			nextBaseTotal += item.PriceCents
 		}
 		if err := s.dash.ReplaceAppointmentLineItems(ctx, a.ID, lineItems); err != nil {
 			return err
@@ -377,21 +398,14 @@ func (s *dashboardService) UpdateAppointment(ctx context.Context, salonID uuid.U
 		}
 	}
 
-	if in.TotalCents != nil {
-		a.TotalCents = in.TotalCents
-		a.TotalSource = "manual"
-	} else if servicesUpdated {
-		// If services changed and no explicit total provided, reset to calculated
-		a.TotalSource = "calculated"
-		var total int64
-		for _, sid := range in.ServiceIDs {
-			svc, _ := s.dash.GetService(ctx, salonID, sid)
-			if svc != nil && svc.PriceCents != nil {
-				total += *svc.PriceCents
-			}
-		}
-		a.TotalCents = &total
-	}
+	nextTotalState := applyTotalUpdate(currentTotalState, nextBaseTotal, appointmentTotalUpdate{
+		ServicesUpdated:          servicesUpdated,
+		ExplicitManualTotal:      in.TotalCents,
+		ResetToCalculatedIfEmpty: true,
+	})
+	a.TotalCents = &nextTotalState.TotalCents
+	a.TotalSource = nextTotalState.TotalSource
+	a.ManualDeltaCents = &nextTotalState.ManualDeltaCents
 
 	if a.EndsAt.Before(a.StartsAt) {
 		return fmt.Errorf("ends_at before starts_at")

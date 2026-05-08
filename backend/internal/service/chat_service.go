@@ -393,42 +393,43 @@ func (s *chatService) SendMessageWithAttachment(ctx context.Context, p SendMessa
 	if room == nil {
 		return nil, ErrChatRoomNotFound
 	}
-	if room.Status == model.ChatRoomStatusReadonly {
+	if room.Status != model.ChatRoomStatusActive {
 		return nil, ErrChatRoomReadonly
 	}
+	if room.AppointmentID == nil {
+		return nil, errors.New("phase 1 supports external rooms only")
+	}
 
-	// Determine sender role and user ID
-	senderRole, senderUserID, err := s.resolveSender(ctx, p.RoomID, p.SenderUserID, p.AccessToken)
+	parts, err := s.resolver.ResolveChatParticipants(ctx, *room.AppointmentID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Apply guest lock rule
-	if senderRole == model.ChatSenderRoleGuest && room.LockedUntilFirstReply {
-		// Check if there are any existing messages from staff
-		messages, err := s.repo.ListMessages(ctx, p.RoomID, 1, 0)
-		if err != nil {
-			return nil, err
-		}
-		hasStaffReply := false
-		for _, msg := range messages {
-			if msg.SenderRole != model.ChatSenderRoleGuest {
-				hasStaffReply = true
-				break
+	sp := SendMessageParams{
+		RoomID:       p.RoomID,
+		Body:         p.Body,
+		SenderUserID: p.SenderUserID,
+		AccessToken:  p.AccessToken,
+	}
+	role, err := s.classifySender(sp, room, parts)
+	if err != nil {
+		return nil, err
+	}
+
+	if role == model.ChatSenderRoleGuest && room.LockedUntilFirstReply {
+		prior, _ := s.repo.ListMessages(ctx, room.ID, 200, 0)
+		for _, m := range prior {
+			if m.SenderRole == model.ChatSenderRoleGuest {
+				return nil, ErrChatGuestLocked
 			}
-		}
-		if !hasStaffReply {
-			return nil, ErrChatGuestLocked
 		}
 	}
 
-	// Create message with attachment
 	msg := &model.ChatMessage{
-		ID:                  uuid.New(),
-		RoomID:              p.RoomID,
-		SenderUserID:        senderUserID,
-		SenderRole:          senderRole,
-		Body:                p.Body,
+		RoomID:              room.ID,
+		SenderUserID:        p.SenderUserID,
+		SenderRole:          role,
+		Body:                MaskContacts(p.Body),
 		IsSystem:            false,
 		AttachmentURL:       &p.AttachmentURL,
 		AttachmentType:      &p.AttachmentType,
@@ -440,16 +441,13 @@ func (s *chatService) SendMessageWithAttachment(ctx context.Context, p SendMessa
 		return nil, err
 	}
 
-	// Unlock room after first guest message
-	if room.LockedUntilFirstReply && senderRole == model.ChatSenderRoleGuest {
-		if err := s.repo.UnlockRoomFirstReply(ctx, p.RoomID); err != nil {
-			// Log error but don't fail the message
-			// TODO: Add proper logging
+	if room.LockedUntilFirstReply && role != model.ChatSenderRoleGuest {
+		if err := s.repo.UnlockRoomFirstReply(ctx, room.ID); err == nil {
+			room.LockedUntilFirstReply = false
 		}
 	}
 
-	// Broadcast to participants
-	s.broadcastMessage(ctx, msg, room)
+	s.broadcast(ctx, room, parts, msg, p.SenderUserID)
 
 	return msg, nil
 }

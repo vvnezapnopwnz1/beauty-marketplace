@@ -13,6 +13,8 @@ import apiClient from "../../api/client";
 import { DASHBOARD, MASTER } from "../../api/endpoints";
 import { useTheme } from "../../shared/theme/useTheme";
 import type { MasterAppointment } from "../../entities/appointments/api";
+import { useMasterServicesQuery } from "../../entities/services/api";
+import { isFinalAppointmentStatus } from "../../shared/lib/appointmentStatus";
 
 function fmt(d: Date) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -38,6 +40,7 @@ function parseRubToTotalCents(raw: string): number {
 type AppointmentPutBody = {
   startsAt: string;
   endsAt: string;
+  serviceIds?: string[];
   guestName?: string;
   guestPhone?: string;
   clientNote?: string;
@@ -48,7 +51,7 @@ const STATUS_OPTS: Array<{ value: string; label: string; dot: string }> = [
   { value: "pending", label: "Ожидает", dot: "#C4800A" },
   { value: "confirmed", label: "Подтверждена", dot: "#2A9E6A" },
   { value: "completed", label: "Завершена", dot: "#4A90D4" },
-  { value: "cancelled_staff", label: "Отмена", dot: "#C04040" },
+  { value: "cancelled_by_client", label: "Отмена клиентом", dot: "#C04040" },
   { value: "no_show", label: "Не пришёл", dot: "#888" },
 ];
 
@@ -74,8 +77,20 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
   const [priceRub, setPriceRub] = useState(
     String(Math.round(appointment.totalPriceCents / 100)),
   );
-  const [status, setStatus] = useState(appointment.status);
+  const [status, setStatus] = useState<string>(appointment.status);
   const [comment, setComment] = useState(appointment.clientNote ?? "");
+  const { data: services } = useMasterServicesQuery();
+  const isSalonAppointment = !!appointment.salonId;
+  const activeServices = useMemo(
+    () => (services ?? []).filter((s) => s.isActive !== false),
+    [services],
+  );
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+    appointment.serviceId ? [appointment.serviceId] : [],
+  );
+  const isFinal = isFinalAppointmentStatus(appointment.status);
+  const isEditable = !isFinal;
+  const statusChanged = status !== appointment.status;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -86,6 +101,9 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
       startsAt.setHours(sh ?? 0, sm ?? 0, 0, 0);
       const endsAt = new Date(start);
       endsAt.setHours(eh ?? 0, em ?? 0, 0, 0);
+      if (endsAt.getTime() <= startsAt.getTime()) {
+        throw new Error("Время окончания должно быть позже времени начала");
+      }
 
       const totalCents = parseRubToTotalCents(priceRub);
       const trimmedPhone = phone.trim();
@@ -98,32 +116,37 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
       const origPhone = (appointment.clientPhone ?? "").trim();
       const origNote = (appointment.clientNote ?? "").trim();
 
-      const body: AppointmentPutBody = {
-        startsAt: startsAt.toISOString(),
-        endsAt: endsAt.toISOString(),
-        totalCents,
-      };
-      if (labelTrim !== origLabel) {
-        body.guestName = labelTrim;
-      }
-      if (trimmedPhone !== origPhone) {
-        body.guestPhone = trimmedPhone;
-      }
-      if (noteTrim !== origNote) {
-        body.clientNote = noteTrim;
-      }
-
       const salonHeaders =
         appointment.salonId != null && appointment.salonId !== ""
           ? { "X-Salon-Id": appointment.salonId }
           : undefined;
 
-      if (salonHeaders) {
-        await apiClient.put(DASHBOARD.appointment(appointment.id), body, {
-          headers: salonHeaders,
-        });
-      } else {
-        await apiClient.put(MASTER.appointment(appointment.id), body);
+      if (isEditable) {
+        const body: AppointmentPutBody = {
+          startsAt: startsAt.toISOString(),
+          endsAt: endsAt.toISOString(),
+          totalCents,
+        };
+        if (!isSalonAppointment && selectedServiceIds.length > 0) {
+          body.serviceIds = selectedServiceIds;
+        }
+        if (labelTrim !== origLabel) {
+          body.guestName = labelTrim;
+        }
+        if (trimmedPhone !== origPhone) {
+          body.guestPhone = trimmedPhone;
+        }
+        if (noteTrim !== origNote) {
+          body.clientNote = noteTrim;
+        }
+
+        if (salonHeaders) {
+          await apiClient.put(DASHBOARD.appointment(appointment.id), body, {
+            headers: salonHeaders,
+          });
+        } else {
+          await apiClient.put(MASTER.appointment(appointment.id), body);
+        }
       }
 
       if (status !== appointment.status) {
@@ -175,12 +198,30 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
     },
   ];
 
+  const handleStatusSelect = (nextStatus: string) => {
+    if (nextStatus === status) return;
+    if (isFinal) {
+      Alert.alert(
+        "Подтверждение",
+        "Вы уверены, что хотите изменить статус?",
+        [
+          { text: "Нет", style: "cancel" },
+          { text: "Да", style: "destructive", onPress: () => setStatus(nextStatus) },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
+    setStatus(nextStatus);
+  };
+
   return (
     <View>
       <Field label="Клиент">
         <TextInput
           value={client}
           onChangeText={setClient}
+          editable={isEditable}
           placeholder="Имя клиента"
           placeholderTextColor={colors.muted}
           style={inputStyle}
@@ -190,6 +231,7 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         <TextInput
           value={phone}
           onChangeText={setPhone}
+          editable={isEditable}
           placeholder="+7 ..."
           placeholderTextColor={colors.muted}
           style={inputStyle}
@@ -197,28 +239,113 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         />
       </Field>
       <Field label="Услуга">
-        <View
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.borderInset,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            },
-          ]}
-        >
-          <Text style={{ color: colors.text, fontSize: 13 }}>
-            {appointment.serviceName}
-          </Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={14}
-            color={colors.muted}
-          />
-        </View>
+        {isSalonAppointment ? (
+          <View
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.borderInset,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              },
+            ]}
+          >
+            <Text style={{ color: colors.text, fontSize: 13 }}>
+              {appointment.serviceName}
+            </Text>
+            <MaterialCommunityIcons
+              name="lock-outline"
+              size={14}
+              color={colors.muted}
+            />
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.servicesCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.borderInset,
+              },
+            ]}
+          >
+            {activeServices.map((s, i) => {
+              const checked = selectedServiceIds.includes(s.id);
+              return (
+                <Pressable
+                  key={s.id}
+                  disabled={!isEditable}
+                  onPress={() =>
+                    setSelectedServiceIds((prev) =>
+                      prev.includes(s.id)
+                        ? prev.filter((x) => x !== s.id)
+                        : [...prev, s.id],
+                    )
+                  }
+                  style={[
+                    styles.serviceRow,
+                    !isEditable && { opacity: 0.6 },
+                    i > 0 && {
+                      borderTopWidth: 1,
+                      borderTopColor: colors.borderLight,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      {
+                        borderColor: checked ? colors.accent : colors.borderInset,
+                        backgroundColor: checked ? colors.accent : "transparent",
+                      },
+                    ]}
+                  >
+                    {checked ? (
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={12}
+                        color={colors.accentText}
+                      />
+                    ) : null}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{ color: colors.text, fontSize: 13, fontWeight: "500" }}
+                    >
+                      {s.name}
+                    </Text>
+                    <Text style={{ color: colors.muted, fontSize: 11, marginTop: 2 }}>
+                      {s.durationMinutes} мин
+                      {s.priceCents != null ? ` · ${Math.round(s.priceCents / 100)} ₽` : ""}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </Field>
+
+      <View
+        style={{
+          marginBottom: 12,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.borderLight,
+          backgroundColor: colors.surface,
+          paddingHorizontal: 10,
+          paddingVertical: 8,
+        }}
+      >
+        <Text style={{ color: colors.muted, fontSize: 11 }}>
+          Режим цены:{" "}
+          <Text style={{ color: colors.text }}>
+            {appointment.totalSource === "manual" ? "изменена вручную" : "авто"}
+          </Text>
+        </Text>
+      </View>
 
       <View style={{ flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 1 }}>
@@ -226,6 +353,7 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
             <TextInput
               value={timeStart}
               onChangeText={setTimeStart}
+              editable={isEditable}
               placeholder="10:00"
               placeholderTextColor={colors.muted}
               style={inputStyle}
@@ -237,6 +365,7 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
             <TextInput
               value={timeEnd}
               onChangeText={setTimeEnd}
+              editable={isEditable}
               placeholder="11:00"
               placeholderTextColor={colors.muted}
               style={inputStyle}
@@ -249,6 +378,7 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         <TextInput
           value={priceRub}
           onChangeText={setPriceRub}
+          editable={isEditable}
           placeholder="0"
           placeholderTextColor={colors.muted}
           style={inputStyle}
@@ -271,7 +401,7 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
             return (
               <Pressable
                 key={opt.value}
-                onPress={() => setStatus(opt.value)}
+                onPress={() => handleStatusSelect(opt.value)}
                 style={[
                   styles.statusRow,
                   active && { backgroundColor: `${opt.dot}14` },
@@ -311,6 +441,7 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         <TextInput
           value={comment}
           onChangeText={setComment}
+          editable={isEditable}
           placeholder="Заметка к записи..."
           placeholderTextColor={colors.muted}
           multiline
@@ -339,13 +470,18 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => save.mutate()}
-          disabled={save.isPending}
+          onPress={() => {
+            if (!isEditable && !statusChanged) {
+              return;
+            }
+            save.mutate();
+          }}
+          disabled={save.isPending || (!isEditable && !statusChanged)}
           style={[
             styles.btn,
             {
               flex: 2,
-              backgroundColor: save.isPending
+              backgroundColor: save.isPending || (!isEditable && !statusChanged)
                 ? `${colors.accent}80`
                 : colors.accent,
             },
@@ -358,7 +494,11 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
               fontWeight: "600",
             }}
           >
-            {save.isPending ? "Сохранение..." : "Сохранить"}
+            {save.isPending
+              ? "Сохранение..."
+              : isEditable
+                ? "Сохранить"
+                : "Изменить статус"}
           </Text>
         </Pressable>
       </View>
@@ -379,6 +519,22 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 13,
+  },
+  servicesCard: { borderWidth: 1.5, borderRadius: 12, overflow: "hidden" },
+  serviceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
   },
   statusRow: {
     flexDirection: "row",

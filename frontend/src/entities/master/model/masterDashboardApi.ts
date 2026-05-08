@@ -6,7 +6,13 @@ export interface MasterAppointmentDTO {
   salonName?: string | null
   startsAt: string
   endsAt: string
-  status: string
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'completed'
+    | 'cancelled_by_salon'
+    | 'cancelled_by_client'
+    | 'no_show'
   serviceName: string
   clientLabel: string
   clientPhone?: string | null
@@ -71,6 +77,7 @@ export type UpdateMasterPersonalAppointmentBody = {
   clientNote?: string | null
   guestName?: string | null
   guestPhone?: string | null
+  totalCents?: number | null
 }
 
 export type CreateMasterClientBody = {

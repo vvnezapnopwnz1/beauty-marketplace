@@ -1,6 +1,6 @@
 ---
 title: Схема базы данных
-updated: 2026-04-30
+updated: 2026-05-08
 source_of_truth: true
 code_pointers:
   - backend/internal/infrastructure/persistence/model/models.go
@@ -125,7 +125,7 @@ erDiagram
         string guest_phone_e164
         timestamp starts_at
         timestamp ends_at
-        enum status "pending|confirmed|completed|cancelled"
+        enum status "pending|confirmed|completed|cancelled_by_salon|cancelled_by_client|no_show"
         timestamp created_at
     }
 
@@ -255,7 +255,7 @@ erDiagram
 
 - **SalonMaster** — мост между `salons` и `master_profiles`. `master_id` может быть NULL (shadow-профиль, созданный салоном). Содержит `specializations` для роли в конкретном салоне.
 - **MasterClient** — личная клиентская база мастера (`master_profiles.id`).
-- **Appointment** — поддерживает салонные записи (`salon_id` задан) и личные (`salon_id` IS NULL, `master_profile_id` задан). Для личных записей `service_id` указывает на `master_services.id` (проверка триггером `services_same_salon_as_appointment`); для салонных — на `services.id`. Внешний ключ с `services` для колонки снят (миграция `000030_personal_appointment_service_check`). При ручном создании/обновлении записи в кабинете салона с назначенным `salon_master_id` в `master_profile_id` проставляется `salon_masters.master_id` (денормализация для отчётов и кабинета мастера).
+- **Appointment** — поддерживает салонные записи (`salon_id` задан) и личные (`salon_id` IS NULL, `master_profile_id` задан). Для личных записей `service_id` указывает на `master_services.id` (проверка триггером `services_same_salon_as_appointment`); для салонных — на `services.id`. Внешний ключ с `services` для колонки снят (миграция `000030_personal_appointment_service_check`). При ручном создании/обновлении записи в кабинете салона с назначенным `salon_master_id` в `master_profile_id` проставляется `salon_masters.master_id` (денормализация для отчётов и кабинета мастера). Дополнительно миграция `000038_appointments_final_status_field_guard` добавляет DB-trigger, который запрещает менять любые поля записи в финальных статусах (`completed`, `cancelled_by_*`, `no_show`), кроме собственно `status`.
 - **AppointmentLineItem** — снапшот услуг на момент бронирования; поддерживает мультисервисный гостевой флоу.
 - **SalonClient** — CRM-запись клиента внутри салона; может быть связан с `users` или существовать независимо.
 - **salon_subscriptions** — тарифный план салона (фаза 2).

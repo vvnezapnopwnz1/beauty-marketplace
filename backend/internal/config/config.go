@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -34,6 +35,11 @@ type Config struct {
 	// Telegram settings for OTP delivery channel.
 	TelegramBotToken    string
 	TelegramBotUsername string
+	// FileUploadPath is the on-disk directory for local chat attachments.
+	FileUploadPath string
+	// FilePublicFileURLBase is the public URL prefix for attachment URLs (no trailing slash), e.g. http://127.0.0.1:8080/api/v1/files.
+	// Empty means derive from HTTP_ADDR for local dev.
+	FilePublicFileURLBase string
 }
 
 // Load reads configuration from environment variables with defaults for local dev.
@@ -52,8 +58,10 @@ func Load() (*Config, error) {
 		DevOTPBypass:        getenvBool("DEV_OTP_BYPASS", false),
 		DevOTPBypassAny:     getenvBool("DEV_OTP_BYPASS_ANY", false),
 		DevEndpoints:        getenvBool("DEV_ENDPOINTS", false),
-		TelegramBotToken:    getenv("TELEGRAM_BOT_TOKEN", ""),
-		TelegramBotUsername: getenv("TELEGRAM_BOT_USERNAME", ""),
+		TelegramBotToken:      getenv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramBotUsername:   getenv("TELEGRAM_BOT_USERNAME", ""),
+		FileUploadPath:        getenv("FILE_UPLOAD_PATH", "./data/uploads"),
+		FilePublicFileURLBase: getenv("FILE_PUBLIC_FILE_URL_BASE", ""),
 	}
 	if cfg.HTTPAddr == "" {
 		return nil, fmt.Errorf("HTTP_ADDR must not be empty")
@@ -67,6 +75,25 @@ func Load() (*Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+// ResolvedFilePublicBaseURL returns the base URL used in attachment links (no trailing slash).
+func (c *Config) ResolvedFilePublicBaseURL() string {
+	if s := strings.TrimSpace(c.FilePublicFileURLBase); s != "" {
+		return strings.TrimSuffix(s, "/")
+	}
+	addr := c.HTTPAddr
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		if strings.HasPrefix(addr, ":") {
+			return "http://127.0.0.1" + addr + "/api/v1/files"
+		}
+		return "http://127.0.0.1:8080/api/v1/files"
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	return fmt.Sprintf("http://%s:%s/api/v1/files", host, port)
 }
 
 func getenv(key, def string) string {

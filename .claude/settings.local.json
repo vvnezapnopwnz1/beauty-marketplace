@@ -61,7 +61,10 @@
       "Bash(git switch *)",
       "Bash(/usr/bin/tail -5)",
       "Bash(echo \"TC_EXIT=$?\")",
-      "Bash(/usr/bin/git diff *)"
+      "Bash(/usr/bin/git diff *)",
+      "Bash(git rm *)",
+      "Bash(npm test *)",
+      "Bash(npx jest *)"
     ]
   }
 }

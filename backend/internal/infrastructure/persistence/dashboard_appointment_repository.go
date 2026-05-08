@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -206,6 +206,7 @@ func (r *dashboardRepository) UpdateAppointment(ctx context.Context, a *model.Ap
 			"status":             a.Status,
 			"total_cents":        a.TotalCents,
 			"total_source":       a.TotalSource,
+			"manual_delta_cents": a.ManualDeltaCents,
 			"updated_at":         time.Now().UTC(),
 		}).Error
 }

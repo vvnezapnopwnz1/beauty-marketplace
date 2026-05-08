@@ -31,6 +31,7 @@ import {
 } from '@entities/master'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
+import { shouldConfirmStatusChangeFromCurrent } from '@shared/lib/appointmentStatus'
 
 export type MasterPersonalAppointmentDrawerProps = {
   open: boolean
@@ -61,12 +62,14 @@ function MasterPersonalAppointmentBody({
     guestName: appointment.clientLabel ?? '',
     guestPhone: formatPhone(appointment.clientPhone ?? ''),
     note: appointment.clientNote ?? '',
+    totalCents: appointment.totalPriceCents ?? (null as number | null),
   }))
   const [selectedClient, setSelectedClient] = useState<MasterClientDTO | null>(null)
 
   const editable = isPersonalAppointment(appointment)
   const showEditForm =
     editable && (appointment.status === 'pending' || appointment.status === 'confirmed')
+  const statusActions = ['pending', 'confirmed', 'completed', 'no_show', 'cancelled_by_client']
 
   useEffect(() => {
     void getMasterServices()
@@ -79,6 +82,10 @@ function MasterPersonalAppointmentBody({
   const busy = isLoading || statusPatchLoading
 
   async function applyStatus(status: string) {
+    if (shouldConfirmStatusChangeFromCurrent(appointment.status)) {
+      const ok = window.confirm('Вы уверены, что хотите изменить статус?')
+      if (!ok) return
+    }
     try {
       await patchStatus({ id: appointment.id, status }).unwrap()
       handleClose()
@@ -106,6 +113,7 @@ function MasterPersonalAppointmentBody({
           guestName: form.guestName.trim(),
           guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : null,
           clientNote: form.note.trim() || null,
+          totalCents: form.totalCents,
         },
       }).unwrap()
       handleClose()
@@ -147,8 +155,8 @@ function MasterPersonalAppointmentBody({
       <Box sx={{ flex: 1, overflow: 'auto', px: 3, py: 3 }}>
         {!editable && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            Это запись салона. Редактирование и смена статуса из кабинета мастера недоступны — используйте
-            кабинет салона.
+            Это запись салона. Редактирование и смена статуса из кабинета мастера недоступны —
+            используйте кабинет салона.
           </Alert>
         )}
 
@@ -157,122 +165,49 @@ function MasterPersonalAppointmentBody({
             <Typography sx={{ fontSize: 13, color: d.mutedDark }}>Статус:</Typography>
             <MasterAppointmentStatusBadge status={appointment.status} />
 
-            {editable && appointment.status === 'pending' && (
-              <>
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={busy}
-                  onClick={() => void applyStatus('confirmed')}
-                  sx={{
-                    bgcolor: d.green,
-                    color: '#fff',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: '6px',
-                    textTransform: 'none',
-                    '&:hover': { bgcolor: d.green, transform: 'translateY(-1px)' },
-                  }}
-                >
-                  Подтвердить
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={busy}
-                  onClick={() => void applyStatus('cancelled_by_salon')}
-                  sx={{
-                    borderColor: d.red,
-                    color: d.red,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: '6px',
-                    textTransform: 'none',
-                    '&:hover': {
-                      borderColor: d.red,
-                      bgcolor: `${d.red}10`,
-                      transform: 'translateY(-1px)',
-                    },
-                  }}
-                >
-                  Отменить
-                </Button>
-              </>
-            )}
-
-            {editable && appointment.status === 'confirmed' && (
-              <>
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={busy}
-                  onClick={() => void applyStatus('completed')}
-                  sx={{
-                    bgcolor: d.accent,
-                    color: d.onAccent,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: '6px',
-                    textTransform: 'none',
-                    '&:hover': { bgcolor: d.accent, transform: 'translateY(-1px)' },
-                  }}
-                >
-                  Завершить
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={busy}
-                  onClick={() => void applyStatus('no_show')}
-                  sx={{
-                    borderColor: d.mutedDark,
-                    color: d.mutedDark,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: '6px',
-                    textTransform: 'none',
-                    '&:hover': {
-                      borderColor: d.text,
-                      bgcolor: `${d.mutedDark}14`,
-                      transform: 'translateY(-1px)',
-                    },
-                  }}
-                >
-                  Не пришёл
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={busy}
-                  onClick={() => void applyStatus('cancelled_by_salon')}
-                  sx={{
-                    borderColor: d.red,
-                    color: d.red,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: '6px',
-                    textTransform: 'none',
-                    '&:hover': {
-                      borderColor: d.red,
-                      bgcolor: `${d.red}10`,
-                      transform: 'translateY(-1px)',
-                    },
-                  }}
-                >
-                  Отменить
-                </Button>
-              </>
-            )}
+            {editable &&
+              statusActions
+                .filter(status => status !== appointment.status)
+                .map(status => (
+                  <Button
+                    key={status}
+                    size="small"
+                    variant={status === 'completed' || status === 'confirmed' ? 'contained' : 'outlined'}
+                    disabled={busy}
+                    onClick={() => void applyStatus(status)}
+                    sx={{
+                      borderColor: status.startsWith('cancelled') ? d.red : d.borderLight,
+                      color:
+                        status === 'completed'
+                          ? d.onAccent
+                          : status === 'confirmed'
+                            ? '#fff'
+                            : status.startsWith('cancelled')
+                              ? d.red
+                              : d.text,
+                      bgcolor:
+                        status === 'completed'
+                          ? d.accent
+                          : status === 'confirmed'
+                            ? d.green
+                            : 'transparent',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: '6px',
+                      textTransform: 'none',
+                    }}
+                  >
+                    {{
+                      pending: 'В ожидание',
+                      confirmed: 'Подтвердить',
+                      completed: 'Завершить',
+                      no_show: 'Не пришёл',
+                      cancelled_by_client: 'Отменить клиентом',
+                    }[status] ?? status}
+                  </Button>
+                ))}
           </Stack>
 
           <Box>
@@ -362,6 +297,20 @@ function MasterPersonalAppointmentBody({
                   <PhoneOutlinedIcon sx={{ color: d.mutedDark, fontSize: 18, mr: 1.5 }} />
                 ),
               }}
+              sx={inputBaseSx}
+            />
+            <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>
+              Стоимость (₽)
+            </Typography>
+            <TextField
+              disabled={!showEditForm}
+              value={form.totalCents !== null ? form.totalCents / 100 : ''}
+              onChange={e => {
+                const val = parseFloat(e.target.value)
+                setForm(f => ({ ...f, totalCents: isNaN(val) ? null : Math.round(val * 100) }))
+              }}
+              type="number"
+              fullWidth
               sx={inputBaseSx}
             />
             <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>

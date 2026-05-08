@@ -17,6 +17,7 @@ import { openAppointmentDrawer } from '@entities/appointment'
 import { useGetAppointmentsQuery } from '@entities/appointment/model/appointmentApi'
 import { usePatchAppointmentStatusMutation } from '@entities/appointment'
 import { useColumns } from '../model/columns'
+import { shouldConfirmStatusChangeFromCurrent } from '@shared/lib/appointmentStatus'
 
 const SORT_FIELD_TO_API: Record<string, string> = {
   startsAt: 'starts_at',
@@ -128,7 +129,11 @@ export function ShowAppointmentsGrid(): JSX.Element | null {
     [fallbackSortModel],
   )
   const handleStatusChange = useCallback(
-    async (id: string, status: string) => {
+    async (id: string, status: string, currentStatus?: string) => {
+      if (shouldConfirmStatusChangeFromCurrent(currentStatus)) {
+        const ok = window.confirm('Вы уверены, что хотите изменить статус?')
+        if (!ok) return
+      }
       await patchAppointmentStatus({ id, status }).unwrap()
       await load()
     },

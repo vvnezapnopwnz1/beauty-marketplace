@@ -85,14 +85,14 @@ export function MoreScreen() {
             <Text style={[styles.eyebrow, { color: colors.muted }]}>
               OVERVIEW
             </Text>
-            <Text
+            {/* <Text
               style={[
                 styles.title,
                 { color: colors.text, fontFamily: typography.fonts.serif },
               ]}
             >
               Бизнес
-            </Text>
+            </Text> */}
           </View>
           <RoleModeToggle mode={mode} onChange={setMode} />
         </View>
@@ -103,12 +103,15 @@ export function MoreScreen() {
           weekly={weekly}
         />
 
-        <QuickActionsRow items={quickActions} />
+        {/* <QuickActionsRow items={quickActions} /> */}
 
         {/* Row 1: Services + Schedule */}
         <BentoRow
           left={
-            <BentoCard gradient={[`${colors.nails}30`, `${colors.nails}08`]}>
+            <BentoCard
+              onPress={() => router.push("/(settings)/services")}
+              gradient={[`${colors.nails}30`, `${colors.nails}08`]}
+            >
               <Text style={[styles.bentoEyebrow, { color: colors.nails }]}>
                 УСЛУГИ
               </Text>

@@ -8,11 +8,16 @@ import { InitialsAvatar } from '../ui/InitialsAvatar'
 import StatusChip from '../ui/StatusChip'
 import ActionBtn from '../ui/ActionButton'
 
-type OnStatusChange = (id: string, status: string) => Promise<void>
+type OnStatusChange = (id: string, status: string, currentStatus?: string) => Promise<void>
 
-export async function setApptStatus(id: string, s: string, onStatusChange: OnStatusChange) {
+export async function setApptStatus(
+  id: string,
+  s: string,
+  onStatusChange: OnStatusChange,
+  currentStatus?: string,
+) {
   try {
-    await onStatusChange(id, s)
+    await onStatusChange(id, s, currentStatus)
   } catch (e) {
     throw new Error(e instanceof Error ? e.message : 'Ошибка')
   }
@@ -150,37 +155,31 @@ export function useColumns({
       filterable: false,
       disableColumnMenu: true,
       renderCell: ({ row }) => {
-        if (row.status === 'cancelled_by_salon' || row.status === 'completed') {
-          return null
-        }
-
         return (
           <Box
             sx={{ display: 'flex', gap: '6px', alignItems: 'center' }}
             onClick={e => e.stopPropagation()}
           >
-            {row.status !== 'confirmed' &&
-              row.status !== 'completed' &&
-              row.status !== 'cancelled_by_salon' && (
+            {row.status !== 'confirmed' && (
                 <ActionBtn
                   label="Подтвердить"
                   color={d.green}
                   bg={alpha(d.green, 0.12)}
                   disabled={
-                    row.status === 'confirmed' ||
-                    row.status === 'completed' ||
-                    row.status === 'cancelled_by_salon'
+                    row.status === 'confirmed'
                   }
-                  onClick={() => void setApptStatus(row.id, 'confirmed', onStatusChange)}
+                  onClick={() => void setApptStatus(row.id, 'confirmed', onStatusChange, row.status)}
                 />
               )}
-            {row.status !== 'cancelled_by_salon' && row.status !== 'completed' && (
+            {row.status !== 'cancelled_by_salon' && (
               <ActionBtn
                 label="Отменить"
                 color={d.red}
                 bg={alpha(d.red, 0.12)}
-                disabled={row.status === 'cancelled_by_salon' || row.status === 'completed'}
-                onClick={() => void setApptStatus(row.id, 'cancelled_by_salon', onStatusChange)}
+                disabled={row.status === 'cancelled_by_salon'}
+                onClick={() =>
+                  void setApptStatus(row.id, 'cancelled_by_salon', onStatusChange, row.status)
+                }
               />
             )}
           </Box>

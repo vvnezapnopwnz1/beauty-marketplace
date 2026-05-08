@@ -14,6 +14,7 @@ import (
 var (
 	ErrQuickReplyNotFound = errors.New("quick reply not found")
 	ErrQuickReplyAccess   = errors.New("access denied to quick reply")
+	ErrInvalidParams      = errors.New("invalid params")
 )
 
 type QuickReplyService interface {

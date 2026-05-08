@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { usePatchAppointmentStatusMutation } from '@entities/appointment/model/appointmentApi'
 import { rtkApi } from '@shared/api/rtkApi'
 import { useAppDispatch } from '@app/store'
+import { shouldConfirmStatusChangeFromCurrent } from '@shared/lib/appointmentStatus'
 
 export function useNotificationActions() {
   const dispatch = useAppDispatch()
@@ -10,8 +11,15 @@ export function useNotificationActions() {
 
   const isConfirming = (appointmentId: string) => confirmingAppointmentId === appointmentId
 
-  const confirmAppointment = async (appointmentId: string): Promise<boolean> => {
+  const confirmAppointment = async (
+    appointmentId: string,
+    currentStatus?: string | null,
+  ): Promise<boolean> => {
     if (isConfirming(appointmentId)) return false
+    if (shouldConfirmStatusChangeFromCurrent(currentStatus)) {
+      const ok = window.confirm('Вы уверены, что хотите изменить статус?')
+      if (!ok) return false
+    }
     setConfirmingAppointmentId(appointmentId)
     try {
       await patchAppointmentStatus({ id: appointmentId, status: 'confirmed' }).unwrap()

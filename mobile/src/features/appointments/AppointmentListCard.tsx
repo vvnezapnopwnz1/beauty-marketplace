@@ -7,11 +7,11 @@ import type { MasterAppointment } from "../../entities/appointments/api";
 
 const STATUS_DOT: Record<string, string> = {
   confirmed: "#2A9E6A", pending: "#C4800A", completed: "#4A90D4",
-  cancelled: "#C04040", cancelled_client: "#C04040", cancelled_staff: "#C04040", no_show: "#888",
+  cancelled_by_client: "#C04040", cancelled_by_salon: "#C04040", no_show: "#888",
 };
 const STATUS_LABEL: Record<string, string> = {
   confirmed: "Подтверждена", pending: "Ожидает", completed: "Завершена",
-  cancelled: "Отмена", cancelled_client: "Отмена", cancelled_staff: "Отмена", no_show: "Не пришёл",
+  cancelled_by_client: "Отменена клиентом", cancelled_by_salon: "Отмена салоном", no_show: "Не пришёл",
 };
 
 function fmt(d: Date) {

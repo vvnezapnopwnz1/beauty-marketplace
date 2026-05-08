@@ -43,6 +43,7 @@ import {
 } from '@entities/appointment'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone, toRuE164 } from '@shared/lib/formatPhone'
+import { shouldConfirmStatusChangeFromCurrent } from '@shared/lib/appointmentStatus'
 import { AppointmentChatSection } from './AppointmentChatSection'
 import { useAppSelector } from '@app/store'
 import { selectUser } from '@features/auth-by-phone/model/authSlice'
@@ -69,6 +70,7 @@ function statusBadgeCfg(
     confirmed: { label: 'Подтверждена', bg: 'rgba(107,203,119,.15)', color: '#6BCB77' },
     completed: { label: 'Завершена', bg: 'rgba(78,205,196,.15)', color: '#4ECDC4' },
     cancelled_by_salon: { label: 'Отмена', bg: 'rgba(224,96,96,.15)', color: pal.red },
+    cancelled_by_client: { label: 'Отменена клиентом', bg: 'rgba(224,96,96,.15)', color: pal.red },
     no_show: { label: 'Не пришёл', bg: 'rgba(255,255,255,.07)', color: pal.mutedDark },
   }
 }
@@ -224,6 +226,10 @@ export function AppointmentDrawer({
 
   async function patchStatus(status: string) {
     if (!appointment?.id) return
+    if (shouldConfirmStatusChangeFromCurrent(appointment.status)) {
+      const ok = window.confirm('Вы уверены, что хотите изменить статус?')
+      if (!ok) return
+    }
     setBusy(true)
     try {
       await patchAppointmentStatusMut({ id: appointment.id, status }).unwrap()

@@ -1,6 +1,6 @@
 ---
 title: API flows
-updated: 2026-04-28
+updated: 2026-05-09
 source_of_truth: true
 code_pointers:
   - backend/internal/controller/server.go
@@ -138,6 +138,12 @@ sequenceDiagram
 - обязательный заголовок: `X-Salon-Id: abc-123`
 
 Если в DevTools кажется, что запрос «без салона», проверь вкладку **Request Headers**: для dashboard-эндпоинтов салон должен быть именно в `X-Salon-Id`.
+
+### 4.2 Статусы записей: рабочий контур после 2026-05
+
+- `PATCH /api/v1/dashboard/appointments/:id/status` — салонный контур (может выставлять `cancelled_by_salon`).
+- `PATCH /api/v1/master-dashboard/appointments/:id/status` — master personal контур; `cancelled_by_salon` запрещён сервисным guard.
+- Для финальных статусов (`completed`, `cancelled_*`, `no_show`) редактирование полей записи через `PUT` запрещено сервисом и DB-trigger, но status rollback через `PATCH` допускается (с confirm на клиентах).
 
 ---
 

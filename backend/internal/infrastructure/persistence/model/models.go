@@ -345,23 +345,24 @@ func (SalonSubscription) TableName() string {
 
 // Appointment maps to appointments.
 type Appointment struct {
-	ID              uuid.UUID  `gorm:"type:uuid;primaryKey"`
-	SalonID         *uuid.UUID `gorm:"type:uuid;column:salon_id"`
-	MasterProfileID *uuid.UUID `gorm:"type:uuid;column:master_profile_id"`
-	ClientUserID    *uuid.UUID `gorm:"type:uuid;column:client_user_id"`
-	GuestName       *string    `gorm:"column:guest_name"`
-	GuestPhoneE164  *string    `gorm:"column:guest_phone_e164"`
-	SalonMasterID   *uuid.UUID `gorm:"type:uuid;column:salon_master_id" json:"salonMasterId"`
-	ServiceID       uuid.UUID  `gorm:"type:uuid;not null;column:service_id"`
-	StartsAt        time.Time  `gorm:"column:starts_at;not null"`
-	EndsAt          time.Time  `gorm:"column:ends_at;not null"`
-	Status          string     `gorm:"type:appointment_status;not null;default:pending;column:status"`
-	ClientNote      *string    `gorm:"column:client_note"`
-	SalonClientID   *uuid.UUID `gorm:"type:uuid;column:salon_client_id"`
-	TotalCents      *int64     `gorm:"column:total_cents" json:"totalCents,omitempty"`
-	TotalSource     string     `gorm:"column:total_source;default:calculated" json:"totalSource"`
-	CreatedAt       time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
-	UpdatedAt       time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
+	ID               uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SalonID          *uuid.UUID `gorm:"type:uuid;column:salon_id"`
+	MasterProfileID  *uuid.UUID `gorm:"type:uuid;column:master_profile_id"`
+	ClientUserID     *uuid.UUID `gorm:"type:uuid;column:client_user_id"`
+	GuestName        *string    `gorm:"column:guest_name"`
+	GuestPhoneE164   *string    `gorm:"column:guest_phone_e164"`
+	SalonMasterID    *uuid.UUID `gorm:"type:uuid;column:salon_master_id" json:"salonMasterId"`
+	ServiceID        uuid.UUID  `gorm:"type:uuid;not null;column:service_id"`
+	StartsAt         time.Time  `gorm:"column:starts_at;not null"`
+	EndsAt           time.Time  `gorm:"column:ends_at;not null"`
+	Status           string     `gorm:"type:appointment_status;not null;default:pending;column:status"`
+	ClientNote       *string    `gorm:"column:client_note"`
+	SalonClientID    *uuid.UUID `gorm:"type:uuid;column:salon_client_id"`
+	TotalCents       *int64     `gorm:"column:total_cents" json:"totalCents,omitempty"`
+	TotalSource      string     `gorm:"column:total_source;default:calculated" json:"totalSource"`
+	ManualDeltaCents *int64     `gorm:"column:manual_delta_cents" json:"manualDeltaCents,omitempty"`
+	CreatedAt        time.Time  `gorm:"column:created_at;not null;autoCreateTime"`
+	UpdatedAt        time.Time  `gorm:"column:updated_at;not null;autoUpdateTime"`
 }
 
 func (a *Appointment) BeforeCreate(tx *gorm.DB) error {

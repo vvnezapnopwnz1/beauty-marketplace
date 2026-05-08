@@ -30,6 +30,10 @@ func provideNotificationService(
 	return service.NewNotificationService(repo, expo)
 }
 
+func provideFileStorage(cfg *config.Config) service.FileStorage {
+	return service.NewLocalFileStorage(cfg.FileUploadPath, cfg.ResolvedFilePublicBaseURL())
+}
+
 // New builds the fx application graph for the HTTP API.
 func New() *fx.App {
 	return fx.New(
@@ -78,6 +82,11 @@ func New() *fx.App {
 				persistence.NewChatRepository,
 				fx.As(new(repository.ChatRepository)),
 			),
+			repository.NewQuickReplyRepository,
+			fx.Annotate(
+				provideFileStorage,
+				fx.As(new(service.FileStorage)),
+			),
 			fx.Annotate(
 				twogis.NewCatalogAdapter,
 				fx.As(new(service.PlacesProvider)),
@@ -106,6 +115,7 @@ func New() *fx.App {
 			service.NewAppointmentChatResolver,
 			service.NewChatBroadcaster,
 			service.NewChatService,
+			service.NewQuickReplyService,
 			service.NewAppointmentChatHook,
 			service.NewChatArchiver,
 			controller.NewHealthController,
@@ -123,6 +133,8 @@ func New() *fx.App {
 			controller.NewNotificationController,
 			controller.NewDeviceController,
 			controller.NewDevController,
+			controller.NewFileController,
+			controller.NewQuickReplyController,
 			controller.NewChatController,
 			controller.NewHTTPServer,
 		),

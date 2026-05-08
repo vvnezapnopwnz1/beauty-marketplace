@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Box, Typography, Stack, Button, Alert, CircularProgress, useTheme } from '@mui/material'
 import { fetchDashboardStats, type DashboardStats } from '@shared/api/dashboardApi'
 import { usePatchAppointmentStatusMutation, useGetAppointmentsQuery } from '@entities/appointment'
+import { shouldConfirmStatusChangeFromCurrent } from '@shared/lib/appointmentStatus'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -60,7 +61,11 @@ export function DashboardOverview() {
     return () => window.clearTimeout(t)
   }, [load])
 
-  async function quickConfirm(id: string) {
+  async function quickConfirm(id: string, currentStatus: string) {
+    if (shouldConfirmStatusChangeFromCurrent(currentStatus)) {
+      const ok = window.confirm('Вы уверены, что хотите изменить статус?')
+      if (!ok) return
+    }
     try {
       await patchAppointmentStatus({ id, status: 'confirmed' }).unwrap()
       void load()
@@ -212,7 +217,7 @@ export function DashboardOverview() {
                   <Button
                     size="small"
                     sx={{ color: dashboard.green, fontSize: 11 }}
-                    onClick={() => void quickConfirm(a.id)}
+                    onClick={() => void quickConfirm(a.id, a.status)}
                   >
                     Подтвердить
                   </Button>

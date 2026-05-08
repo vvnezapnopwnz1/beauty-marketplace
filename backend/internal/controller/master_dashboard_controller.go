@@ -34,6 +34,7 @@ type masterCreateApptBody struct {
 	GuestPhone   string      `json:"guestPhone"`
 	ClientNote   string      `json:"clientNote,omitempty"`
 	ClientUserID *uuid.UUID  `json:"clientUserId,omitempty"`
+	TotalCents   *int64      `json:"totalCents,omitempty"`
 }
 
 type masterPutApptBody struct {
@@ -336,6 +337,7 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 				GuestPhone:   body.GuestPhone,
 				ClientNote:   body.ClientNote,
 				ClientUserID: body.ClientUserID,
+				TotalCents:   body.TotalCents,
 			})
 			if err != nil {
 				jsonError(w, err.Error(), http.StatusBadRequest)
