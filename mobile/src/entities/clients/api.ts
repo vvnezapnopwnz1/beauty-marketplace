@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../../api/client";
 import { MASTER } from "../../api/endpoints";
 
@@ -40,6 +40,25 @@ export function useMasterClientsQuery(search?: string) {
         suffix ? `${MASTER.clients}?${suffix}` : MASTER.clients
       );
       return data.items ?? [];
+    },
+  });
+}
+
+export type CreateMasterClientInput = {
+  displayName: string;
+  phone?: string | null;
+  notes?: string | null;
+};
+
+export function useCreateMasterClientMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateMasterClientInput) => {
+      const { data } = await apiClient.post<MasterClient>(MASTER.clients, input);
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["clients"] });
     },
   });
 }
