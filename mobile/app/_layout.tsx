@@ -19,6 +19,7 @@ import { Platform } from "react-native";
 import AppProviders from "../src/providers/AppProviders";
 import { NetworkBanner } from "../src/shared/net/NetworkBanner";
 import { BiometricGate } from "../src/features/app-lock/BiometricGate";
+import { CreateActionProvider } from "../src/features/nav/CreateActionContext";
 import { registerExpoPushToken } from "../src/entities/devices/api";
 
 // Keep the splash screen visible while we fetch resources
@@ -130,7 +131,9 @@ export default function RootLayout() {
         <NetworkBanner />
         <AppProviders>
           <BiometricGate timeoutMs={5 * 60 * 1000}>
-            <Slot />
+            <CreateActionProvider>
+              <Slot />
+            </CreateActionProvider>
           </BiometricGate>
         </AppProviders>
       </SafeAreaProvider>

@@ -1,7 +1,10 @@
 import React from "react";
+import { View } from "react-native";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "../../src/shared/theme/useTheme";
+import { CenterFabButton } from "../../src/features/nav/CenterFabButton";
+import { useCreateAction } from "../../src/features/nav/CreateActionContext";
 
 type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
@@ -13,36 +16,40 @@ function tabIcon(name: FeatherName) {
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const { open } = useCreateAction();
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { borderTopWidth: 1, borderTopColor: colors.border },
-      }}
-    >
-      <Tabs.Screen
-        name="calendar"
-        options={{ title: "Календарь", tabBarIcon: tabIcon("calendar") }}
-      />
-      <Tabs.Screen
-        name="clients"
-        options={{ title: "Клиенты", tabBarIcon: tabIcon("users") }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{ title: "Профиль", tabBarIcon: tabIcon("user") }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{ title: "Бизнес", tabBarIcon: tabIcon("grid") }}
-      />
-      <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="appointments" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="services" options={{ href: null }} />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.muted,
+          tabBarStyle: { borderTopWidth: 1, borderTopColor: colors.border },
+        }}
+      >
+        <Tabs.Screen
+          name="calendar"
+          options={{ title: "Календарь", tabBarIcon: tabIcon("calendar") }}
+        />
+        <Tabs.Screen
+          name="clients"
+          options={{ title: "Клиенты", tabBarIcon: tabIcon("users") }}
+        />
+        <Tabs.Screen
+          name="more"
+          options={{ title: "Бизнес", tabBarIcon: tabIcon("grid") }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{ title: "Профиль", tabBarIcon: tabIcon("user") }}
+        />
+        <Tabs.Screen name="index" options={{ href: null }} />
+        <Tabs.Screen name="appointments" options={{ href: null }} />
+        <Tabs.Screen name="notifications" options={{ href: null }} />
+        <Tabs.Screen name="services" options={{ href: null }} />
+      </Tabs>
+      <CenterFabButton onPress={open} />
+    </View>
   );
 }
