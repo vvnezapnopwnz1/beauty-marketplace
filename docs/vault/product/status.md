@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-05-05
+updated: 2026-05-08
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -12,6 +12,8 @@ code_pointers:
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
 ### Последние изменения (2026-05-08)
+
+- **Mobile — навигация мастера v2 (по плану `docs/superpowers/plans/2026-05-08-mobile-master-nav-v2.md`):** объединены табы «Календарь» и «Записи» через локальный SegmentedControl `Календарь | Список` (компонент `mobile/src/features/calendar/CalendarViewToggle.tsx`); расширены чипы `AppointmentFilters` (`today`, `cancelled`) и добавлен опциональный поиск по клиенту (`displayName` + `phone`). Удалён роут `(tabs)/records.tsx` и его слот в `_layout.tsx`. Таб «Ещё» переименован в **«Бизнес»** (иконка `grid`). По центру нижней навигации — overlay-FAB `+` (`mobile/src/features/nav/CenterFabButton.tsx`), который через `CreateActionContext` открывает `CreateActionSheet` с весами: крупная primary-карточка «Новая запись» и две secondary-строки «Новый клиент» / «Новая услуга». Добавлены три формы создания: `app/appointments/new.tsx` (с empty-state онбординга «У вас ещё нет услуг» → `/services/new`), `app/clients/new.tsx`, `app/services/new.tsx`. Под капотом — новые мутации `useCreatePersonalAppointmentMutation`, `useCreateMasterClientMutation`, `useCreateMasterServiceMutation` (бэкенд POST уже был доступен в `/master-dashboard/{appointments,clients,services}`).
 
 - **Mobile — редактирование записи:** сохранение в `AppointmentEditTab` приведено к контрактам API: тело `guestName` / `guestPhone` / `clientNote` / `totalCents` (как в дашборде), для салонных записей используется `PUT/PATCH /api/v1/dashboard/appointments/...` с заголовком `X-Salon-Id` из `salonId` элемента списка; личные по-прежнему через `PUT /master-dashboard/appointments/:id`. В тип `MasterAppointment` добавлены `salonId` и `clientNote`. На бэкенде в `masterPutApptBody` добавлено поле `totalCents`, в `UpdatePersonalAppointment` — применение ручной суммы (`TotalSource: manual`). Уточнение: при сохранении с мобайла контактные поля уходят в API только если менялись — иначе смену только стоимости не блокирует проверка E.164 телефона в дашборде; сумма в ₽ парсится с запятой/пробелами.
 
