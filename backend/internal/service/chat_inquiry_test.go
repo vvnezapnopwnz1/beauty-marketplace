@@ -146,3 +146,33 @@ func TestGetRoomByMasterProfile_NotFound(t *testing.T) {
     require.NoError(t, err)
     require.Nil(t, room)
 }
+
+// --- Test: EnsureRoomForMasterInquiry ---
+
+func TestEnsureRoomForMasterInquiry_CreatesNew(t *testing.T) {
+    repo := newFakeChatRepo()
+    svc := newTestChatService(repo, &fakeInquiryResolver{})
+
+    salonID := uuid.New()
+    masterProfileID := uuid.New()
+
+    room, err := svc.EnsureRoomForMasterInquiry(context.Background(), salonID, masterProfileID)
+    require.NoError(t, err)
+    require.NotNil(t, room)
+    require.Equal(t, model.ChatRoomTypeInquiry, room.Type)
+    require.Equal(t, &salonID, room.SalonID)
+    require.Equal(t, &masterProfileID, room.MasterProfileID)
+}
+
+func TestEnsureRoomForMasterInquiry_ReturnsExisting(t *testing.T) {
+    repo := newFakeChatRepo()
+    svc := newTestChatService(repo, &fakeInquiryResolver{})
+
+    salonID := uuid.New()
+    masterProfileID := uuid.New()
+
+    room1, _ := svc.EnsureRoomForMasterInquiry(context.Background(), salonID, masterProfileID)
+    room2, err := svc.EnsureRoomForMasterInquiry(context.Background(), salonID, masterProfileID)
+    require.NoError(t, err)
+    require.Equal(t, room1.ID, room2.ID)
+}

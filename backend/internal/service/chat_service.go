@@ -59,6 +59,7 @@ type SendMessageWithAttachmentParams struct {
 type ChatService interface {
 	EnsureRoomForAppointment(ctx context.Context, appointmentID uuid.UUID) (*model.ChatRoom, error)
 	EnsureRoomForInquiry(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error)
+	EnsureRoomForMasterInquiry(ctx context.Context, salonID uuid.UUID, masterProfileID uuid.UUID) (*model.ChatRoom, error)
 	GetRoom(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByAccessToken(ctx context.Context, token uuid.UUID) (*model.ChatRoom, error)
 
@@ -120,6 +121,27 @@ func (s *chatService) EnsureRoomForInquiry(ctx context.Context, salonID uuid.UUI
 		SalonID:               &salonID,
 		Status:                model.ChatRoomStatusActive,
 		LockedUntilFirstReply: true, // Apply "first step" rule to inquiry rooms
+		AccessToken:           uuid.New(),
+	}
+	if err := s.repo.CreateRoom(ctx, room); err != nil {
+		return nil, err
+	}
+	return room, nil
+}
+
+func (s *chatService) EnsureRoomForMasterInquiry(ctx context.Context, salonID uuid.UUID, masterProfileID uuid.UUID) (*model.ChatRoom, error) {
+	if existing, err := s.repo.GetRoomByMasterProfile(ctx, masterProfileID); err != nil {
+		return nil, err
+	} else if existing != nil && existing.Type == model.ChatRoomTypeInquiry {
+		return existing, nil
+	}
+	room := &model.ChatRoom{
+		ID:                    uuid.New(),
+		Type:                  model.ChatRoomTypeInquiry,
+		SalonID:               &salonID,
+		MasterProfileID:       &masterProfileID,
+		Status:                model.ChatRoomStatusActive,
+		LockedUntilFirstReply: true,
 		AccessToken:           uuid.New(),
 	}
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
