@@ -92,6 +92,7 @@ export interface SalonMasterProfilePublic {
   yearsExperience: number | null
   cachedRating: number | null
   cachedReviewCount: number
+  isPublished: boolean
 }
 
 export interface SalonMasterServicePublic {

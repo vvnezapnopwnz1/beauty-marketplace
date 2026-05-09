@@ -440,7 +440,7 @@ export function SalonPage() {
                     }}
                   >
                     <Typography sx={{ fontWeight: 600, mb: 0.8 }}>{m.displayName}</Typography>
-                    {m.masterProfile?.id && (
+                    {m.masterProfile?.id && m.masterProfile?.isPublished && (
                       <Button onClick={() => navigate(masterPath(m.masterProfile!.id))}>
                         Профиль мастера
                       </Button>
