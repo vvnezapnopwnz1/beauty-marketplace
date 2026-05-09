@@ -7,6 +7,7 @@ import { selectAuthStep } from '@features/auth-by-phone/model/authSlice'
 import { PhoneStep } from '@features/auth-by-phone/ui/PhoneStep'
 import { OtpStep } from '@features/auth-by-phone/ui/OtpStep'
 import { ROUTES } from '@shared/config/routes'
+import { safeRelativePath } from '@shared/lib/safeRedirect'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -23,7 +24,7 @@ export function LoginPage() {
       sx={{ background: 'linear-gradient(135deg, #fdf4f8 0%, #f3eeff 100%)', p: 3 }}
     >
       <IconButton
-        onClick={() => navigate(returnTo ? decodeURIComponent(returnTo) : ROUTES.HOME)}
+        onClick={() => navigate(safeRelativePath(returnTo, ROUTES.HOME))}
         sx={{ position: 'fixed', top: 20, left: 20 }}
       >
         <ArrowBackIcon />

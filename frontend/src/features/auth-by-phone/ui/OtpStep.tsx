@@ -15,6 +15,7 @@ import {
   selectAuthError,
 } from '../model/authSlice'
 import { ROUTES } from '@shared/config/routes'
+import { safeRelativePath } from '@shared/lib/safeRedirect'
 
 const schema = yup.object({
   code: yup
@@ -43,7 +44,7 @@ export function OtpStep({ returnTo }: { returnTo?: string | null }) {
   const onSubmit = async ({ code }: FormValues) => {
     const result = await dispatch(confirmOtp({ phone, code }))
     if (confirmOtp.fulfilled.match(result)) {
-      navigate(returnTo || ROUTES.HOME)
+      navigate(safeRelativePath(returnTo, ROUTES.HOME))
     }
   }
 
