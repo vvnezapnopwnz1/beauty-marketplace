@@ -28,6 +28,7 @@ type SalonChatRow struct {
 type ChatRepository interface {
 	GetRoomByAppointment(ctx context.Context, appointmentID uuid.UUID) (*model.ChatRoom, error)
 	GetRoomBySalon(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error)
+	GetRoomByMasterProfile(ctx context.Context, masterProfileID uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByID(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByAccessToken(ctx context.Context, token uuid.UUID) (*model.ChatRoom, error)
 	CreateRoom(ctx context.Context, room *model.ChatRoom) error
@@ -43,4 +44,5 @@ type ChatRepository interface {
 
 	GetAppointmentChatContext(ctx context.Context, appointmentID uuid.UUID) (AppointmentChatRow, error)
 	GetSalonChatContext(ctx context.Context, salonID uuid.UUID) (SalonChatRow, error)
+	GetInquiryParticipants(ctx context.Context, salonID uuid.UUID, masterProfileID *uuid.UUID) (SalonChatRow, error)
 }

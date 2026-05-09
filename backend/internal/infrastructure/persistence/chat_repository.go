@@ -46,6 +46,19 @@ func (r *chatRepository) GetRoomBySalon(ctx context.Context, salonID uuid.UUID) 
 	return &room, nil
 }
 
+func (r *chatRepository) GetRoomByMasterProfile(ctx context.Context, masterProfileID uuid.UUID) (*model.ChatRoom, error) {
+	var room model.ChatRoom
+	if err := r.db.WithContext(ctx).
+		Where("master_profile_id = ? AND type = ?", masterProfileID, model.ChatRoomTypeInquiry).
+		First(&room).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &room, nil
+}
+
 func (r *chatRepository) GetRoomByID(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error) {
 	var room model.ChatRoom
 	if err := r.db.WithContext(ctx).First(&room, "id = ?", id).Error; err != nil {
@@ -245,4 +258,26 @@ func (r *chatRepository) GetSalonChatContext(ctx context.Context, salonID uuid.U
 	}
 
 	return out, nil
+}
+
+// GetInquiryParticipants returns salon staff + optionally a specific master for an inquiry room.
+// If masterProfileID is nil, only salon-level staff is returned (same as GetSalonChatContext).
+func (r *chatRepository) GetInquiryParticipants(ctx context.Context, salonID uuid.UUID, masterProfileID *uuid.UUID) (repository.SalonChatRow, error) {
+	row, err := r.GetSalonChatContext(ctx, salonID)
+	if err != nil {
+		return row, err
+	}
+	if masterProfileID == nil {
+		return row, nil
+	}
+	// Ensure the specific master is in MasterUserIDs (it should be if active, but be explicit).
+	var masterRow struct{ UserID *uuid.UUID }
+	_ = r.db.WithContext(ctx).Raw(
+		`SELECT user_id FROM master_profiles WHERE id = ?`, *masterProfileID,
+	).Scan(&masterRow).Error
+	if masterRow.UserID != nil {
+		// prepend so it's available as first master for escalation
+		row.MasterUserIDs = append([]uuid.UUID{*masterRow.UserID}, row.MasterUserIDs...)
+	}
+	return row, nil
 }
