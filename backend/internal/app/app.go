@@ -130,6 +130,7 @@ func New() *fx.App {
 			service.NewSalonClaimService,
 			service.NewMasterPublicService,
 			service.NewMasterDashboardService,
+			service.NewMasterOnboardingService,
 			service.NewUserRolesService,
 			service.NewUserProfileService,
 			push.NewExpoPusher,
