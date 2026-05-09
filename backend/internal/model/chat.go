@@ -27,6 +27,7 @@ type ChatRoom struct {
 	Type                  ChatRoomType   `json:"type"`
 	AppointmentID         *uuid.UUID     `gorm:"column:appointment_id" json:"appointmentId,omitempty"`
 	SalonID               *uuid.UUID     `gorm:"column:salon_id" json:"salonId,omitempty"`
+	MasterProfileID       *uuid.UUID     `gorm:"column:master_profile_id" json:"masterProfileId,omitempty"`
 	Status                ChatRoomStatus `json:"status"`
 	LockedUntilFirstReply bool           `gorm:"column:locked_until_first_reply" json:"lockedUntilFirstReply"`
 	AccessToken           uuid.UUID      `gorm:"column:access_token" json:"-"`
