@@ -111,6 +111,19 @@ type MasterDashboardRepository interface {
 	GetMasterFinanceSummary(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time) (int64, int64, error)
 	GetMasterRevenueTrend(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time) ([]RepositoryMasterRevenueTrendRow, error)
 	GetMasterTopServices(ctx context.Context, masterProfileID uuid.UUID, source string, from, to *time.Time, limit int) ([]RepositoryMasterTopServiceRow, error)
+
+	// Self-onboarding lifecycle.
+
+	// CreateOwnedProfile inserts a new claimed master_profiles row for this user.
+	CreateOwnedProfile(ctx context.Context, userID uuid.UUID, displayName string, phone *string) (*model.MasterProfile, error)
+
+	// AdvanceOnboardingStep moves onboarding_step forward to the requested value
+	// only if it would be a forward move (or current is NULL). Never regresses.
+	AdvanceOnboardingStep(ctx context.Context, profileID uuid.UUID, target string) (string, error)
+
+	// PublishProfile sets published_at = COALESCE(published_at, now()) and
+	// onboarding_step = 'completed'. Idempotent.
+	PublishProfile(ctx context.Context, profileID uuid.UUID) (publishedAt time.Time, step string, err error)
 }
 
 type RepositoryMasterRevenueTrendRow struct {

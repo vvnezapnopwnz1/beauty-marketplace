@@ -2,7 +2,9 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -13,6 +15,16 @@ import (
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
+
+// onboardingStepOrder ranks each value of master_onboarding_step enum so we
+// can enforce monotonic forward progression in AdvanceOnboardingStep.
+var onboardingStepOrder = map[string]int{
+	"profile":         0,
+	"specializations": 1,
+	"services":        2,
+	"schedule":        3,
+	"completed":       4,
+}
 
 type masterDashboardRepository struct {
 	db *gorm.DB
@@ -795,4 +807,73 @@ func (r *masterDashboardRepository) DeleteMasterClient(ctx context.Context, mast
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+// CreateOwnedProfile inserts a new master_profiles row owned by the given user.
+func (r *masterDashboardRepository) CreateOwnedProfile(ctx context.Context, userID uuid.UUID, displayName string, phone *string) (*model.MasterProfile, error) {
+	step := "profile"
+	mp := &model.MasterProfile{
+		ID:             uuid.New(),
+		UserID:         &userID,
+		DisplayName:    displayName,
+		PhoneE164:      phone,
+		IsActive:       true,
+		OnboardingStep: &step,
+	}
+	if err := r.db.WithContext(ctx).Create(mp).Error; err != nil {
+		return nil, err
+	}
+	return mp, nil
+}
+
+// AdvanceOnboardingStep moves onboarding_step forward for a master_profiles row.
+// Never regresses: a target lower than (or equal to) current is a no-op and
+// the current value is returned. NULL current is treated as below 'profile'.
+func (r *masterDashboardRepository) AdvanceOnboardingStep(ctx context.Context, profileID uuid.UUID, target string) (string, error) {
+	if _, ok := onboardingStepOrder[target]; !ok {
+		return "", fmt.Errorf("invalid onboarding step: %s", target)
+	}
+	var current sql.NullString
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT onboarding_step::text FROM master_profiles WHERE id = ?
+	`, profileID).Scan(&current).Error; err != nil {
+		return "", err
+	}
+	currentRank := -1
+	if current.Valid {
+		currentRank = onboardingStepOrder[current.String]
+	}
+	if onboardingStepOrder[target] > currentRank {
+		if err := r.db.WithContext(ctx).Exec(`
+			UPDATE master_profiles SET onboarding_step = ?::master_onboarding_step WHERE id = ?
+		`, target, profileID).Error; err != nil {
+			return "", err
+		}
+		return target, nil
+	}
+	if current.Valid {
+		return current.String, nil
+	}
+	return target, nil
+}
+
+// PublishProfile sets published_at = COALESCE(published_at, now()) so the
+// first-publish timestamp is preserved on idempotent re-calls. Always sets
+// onboarding_step = 'completed'.
+func (r *masterDashboardRepository) PublishProfile(ctx context.Context, profileID uuid.UUID) (time.Time, string, error) {
+	var resp struct {
+		PublishedAt time.Time `gorm:"column:published_at"`
+		Step        string    `gorm:"column:onboarding_step"`
+	}
+	err := r.db.WithContext(ctx).Raw(`
+		UPDATE master_profiles
+		   SET published_at = COALESCE(published_at, now()),
+		       onboarding_step = 'completed'
+		 WHERE id = ?
+		 RETURNING published_at, onboarding_step::text AS onboarding_step
+	`, profileID).Scan(&resp).Error
+	if err != nil {
+		return time.Time{}, "", err
+	}
+	return resp.PublishedAt, resp.Step, nil
 }
