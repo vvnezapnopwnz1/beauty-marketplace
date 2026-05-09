@@ -134,6 +134,8 @@ type MasterProfile struct {
 	CachedRating      *float64       `gorm:"column:cached_rating"`
 	CachedReviewCount int            `gorm:"column:cached_review_count;not null;default:0"`
 	IsActive          bool           `gorm:"column:is_active;not null;default:true"`
+	PublishedAt       *time.Time     `gorm:"column:published_at"`
+	OnboardingStep    *string        `gorm:"column:onboarding_step"`
 	CreatedAt         time.Time      `gorm:"column:created_at;not null;autoCreateTime"`
 	UpdatedAt         time.Time      `gorm:"column:updated_at;not null;autoUpdateTime"`
 }
