@@ -18,13 +18,19 @@ import (
 // MasterDashboardController handles /api/v1/master-dashboard/* (auth + master profile required).
 type MasterDashboardController struct {
 	svc     service.MasterDashboardService
+	onb     service.MasterOnboardingService
 	storage service.FileStorage
 	log     *zap.Logger
 }
 
 // NewMasterDashboardController constructs MasterDashboardController.
-func NewMasterDashboardController(svc service.MasterDashboardService, storage service.FileStorage, log *zap.Logger) *MasterDashboardController {
-	return &MasterDashboardController{svc: svc, storage: storage, log: log}
+func NewMasterDashboardController(
+	svc service.MasterDashboardService,
+	onb service.MasterOnboardingService,
+	storage service.FileStorage,
+	log *zap.Logger,
+) *MasterDashboardController {
+	return &MasterDashboardController{svc: svc, onb: onb, storage: storage, log: log}
 }
 
 // JSON bodies for master personal appointments (camelCase), same shape as dashboard manual appointment APIs.
@@ -842,9 +848,78 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 			return
 		}
 		http.NotFound(w, r)
+	case "onboarding":
+		if len(parts) == 2 && parts[1] == "step" && r.Method == http.MethodPost {
+			var body struct {
+				Step string `json:"step"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonError(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			step, err := h.onb.AdvanceStep(r.Context(), userID, body.Step)
+			if err != nil {
+				h.log.Warn("master onboarding advance", zap.Error(err))
+				jsonError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"onboardingStep": step})
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	case "publish":
+		if len(parts) == 1 && r.Method == http.MethodPost {
+			res, err := h.onb.Publish(r.Context(), userID)
+			if err != nil {
+				var verr *service.OnboardingValidationError
+				if errors.As(err, &verr) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"error":  "missing_required",
+						"fields": verr.Fields,
+					})
+					return
+				}
+				h.log.Error("master onboarding publish", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(res)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// StartOnboarding handles POST /api/v1/me/master-onboarding/start.
+// Idempotent: dispatches by user state (already-master / shadow-by-phone / fresh).
+func (h *MasterDashboardController) StartOnboarding(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userID, ok := auth.UserIDFromCtx(r.Context())
+	if !ok {
+		jsonError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	res, err := h.onb.Start(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, service.ErrShadowRace) {
+			jsonError(w, "phone_conflict", http.StatusConflict)
+			return
+		}
+		h.log.Error("master onboarding start", zap.Error(err))
+		jsonError(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 // UploadAvatar handles avatar upload for a master profile

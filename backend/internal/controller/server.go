@@ -73,6 +73,7 @@ func NewHTTPServer(
 	mux.HandleFunc("/api/v1/me", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
 	mux.HandleFunc("/api/v1/me/", withCORS(auth.RequireAuth(jwtMgr, uh.MeRoutes)))
 	mux.HandleFunc("POST /api/v1/me/avatar", withCORS(auth.RequireAuth(jwtMgr, uh.UploadAvatar)))
+	mux.HandleFunc("POST /api/v1/me/master-onboarding/start", withCORS(auth.RequireAuth(jwtMgr, md.StartOnboarding)))
 	mux.HandleFunc("GET /api/v1/notifications", withCORS(auth.RequireAuth(jwtMgr, nh.List)))
 	mux.HandleFunc("GET /api/v1/notifications/unread-count", withCORS(auth.RequireAuth(jwtMgr, nh.UnreadCount)))
 	mux.HandleFunc("POST /api/v1/notifications/{id}/seen", withCORS(auth.RequireAuth(jwtMgr, nh.MarkSeen)))
