@@ -176,3 +176,25 @@ func TestEnsureRoomForMasterInquiry_ReturnsExisting(t *testing.T) {
     require.NoError(t, err)
     require.Equal(t, room1.ID, room2.ID)
 }
+
+func TestSendMessageWithAttachment_Inquiry(t *testing.T) {
+    repo := newFakeChatRepo()
+    svc := newTestChatService(repo, &fakeInquiryResolver{
+        ownerIDs: []uuid.UUID{uuid.New()},
+    })
+
+    salonID := uuid.New()
+    room, _ := svc.EnsureRoomForInquiry(context.Background(), salonID)
+
+    p := service.SendMessageWithAttachmentParams{
+        RoomID:         room.ID,
+        Body:           "Check this out",
+        AttachmentURL:  "https://example.com/image.jpg",
+        AttachmentType: "image/jpeg",
+        AccessToken:    &room.AccessToken,
+    }
+    msg, err := svc.SendMessageWithAttachment(context.Background(), p)
+    require.NoError(t, err)
+    require.NotNil(t, msg)
+    require.Equal(t, "https://example.com/image.jpg", *msg.AttachmentURL)
+}
