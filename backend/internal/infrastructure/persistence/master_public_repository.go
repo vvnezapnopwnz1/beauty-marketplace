@@ -138,7 +138,7 @@ func (r *masterPublicRepository) GetMasterProfilePublic(ctx context.Context, mas
 		SELECT id, display_name, bio, specializations, avatar_url, years_experience,
 			cached_rating, cached_review_count
 		FROM master_profiles
-		WHERE id = ? AND is_active = true
+		WHERE id = ? AND is_active = true AND published_at IS NOT NULL
 	`, masterProfileID).Scan(&prof).Error
 	if err != nil {
 		return nil, nil, nil, err
