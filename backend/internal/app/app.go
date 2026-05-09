@@ -139,6 +139,7 @@ func New() *fx.App {
 			service.NewStaffPhoneOTPService,
 			service.NewDeviceService,
 			service.NewAppointmentChatResolver,
+			service.NewInquiryResolver,
 			service.NewChatBroadcaster,
 			service.NewChatService,
 			service.NewQuickReplyService,

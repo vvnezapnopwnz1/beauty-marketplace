@@ -121,7 +121,7 @@ type fakeInquiryResolver struct {
     masterID *uuid.UUID
 }
 
-func (f *fakeInquiryResolver) ResolveInquiryParticipants(_ context.Context, _ uuid.UUID) (service.ChatParticipants, error) {
+func (f *fakeInquiryResolver) ResolveInquiryParticipants(_ context.Context, _ uuid.UUID, _ *uuid.UUID) (service.ChatParticipants, error) {
     return service.ChatParticipants{
         OwnerUserIDs: f.ownerIDs,
         MasterUserID: f.masterID,

@@ -9,7 +9,7 @@ import (
 )
 
 type InquiryResolver interface {
-	ResolveInquiryParticipants(ctx context.Context, salonID uuid.UUID) (ChatParticipants, error)
+	ResolveInquiryParticipants(ctx context.Context, salonID uuid.UUID, masterProfileID *uuid.UUID) (ChatParticipants, error)
 }
 
 type inquiryResolver struct {
@@ -20,10 +20,10 @@ func NewInquiryResolver(repo repository.ChatRepository) InquiryResolver {
 	return &inquiryResolver{repo: repo}
 }
 
-func (r *inquiryResolver) ResolveInquiryParticipants(ctx context.Context, salonID uuid.UUID) (ChatParticipants, error) {
+func (r *inquiryResolver) ResolveInquiryParticipants(ctx context.Context, salonID uuid.UUID, masterProfileID *uuid.UUID) (ChatParticipants, error) {
 	// For inquiry rooms, guest starts as nil (no guest user yet)
 	// We need to get salon staff: owners, receptionists, and masters
-	row, err := r.repo.GetSalonChatContext(ctx, salonID)
+	row, err := r.repo.GetInquiryParticipants(ctx, salonID, masterProfileID)
 	if err != nil {
 		return ChatParticipants{}, err
 	}

@@ -75,14 +75,15 @@ type ChatService interface {
 }
 
 type chatService struct {
-	repo        repository.ChatRepository
-	resolver    AppointmentResolver
-	broadcaster ChatBroadcaster
-	pusher      NotificationPusher
+	repo            repository.ChatRepository
+	resolver        AppointmentResolver
+	inquiryResolver InquiryResolver
+	broadcaster     ChatBroadcaster
+	pusher          NotificationPusher
 }
 
-func NewChatService(repo repository.ChatRepository, resolver AppointmentResolver, broadcaster ChatBroadcaster) ChatService {
-	return &chatService{repo: repo, resolver: resolver, broadcaster: broadcaster}
+func NewChatService(repo repository.ChatRepository, resolver AppointmentResolver, inquiryResolver InquiryResolver, broadcaster ChatBroadcaster) ChatService {
+	return &chatService{repo: repo, resolver: resolver, inquiryResolver: inquiryResolver, broadcaster: broadcaster}
 }
 
 func (s *chatService) SetPusher(p NotificationPusher) { s.pusher = p }
