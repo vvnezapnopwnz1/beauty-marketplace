@@ -70,6 +70,8 @@ type EffectiveRoles struct {
 3. `master` (если есть `master_profiles.user_id = user.id`)
 4. `client` (иначе)
 
+Триггер автоматически срабатывает в трёх сценариях получения роли `master`: (1) auto-claim теневого профиля при OTP-логине, (2) создание мастера салоном с последующим claim, (3) **самостоятельная регистрация через `POST /api/v1/me/master-onboarding/start`** (см. [[entities/master-profiles-salon-masters]] §3, Путь 4). Во всех случаях `master_profiles.user_id` становится не-NULL → trigger пересчитывает `users.global_role`.
+
 ## 4) Текущие гейты UI/API
 
 - **Дашборд салона** — маршрут **`/dashboard/:salonId`** (и вложенные экраны). Требуется членство: `salonId` должен присутствовать в `effectiveRoles.salonMemberships`; иначе редирект на первый доступный салон или на **`/me`**.

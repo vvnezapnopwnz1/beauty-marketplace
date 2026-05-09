@@ -71,6 +71,8 @@ erDiagram
         int years_experience
         float cached_rating
         bool is_active
+        timestamp published_at
+        enum onboarding_step
         timestamp created_at
     }
 

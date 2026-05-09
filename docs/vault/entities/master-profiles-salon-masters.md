@@ -81,6 +81,18 @@ code_pointers: []
 
 Владелец в дашборде подтверждает — отдельный UX/API позже.
 
+### Путь 4 — Мастер регистрируется самостоятельно
+
+Авторизованный пользователь нажимает «Стать мастером» на `/for-masters` → `POST /api/v1/me/master-onboarding/start`. Серверный handler идемпотентно обрабатывает три состояния:
+
+- **A2** (уже master) → возвращает existing профиль и `redirect: /master-dashboard`.
+- **A1** (теневой профиль с совпадающим `phone_e164`) → claim (`user_id` устанавливается), профиль продвигается в `onboarding_step = 'profile'`, redirect в wizard.
+- **A0** (нет профиля) → INSERT `master_profiles { user_id, display_name, phone_e164, published_at: NULL, onboarding_step: 'profile' }`, redirect в wizard.
+
+Wizard на `/master-onboarding` (5 шагов) использует существующие `PUT /master-dashboard/profile` плюс новые endpoints `POST /master-dashboard/onboarding/step` и `POST /master-dashboard/publish`. На последнем шаге публикация ставит `published_at = COALESCE(published_at, now())` и `onboarding_step = 'completed'`. Жёсткая валидация: `display_name != ''`, `len(specializations) >= 1`.
+
+Прямая выдача `/api/v1/masters/:id` теперь требует `published_at IS NOT NULL` — это закрыло дыру приватности теневых профилей. Страница салона (`/api/v1/salons/:id/masters`) по-прежнему отдаёт всех мастеров салона, но в нестящем DTO добавлен `isPublished` — фронт скрывает кнопку «Профиль мастера» для не-published.
+
 ---
 
 ## 4. Важные детали в БД

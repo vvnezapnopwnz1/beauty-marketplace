@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-05-09
+updated: 2026-05-10
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -10,6 +10,11 @@ code_pointers:
 # Статус разработки — Beauty Marketplace
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
+
+### Последние изменения (2026-05-10)
+
+- **Master self-onboarding:** добавлен путь регистрации мастера с `/for-masters` через идемпотентный `POST /api/v1/me/master-onboarding/start` (handler разбирает три состояния: A2 уже-master / A1 теневой по phone-match / A0 нет профиля). Wizard `/master-onboarding` (5 шагов: Профиль → Специализации → Услуги (опц.) → Расписание (опц.) → Публикация) переиспользует существующие `PUT /master-dashboard/profile`, `master-dashboard/services`, `master-dashboard/schedule` и добавляет два новых endpoint-а: `POST /master-dashboard/onboarding/step` (монотонная state-машина) и `POST /master-dashboard/publish` (жёсткая валидация `display_name`+`specializations`, идемпотентный `COALESCE`). Введены поля `master_profiles.published_at` и `master_profiles.onboarding_step` (миграции `000042`, `000043`). Прямая выдача `/api/v1/masters/:id` теперь требует `published_at IS NOT NULL` — закрыта дыра приватности теневых профилей; страница салона (`salon_masters`) не затронута, в DTO `MasterProfilePublicNested` добавлен `isPublished` и фронт скрывает кнопку «Профиль мастера» для не-published.
+- **Open-redirect fix в `/login?returnTo=`:** добавлен `safeRelativePath` helper в `shared/lib/safeRedirect.ts`, применён в `OtpStep` и back-button `LoginPage`. Принимает только same-origin относительные пути; protocol-relative (`//evil.com`), absolute (`http://...`) и `javascript:` отклоняются — fallback на `ROUTES.HOME`.
 
 ### Последние изменения (2026-05-09)
 
