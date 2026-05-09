@@ -11,6 +11,10 @@ code_pointers:
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
+### Последние изменения (2026-05-09)
+
+- **Чат Phase 2A — бэкенд для запросов (inquiry):** реализована поддержка чат-комнат для предварительных вопросов («Задать вопрос»). Добавлена миграция `000040_chat_rooms_master_profile` с полем `master_profile_id` и индексами. Сервисный слой `ChatService` расширен методом `EnsureRoomForMasterInquiry` и интеграцией с `InquiryResolver` для динамического определения участников (владельцы, администраторы и конкретный мастер). Полностью сняты Phase 1 ограничения на отправку сообщений и вложений: `SendMessage` и `PostInquiryMessageWithAttachment` теперь поддерживают оба типа комнат (`appointment`, `inquiry`). Добавлен эндпоинт `POST /api/v1/chat/inquiry/master-rooms` для создания прямых чатов с мастерами. SSE-стрим и RBAC-логика адаптированы под новые типы участников.
+
 ### Последние изменения (2026-05-08)
 
 - **Статусы appointment — confirm-guard + immutability финальных статусов:** backend policy в `appointmentstatus` унифицирована (`IsKnownStatus`, `IsFinalStatus`, `CanEditFields`, расширенный `AllowedTransition`), а для БД добавлена миграция `000038_appointments_final_status_field_guard` с триггером, запрещающим изменение полей записи в финальных статусах (разрешен только status-change). На web добавлены общие helpers `shared/lib/appointmentStatus.ts` и confirm-проверки перед сменой статуса из финальных состояний во всех ключевых точках (drawers, appointments grid, overview, notification action). На mobile синхронизирован enum-контракт (`cancelled_by_salon`/`cancelled_by_client` вместо legacy-литералов), добавлены confirm-диалоги при смене статуса из финальных состояний, отключено редактирование полей для финальных статусов, исправлен status endpoint routing salon vs personal и обработка ошибок status-mutation.
