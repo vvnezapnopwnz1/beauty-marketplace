@@ -191,11 +191,7 @@ func (s *chatService) SendMessage(ctx context.Context, p SendMessageParams) (*mo
 	if room.Status != model.ChatRoomStatusActive {
 		return nil, ErrChatRoomReadonly
 	}
-	if room.AppointmentID == nil {
-		return nil, errors.New("phase 1 supports external rooms only")
-	}
-
-	parts, err := s.resolver.ResolveChatParticipants(ctx, *room.AppointmentID)
+	parts, err := s.resolveParticipants(ctx, room)
 	if err != nil {
 		return nil, err
 	}
@@ -252,10 +248,9 @@ func (s *chatService) PostSystemMessage(ctx context.Context, roomID uuid.UUID, b
 	if err := s.repo.InsertMessage(ctx, msg); err != nil {
 		return nil, err
 	}
-	if room.AppointmentID != nil && s.resolver != nil {
-		if parts, err := s.resolver.ResolveChatParticipants(ctx, *room.AppointmentID); err == nil {
-			s.broadcast(ctx, room, parts, msg, nil)
-		}
+	parts, err := s.resolveParticipants(ctx, room)
+	if err == nil {
+		s.broadcast(ctx, room, parts, msg, nil)
 	}
 	return msg, nil
 }
@@ -322,10 +317,7 @@ func (s *chatService) assertCanRead(ctx context.Context, room *model.ChatRoom, u
 	if userID == nil {
 		return ErrChatNotParticipant
 	}
-	if room.AppointmentID == nil {
-		return ErrChatNotParticipant
-	}
-	parts, err := s.resolver.ResolveChatParticipants(ctx, *room.AppointmentID)
+	parts, err := s.resolveParticipants(ctx, room)
 	if err != nil {
 		return err
 	}
@@ -419,11 +411,7 @@ func (s *chatService) SendMessageWithAttachment(ctx context.Context, p SendMessa
 	if room.Status != model.ChatRoomStatusActive {
 		return nil, ErrChatRoomReadonly
 	}
-	if room.AppointmentID == nil {
-		return nil, errors.New("phase 1 supports external rooms only")
-	}
-
-	parts, err := s.resolver.ResolveChatParticipants(ctx, *room.AppointmentID)
+	parts, err := s.resolveParticipants(ctx, room)
 	if err != nil {
 		return nil, err
 	}
@@ -473,4 +461,18 @@ func (s *chatService) SendMessageWithAttachment(ctx context.Context, p SendMessa
 	s.broadcast(ctx, room, parts, msg, p.SenderUserID)
 
 	return msg, nil
+}
+func (s *chatService) resolveParticipants(ctx context.Context, room *model.ChatRoom) (ChatParticipants, error) {
+	if room.Type == model.ChatRoomTypeInquiry && s.inquiryResolver != nil {
+		if room.SalonID == nil {
+			return ChatParticipants{}, errors.New("inquiry room missing salon id")
+		}
+		return s.inquiryResolver.ResolveInquiryParticipants(ctx, *room.SalonID, room.MasterProfileID)
+	}
+
+	if room.AppointmentID != nil && s.resolver != nil {
+		return s.resolver.ResolveChatParticipants(ctx, *room.AppointmentID)
+	}
+
+	return ChatParticipants{}, errors.New("cannot resolve participants for this room type")
 }
