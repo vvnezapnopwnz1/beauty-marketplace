@@ -303,5 +303,47 @@
     "bookNow": "Book now",
     "noInquiries": "No active inquiries",
     "unreadMessages": "Unread messages"
+  },
+  "masterOnboarding": {
+    "title": "Become a master",
+    "stepLabel": "Step {{current}} of {{total}}",
+    "steps": {
+      "profile": {
+        "title": "Profile",
+        "displayNameLabel": "Your name",
+        "bioLabel": "About yourself"
+      },
+      "specializations": {
+        "title": "Specializations",
+        "selectLabel": "Select categories",
+        "placeholder": "Not selected"
+      },
+      "services": {
+        "title": "Personal services",
+        "description": "You can add these later in your cabinet."
+      },
+      "schedule": {
+        "title": "Schedule",
+        "description": "You can configure it later in your cabinet."
+      },
+      "publish": {
+        "title": "Publish",
+        "description": "Review and publish your profile.",
+        "displayNameLabel": "Name",
+        "specializationsLabel": "Specializations"
+      }
+    },
+    "actions": {
+      "next": "Next",
+      "back": "Back",
+      "skipForNow": "Skip",
+      "publish": "Publish"
+    },
+    "errors": {
+      "missingDisplayName": "Please provide your name.",
+      "missingSpecializations": "Pick at least one specialization.",
+      "saveFailed": "Failed to save. Please retry.",
+      "publishFailed": "Failed to publish. Please retry."
+    }
   }
 }

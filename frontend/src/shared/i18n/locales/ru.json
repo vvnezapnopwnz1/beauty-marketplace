@@ -312,5 +312,47 @@
     "bookNow": "Записаться",
     "noInquiries": "Нет активных запросов",
     "unreadMessages": "Непрочитанные сообщения"
+  },
+  "masterOnboarding": {
+    "title": "Стать мастером",
+    "stepLabel": "Шаг {{current}} из {{total}}",
+    "steps": {
+      "profile": {
+        "title": "Профиль",
+        "displayNameLabel": "Ваше имя",
+        "bioLabel": "Коротко о себе"
+      },
+      "specializations": {
+        "title": "Специализации",
+        "selectLabel": "Выберите категории",
+        "placeholder": "Не выбрано"
+      },
+      "services": {
+        "title": "Личный каталог услуг",
+        "description": "Добавите позже в кабинете."
+      },
+      "schedule": {
+        "title": "Расписание",
+        "description": "Настроите позже в кабинете."
+      },
+      "publish": {
+        "title": "Публикация",
+        "description": "Проверьте данные и опубликуйте профиль.",
+        "displayNameLabel": "Имя",
+        "specializationsLabel": "Специализации"
+      }
+    },
+    "actions": {
+      "next": "Далее",
+      "back": "Назад",
+      "skipForNow": "Пропустить",
+      "publish": "Опубликовать"
+    },
+    "errors": {
+      "missingDisplayName": "Укажите ваше имя.",
+      "missingSpecializations": "Выберите хотя бы одну специализацию.",
+      "saveFailed": "Не удалось сохранить. Повторите.",
+      "publishFailed": "Не удалось опубликовать. Повторите."
+    }
   }
 }
