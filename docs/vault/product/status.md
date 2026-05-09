@@ -14,6 +14,8 @@ code_pointers:
 ### Последние изменения (2026-05-09)
 
 - **Чат Phase 2A — бэкенд для запросов (inquiry):** реализована поддержка чат-комнат для предварительных вопросов («Задать вопрос»). Добавлена миграция `000040_chat_rooms_master_profile` с полем `master_profile_id` и индексами. Сервисный слой `ChatService` расширен методом `EnsureRoomForMasterInquiry` и интеграцией с `InquiryResolver` для динамического определения участников (владельцы, администраторы и конкретный мастер). Полностью сняты Phase 1 ограничения на отправку сообщений и вложений: `SendMessage` и `PostInquiryMessageWithAttachment` теперь поддерживают оба типа комнат (`appointment`, `inquiry`). Добавлен эндпоинт `POST /api/v1/chat/inquiry/master-rooms` для создания прямых чатов с мастерами. SSE-стрим и RBAC-логика адаптированы под новые типы участников.
+- **Чат backend polish — контракт и безопасность:** ответы комнат переведены на DTO `chatRoomOut`: `accessToken` отдаётся только guest/inquiry create/by-token сценариям, а staff/list/detail ответы его скрывают. `GET /api/v1/chat/inquiry/rooms/{roomId}` и inquiry SSE требуют `accessToken` query param; `GET /api/v1/chat/salons/{salonId}/inquiry-rooms` проверяет участника салона и возвращает массив комнат без токенов. `EnsureRoomForMasterInquiry` теперь ищет существующую комнату по паре `(salon_id, master_profile_id)`. Добавлена миграция `000041_chat_message_metadata` (`chat_messages.type`, `data`) для `appointment_request`/action-сообщений; `POST /api/v1/chat/rooms/{roomId}/request-appointment` создаёт не-системное action-сообщение от staff-участника, совместимое с DB constraint `chat_messages_system_has_no_sender`.
+- **Web dashboard — стоимость в деталях записи:** восстановлено предзаполнение поля «Итого» в drawer записи: UI берёт сохранённый `totalCents`, а для старых записей fallback на `calculatedTotalCents`. RTK Query `create/updateAppointment` снова передаёт `totalCents` в API только при ручном изменении суммы, чтобы авторасчёт из услуг не превращался в manual без действия пользователя.
 
 ### Последние изменения (2026-05-08)
 
@@ -73,9 +75,9 @@ code_pointers:
 - **Кабинет мастера — записи и клиенты (drawer'ы):** разделы «Записи» и «Клиенты» собраны в `MasterDashboardAppointments` и `MasterDashboardClients` (аналог `DashboardAppointments`): боковые панели `CreateMasterAppointmentDrawer` / `MasterPersonalAppointmentDrawer` (редактирование только личных визитов), `CreateMasterClientDrawer` / `MasterClientDetailDrawer`. RTK Query: мутации `createMasterPersonalAppointment`, `updateMasterPersonalAppointment`, CRUD клиентов. Бэкенд: `POST`/`PUT` `/master-dashboard/appointments` принимают camelCase JSON как в дашборде салона; в списке записей добавлено поле `clientNote`.
 - **Кабинет мастера — услуги:** `GET /api/v1/master-dashboard/service-categories` отдаёт полный системный справочник категорий без `X-Salon-Id`. На фронте вынесены `MasterServicesGrid` (таблица как в дашборде салона) и `MasterServiceFormModal` (создание/редактирование/удаление личных услуг).
 - **Интеграция CRM в Кабинет Мастера**: реализован полноценный функционал управления частной практикой мастера.
-    - **База данных**: `appointments.salon_id` теперь nullable; добавлена колонка `master_profile_id` для личных записей. Создана таблица `master_clients` для личной базы клиентов мастера. В `salon_masters` добавлена колонка `specializations` для изоляции навыков мастера внутри конкретного салона. Миграция: `000029_master_crm_integration`.
-    - **Бэкенд**: расширен `MasterDashboardService` и `MasterDashboardRepository` — добавлены CRUD-методы для личных услуг (`master_services`) и личных клиентов (`master_clients`). Список записей (`ListAppointments`) теперь агрегирует салонные и личные визиты с поддержкой серверной пагинации (`page`, `page_size`).
-    - **Фронтенд**: обновлен `masterDashboardApi.ts` (типы и методы для CRM). В `MasterDashboardPage` добавлены разделы «Услуги» и «Клиенты», таблица записей переведена на серверную пагинацию (MUI `TablePagination`) и получила визуальную метку для личных визитов.
+  - **База данных**: `appointments.salon_id` теперь nullable; добавлена колонка `master_profile_id` для личных записей. Создана таблица `master_clients` для личной базы клиентов мастера. В `salon_masters` добавлена колонка `specializations` для изоляции навыков мастера внутри конкретного салона. Миграция: `000029_master_crm_integration`.
+  - **Бэкенд**: расширен `MasterDashboardService` и `MasterDashboardRepository` — добавлены CRUD-методы для личных услуг (`master_services`) и личных клиентов (`master_clients`). Список записей (`ListAppointments`) теперь агрегирует салонные и личные визиты с поддержкой серверной пагинации (`page`, `page_size`).
+  - **Фронтенд**: обновлен `masterDashboardApi.ts` (типы и методы для CRM). В `MasterDashboardPage` добавлены разделы «Услуги» и «Клиенты», таблица записей переведена на серверную пагинацию (MUI `TablePagination`) и получила визуальную метку для личных визитов.
 - **Документация (vault)**: обновлены [`architecture/db-schema.md`](../architecture/db-schema.md) (схема личных записей и клиентов) и основной статус.
 
 ### Последние изменения (2026-05-01)
@@ -261,20 +263,20 @@ UNIQUE `(source, external_id)` — один внешний объект не м�
 
 Справочник «папок» услуг для дашборда (не путать с рубриками 2GIS). Сид: 72 системные строки (`salon_id IS NULL`). Подробная матрица slug — в [service-categories.md](../entities/service-categories.md).
 
-| Поле          | Описание                                              |
-| ------------- | ----------------------------------------------------- |
+| Поле          | Описание                                            |
+| ------------- | --------------------------------------------------- |
 | `slug`        | Уникален среди системных (`salon_id IS NULL`)       |
-| `parent_slug` | Группа (hair, nails, barbershop, …)                   |
+| `parent_slug` | Группа (hair, nails, barbershop, …)                 |
 | `name_ru`     | Отображаемое имя                                    |
 | `salon_id`    | NULL = системная; зарезервировано под кастом салона |
 
 #### Salon (доп. поля кабинета)
 
-| Поле                    | Описание                                                                 |
-| ----------------------- | ------------------------------------------------------------------------ |
+| Поле                    | Описание                                                                                                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `salon_type`            | **Legacy.** Тип заведения (`hair_salon` и др.) — хранится в БД, не редактируется из формы профиля; используется как fallback при расчёте `salonCategoryScopes` (см. `ParentSlugsForSalonType`). |
-| `business_type`         | **Legacy.** `venue` / `individual` — хранится в БД, не редактируется из формы профиля. |
-| `slot_duration_minutes` | Шаг слота для расчётов расписания (15–240 мин), default 30             |
+| `business_type`         | **Legacy.** `venue` / `individual` — хранится в БД, не редактируется из формы профиля.                                                                                                          |
+| `slot_duration_minutes` | Шаг слота для расчётов расписания (15–240 мин), default 30                                                                                                                                      |
 
 #### User
 
@@ -299,7 +301,7 @@ UNIQUE `(source, external_id)` — один внешний объект не м�
 | `salon_id`, `service_id`         | FK → salons, services                                     |
 | `client_user_id`                 | FK → users (NULL для гостей)                              |
 | `guest_name`, `guest_phone_e164` | Данные гостя (заполняются если нет user_id)               |
-| `salon_master_id`                | FK → salon_masters (необязательно)                      |
+| `salon_master_id`                | FK → salon_masters (необязательно)                        |
 | `starts_at`, `ends_at`           | Время записи                                              |
 | `status`                         | `pending → confirmed → completed / cancelled_* / no_show` |
 | `client_note`                    | Пожелания клиента                                         |
@@ -432,27 +434,27 @@ VALUES ('<наш UUID>', '2gis', '<2GIS ID>', '{"booking_url": "..."}');
 
 ### API-файлы на фронтенде
 
-| Файл           | Базовый URL                  | Покрытые эндпоинты                                                                                       |
-| -------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `authApi.ts`   | `VITE_API_URL`               | `/api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/refresh`, `/api/auth/me`, `/api/auth/logout` |
+| Файл           | Базовый URL                  | Покрытые эндпоинты                                                                                                                   |
+| -------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `authApi.ts`   | `VITE_API_URL`               | `/api/auth/otp/request`, `/api/auth/otp/verify`, `/api/auth/refresh`, `/api/auth/me`, `/api/auth/logout`                             |
 | `salonApi.ts`  | `VITE_API_BASE`              | `GET /v1/salons`, `GET /v1/salons/{id}`, `GET /v1/salons/{id}/masters`, `GET /v1/salons/{id}/slots`, `POST /v1/salons/{id}/bookings` |
-| `placesApi.ts` | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/places/search`, `GET /api/v1/places/item/{id}`                                              |
-| `searchApi.ts` | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/search` (unified: 2GIS + обогащение из БД), infinite scroll                                 |
-| `geoApi.ts`    | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/geo/region`, `/geo/cities`, `/geo/reverse`                                                  |
+| `placesApi.ts` | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/places/search`, `GET /api/v1/places/item/{id}`                                                                          |
+| `searchApi.ts` | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/search` (unified: 2GIS + обогащение из БД), infinite scroll                                                             |
+| `geoApi.ts`    | `publicApiUrl` → `/api/v1/…` | `GET /api/v1/geo/region`, `/geo/cities`, `/geo/reverse`                                                                              |
 
 ### Что подключено реально
 
-| Функция                                 | Статус                                                                                                                                                                                                                                         |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Авторизация (OTP + JWT)                 | ✅ Полностью подключена                                                                                                                                                                                                                        |
-| Обновление токена (auto-refresh on 401) | ✅ Реализовано                                                                                                                                                                                                                                 |
-| Профиль пользователя (`/api/auth/me`)   | ✅ Подключён                                                                                                                                                                                                                                   |
-| Поиск мест через 2GIS                   | ✅ Подключён (`placesApi.ts`), в т.ч. как fallback с главной                                                                                                                                                                                   |
-| Unified поиск на главной                | ✅ `searchApi.ts` → `GET /api/v1/search`; при ошибке — fallback на `placesApi` и режим «только 2GIS»                                                                                                                                           |
-| Детальная страница салона (`SalonPage`) | ✅ Dual-mode: `/salon/:id` (platform) и `/place/:externalId` (2GIS), с auto-redirect через `GET /api/v1/salons/by-external`                                                                                                                  |
-| Гостевая запись                         | ✅ Wizard в `GuestBookingDialog` (услуга → мастер → `PublicSlotPicker` → контакты), `POST /v1/salons/{id}/bookings` со слотом                                                                                                                      |
+| Функция                                 | Статус                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Авторизация (OTP + JWT)                 | ✅ Полностью подключена                                                                                                                                                                                                                                                                                                   |
+| Обновление токена (auto-refresh on 401) | ✅ Реализовано                                                                                                                                                                                                                                                                                                            |
+| Профиль пользователя (`/api/auth/me`)   | ✅ Подключён                                                                                                                                                                                                                                                                                                              |
+| Поиск мест через 2GIS                   | ✅ Подключён (`placesApi.ts`), в т.ч. как fallback с главной                                                                                                                                                                                                                                                              |
+| Unified поиск на главной                | ✅ `searchApi.ts` → `GET /api/v1/search`; при ошибке — fallback на `placesApi` и режим «только 2GIS»                                                                                                                                                                                                                      |
+| Детальная страница салона (`SalonPage`) | ✅ Dual-mode: `/salon/:id` (platform) и `/place/:externalId` (2GIS), с auto-redirect через `GET /api/v1/salons/by-external`                                                                                                                                                                                               |
+| Гостевая запись                         | ✅ Wizard в `GuestBookingDialog` (услуга → мастер → `PublicSlotPicker` → контакты), `POST /v1/salons/{id}/bookings` со слотом                                                                                                                                                                                             |
 | **Dashboard**                           | ✅ API `GET/POST/PATCH/PUT/DELETE /api/v1/dashboard/...` (JWT + членство в салоне); UI: обзор, календарь (день/неделя/месяц), список записей с редактированием, услуги с категориями, мастера, расписание, профиль. Доступ: `staff.dashboard_access` и/или роль в `salon_members` — см. `../../seed-dashboard-access.sql` |
-| Список всех салонов (`GET /v1/salons`)  | ⚠️ Эндпоинт есть; главная использует unified search, не этот список                                                                                                                                                                            |
+| Список всех салонов (`GET /v1/salons`)  | ⚠️ Эндпоинт есть; главная использует unified search, не этот список                                                                                                                                                                                                                                                       |
 
 ### Переменные окружения фронтенда
 
@@ -499,11 +501,11 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 
 ### ⚠️ Частично готово
 
-| Компонент    | Что сделано                                           | Что осталось                                                                   |
-| ------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| OTP-доставка | Логика генерации/верификации                          | SMS/Telegram реально не отправляет (только stderr)                             |
-| SearchPage   | Unified API + 2GIS fallback, фильтры, карта, bento UI | Дожать фильтры (часть чипов в `FilterRow` без бэкенда), polish карты           |
-| SalonPage    | Dual-mode, lookup `by-external`, hero CTA «Записаться», wizard гостевой записи, расписание и контакты из API | Отзывы/промо/фото-секции скрыты фичефлагами до появления API                    |
+| Компонент    | Что сделано                                                                                                                                                                                                                                                                                                                                                                                          | Что осталось                                                                                                                                                           |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OTP-доставка | Логика генерации/верификации                                                                                                                                                                                                                                                                                                                                                                         | SMS/Telegram реально не отправляет (только stderr)                                                                                                                     |
+| SearchPage   | Unified API + 2GIS fallback, фильтры, карта, bento UI                                                                                                                                                                                                                                                                                                                                                | Дожать фильтры (часть чипов в `FilterRow` без бэкенда), polish карты                                                                                                   |
+| SalonPage    | Dual-mode, lookup `by-external`, hero CTA «Записаться», wizard гостевой записи, расписание и контакты из API                                                                                                                                                                                                                                                                                         | Отзывы/промо/фото-секции скрыты фичефлагами до появления API                                                                                                           |
 | Dashboard    | Записи CRUD, календарь (день/неделя/месяц) с расписанием мастеров, перерывами, NowLine, аватарками, детальной модалкой; услуги с `category_slug`; мастера: `master_profiles` + `salon-masters`, оверрайды услуг, lookup/invite; **DnD-перенос записей** в дне/неделе (`@dnd-kit/react` → `PUT .../appointments/:id`); **Клиенты (CRM)**: `salon_clients` с тегами, история записей, guest↔user merge | Resize длительности, zoom таймлайна, конфликты слотов (предупреждение), кастомные `service_categories` на салон, напоминания, DataGrid в списке записей (в разработке) |
 
 ### ❌ Не начато
@@ -570,15 +572,15 @@ VITE_API_BASE=http://localhost:8080    # для salon API
 
 ## 6. Технический долг и риски
 
-| Проблема                                     | Критичность | Решение                             |
-| -------------------------------------------- | ----------- | ----------------------------------- |
-| `JWT_SECRET = "dev-secret-change-me"`        | 🔴 Критично | Ротировать перед любым prod-деплоем |
-| OTP не отправляется                          | 🔴 Критично | Подключить SMS-провайдера           |
-| Нет rate limiting на `/api/auth/otp/request` | 🟡 Важно    | Добавить Redis + rate limiter       |
-| CORS разрешает `*`                           | 🟡 Важно    | Ограничить на конкретные домены     |
-| lat/lon = 0 для части 2GIS-результатов       | 🟡 Важно    | Дебаггинг запросов к 2GIS API       |
-| Нет error tracking (Sentry и т.п.)           | 🟠 Средне   | Добавить перед beta                 |
-| Валидация гостевого букинга: мастер обязан оказывать выбранную услугу | 🟠 Средне | UI фильтрует по `salon_master_services`; на бэке опционально жёсткая проверка в `CreateGuestBooking` |
+| Проблема                                                              | Критичность | Решение                                                                                              |
+| --------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET = "dev-secret-change-me"`                                 | 🔴 Критично | Ротировать перед любым prod-деплоем                                                                  |
+| OTP не отправляется                                                   | 🔴 Критично | Подключить SMS-провайдера                                                                            |
+| Нет rate limiting на `/api/auth/otp/request`                          | 🟡 Важно    | Добавить Redis + rate limiter                                                                        |
+| CORS разрешает `*`                                                    | 🟡 Важно    | Ограничить на конкретные домены                                                                      |
+| lat/lon = 0 для части 2GIS-результатов                                | 🟡 Важно    | Дебаггинг запросов к 2GIS API                                                                        |
+| Нет error tracking (Sentry и т.п.)                                    | 🟠 Средне   | Добавить перед beta                                                                                  |
+| Валидация гостевого букинга: мастер обязан оказывать выбранную услугу | 🟠 Средне   | UI фильтрует по `salon_master_services`; на бэке опционально жёсткая проверка в `CreateGuestBooking` |
 
 ---
 

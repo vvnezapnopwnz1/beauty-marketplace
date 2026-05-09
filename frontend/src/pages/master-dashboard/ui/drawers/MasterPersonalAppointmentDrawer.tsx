@@ -28,10 +28,17 @@ import {
   useUpdateMasterPersonalAppointmentMutation,
   type MasterAppointmentDTO,
   type MasterClientDTO,
+  type UpdateMasterPersonalAppointmentBody,
 } from '@entities/master'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
 import { shouldConfirmStatusChangeFromCurrent } from '@shared/lib/appointmentStatus'
+import { useMemo } from 'react'
+import { PriceEditControl } from '@shared/ui/PriceEditControl'
+import {
+  calculateSelectedServicesTotalCents,
+  shouldSendManualTotal,
+} from '@shared/lib/appointmentPriceForm'
 
 export type MasterPersonalAppointmentDrawerProps = {
   open: boolean
@@ -41,6 +48,13 @@ export type MasterPersonalAppointmentDrawerProps = {
 
 function isPersonalAppointment(row: MasterAppointmentDTO): boolean {
   return row.salonId == null || row.salonId === ''
+}
+
+function sameStringArray(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  const aa = [...a].sort()
+  const bb = [...b].sort()
+  return aa.every((value, index) => value === bb[index])
 }
 
 function MasterPersonalAppointmentBody({
@@ -62,7 +76,8 @@ function MasterPersonalAppointmentBody({
     guestName: appointment.clientLabel ?? '',
     guestPhone: formatPhone(appointment.clientPhone ?? ''),
     note: appointment.clientNote ?? '',
-    totalCents: appointment.totalPriceCents ?? (null as number | null),
+    manualPrice: appointment.totalSource === 'manual',
+    priceCents: appointment.totalPriceCents ?? (null as number | null),
   }))
   const [selectedClient, setSelectedClient] = useState<MasterClientDTO | null>(null)
 
@@ -76,6 +91,10 @@ function MasterPersonalAppointmentBody({
       .then(res => setServices(res.filter(s => s.isActive)))
       .catch(() => setServices([]))
   }, [])
+
+  const calculatedTotal = useMemo(() => {
+    return calculateSelectedServicesTotalCents(form.serviceIds, services)
+  }, [form.serviceIds, services])
 
   const handleClose = () => onClose()
 
@@ -105,17 +124,28 @@ function MasterPersonalAppointmentBody({
       return enqueueFormSnackbar('Некорректный телефон', 'Error')
     }
     try {
-      await updateAppointment({
-        id: appointment.id,
-        body: {
-          serviceIds: form.serviceIds,
-          startsAt: form.startsAt,
-          guestName: form.guestName.trim(),
-          guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : null,
-          clientNote: form.note.trim() || null,
-          totalCents: form.totalCents,
-        },
-      }).unwrap()
+      const initialServiceIds = appointment.serviceId ? [appointment.serviceId] : []
+      const body: UpdateMasterPersonalAppointmentBody = {}
+      const nextGuestName = form.guestName.trim()
+      const nextGuestPhone = guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : null
+      const nextNote = form.note.trim() || null
+      if (!sameStringArray(form.serviceIds, initialServiceIds)) body.serviceIds = form.serviceIds
+      if (form.startsAt !== appointment.startsAt) body.startsAt = form.startsAt
+      if (nextGuestName !== (appointment.clientLabel ?? '').trim()) body.guestName = nextGuestName
+      if (nextGuestPhone !== (appointment.clientPhone ?? null)) body.guestPhone = nextGuestPhone
+      if (nextNote !== (appointment.clientNote ?? null)) body.clientNote = nextNote
+      if (
+        shouldSendManualTotal({
+          manualEnabled: form.manualPrice,
+          valueCents: form.priceCents,
+          initialValueCents: appointment.totalPriceCents ?? null,
+        })
+      ) {
+        body.totalCents = form.priceCents
+      }
+      if (Object.keys(body).length > 0) {
+        await updateAppointment({ id: appointment.id, body }).unwrap()
+      }
       handleClose()
     } catch (e) {
       enqueueFormSnackbar(e instanceof Error ? e.message : 'Ошибка сохранения', 'Error')
@@ -172,7 +202,9 @@ function MasterPersonalAppointmentBody({
                   <Button
                     key={status}
                     size="small"
-                    variant={status === 'completed' || status === 'confirmed' ? 'contained' : 'outlined'}
+                    variant={
+                      status === 'completed' || status === 'confirmed' ? 'contained' : 'outlined'
+                    }
                     disabled={busy}
                     onClick={() => void applyStatus(status)}
                     sx={{
@@ -299,20 +331,17 @@ function MasterPersonalAppointmentBody({
               }}
               sx={inputBaseSx}
             />
-            <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>
-              Стоимость (₽)
-            </Typography>
-            <TextField
-              disabled={!showEditForm}
-              value={form.totalCents !== null ? form.totalCents / 100 : ''}
-              onChange={e => {
-                const val = parseFloat(e.target.value)
-                setForm(f => ({ ...f, totalCents: isNaN(val) ? null : Math.round(val * 100) }))
-              }}
-              type="number"
-              fullWidth
-              sx={inputBaseSx}
-            />
+            <Box sx={{ mt: 2 }}>
+              <PriceEditControl
+                label="Стоимость"
+                editable={showEditForm}
+                manualEnabled={form.manualPrice}
+                onManualEnabledChange={val => setForm(f => ({ ...f, manualPrice: val }))}
+                valueCents={form.priceCents}
+                onValueCentsChange={val => setForm(f => ({ ...f, priceCents: val }))}
+                calculatedCents={calculatedTotal}
+              />
+            </Box>
             <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5, mt: 1 }}>
               Комментарий
             </Typography>

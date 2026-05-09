@@ -59,3 +59,20 @@ func TestApplyTotalUpdate_ExplicitManualTotalRecomputesDelta(t *testing.T) {
 		t.Fatalf("unexpected explicit manual total result: %+v", next)
 	}
 }
+
+func TestApplyTotalUpdate_NoExplicitTotalKeepsCalculatedWhenServicesUnchanged(t *testing.T) {
+	current := computeTotalState(3500, "calculated", nil, nil)
+	next := applyTotalUpdate(current, 3500, appointmentTotalUpdate{})
+	if next.TotalCents != 3500 || next.TotalSource != "calculated" || next.ManualDeltaCents != 0 {
+		t.Fatalf("unexpected unchanged calculated result: %+v", next)
+	}
+}
+
+func TestApplyTotalUpdate_ExplicitManualTotalStoresDelta(t *testing.T) {
+	current := computeTotalState(5000, "calculated", nil, nil)
+	manual := int64(4200)
+	next := applyTotalUpdate(current, 5000, appointmentTotalUpdate{ExplicitManualTotal: &manual})
+	if next.TotalCents != 4200 || next.TotalSource != "manual" || next.ManualDeltaCents != -800 {
+		t.Fatalf("unexpected manual result: %+v", next)
+	}
+}

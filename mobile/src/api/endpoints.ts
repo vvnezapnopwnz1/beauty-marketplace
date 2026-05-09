@@ -125,6 +125,10 @@ export const CHAT = {
   roomByToken: (token: string) => `${API_V1}/chat/external/rooms/${token}`,
   messages: (roomId: string) => `${API_V1}/chat/rooms/${roomId}/messages`,
   read: (roomId: string) => `${API_V1}/chat/rooms/${roomId}/read`,
+  salonInquiryRooms: (salonId: string) =>
+    `${API_V1}/chat/salons/${salonId}/inquiry-rooms`,
+  requestAppointment: (roomId: string) =>
+    `${API_V1}/chat/rooms/${roomId}/request-appointment`,
 } as const;
 export const CHAT_ENDPOINTS = CHAT;
 

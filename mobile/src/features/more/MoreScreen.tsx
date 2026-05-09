@@ -59,6 +59,13 @@ export function MoreScreen() {
       color: colors.makeup,
     },
     {
+      id: "inquiries",
+      label: "Запросы",
+      icon: "chat-question-outline",
+      color: colors.hair,
+      onPress: () => router.push("/(settings)/inquiries"),
+    },
+    {
       id: "notif",
       label: "Уведомл.",
       icon: "bell-outline",

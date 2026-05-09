@@ -42,7 +42,7 @@ func (h *DashboardController) handleAppointments(w http.ResponseWriter, r *http.
 			h.getAppointment(w, r, salonID, id)
 			return
 		}
-		if r.Method == http.MethodPut {
+		if r.Method == http.MethodPut || r.Method == http.MethodPatch {
 			h.putAppointment(w, r, salonID, id)
 			return
 		}

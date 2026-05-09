@@ -15,36 +15,31 @@ import { useTheme } from "../../shared/theme/useTheme";
 import type { MasterAppointment } from "../../entities/appointments/api";
 import { useMasterServicesQuery } from "../../entities/services/api";
 import { isFinalAppointmentStatus } from "../../shared/lib/appointmentStatus";
+import { PriceEditControl } from "../../components/appointments/PriceEditControl";
+import {
+  calculateSelectedServicesTotalCents,
+  shouldSendManualTotal,
+} from "../../shared/lib/appointmentPriceForm";
 
 function fmt(d: Date) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-/** Parse ₽ input (comma decimal, thin spaces ok) → amount in cents. */
-function parseRubToTotalCents(raw: string): number {
-  const normalized = raw
-    .trim()
-    .replace(/\u00A0/g, " ")
-    .replace(/\s+/g, "")
-    .replace(",", ".");
-  if (normalized === "" || normalized === "." || normalized === "-") {
-    return 0;
-  }
-  const n = Number(normalized);
-  if (!Number.isFinite(n)) {
-    return 0;
-  }
-  return Math.max(0, Math.round(n * 100));
+function sameStringArray(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const aa = [...a].sort();
+  const bb = [...b].sort();
+  return aa.every((value, index) => value === bb[index]);
 }
 
-type AppointmentPutBody = {
-  startsAt: string;
-  endsAt: string;
+type AppointmentPatchBody = {
+  startsAt?: string;
+  endsAt?: string;
   serviceIds?: string[];
   guestName?: string;
   guestPhone?: string;
   clientNote?: string;
-  totalCents: number;
+  totalCents?: number;
 };
 
 const STATUS_OPTS: Array<{ value: string; label: string; dot: string }> = [
@@ -74,8 +69,11 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
   const [phone, setPhone] = useState(appointment.clientPhone ?? "");
   const [timeStart, setTimeStart] = useState(fmt(start));
   const [timeEnd, setTimeEnd] = useState(fmt(end));
-  const [priceRub, setPriceRub] = useState(
-    String(Math.round(appointment.totalPriceCents / 100)),
+  const [manualPrice, setManualPrice] = useState(
+    appointment.totalSource === "manual",
+  );
+  const [totalCents, setTotalCents] = useState<number | null>(
+    appointment.totalSource === "manual" ? appointment.totalPriceCents : null,
   );
   const [status, setStatus] = useState<string>(appointment.status);
   const [comment, setComment] = useState(appointment.clientNote ?? "");
@@ -88,6 +86,14 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
     appointment.serviceId ? [appointment.serviceId] : [],
   );
+
+  const calculatedTotal = useMemo(() => {
+    const servicesTotal = calculateSelectedServicesTotalCents(
+      selectedServiceIds,
+      activeServices,
+    );
+    return servicesTotal > 0 ? servicesTotal : appointment.totalPriceCents;
+  }, [selectedServiceIds, activeServices, appointment.totalPriceCents]);
   const isFinal = isFinalAppointmentStatus(appointment.status);
   const isEditable = !isFinal;
   const statusChanged = status !== appointment.status;
@@ -105,7 +111,6 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         throw new Error("Время окончания должно быть позже времени начала");
       }
 
-      const totalCents = parseRubToTotalCents(priceRub);
       const trimmedPhone = phone.trim();
       const noteTrim = comment.trim();
 
@@ -122,12 +127,33 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
           : undefined;
 
       if (isEditable) {
-        const body: AppointmentPutBody = {
-          startsAt: startsAt.toISOString(),
-          endsAt: endsAt.toISOString(),
-          totalCents,
-        };
-        if (!isSalonAppointment && selectedServiceIds.length > 0) {
+        const body: AppointmentPatchBody = {};
+        const nextStartsAt = startsAt.toISOString();
+        const nextEndsAt = endsAt.toISOString();
+        if (nextStartsAt !== appointment.startsAt) {
+          body.startsAt = nextStartsAt;
+        }
+        if (nextEndsAt !== appointment.endsAt) {
+          body.endsAt = nextEndsAt;
+        }
+
+        const priceUpdate = shouldSendManualTotal({
+          manualEnabled: manualPrice,
+          valueCents: totalCents,
+          initialValueCents: appointment.totalPriceCents,
+        });
+
+        if (priceUpdate) {
+          body.totalCents = totalCents ?? undefined;
+        }
+
+        const initialServiceIds = appointment.serviceId
+          ? [appointment.serviceId]
+          : [];
+        if (
+          !isSalonAppointment &&
+          !sameStringArray(selectedServiceIds, initialServiceIds)
+        ) {
           body.serviceIds = selectedServiceIds;
         }
         if (labelTrim !== origLabel) {
@@ -140,12 +166,14 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
           body.clientNote = noteTrim;
         }
 
-        if (salonHeaders) {
-          await apiClient.put(DASHBOARD.appointment(appointment.id), body, {
-            headers: salonHeaders,
-          });
-        } else {
-          await apiClient.put(MASTER.appointment(appointment.id), body);
+        if (Object.keys(body).length > 0) {
+          if (salonHeaders) {
+            await apiClient.patch(DASHBOARD.appointment(appointment.id), body, {
+              headers: salonHeaders,
+            });
+          } else {
+            await apiClient.patch(MASTER.appointment(appointment.id), body);
+          }
         }
       }
 
@@ -206,7 +234,11 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         "Вы уверены, что хотите изменить статус?",
         [
           { text: "Нет", style: "cancel" },
-          { text: "Да", style: "destructive", onPress: () => setStatus(nextStatus) },
+          {
+            text: "Да",
+            style: "destructive",
+            onPress: () => setStatus(nextStatus),
+          },
         ],
         { cancelable: true },
       );
@@ -297,8 +329,12 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
                     style={[
                       styles.checkbox,
                       {
-                        borderColor: checked ? colors.accent : colors.borderInset,
-                        backgroundColor: checked ? colors.accent : "transparent",
+                        borderColor: checked
+                          ? colors.accent
+                          : colors.borderInset,
+                        backgroundColor: checked
+                          ? colors.accent
+                          : "transparent",
                       },
                     ]}
                   >
@@ -312,13 +348,25 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
-                      style={{ color: colors.text, fontSize: 13, fontWeight: "500" }}
+                      style={{
+                        color: colors.text,
+                        fontSize: 13,
+                        fontWeight: "500",
+                      }}
                     >
                       {s.name}
                     </Text>
-                    <Text style={{ color: colors.muted, fontSize: 11, marginTop: 2 }}>
+                    <Text
+                      style={{
+                        color: colors.muted,
+                        fontSize: 11,
+                        marginTop: 2,
+                      }}
+                    >
                       {s.durationMinutes} мин
-                      {s.priceCents != null ? ` · ${Math.round(s.priceCents / 100)} ₽` : ""}
+                      {s.priceCents != null
+                        ? ` · ${Math.round(s.priceCents / 100)} ₽`
+                        : ""}
                     </Text>
                   </View>
                 </Pressable>
@@ -328,24 +376,15 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         )}
       </Field>
 
-      <View
-        style={{
-          marginBottom: 12,
-          borderRadius: 10,
-          borderWidth: 1,
-          borderColor: colors.borderLight,
-          backgroundColor: colors.surface,
-          paddingHorizontal: 10,
-          paddingVertical: 8,
-        }}
-      >
-        <Text style={{ color: colors.muted, fontSize: 11 }}>
-          Режим цены:{" "}
-          <Text style={{ color: colors.text }}>
-            {appointment.totalSource === "manual" ? "изменена вручную" : "авто"}
-          </Text>
-        </Text>
-      </View>
+      <PriceEditControl
+        label="Стоимость"
+        editable={isEditable}
+        manualEnabled={manualPrice}
+        onManualEnabledChange={setManualPrice}
+        valueCents={totalCents}
+        onValueCentsChange={setTotalCents}
+        calculatedCents={calculatedTotal}
+      />
 
       <View style={{ flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 1 }}>
@@ -373,18 +412,6 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
           </Field>
         </View>
       </View>
-
-      <Field label="Стоимость (₽)">
-        <TextInput
-          value={priceRub}
-          onChangeText={setPriceRub}
-          editable={isEditable}
-          placeholder="0"
-          placeholderTextColor={colors.muted}
-          style={inputStyle}
-          keyboardType="numeric"
-        />
-      </Field>
 
       <Field label="Статус">
         <View
@@ -481,9 +508,10 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
             styles.btn,
             {
               flex: 2,
-              backgroundColor: save.isPending || (!isEditable && !statusChanged)
-                ? `${colors.accent}80`
-                : colors.accent,
+              backgroundColor:
+                save.isPending || (!isEditable && !statusChanged)
+                  ? `${colors.accent}80`
+                  : colors.accent,
             },
           ]}
         >

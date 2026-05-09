@@ -371,7 +371,7 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		if len(parts) == 2 && r.Method == http.MethodPut {
+		if len(parts) == 2 && (r.Method == http.MethodPut || r.Method == http.MethodPatch) {
 			id, err := uuid.Parse(parts[1])
 			if err != nil {
 				jsonError(w, "invalid id", http.StatusBadRequest)

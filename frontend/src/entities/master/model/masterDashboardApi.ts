@@ -20,6 +20,7 @@ export interface MasterAppointmentDTO {
   serviceId: string
   salonMasterId?: string | null
   totalPriceCents?: number
+  totalSource?: 'calculated' | 'manual'
 }
 
 export interface MasterAppointmentListResponse {
@@ -68,6 +69,7 @@ export type CreateMasterPersonalAppointmentBody = {
   guestPhone: string
   clientNote?: string
   clientUserId?: string
+  totalCents?: number
 }
 
 export type UpdateMasterPersonalAppointmentBody = {
@@ -162,7 +164,7 @@ const masterDashboardApi = rtkApi.injectEndpoints({
       invalidatesTags: ['MasterAppointments', 'FinanceSummary', 'FinanceExpenses'],
       query: ({ id, body }) => ({
         url: `/api/v1/master-dashboard/appointments/${id}`,
-        method: 'PUT',
+        method: 'PATCH',
         body,
       }),
     }),

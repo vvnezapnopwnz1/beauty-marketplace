@@ -190,6 +190,7 @@ type MasterAppointmentDTO struct {
 	ServiceID       uuid.UUID  `json:"serviceId"`
 	SalonMasterID   *uuid.UUID `json:"salonMasterId,omitempty"`
 	TotalPriceCents int64      `json:"totalPriceCents"`
+	TotalSource     string     `json:"totalSource"`
 }
 
 type MasterExpenseCategoryDTO struct {
@@ -474,6 +475,7 @@ func (s *masterDashboardService) ListAppointments(ctx context.Context, userID uu
 			ServiceID:       a.ServiceID,
 			SalonMasterID:   a.SalonMasterID,
 			TotalPriceCents: row.TotalPriceCents,
+			TotalSource:     a.TotalSource,
 		}
 	}
 	return out, total, nil

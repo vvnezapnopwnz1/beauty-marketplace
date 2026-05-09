@@ -6,5 +6,9 @@ export {
     useListMessagesQuery,
     useSendMessageMutation,
     useMarkRoomReadMutation,
+    useCreateInquiryRoomMutation,
+    useListSalonInquiryRoomsQuery,
+    useGetUnreadCountsQuery,
+    useRequestAppointmentMutation,
 } from './api/chatApi';
 export { useChatStream } from './lib/useChatStream';

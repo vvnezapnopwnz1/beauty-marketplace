@@ -46,10 +46,10 @@ func (r *chatRepository) GetRoomBySalon(ctx context.Context, salonID uuid.UUID) 
 	return &room, nil
 }
 
-func (r *chatRepository) GetRoomByMasterProfile(ctx context.Context, masterProfileID uuid.UUID) (*model.ChatRoom, error) {
+func (r *chatRepository) GetRoomByMasterProfile(ctx context.Context, salonID, masterProfileID uuid.UUID) (*model.ChatRoom, error) {
 	var room model.ChatRoom
 	if err := r.db.WithContext(ctx).
-		Where("master_profile_id = ? AND type = ?", masterProfileID, model.ChatRoomTypeInquiry).
+		Where("salon_id = ? AND master_profile_id = ? AND type = ?", salonID, masterProfileID, model.ChatRoomTypeInquiry).
 		First(&room).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -57,6 +57,25 @@ func (r *chatRepository) GetRoomByMasterProfile(ctx context.Context, masterProfi
 		return nil, err
 	}
 	return &room, nil
+}
+
+func (r *chatRepository) ListInquiryRooms(ctx context.Context, salonID uuid.UUID, limit, offset int) ([]model.ChatRoom, error) {
+	var rooms []model.ChatRoom
+	query := r.db.WithContext(ctx).
+		Where("salon_id = ? AND type = ?", salonID, model.ChatRoomTypeInquiry).
+		Order("updated_at DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	if err := query.Find(&rooms).Error; err != nil {
+		return nil, err
+	}
+	return rooms, nil
 }
 
 func (r *chatRepository) GetRoomByID(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error) {
@@ -280,4 +299,57 @@ func (r *chatRepository) GetInquiryParticipants(ctx context.Context, salonID uui
 		row.MasterUserIDs = append([]uuid.UUID{*masterRow.UserID}, row.MasterUserIDs...)
 	}
 	return row, nil
+}
+
+func (r *chatRepository) GetUnreadCount(ctx context.Context, roomID, userID uuid.UUID) (int, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.ChatMessage{}).
+		Joins("LEFT JOIN chat_message_reads r ON r.message_id = chat_messages.id AND r.user_id = ?", userID).
+		Where("chat_messages.room_id = ? AND r.message_id IS NULL AND (chat_messages.sender_user_id IS NULL OR chat_messages.sender_user_id != ?)", roomID, userID).
+		Count(&count).Error
+	return int(count), err
+}
+
+func (r *chatRepository) GetUnreadCounts(ctx context.Context, roomIDs []uuid.UUID, userID uuid.UUID) (map[uuid.UUID]int, error) {
+	if len(roomIDs) == 0 {
+		return make(map[uuid.UUID]int), nil
+	}
+	var results []struct {
+		RoomID uuid.UUID
+		Count  int
+	}
+	err := r.db.WithContext(ctx).Model(&model.ChatMessage{}).
+		Select("room_id, COUNT(*) as count").
+		Joins("LEFT JOIN chat_message_reads r ON r.message_id = chat_messages.id AND r.user_id = ?", userID).
+		Where("chat_messages.room_id IN ? AND r.message_id IS NULL AND (chat_messages.sender_user_id IS NULL OR chat_messages.sender_user_id != ?)", roomIDs, userID).
+		Group("room_id").
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]int)
+	for _, res := range results {
+		out[res.RoomID] = res.Count
+	}
+	// Fill zeros for rooms with no unread messages
+	for _, id := range roomIDs {
+		if _, ok := out[id]; !ok {
+			out[id] = 0
+		}
+	}
+	return out, nil
+}
+
+func (r *chatRepository) FindUnansweredInquiries(ctx context.Context, olderThan time.Duration) ([]model.ChatRoom, error) {
+	var rooms []model.ChatRoom
+	threshold := time.Now().Add(-olderThan)
+
+	err := r.db.WithContext(ctx).
+		Where("type = ? AND created_at < ?", model.ChatRoomTypeInquiry, threshold).
+		Where("EXISTS (SELECT 1 FROM chat_messages m WHERE m.room_id = chat_rooms.id AND m.sender_role = 'guest')").
+		Where("NOT EXISTS (SELECT 1 FROM chat_messages m WHERE m.room_id = chat_rooms.id AND m.sender_role IN ('master', 'owner', 'receptionist'))").
+		Where("NOT EXISTS (SELECT 1 FROM chat_messages m WHERE m.room_id = chat_rooms.id AND m.sender_role = 'system' AND m.body = 'Inquiry escalated to salon management due to no reply.')").
+		Find(&rooms).Error
+
+	return rooms, err
 }

@@ -1,6 +1,6 @@
 ---
 title: Чат — дорожная карта
-updated: 2026-05-07-followup
+updated: 2026-05-09
 source_of_truth: true
 ---
 
@@ -13,6 +13,7 @@ source_of_truth: true
 Ветка: `feat/chat-phase1-external` (3 коммита: backend / frontend / mobile).
 
 ### Закрыто в Phase 1
+
 - БД: `chat_rooms`, `chat_messages`, `chat_message_reads` (миграция `000034`).
 - Backend: ChatService с RBAC от участников записи, правило «первого шага», маскировка контактов на storage-level, архиватор 24ч после `completed`, системные сообщения через `AppointmentChatHook` (готов к подключению из callsites). SSE-доставка через `NotificationService.PublishEvent` + событие `chat.message`.
 - Frontend: `entities/chat` (RTK Query + `useChatStream`), `features/chat-window` (Bubble/Composer/Window/Trigger), стандалон-страница `/chat/:accessToken`, embed-аккордеон в `AppointmentDrawer` дашборда салона.
@@ -51,21 +52,31 @@ source_of_truth: true
 - **#7 (conflated commit `c2c7460`)** — ложная тревога. Diff показал, что 41 «удаление» — это refactor `mobile/src/api/endpoints.ts` от хардкода `localhost:8080` к LAN-host detection через Expo Metro (`resolveApiOrigin`, `replaceLoopbackWithMetroHost`). Фикс корректный, переписывать историю не надо.
 - **#8 (smoke-тесты)** — отложено до интеграционного прохода. Сценарии остаются в плане 2026-05-07-chat-phase1-followup, секция Phase 10.4.
 
-## Phase 2 — отложено (НЕ ЗАБЫТЬ)
+## Phase 2 — в работе / отложено
 
-### 2A. «Задать вопрос» (pre-booking inquiry)
+### 2A. «Задать вопрос» (pre-booking inquiry) — backend WIP 2026-05-09
 
 Чат без привязки к записи, инициируется со страницы профиля мастера/салона кнопкой «Задать вопрос» рядом с «Записаться».
 Особенности:
+
 - Сообщение сначала падает администратору (Owner/Receptionist), затем мастеру по эскалации
 - Фото-чат: возможность приложить фото при первом сообщении
 - Quick replies: шаблоны ответов мастера/салона
 - «Сформировать запись» — кнопка трансформации диалога в `appointment` (системное сообщение клиенту с подтверждением)
 - Анти-увод: дисклеймер про оплату через платформу + флаг подозрительной активности (3+ сообщения без записи)
 
+Backend-статус:
+
+- `chat_rooms.master_profile_id` добавлен миграцией `000040`; прямые inquiry-комнаты мастера scoped по `(salon_id, master_profile_id)`.
+- `chat_messages.type` + `data` добавлены миграцией `000041` для action-сообщений (`text`, `attachment`, `system`, `appointment_request`).
+- Guest credential остаётся `accessToken`; create/by-token ответы его возвращают, staff/list/detail ответы скрывают.
+- Inquiry room detail и SSE для гостя требуют `accessToken` query param; staff-list endpoint проверяет участника салона через `InquiryResolver`.
+- `POST /api/v1/chat/rooms/{roomId}/request-appointment` создаёт `appointment_request` как обычное staff-сообщение (`isSystem=false`), чтобы не нарушать DB constraint системных сообщений.
+
 ### 2B. Internal chat (Мастер ↔ Управленцы)
 
 Чат внутри салона, привязан к `salon_id`:
+
 - Общий канал салона (объявления)
 - Личные диалоги owner/receptionist ↔ мастер
 - Триггерные системные сообщения (например, перенос записи через DnD)

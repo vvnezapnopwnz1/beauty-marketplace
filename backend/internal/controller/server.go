@@ -89,6 +89,7 @@ func NewHTTPServer(
 	mux.HandleFunc("GET /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.ListMessages)))
 	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.PostMessage)))
 	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/read", withCORS(auth.RequireAuth(jwtMgr, ch.MarkRead)))
+	mux.HandleFunc("POST /api/v1/chat/rooms/{roomId}/request-appointment", withCORS(auth.RequireAuth(jwtMgr, ch.RequestAppointment)))
 
 	// Chat (Phase 2A: inquiry, pre-booking)
 	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms", withCORS(auth.OptionalAuth(jwtMgr, ch.CreateInquiryRoom)))
@@ -97,6 +98,8 @@ func NewHTTPServer(
 	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.PostInquiryMessage)))
 	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms/{roomId}/messages-with-attachment", withCORS(auth.OptionalAuth(jwtMgr, ch.PostInquiryMessageWithAttachment)))
 	mux.HandleFunc("GET /api/v1/chat/inquiry/rooms/{roomId}/stream", withCORS(ch.StreamInquiryMessages))
+	mux.HandleFunc("GET /api/v1/chat/salons/{salonId}/inquiry-rooms", withCORS(auth.RequireAuth(jwtMgr, ch.ListSalonInquiryRooms)))
+	mux.HandleFunc("GET /api/v1/chat/unread-counts", withCORS(auth.RequireAuth(jwtMgr, ch.GetUnreadCounts)))
 
 	// File storage for chat attachments
 	mux.HandleFunc("POST /api/v1/files/upload", withCORS(auth.OptionalAuth(jwtMgr, fh.UploadFile)))

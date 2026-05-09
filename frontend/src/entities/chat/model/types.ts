@@ -7,6 +7,7 @@ export interface ChatRoom {
     type: ChatRoomType;
     appointmentId?: string | null;
     salonId?: string | null;
+    masterProfileId?: string | null;
     status: ChatRoomStatus;
     lockedUntilFirstReply: boolean;
     readonlyAt?: string | null;
@@ -22,6 +23,8 @@ export interface ChatMessage {
     senderRole: ChatSenderRole;
     body: string;
     isSystem: boolean;
+    type?: string;
+    data?: any;
     createdAt: string;
 }
 
@@ -29,4 +32,9 @@ export interface SendMessageInput {
     roomId: string;
     body: string;
     accessToken?: string;
+}
+
+export interface CreateInquiryInput {
+    salonId: string;
+    masterProfileId?: string;
 }

@@ -51,7 +51,7 @@ export interface CreateAppointmentPayload {
     guestName: string
     guestPhone: string
     clientNote?: string
-    totalCents?: number
+    totalCents?: number | null
 }
 
 export interface UpdateAppointmentBody {

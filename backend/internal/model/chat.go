@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -49,17 +50,19 @@ const (
 )
 
 type ChatMessage struct {
-	ID                  uuid.UUID      `gorm:"primaryKey" json:"id"`
-	RoomID              uuid.UUID      `gorm:"column:room_id" json:"roomId"`
-	SenderUserID        *uuid.UUID     `gorm:"column:sender_user_id" json:"senderUserId,omitempty"`
-	SenderRole          ChatSenderRole `gorm:"column:sender_role" json:"senderRole"`
-	Body                string         `json:"body"`
-	IsSystem            bool           `gorm:"column:is_system" json:"isSystem"`
-	AttachmentURL       *string        `gorm:"column:attachment_url" json:"attachmentUrl,omitempty"`
-	AttachmentType      *string        `gorm:"column:attachment_type" json:"attachmentType,omitempty"`
-	AttachmentFilename  *string        `gorm:"column:attachment_filename" json:"attachmentFilename,omitempty"`
-	AttachmentSizeBytes *int           `gorm:"column:attachment_size_bytes" json:"attachmentSizeBytes,omitempty"`
-	CreatedAt           time.Time      `json:"createdAt"`
+	ID                  uuid.UUID       `gorm:"primaryKey" json:"id"`
+	RoomID              uuid.UUID       `gorm:"column:room_id" json:"roomId"`
+	SenderUserID        *uuid.UUID      `gorm:"column:sender_user_id" json:"senderUserId,omitempty"`
+	SenderRole          ChatSenderRole  `gorm:"column:sender_role" json:"senderRole"`
+	Body                string          `json:"body"`
+	IsSystem            bool            `gorm:"column:is_system" json:"isSystem"`
+	AttachmentURL       *string         `gorm:"column:attachment_url" json:"attachmentUrl,omitempty"`
+	AttachmentType      *string         `gorm:"column:attachment_type" json:"attachmentType,omitempty"`
+	AttachmentFilename  *string         `gorm:"column:attachment_filename" json:"attachmentFilename,omitempty"`
+	AttachmentSizeBytes *int            `gorm:"column:attachment_size_bytes" json:"attachmentSizeBytes,omitempty"`
+	Type                string          `json:"type"`
+	Data                json.RawMessage `gorm:"type:jsonb" json:"data,omitempty"`
+	CreatedAt           time.Time       `json:"createdAt"`
 }
 
 func (ChatMessage) TableName() string { return "chat_messages" }

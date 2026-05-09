@@ -1,6 +1,6 @@
 ---
 title: Схема базы данных
-updated: 2026-05-08
+updated: 2026-05-09
 source_of_truth: true
 code_pointers:
   - backend/internal/infrastructure/persistence/model/models.go
@@ -129,6 +129,42 @@ erDiagram
         timestamp created_at
     }
 
+    chat_rooms {
+        uuid id PK
+        enum type "external|internal|inquiry"
+        uuid appointment_id FK "external rooms"
+        uuid salon_id FK "internal/inquiry rooms"
+        uuid master_profile_id FK "direct master inquiry"
+        enum status "active|readonly|archived"
+        bool locked_until_first_reply
+        uuid access_token UK
+        timestamptz readonly_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    chat_messages {
+        uuid id PK
+        uuid room_id FK
+        uuid sender_user_id FK "nullable for system"
+        enum sender_role "guest|master|owner|receptionist|system"
+        text body
+        bool is_system
+        text attachment_url
+        text attachment_type
+        text attachment_filename
+        int attachment_size_bytes
+        enum type "text|attachment|system|appointment_request"
+        jsonb data
+        timestamptz created_at
+    }
+
+    chat_message_reads {
+        uuid message_id FK
+        uuid user_id FK
+        timestamptz read_at
+    }
+
     master_clients {
         uuid id PK
         uuid master_id FK
@@ -238,15 +274,20 @@ erDiagram
     salons ||--o{ working_hours : "schedule"
     salons ||--o{ appointments : "bookings"
     salons ||--o{ salon_clients : "clients"
+    salons ||--o{ chat_rooms : "inquiry rooms"
     salons ||--o| salon_subscriptions : "subscription"
 
     master_profiles ||--o{ master_services : "personal catalog"
     master_profiles ||--o{ master_clients : "personal clients"
     master_profiles ||--o{ salon_masters : "works at"
     master_profiles ||--o{ appointments : "personal bookings"
+    master_profiles ||--o{ chat_rooms : "direct inquiries"
 
     salon_masters ||--o{ salon_master_services : "offers"
 
+    appointments ||--o| chat_rooms : "external chat"
+    chat_rooms ||--o{ chat_messages : "messages"
+    chat_messages ||--o{ chat_message_reads : "read receipts"
     users ||--o{ salon_claims : "submits"
     salons ||--o{ salon_claims : "claimed via"
 ```
@@ -256,6 +297,7 @@ erDiagram
 - **SalonMaster** — мост между `salons` и `master_profiles`. `master_id` может быть NULL (shadow-профиль, созданный салоном). Содержит `specializations` для роли в конкретном салоне.
 - **MasterClient** — личная клиентская база мастера (`master_profiles.id`).
 - **Appointment** — поддерживает салонные записи (`salon_id` задан) и личные (`salon_id` IS NULL, `master_profile_id` задан). Для личных записей `service_id` указывает на `master_services.id` (проверка триггером `services_same_salon_as_appointment`); для салонных — на `services.id`. Внешний ключ с `services` для колонки снят (миграция `000030_personal_appointment_service_check`). При ручном создании/обновлении записи в кабинете салона с назначенным `salon_master_id` в `master_profile_id` проставляется `salon_masters.master_id` (денормализация для отчётов и кабинета мастера). Дополнительно миграция `000038_appointments_final_status_field_guard` добавляет DB-trigger, который запрещает менять любые поля записи в финальных статусах (`completed`, `cancelled_by_*`, `no_show`), кроме собственно `status`.
+- **ChatRoom / ChatMessage** — внешний чат записи (`type=external`, `appointment_id`) и pre-booking inquiry (`type=inquiry`, `salon_id`, опционально `master_profile_id`). `access_token` — guest credential и скрывается из staff/list ответов API. `chat_messages.type`/`data` (migration `000041_chat_message_metadata`) поддерживают action-card сообщения вроде `appointment_request`; системные сообщения остаются `sender_user_id IS NULL`, `sender_role='system'`, `is_system=true`.
 - **AppointmentLineItem** — снапшот услуг на момент бронирования; поддерживает мультисервисный гостевой флоу.
 - **SalonClient** — CRM-запись клиента внутри салона; может быть связан с `users` или существовать независимо.
 - **salon_subscriptions** — тарифный план салона (фаза 2).

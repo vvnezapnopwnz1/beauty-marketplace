@@ -28,6 +28,8 @@ import {
 } from '@entities/master'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
+import { PriceEditControl } from '@shared/ui/PriceEditControl'
+import { calculateSelectedServicesTotalCents } from '@shared/lib/appointmentPriceForm'
 
 export type CreateMasterAppointmentDrawerProps = {
   open: boolean
@@ -56,6 +58,8 @@ export function CreateMasterAppointmentDrawer({
     note: '',
     startsAt: initialData?.startsAt ?? '',
     serviceIds: initialData?.serviceIds?.length ? [...initialData.serviceIds] : ([] as string[]),
+    manualPrice: false,
+    priceCents: null as number | null,
   }))
   const [services, setServices] = useState<MasterService[]>([])
   const [selectedClient, setSelectedClient] = useState<MasterClientDTO | null>(null)
@@ -67,6 +71,10 @@ export function CreateMasterAppointmentDrawer({
     const end = new Date(new Date(form.startsAt).getTime() + mins * 60_000)
     return end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   }, [form.startsAt, form.serviceIds, services])
+
+  const calculatedTotal = useMemo(() => {
+    return calculateSelectedServicesTotalCents(form.serviceIds, services)
+  }, [form.serviceIds, services])
 
   useEffect(() => {
     if (!open) return
@@ -105,6 +113,10 @@ export function CreateMasterAppointmentDrawer({
         guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
         clientNote: form.note.trim() || undefined,
         clientUserId: linkedUserId,
+        totalCents:
+          form.manualPrice && form.priceCents !== null && form.priceCents !== calculatedTotal
+            ? form.priceCents
+            : undefined,
       }).unwrap()
       onCreated?.()
       handleClose()
@@ -236,6 +248,18 @@ export function CreateMasterAppointmentDrawer({
                 )}
               </Box>
             </LocalizationProvider>
+
+            <Box sx={{ mt: 1 }}>
+              <PriceEditControl
+                label="Стоимость"
+                editable={true}
+                manualEnabled={form.manualPrice}
+                onManualEnabledChange={val => setForm(f => ({ ...f, manualPrice: val }))}
+                valueCents={form.priceCents}
+                onValueCentsChange={val => setForm(f => ({ ...f, priceCents: val }))}
+                calculatedCents={calculatedTotal}
+              />
+            </Box>
 
             <Box>
               <MasterClientAsyncAutocomplete

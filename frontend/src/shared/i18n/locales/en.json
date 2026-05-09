@@ -290,12 +290,18 @@
     "title": "Appointment chat",
     "placeholder": "Type a message",
     "send": "Send",
-    "lockHint": "You can send one message to the master before the conversation starts.",
-    "lockedAfterFirst": "Wait for the master to reply to continue.",
+    "lockHint": "You can send one message before the conversation starts.",
+    "lockedAfterFirst": "Wait for a reply to continue.",
     "readonly": "This chat is closed.",
     "empty": "No messages yet.",
     "systemPrefix": "System",
     "openAria": "Open chat",
-    "closeAria": "Close chat"
+    "closeAria": "Close chat",
+    "inquiryChat": "Inquiry Chat",
+    "requestAppointment": "Request Appointment",
+    "appointmentRequest": "Appointment Request",
+    "bookNow": "Book now",
+    "noInquiries": "No active inquiries",
+    "unreadMessages": "Unread messages"
   }
 }

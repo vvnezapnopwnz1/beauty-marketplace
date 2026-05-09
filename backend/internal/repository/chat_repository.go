@@ -28,7 +28,8 @@ type SalonChatRow struct {
 type ChatRepository interface {
 	GetRoomByAppointment(ctx context.Context, appointmentID uuid.UUID) (*model.ChatRoom, error)
 	GetRoomBySalon(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error)
-	GetRoomByMasterProfile(ctx context.Context, masterProfileID uuid.UUID) (*model.ChatRoom, error)
+	GetRoomByMasterProfile(ctx context.Context, salonID, masterProfileID uuid.UUID) (*model.ChatRoom, error)
+	ListInquiryRooms(ctx context.Context, salonID uuid.UUID, limit, offset int) ([]model.ChatRoom, error)
 	GetRoomByID(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByAccessToken(ctx context.Context, token uuid.UUID) (*model.ChatRoom, error)
 	CreateRoom(ctx context.Context, room *model.ChatRoom) error
@@ -45,4 +46,7 @@ type ChatRepository interface {
 	GetAppointmentChatContext(ctx context.Context, appointmentID uuid.UUID) (AppointmentChatRow, error)
 	GetSalonChatContext(ctx context.Context, salonID uuid.UUID) (SalonChatRow, error)
 	GetInquiryParticipants(ctx context.Context, salonID uuid.UUID, masterProfileID *uuid.UUID) (SalonChatRow, error)
+	GetUnreadCount(ctx context.Context, roomID, userID uuid.UUID) (int, error)
+	GetUnreadCounts(ctx context.Context, roomIDs []uuid.UUID, userID uuid.UUID) (map[uuid.UUID]int, error)
+	FindUnansweredInquiries(ctx context.Context, olderThan time.Duration) ([]model.ChatRoom, error)
 }

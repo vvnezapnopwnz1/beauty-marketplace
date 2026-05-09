@@ -6,6 +6,8 @@ import { StarRow } from '@shared/ui/StarRow'
 import { fetchMasterProfile, type MasterProfilePublic } from '@shared/api/salonApi'
 import { salonPath } from '@shared/config/routes'
 import { useBrandColors } from '@shared/theme'
+import { useCreateInquiryRoomMutation } from '@entities/chat'
+import { InquiryChatDialog } from '@features/chat-window'
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -27,6 +29,9 @@ export function MasterPage() {
   const [data, setData] = useState<MasterProfilePublic | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [inquiryAccessToken, setInquiryAccessToken] = useState<string | null>(null)
+  const [currentSalonName, setCurrentSalonName] = useState('')
+  const [createInquiry] = useCreateInquiryRoomMutation()
 
   const load = useCallback(async () => {
     if (!masterProfileId) {
@@ -259,9 +264,14 @@ export function MasterPage() {
                   </Button>
                   <Button
                     variant="outlined"
-                    onClick={() => {
-                      // TODO: Open inquiry chat for this salon
-                      console.log('Open inquiry chat for salon:', s.salonId)
+                    onClick={async () => {
+                      try {
+                        const room = await createInquiry({ salonId: s.salonId }).unwrap()
+                        setCurrentSalonName(s.salonName)
+                        setInquiryAccessToken(room.accessToken || null)
+                      } catch (e) {
+                        console.error('Failed to create inquiry room', e)
+                      }
                     }}
                     sx={{
                       borderRadius: 100,
@@ -278,6 +288,14 @@ export function MasterPage() {
           ))}
         </Stack>
       </Box>
+      {inquiryAccessToken && (
+        <InquiryChatDialog
+          open
+          accessToken={inquiryAccessToken}
+          onClose={() => setInquiryAccessToken(null)}
+          title={`Чат с ${currentSalonName}`}
+        />
+      )}
     </Box>
   )
 }

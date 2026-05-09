@@ -14,6 +14,11 @@ import { useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useCreatePersonalAppointmentMutation } from "../../src/entities/appointments/api";
 import { useMasterServicesQuery } from "../../src/entities/services/api";
+import { PriceEditControl } from "../../src/components/appointments/PriceEditControl";
+import {
+  calculateSelectedServicesTotalCents,
+  shouldSendManualTotal,
+} from "../../src/shared/lib/appointmentPriceForm";
 
 function combineDateTime(dateISO: string, timeHHmm: string): Date {
   const [h, m] = timeHHmm.split(":").map(Number);
@@ -33,12 +38,19 @@ export default function NewAppointmentScreen() {
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [clientNote, setClientNote] = useState("");
+  const [manualPrice, setManualPrice] = useState(false);
+  const [totalCents, setTotalCents] = useState<number | null>(null);
 
-  const { data: services, isLoading: servicesLoading } = useMasterServicesQuery();
+  const { data: services, isLoading: servicesLoading } =
+    useMasterServicesQuery();
   const create = useCreatePersonalAppointmentMutation();
 
   const activeServices = (services ?? []).filter((s) => s.isActive !== false);
   const hasServices = activeServices.length > 0;
+  const calculatedTotal = useMemo(
+    () => calculateSelectedServicesTotalCents(serviceIds, activeServices),
+    [serviceIds, activeServices],
+  );
 
   const submit = () => {
     if (!serviceIds.length) {
@@ -46,7 +58,10 @@ export default function NewAppointmentScreen() {
       return;
     }
     if (!guestName.trim()) {
-      Alert.alert("Нет имени клиента", "Укажите имя клиента или выберите из списка.");
+      Alert.alert(
+        "Нет имени клиента",
+        "Укажите имя клиента или выберите из списка.",
+      );
       return;
     }
     const startsAt = combineDateTime(date, time).toISOString();
@@ -57,6 +72,13 @@ export default function NewAppointmentScreen() {
         guestName: guestName.trim(),
         guestPhone: guestPhone.trim(),
         clientNote: clientNote.trim() || undefined,
+        totalCents: shouldSendManualTotal({
+          manualEnabled: manualPrice,
+          valueCents: totalCents,
+          initialValueCents: calculatedTotal,
+        })
+          ? (totalCents ?? undefined)
+          : undefined,
       },
       {
         onSuccess: () => router.back(),
@@ -174,8 +196,12 @@ export default function NewAppointmentScreen() {
                     style={[
                       styles.checkbox,
                       {
-                        borderColor: checked ? colors.accent : colors.borderInset,
-                        backgroundColor: checked ? colors.accent : "transparent",
+                        borderColor: checked
+                          ? colors.accent
+                          : colors.borderInset,
+                        backgroundColor: checked
+                          ? colors.accent
+                          : "transparent",
                       },
                     ]}
                   >
@@ -198,7 +224,11 @@ export default function NewAppointmentScreen() {
                       {s.name}
                     </Text>
                     <Text
-                      style={{ color: colors.muted, fontSize: 11, marginTop: 2 }}
+                      style={{
+                        color: colors.muted,
+                        fontSize: 11,
+                        marginTop: 2,
+                      }}
                     >
                       {s.durationMinutes} мин
                       {s.priceCents != null
@@ -235,9 +265,7 @@ export default function NewAppointmentScreen() {
           </View>
         </View>
 
-        <Text
-          style={[styles.label, { color: colors.muted, marginTop: 14 }]}
-        >
+        <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>
           КЛИЕНТ *
         </Text>
         <TextInput
@@ -271,6 +299,16 @@ export default function NewAppointmentScreen() {
           ]}
         />
 
+        <PriceEditControl
+          label="Стоимость"
+          editable={hasServices}
+          manualEnabled={manualPrice}
+          onManualEnabledChange={setManualPrice}
+          valueCents={totalCents}
+          onValueCentsChange={setTotalCents}
+          calculatedCents={calculatedTotal}
+        />
+
         <Pressable
           onPress={submit}
           disabled={create.isPending || !hasServices}
@@ -285,7 +323,11 @@ export default function NewAppointmentScreen() {
           ]}
         >
           <Text
-            style={{ color: colors.accentText, fontSize: 14, fontWeight: "600" }}
+            style={{
+              color: colors.accentText,
+              fontSize: 14,
+              fontWeight: "600",
+            }}
           >
             {create.isPending ? "Создаётся..." : "Создать запись"}
           </Text>

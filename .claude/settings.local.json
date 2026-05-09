@@ -64,7 +64,8 @@
       "Bash(/usr/bin/git diff *)",
       "Bash(git rm *)",
       "Bash(npm test *)",
-      "Bash(npx jest *)"
+      "Bash(npx jest *)",
+      "Bash(make db-migrate *)"
     ]
   }
 }

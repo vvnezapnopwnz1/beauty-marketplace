@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/beauty-marketplace/backend/internal/auth"
+	"github.com/beauty-marketplace/backend/internal/model"
 	"github.com/beauty-marketplace/backend/internal/service"
 )
 
@@ -46,6 +47,39 @@ type postMessageWithAttachmentRequest struct {
 	AttachmentType      string `json:"attachmentType"`
 	AttachmentFilename  string `json:"attachmentFilename"`
 	AttachmentSizeBytes int    `json:"attachmentSizeBytes"`
+}
+
+type chatRoomOut struct {
+	ID                    uuid.UUID  `json:"id"`
+	Type                  string     `json:"type"`
+	AppointmentID         *uuid.UUID `json:"appointmentId,omitempty"`
+	SalonID               *uuid.UUID `json:"salonId,omitempty"`
+	MasterProfileID       *uuid.UUID `json:"masterProfileId,omitempty"`
+	Status                string     `json:"status"`
+	LockedUntilFirstReply bool       `json:"lockedUntilFirstReply"`
+	AccessToken           *uuid.UUID `json:"accessToken,omitempty"`
+	ReadonlyAt            *time.Time `json:"readonlyAt,omitempty"`
+	CreatedAt             time.Time  `json:"createdAt"`
+	UpdatedAt             time.Time  `json:"updatedAt"`
+}
+
+func chatRoomResponse(room *model.ChatRoom, includeAccessToken bool) chatRoomOut {
+	out := chatRoomOut{
+		ID:                    room.ID,
+		Type:                  string(room.Type),
+		AppointmentID:         room.AppointmentID,
+		SalonID:               room.SalonID,
+		MasterProfileID:       room.MasterProfileID,
+		Status:                string(room.Status),
+		LockedUntilFirstReply: room.LockedUntilFirstReply,
+		ReadonlyAt:            room.ReadonlyAt,
+		CreatedAt:             room.CreatedAt,
+		UpdatedAt:             room.UpdatedAt,
+	}
+	if includeAccessToken {
+		out.AccessToken = &room.AccessToken
+	}
+	return out
 }
 
 func (h *ChatController) PostMessage(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +174,7 @@ func (h *ChatController) GetRoomForAppointment(w http.ResponseWriter, r *http.Re
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(room)
+	_ = json.NewEncoder(w).Encode(chatRoomResponse(room, false))
 }
 
 func (h *ChatController) GetRoomByToken(w http.ResponseWriter, r *http.Request) {
@@ -154,18 +188,8 @@ func (h *ChatController) GetRoomByToken(w http.ResponseWriter, r *http.Request) 
 		writeChatError(w, err)
 		return
 	}
-	// Return access token to caller so the frontend can re-attach it on subsequent requests.
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"id":                    room.ID,
-		"type":                  room.Type,
-		"appointmentId":         room.AppointmentID,
-		"status":                room.Status,
-		"lockedUntilFirstReply": room.LockedUntilFirstReply,
-		"accessToken":           room.AccessToken,
-		"createdAt":             room.CreatedAt,
-		"updatedAt":             room.UpdatedAt,
-	})
+	_ = json.NewEncoder(w).Encode(chatRoomResponse(room, true))
 }
 
 func (h *ChatController) MarkRead(w http.ResponseWriter, r *http.Request) {
@@ -184,6 +208,63 @@ func (h *ChatController) MarkRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// RequestAppointment initiates a booking suggest from staff to guest
+func (h *ChatController) RequestAppointment(w http.ResponseWriter, r *http.Request) {
+	roomID, err := uuid.Parse(r.PathValue("roomId"))
+	if err != nil {
+		http.Error(w, "invalid roomId", http.StatusBadRequest)
+		return
+	}
+	uid, ok := auth.UserIDFromCtx(r.Context())
+	if !ok {
+		http.Error(w, "auth required", http.StatusUnauthorized)
+		return
+	}
+
+	msg, err := h.svc.RequestAppointment(r.Context(), roomID, uid)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(msg)
+}
+
+// GetUnreadCounts returns unread counts for requested rooms
+func (h *ChatController) GetUnreadCounts(w http.ResponseWriter, r *http.Request) {
+	uid, ok := auth.UserIDFromCtx(r.Context())
+	if !ok {
+		http.Error(w, "auth required", http.StatusUnauthorized)
+		return
+	}
+
+	roomIDStrings := r.URL.Query()["roomIds"]
+	if len(roomIDStrings) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[uuid.UUID]int{})
+		return
+	}
+
+	roomIDs := make([]uuid.UUID, 0, len(roomIDStrings))
+	for _, s := range roomIDStrings {
+		id, err := uuid.Parse(s)
+		if err == nil {
+			roomIDs = append(roomIDs, id)
+		}
+	}
+
+	counts, err := h.svc.GetUnreadCounts(r.Context(), roomIDs, uid)
+	if err != nil {
+		h.log.Error("failed to get unread counts", zap.Error(err))
+		http.Error(w, "internal", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(counts)
 }
 
 // StreamGuest delivers chat.message events for a single room to anonymous
@@ -263,7 +344,37 @@ func (h *ChatController) CreateInquiryRoom(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(room)
+	_ = json.NewEncoder(w).Encode(chatRoomResponse(room, true))
+}
+
+// ListSalonInquiryRooms returns all inquiry rooms for a salon
+func (h *ChatController) ListSalonInquiryRooms(w http.ResponseWriter, r *http.Request) {
+	salonID, err := uuid.Parse(r.PathValue("salonId"))
+	if err != nil {
+		http.Error(w, "invalid salonId", http.StatusBadRequest)
+		return
+	}
+	uid, ok := auth.UserIDFromCtx(r.Context())
+	if !ok {
+		http.Error(w, "auth required", http.StatusUnauthorized)
+		return
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	rooms, err := h.svc.ListInquiryRooms(r.Context(), salonID, uid, limit, offset)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+
+	out := make([]chatRoomOut, 0, len(rooms))
+	for i := range rooms {
+		out = append(out, chatRoomResponse(&rooms[i], false))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 // CreateMasterInquiryRoom creates a new inquiry chat room for a specific master
@@ -297,7 +408,7 @@ func (h *ChatController) CreateMasterInquiryRoom(w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(room)
+	_ = json.NewEncoder(w).Encode(chatRoomResponse(room, true))
 }
 
 // GetInquiryRoom returns inquiry room details
@@ -318,9 +429,23 @@ func (h *ChatController) GetInquiryRoom(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "not an inquiry room", http.StatusBadRequest)
 		return
 	}
+	tokenStr := r.URL.Query().Get("accessToken")
+	if tokenStr == "" {
+		http.Error(w, "accessToken required", http.StatusUnauthorized)
+		return
+	}
+	token, err := uuid.Parse(tokenStr)
+	if err != nil {
+		http.Error(w, "invalid accessToken", http.StatusBadRequest)
+		return
+	}
+	if token != room.AccessToken {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(room)
+	_ = json.NewEncoder(w).Encode(chatRoomResponse(room, false))
 }
 
 // PostInquiryMessage sends a message to an inquiry room
@@ -462,6 +587,20 @@ func (h *ChatController) StreamInquiryMessages(w http.ResponseWriter, r *http.Re
 	}
 	if room.Type != "inquiry" {
 		http.Error(w, "not an inquiry room", http.StatusBadRequest)
+		return
+	}
+	tokenStr := r.URL.Query().Get("accessToken")
+	if tokenStr == "" {
+		http.Error(w, "accessToken required", http.StatusUnauthorized)
+		return
+	}
+	token, err := uuid.Parse(tokenStr)
+	if err != nil {
+		http.Error(w, "invalid accessToken", http.StatusBadRequest)
+		return
+	}
+	if token != room.AccessToken {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 

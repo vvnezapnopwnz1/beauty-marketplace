@@ -11,6 +11,8 @@ export interface ChatStreamPayload {
     body: string;
     isSystem: boolean;
     createdAt: string;
+    messageType?: string;
+    data?: any;
 }
 
 export interface UseChatStreamOptions {
@@ -50,6 +52,8 @@ export function useChatStream({ roomId, accessToken, streamUrl }: UseChatStreamO
                                 body: payload.body,
                                 isSystem: payload.isSystem,
                                 createdAt: payload.createdAt,
+                                type: payload.messageType || 'text',
+                                data: payload.data,
                                 senderUserId: null,
                             });
                         },

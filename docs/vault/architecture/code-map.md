@@ -1,6 +1,6 @@
 ---
 title: Указатели концепция → код
-updated: 2026-05-01
+updated: 2026-05-09
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -30,11 +30,11 @@ code_pointers:
 | Приглашения в салон (принятие пользователем) | `controller/user_controller.go` (`/api/v1/me/salon-invites/*`) | `shared/api/meApi.ts`, `pages/me/ui/sections/SalonInvitesSection.tsx` |
 | **Мои записи** (`GET /api/v1/me/appointments`) | `backend/internal/service/user_appointments.go`, `repository/user_appointment.go`, `infrastructure/persistence/user_appointment_repository.go`, `controller/user_controller.go` | `frontend/src/entities/user-appointment/`, `pages/me/ui/sections/AppointmentsSection.tsx` |
 | In-app notifications (`seen`/`read`, SSE, счетчики) | `controller/notification_controller.go`, `service/notification_service.go`, `service/appointment_notifier.go`, `infrastructure/persistence/notification_repository.go` | `app/NotificationsProvider.tsx`, `entities/notification/model/notificationApi.ts`, `entities/notification/model/notificationStream.ts`, `widgets/notification-popover/ui/NotificationMenuPopover.tsx`, `widgets/notification-popover/lib/handleIncomingNotification.tsx`, `pages/notifications/` |
+| Chat: external appointment + inquiry | `backend/internal/controller/chat_controller.go`, `backend/internal/service/chat_service.go`, `backend/internal/infrastructure/persistence/chat_repository.go`, `backend/migrations/000034_chat_tables.up.sql`, `backend/migrations/000040_chat_rooms_master_profile.up.sql`, `backend/migrations/000041_chat_message_metadata.up.sql` | `frontend/src/entities/chat/`, `frontend/src/features/chat-window/`, `mobile/src/api/chat.ts`, `mobile/src/components/chat/ChatScreen.tsx` |
 | DnD перенос записи | `PUT .../appointments/:id` (см. dashboard) | `frontend/src/features/reschedule-appointment/`, `pages/dashboard/lib/dndCalendarUtils.ts` |
 | Dev auth/e2e bootstrap (`DEV_OTP_BYPASS_ANY`, `/api/dev/*`) | `backend/internal/config/config.go`, `backend/internal/service/auth.go`, `backend/internal/controller/dev_controller.go`, `backend/internal/controller/server.go` | `frontend/e2e/helpers/api-helpers.ts`, `frontend/e2e/playwright.config.ts`, `frontend/e2e/tests/flow-runner.spec.ts` |
 | E2E flow-runner (YAML сценарии + action registry) | — | `frontend/e2e/scenarios/flows.yaml`, `frontend/e2e/actions/index.ts` (+ `notification.actions.ts`), `frontend/e2e/helpers/flow-loader.ts` |
 | Mobile master app (Expo, FSD-lite) | `backend/internal/controller/master_dashboard_controller.go`, `backend/internal/controller/device_controller.go`, `backend/internal/push/expo_pusher.go` | `mobile/app/(tabs)/*`, `mobile/app/(settings)/*`, `mobile/src/entities/*`, `mobile/src/features/*`, `mobile/src/shared/*`, `mobile/src/api/dashboardClient.ts` |
-
 ## Связанные заметки
 
 - [[overview]] ([overview.md](overview.md)) — архитектура системы

@@ -60,6 +60,7 @@ type ChatService interface {
 	EnsureRoomForAppointment(ctx context.Context, appointmentID uuid.UUID) (*model.ChatRoom, error)
 	EnsureRoomForInquiry(ctx context.Context, salonID uuid.UUID) (*model.ChatRoom, error)
 	EnsureRoomForMasterInquiry(ctx context.Context, salonID uuid.UUID, masterProfileID uuid.UUID) (*model.ChatRoom, error)
+	ListInquiryRooms(ctx context.Context, salonID, requesterUserID uuid.UUID, limit, offset int) ([]model.ChatRoom, error)
 	GetRoom(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error)
 	GetRoomByAccessToken(ctx context.Context, token uuid.UUID) (*model.ChatRoom, error)
 
@@ -69,8 +70,13 @@ type ChatService interface {
 
 	ListMessages(ctx context.Context, roomID uuid.UUID, requesterUserID *uuid.UUID, accessToken *uuid.UUID, limit, offset int) ([]model.ChatMessage, error)
 	MarkRoomRead(ctx context.Context, roomID, userID uuid.UUID) error
+	GetUnreadCounts(ctx context.Context, roomIDs []uuid.UUID, userID uuid.UUID) (map[uuid.UUID]int, error)
 
 	LockRoomReadonly(ctx context.Context, roomID uuid.UUID) error
+	EscalateInquiries(ctx context.Context) error
+	StartEscalationWorker(ctx context.Context)
+
+	RequestAppointment(ctx context.Context, roomID uuid.UUID, staffUserID uuid.UUID) (*model.ChatMessage, error)
 
 	SetPusher(NotificationPusher)
 }
@@ -81,10 +87,11 @@ type chatService struct {
 	inquiryResolver InquiryResolver
 	broadcaster     ChatBroadcaster
 	pusher          NotificationPusher
+	notifSvc        NotificationService
 }
 
-func NewChatService(repo repository.ChatRepository, resolver AppointmentResolver, inquiryResolver InquiryResolver, broadcaster ChatBroadcaster) ChatService {
-	return &chatService{repo: repo, resolver: resolver, inquiryResolver: inquiryResolver, broadcaster: broadcaster}
+func NewChatService(repo repository.ChatRepository, resolver AppointmentResolver, inquiryResolver InquiryResolver, broadcaster ChatBroadcaster, notifSvc NotificationService) ChatService {
+	return &chatService{repo: repo, resolver: resolver, inquiryResolver: inquiryResolver, broadcaster: broadcaster, notifSvc: notifSvc}
 }
 
 func (s *chatService) SetPusher(p NotificationPusher) { s.pusher = p }
@@ -106,6 +113,10 @@ func (s *chatService) EnsureRoomForAppointment(ctx context.Context, apptID uuid.
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
 		return nil, err
 	}
+
+	// Phase 2A: Welcome message
+	s.PostSystemMessage(ctx, room.ID, "Чат по записи создан. Здесь вы можете обсудить детали визита.")
+
 	return room, nil
 }
 
@@ -126,11 +137,15 @@ func (s *chatService) EnsureRoomForInquiry(ctx context.Context, salonID uuid.UUI
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
 		return nil, err
 	}
+
+	// Phase 2A: Anti-lure disclaimer
+	s.PostSystemMessage(ctx, room.ID, "Вы начали чат с салоном. В целях безопасности не переводите предоплату напрямую и не сообщайте свои личные контакты до подтверждения записи.")
+
 	return room, nil
 }
 
 func (s *chatService) EnsureRoomForMasterInquiry(ctx context.Context, salonID uuid.UUID, masterProfileID uuid.UUID) (*model.ChatRoom, error) {
-	if existing, err := s.repo.GetRoomByMasterProfile(ctx, masterProfileID); err != nil {
+	if existing, err := s.repo.GetRoomByMasterProfile(ctx, salonID, masterProfileID); err != nil {
 		return nil, err
 	} else if existing != nil && existing.Type == model.ChatRoomTypeInquiry {
 		return existing, nil
@@ -147,7 +162,25 @@ func (s *chatService) EnsureRoomForMasterInquiry(ctx context.Context, salonID uu
 	if err := s.repo.CreateRoom(ctx, room); err != nil {
 		return nil, err
 	}
+
+	// Phase 2A: Anti-lure disclaimer
+	s.PostSystemMessage(ctx, room.ID, "Вы начали чат с мастером. В целях безопасности не переводите предоплату напрямую и не сообщайте свои личные контакты до подтверждения записи.")
+
 	return room, nil
+}
+
+func (s *chatService) ListInquiryRooms(ctx context.Context, salonID, requesterUserID uuid.UUID, limit, offset int) ([]model.ChatRoom, error) {
+	if s.inquiryResolver == nil {
+		return nil, ErrChatNotParticipant
+	}
+	parts, err := s.inquiryResolver.ResolveInquiryParticipants(ctx, salonID, nil)
+	if err != nil {
+		return nil, err
+	}
+	if !participantIncludes(parts, requesterUserID) {
+		return nil, ErrChatNotParticipant
+	}
+	return s.repo.ListInquiryRooms(ctx, salonID, limit, offset)
 }
 
 func (s *chatService) GetRoom(ctx context.Context, id uuid.UUID) (*model.ChatRoom, error) {
@@ -216,6 +249,8 @@ func (s *chatService) SendMessage(ctx context.Context, p SendMessageParams) (*mo
 		SenderRole:   role,
 		Body:         MaskContacts(p.Body),
 		IsSystem:     false,
+		Type:         "text",
+		CreatedAt:    time.Now(),
 	}
 	if err := s.repo.InsertMessage(ctx, msg); err != nil {
 		return nil, err
@@ -244,6 +279,9 @@ func (s *chatService) PostSystemMessage(ctx context.Context, roomID uuid.UUID, b
 		SenderRole: model.ChatSenderRoleSystem,
 		Body:       body,
 		IsSystem:   true,
+		Type:       "system",
+		Data:       json.RawMessage(`{}`),
+		CreatedAt:  time.Now(),
 	}
 	if err := s.repo.InsertMessage(ctx, msg); err != nil {
 		return nil, err
@@ -281,6 +319,117 @@ func (s *chatService) MarkRoomRead(ctx context.Context, roomID, userID uuid.UUID
 		return err
 	}
 	return s.repo.MarkAllReadInRoom(ctx, roomID, userID)
+}
+
+func (s *chatService) GetUnreadCounts(ctx context.Context, roomIDs []uuid.UUID, userID uuid.UUID) (map[uuid.UUID]int, error) {
+	for _, roomID := range roomIDs {
+		room, err := s.repo.GetRoomByID(ctx, roomID)
+		if err != nil {
+			return nil, err
+		}
+		if room == nil {
+			return nil, ErrChatRoomNotFound
+		}
+		if err := s.assertCanRead(ctx, room, &userID, nil); err != nil {
+			return nil, err
+		}
+	}
+	return s.repo.GetUnreadCounts(ctx, roomIDs, userID)
+}
+
+func (s *chatService) StartEscalationWorker(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			_ = s.EscalateInquiries(ctx)
+		}
+	}
+}
+
+func (s *chatService) EscalateInquiries(ctx context.Context) error {
+	rooms, err := s.repo.FindUnansweredInquiries(ctx, 15*time.Minute)
+	if err != nil {
+		return err
+	}
+
+	for _, room := range rooms {
+		if room.SalonID == nil {
+			continue
+		}
+		parts, err := s.inquiryResolver.ResolveInquiryParticipants(ctx, *room.SalonID, room.MasterProfileID)
+		if err != nil {
+			continue
+		}
+
+		recipientIDs := make([]uuid.UUID, 0)
+		if parts.MasterUserID != nil {
+			recipientIDs = append(recipientIDs, *parts.MasterUserID)
+		}
+		recipientIDs = append(recipientIDs, parts.OwnerUserIDs...)
+		recipientIDs = append(recipientIDs, parts.ReceptionistUserIDs...)
+
+		if len(recipientIDs) == 0 {
+			continue
+		}
+
+		_ = s.notifSvc.CreateForUsers(ctx, recipientIDs, "chat_escalation", "New Inquiry", "You have an unanswered inquiry for more than 15 minutes", nil)
+
+		// Post system message to chat room too
+		_, _ = s.PostSystemMessage(ctx, room.ID, "Inquiry escalated to salon management due to no reply.")
+	}
+	return nil
+}
+
+func (s *chatService) RequestAppointment(ctx context.Context, roomID uuid.UUID, staffUserID uuid.UUID) (*model.ChatMessage, error) {
+	room, err := s.repo.GetRoomByID(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+	if room == nil {
+		return nil, ErrChatRoomNotFound
+	}
+	if room.Type != model.ChatRoomTypeInquiry {
+		return nil, errors.New("appointment request only available for inquiry rooms")
+	}
+	parts, err := s.resolveParticipants(ctx, room)
+	if err != nil {
+		return nil, err
+	}
+	role, err := s.classifySender(SendMessageParams{
+		RoomID:       roomID,
+		Body:         "appointment request",
+		SenderUserID: &staffUserID,
+	}, room, parts)
+	if err != nil {
+		return nil, err
+	}
+	if role == model.ChatSenderRoleGuest {
+		return nil, ErrChatNotParticipant
+	}
+
+	msg := &model.ChatMessage{
+		ID:           uuid.New(),
+		RoomID:       roomID,
+		SenderUserID: &staffUserID,
+		SenderRole:   role,
+		Body:         "Master suggested to book an appointment. Choose a convenient time:",
+		IsSystem:     false,
+		Type:         "appointment_request",
+		Data:         json.RawMessage(`{}`),
+		CreatedAt:    time.Now(),
+	}
+
+	if err := s.repo.InsertMessage(ctx, msg); err != nil {
+		return nil, err
+	}
+
+	s.broadcast(ctx, room, parts, msg, &staffUserID)
+
+	return msg, nil
 }
 
 func (s *chatService) classifySender(p SendMessageParams, room *model.ChatRoom, parts ChatParticipants) (model.ChatSenderRole, error) {
@@ -332,13 +481,15 @@ func (s *chatService) assertCanRead(ctx context.Context, room *model.ChatRoom, u
 func (s *chatService) broadcast(ctx context.Context, room *model.ChatRoom, parts ChatParticipants, msg *model.ChatMessage, exclude *uuid.UUID) {
 	rcpts := filterUUID(collectParticipants(parts), exclude)
 	body := map[string]any{
-		"type":       "chat.message",
-		"roomId":     msg.RoomID,
-		"messageId":  msg.ID,
-		"senderRole": msg.SenderRole,
-		"body":       msg.Body,
-		"isSystem":   msg.IsSystem,
-		"createdAt":  msg.CreatedAt,
+		"type":        "chat.message",
+		"roomId":      msg.RoomID,
+		"messageId":   msg.ID,
+		"senderRole":  msg.SenderRole,
+		"body":        msg.Body,
+		"isSystem":    msg.IsSystem,
+		"messageType": msg.Type,
+		"data":        msg.Data,
+		"createdAt":   msg.CreatedAt,
 	}
 	if room != nil && room.AppointmentID != nil {
 		body["appointmentId"] = *room.AppointmentID
@@ -377,6 +528,15 @@ func collectParticipants(p ChatParticipants) []uuid.UUID {
 	out = append(out, p.OwnerUserIDs...)
 	out = append(out, p.ReceptionistUserIDs...)
 	return out
+}
+
+func participantIncludes(p ChatParticipants, userID uuid.UUID) bool {
+	for _, candidate := range collectParticipants(p) {
+		if candidate == userID {
+			return true
+		}
+	}
+	return false
 }
 
 func filterUUID(in []uuid.UUID, exclude *uuid.UUID) []uuid.UUID {
@@ -446,6 +606,8 @@ func (s *chatService) SendMessageWithAttachment(ctx context.Context, p SendMessa
 		AttachmentType:      &p.AttachmentType,
 		AttachmentFilename:  &p.AttachmentFilename,
 		AttachmentSizeBytes: &p.AttachmentSizeBytes,
+		Type:                "attachment",
+		CreatedAt:           time.Now(),
 	}
 
 	if err := s.repo.InsertMessage(ctx, msg); err != nil {

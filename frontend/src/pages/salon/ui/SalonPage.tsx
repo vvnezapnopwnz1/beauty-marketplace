@@ -17,6 +17,8 @@ import { GuestBookingDialog } from '@features/guest-booking/ui/GuestBookingDialo
 import { ClaimChip } from '@features/claim-salon/ui/ClaimChip'
 import { ROUTES, masterPath } from '@shared/config/routes'
 import { FEATURE_FLAGS } from '@shared/config/featureFlags'
+import { useCreateInquiryRoomMutation } from '@entities/chat'
+import { InquiryChatDialog } from '@features/chat-window'
 import { SalonScheduleList } from '@entities/salon/ui/SalonScheduleList'
 import { SalonContactList } from '@entities/salon/ui/SalonContactList'
 import { SalonCallSidebar } from '@entities/salon/ui/SalonCallSidebar'
@@ -67,7 +69,8 @@ export function SalonPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
-  const [_inquiryChatOpen, setInquiryChatOpen] = useState(false)
+  const [inquiryAccessToken, setInquiryAccessToken] = useState<string | null>(null)
+  const [createInquiry] = useCreateInquiryRoomMutation()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -260,7 +263,16 @@ export function SalonPage() {
                 variant="outlined"
                 size="medium"
                 sx={{ borderRadius: '12px', fontWeight: 600 }}
-                onClick={() => setInquiryChatOpen(true)}
+                onClick={async () => {
+                  if (view.salonId) {
+                    try {
+                      const room = await createInquiry({ salonId: view.salonId }).unwrap()
+                      setInquiryAccessToken(room.accessToken || null)
+                    } catch (e) {
+                      console.error('Failed to create inquiry room', e)
+                    }
+                  }
+                }}
               >
                 Задать вопрос
               </Button>
@@ -502,6 +514,14 @@ export function SalonPage() {
             Позвонить
           </Button>
         </Box>
+      )}
+      {inquiryAccessToken && (
+        <InquiryChatDialog
+          open
+          accessToken={inquiryAccessToken}
+          onClose={() => setInquiryAccessToken(null)}
+          title={`Чат с ${view.name}`}
+        />
       )}
     </Box>
   )

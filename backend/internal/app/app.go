@@ -173,11 +173,12 @@ func New() *fx.App {
 		fx.Invoke(func(c service.ChatService, p *push.ExpoPusher) {
 			c.SetPusher(p)
 		}),
-		fx.Invoke(func(lc fx.Lifecycle, a *service.ChatArchiver) {
+		fx.Invoke(func(lc fx.Lifecycle, c service.ChatService, a *service.ChatArchiver) {
 			ctx, cancel := context.WithCancel(context.Background())
 			lc.Append(fx.Hook{
 				OnStart: func(_ context.Context) error {
 					a.Start(ctx, time.Hour)
+					go c.StartEscalationWorker(ctx)
 					return nil
 				},
 				OnStop: func(_ context.Context) error {

@@ -90,8 +90,9 @@ const appointmentApi = rtkApi.injectEndpoints({
                 if (body.clientNote !== undefined) payload.clientNote = body.clientNote
                 if (body.guestName !== undefined) payload.guestName = body.guestName
                 if (body.guestPhone !== undefined) payload.guestPhone = body.guestPhone
+                if (body.totalCents !== undefined) payload.totalCents = body.totalCents
                 return {
-                    method: 'PUT',
+                    method: 'PATCH',
                     url: '/api/v1/dashboard/appointments/' + id,
                     body: payload,
                 }
@@ -109,6 +110,7 @@ const appointmentApi = rtkApi.injectEndpoints({
                     guestName: body.guestName,
                     guestPhone: body.guestPhone,
                     clientNote: body.clientNote,
+                    totalCents: body.totalCents ?? undefined,
                 },
             }),
         }),

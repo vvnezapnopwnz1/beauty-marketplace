@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import {
   getRoomForAppointment,
+  getRoomById,
+  requestAppointment,
   listMessages,
   markRoomRead,
   sendMessage,
@@ -22,11 +24,12 @@ import { useChatStream } from '../../lib/chat/useChatStream';
 import { ChatBubble } from './ChatBubble';
 
 interface Props {
-  appointmentId: string;
+  appointmentId?: string;
+  roomId?: string;
   currentUserId?: string | null;
 }
 
-export function ChatScreen({ appointmentId, currentUserId }: Props) {
+export function ChatScreen({ appointmentId, roomId, currentUserId }: Props) {
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -38,7 +41,15 @@ export function ChatScreen({ appointmentId, currentUserId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const r = await getRoomForAppointment(appointmentId);
+        let r: ChatRoom;
+        if (roomId) {
+          r = await getRoomById(roomId);
+        } else if (appointmentId) {
+          r = await getRoomForAppointment(appointmentId);
+        } else {
+          return;
+        }
+
         if (cancelled) return;
         setRoom(r);
         const m = await listMessages(r.id);
@@ -52,7 +63,7 @@ export function ChatScreen({ appointmentId, currentUserId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [appointmentId]);
+  }, [appointmentId, roomId]);
 
   const onAppend = useCallback((tail: ChatMessage[]) => {
     setMessages((prev) => {
@@ -113,24 +124,51 @@ export function ChatScreen({ appointmentId, currentUserId }: Props) {
       {readonly ? (
         <Text style={styles.readonly}>Чат закрыт.</Text>
       ) : (
-        <View style={styles.composer}>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Сообщение…"
-            multiline
-            style={styles.input}
-            editable={!sending}
-          />
-          <TouchableOpacity
-            onPress={() => void send()}
-            style={styles.send}
-            disabled={!draft.trim() || sending}
-          >
-            <Text style={[styles.sendText, (!draft.trim() || sending) && styles.sendTextDisabled]}>
-              Отпр.
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.composerWrapper}>
+          {room?.type === 'inquiry' && (
+            <TouchableOpacity
+              onPress={async () => {
+                if (!room || sending) return;
+                setSending(true);
+                try {
+                  const msg = await requestAppointment(room.id);
+                  setMessages((prev) =>
+                    prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
+                  );
+                } finally {
+                  setSending(false);
+                }
+              }}
+              style={styles.requestBtn}
+              disabled={sending}
+            >
+              <Text style={styles.requestBtnText}>Предложить запись</Text>
+            </TouchableOpacity>
+          )}
+          <View style={styles.composer}>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Сообщение…"
+              multiline
+              style={styles.input}
+              editable={!sending}
+            />
+            <TouchableOpacity
+              onPress={() => void send()}
+              style={styles.send}
+              disabled={!draft.trim() || sending}
+            >
+              <Text
+                style={[
+                  styles.sendText,
+                  (!draft.trim() || sending) && styles.sendTextDisabled,
+                ]}
+              >
+                Отпр.
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </KeyboardAvoidingView>
@@ -151,4 +189,19 @@ const styles = StyleSheet.create({
   sendText: { color: '#7c3aed', fontWeight: '600' },
   sendTextDisabled: { color: '#aaa' },
   readonly: { textAlign: 'center', color: '#666', padding: 8 },
+  composerWrapper: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ddd',
+  },
+  requestBtn: {
+    padding: 8,
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: '#eee',
+  },
+  requestBtnText: {
+    color: '#7c3aed',
+    fontSize: 13,
+    fontWeight: '600',
+  },
 });

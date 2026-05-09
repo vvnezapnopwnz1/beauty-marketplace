@@ -40,6 +40,7 @@ import {
   usePatchAppointmentStatusMutation,
   useUpdateAppointmentMutation,
   type DashboardAppointment,
+  type UpdateAppointmentBody,
 } from '@entities/appointment'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone, toRuE164 } from '@shared/lib/formatPhone'
@@ -47,6 +48,11 @@ import { shouldConfirmStatusChangeFromCurrent } from '@shared/lib/appointmentSta
 import { AppointmentChatSection } from './AppointmentChatSection'
 import { useAppSelector } from '@app/store'
 import { selectUser } from '@features/auth-by-phone/model/authSlice'
+import { PriceEditControl } from '@shared/ui/PriceEditControl'
+import {
+  calculateSelectedServicesTotalCents,
+  shouldSendManualTotal,
+} from '@shared/lib/appointmentPriceForm'
 
 type DrawerAppointment = DashboardAppointment & {
   serviceId?: string
@@ -116,6 +122,23 @@ function durationMinutes(startsAt: string, endsAt: string): number {
   return Math.max(0, Math.round((b - a) / 60000))
 }
 
+function editableTotalCents(a?: DrawerAppointment): number | null {
+  return a?.totalCents ?? a?.calculatedTotalCents ?? null
+}
+
+function sameStringArray(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  const aa = [...a].sort()
+  const bb = [...b].sort()
+  return aa.every((value, index) => value === bb[index])
+}
+
+function appointmentServiceIds(a: DrawerAppointment): string[] {
+  if (a.services?.length) return a.services.map(service => service.id)
+  if (a.serviceIds?.length) return a.serviceIds
+  return a.serviceId ? [a.serviceId] : []
+}
+
 export type AppointmentDrawerProps = {
   open: boolean
   appointment?: DrawerAppointment | null
@@ -144,6 +167,7 @@ export function AppointmentDrawer({
   const [clientNote, setClientNote] = useState('')
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
+  const [manualPrice, setManualPrice] = useState(false)
   const [totalCents, setTotalCents] = useState<number | null>(null)
 
   const resolvedAppointmentId = appointmentId ?? appointmentFromProps?.id ?? null
@@ -199,7 +223,8 @@ export function AppointmentDrawer({
     setClientNote(a.clientNote ?? '')
     setGuestName(a.guestName ?? (a.clientUserId ? a.clientLabel : ''))
     setGuestPhone(formatPhone(a.guestPhone ?? a.clientPhone ?? ''))
-    setTotalCents(a.totalCents ?? null)
+    setManualPrice(a.totalSource === 'manual')
+    setTotalCents(editableTotalCents(a))
   }, [])
 
   useEffect(() => {
@@ -218,6 +243,10 @@ export function AppointmentDrawer({
       }
     })()
   }, [open])
+
+  const calculatedTotal = useMemo(() => {
+    return calculateSelectedServicesTotalCents(serviceIds, services)
+  }, [serviceIds, services])
 
   const showEditForm = Boolean(
     appointment && (appointment.status === 'pending' || appointment.status === 'confirmed'),
@@ -271,31 +300,48 @@ export function AppointmentDrawer({
     const prevGuestPhoneNorm =
       toRuE164(appointment.guestPhone ?? appointment.clientPhone ?? '') ?? ''
     const hasStructuralChanges =
-      serviceIds.join(',') !== (appointment.serviceId ?? '') ||
+      !sameStringArray(serviceIds, appointmentServiceIds(appointment)) ||
       salonMasterId !== (appointment.salonMasterId ?? '') ||
       new Date(startsLocal).toISOString() !== appointment.startsAt ||
       (!readOnlyGuest &&
-        (guestName.trim() !== (appointment.guestName ?? '') || guestPhoneNorm !== prevGuestPhoneNorm)) ||
-      totalCents !== appointment.totalCents
+        (guestName.trim() !== (appointment.guestName ?? '') ||
+          guestPhoneNorm !== prevGuestPhoneNorm)) ||
+      shouldSendManualTotal({
+        manualEnabled: manualPrice,
+        valueCents: totalCents,
+        initialValueCents: editableTotalCents(appointment),
+      })
     const guestPhoneParsed = !readOnlyGuest ? parseOptionalRuPhone(guestPhone) : null
     try {
       const startsAt = new Date(startsLocal).toISOString()
-      await updateAppointmentMut({
-        id: appointment.id,
-        body: {
-          serviceIds,
-          startsAt,
-          clientNote: clientNote.trim(),
-          salonMasterId,
-          ...(!readOnlyGuest && guestPhoneParsed
-            ? {
-                guestName: guestName.trim(),
-                guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
-              }
-            : {}),
-          totalCents: totalCents,
-        },
-      }).unwrap()
+      const body: UpdateAppointmentBody = {}
+      const initialServiceIds = appointmentServiceIds(appointment)
+      const nextNote = clientNote.trim()
+      if (!sameStringArray(serviceIds, initialServiceIds)) body.serviceIds = serviceIds
+      if (startsAt !== appointment.startsAt) body.startsAt = startsAt
+      if (nextNote !== (appointment.clientNote ?? '')) body.clientNote = nextNote
+      if (salonMasterId !== (appointment.salonMasterId ?? '')) body.salonMasterId = salonMasterId
+      if (!readOnlyGuest && guestName.trim() !== (appointment.guestName ?? '')) {
+        body.guestName = guestName.trim()
+      }
+      if (!readOnlyGuest && guestPhoneParsed) {
+        const nextGuestPhone = guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : null
+        if (nextGuestPhone !== (appointment.guestPhone ?? appointment.clientPhone ?? null)) {
+          body.guestPhone = nextGuestPhone
+        }
+      }
+      if (
+        shouldSendManualTotal({
+          manualEnabled: manualPrice,
+          valueCents: totalCents,
+          initialValueCents: editableTotalCents(appointment),
+        })
+      ) {
+        body.totalCents = totalCents
+      }
+      if (Object.keys(body).length > 0) {
+        await updateAppointmentMut({ id: appointment.id, body }).unwrap()
+      }
       if (wasConfirmed && hasStructuralChanges) {
         setInfo('Запись возвращена в статус «Ожидает» и требует повторного подтверждения')
       }
@@ -714,39 +760,15 @@ export function AppointmentDrawer({
                       />
                     </Box>
 
-                    <Box>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-                        <Typography sx={{ fontSize: 12, color: d.mutedDark }}>Итого (₽)</Typography>
-                        {totalCents !== null &&
-                          appointment?.calculatedTotalCents !== undefined &&
-                          totalCents !== appointment.calculatedTotalCents && (
-                            <Typography
-                              onClick={() => setTotalCents(appointment.calculatedTotalCents ?? null)}
-                              sx={{
-                                fontSize: 11,
-                                color: d.accent,
-                                cursor: 'pointer',
-                                '&:hover': { textDecoration: 'underline' },
-                              }}
-                            >
-                              Сбросить к {(appointment.calculatedTotalCents / 100).toLocaleString()} ₽
-                            </Typography>
-                          )}
-                      </Stack>
-                      <TextField
-                        type="number"
-                        value={totalCents !== null ? totalCents / 100 : ''}
-                        onChange={e => {
-                          const val = parseFloat(e.target.value)
-                          setTotalCents(isNaN(val) ? null : Math.round(val * 100))
-                        }}
-                        placeholder={
-                          appointment?.calculatedTotalCents
-                            ? (appointment.calculatedTotalCents / 100).toString()
-                            : '0'
-                        }
-                        fullWidth
-                        sx={inputBaseSx}
+                    <Box sx={{ mt: 1 }}>
+                      <PriceEditControl
+                        label="Стоимость"
+                        editable={true}
+                        manualEnabled={manualPrice}
+                        onManualEnabledChange={setManualPrice}
+                        valueCents={totalCents}
+                        onValueCentsChange={setTotalCents}
+                        calculatedCents={calculatedTotal}
                       />
                     </Box>
 
@@ -816,7 +838,10 @@ export function AppointmentDrawer({
             )}
           </Stack>
           {appointment?.id && (
-            <AppointmentChatSection appointmentId={appointment.id} currentUserId={currentUser?.id} />
+            <AppointmentChatSection
+              appointmentId={appointment.id}
+              currentUserId={currentUser?.id}
+            />
           )}
         </Box>
 

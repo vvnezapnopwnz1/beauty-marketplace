@@ -34,6 +34,8 @@ import { closeAppointmentDrawer } from '@entities/appointment'
 import { useAppDispatch } from '@app/store'
 import { enqueueFormSnackbar } from '@shared/ui/FormSnackbar'
 import { formatPhone, parseOptionalRuPhone } from '@shared/lib/formatPhone'
+import { PriceEditControl } from '@shared/ui/PriceEditControl'
+import { calculateSelectedServicesTotalCents } from '@shared/lib/appointmentPriceForm'
 
 export type CreateAppointmentDrawerProps = {
   open: boolean
@@ -64,6 +66,7 @@ export function CreateAppointmentDrawer({
     staffId: initialData?.staffId ?? '',
     serviceIds: initialData?.serviceIds?.length ? [...initialData.serviceIds] : [],
     totalCents: null as number | null,
+    manualEnabled: false,
   }))
   const [services, setServices] = useState<DashboardServiceRow[]>([])
   const [staff, setStaff] = useState<DashboardStaffRow[]>([])
@@ -75,9 +78,7 @@ export function CreateAppointmentDrawer({
     }
   }, [open])
 
-  const calculatedTotal = services
-    .filter(s => form.serviceIds.includes(s.id))
-    .reduce((acc, s) => acc + s.priceCents, 0)
+  const calculatedTotal = calculateSelectedServicesTotalCents(form.serviceIds, services)
 
   const handleSubmit = async () => {
     if (form.serviceIds.length === 0)
@@ -97,7 +98,10 @@ export function CreateAppointmentDrawer({
         guestName: form.guestName.trim(),
         guestPhone: guestPhoneParsed.kind === 'valid' ? guestPhoneParsed.e164 : '',
         clientNote: form.note.trim() || undefined,
-        totalCents: form.totalCents,
+        totalCents:
+          form.manualEnabled && form.totalCents !== null && form.totalCents !== calculatedTotal
+            ? form.totalCents
+            : undefined,
       }).unwrap()
       dispatch(closeAppointmentDrawer())
       onClose()
@@ -281,30 +285,15 @@ export function CreateAppointmentDrawer({
               </Stack>
             </Box>
 
-            <Box>
-              <Typography sx={{ fontSize: 12, color: d.mutedDark, mb: 0.5 }}>
-                Итого (₽)
-              </Typography>
-              <TextField
-                type="number"
-                placeholder={calculatedTotal > 0 ? (calculatedTotal / 100).toString() : '0'}
-                value={form.totalCents !== null ? form.totalCents / 100 : ''}
-                onChange={e => {
-                  const val = parseFloat(e.target.value)
-                  setForm(f => ({
-                    ...f,
-                    totalCents: isNaN(val) ? null : Math.round(val * 100),
-                  }))
-                }}
-                fullWidth
-                sx={inputBaseSx}
-                helperText={
-                  form.totalCents !== null && form.totalCents !== calculatedTotal
-                    ? `Будет установлено вручную. Расчетная цена: ${(calculatedTotal / 100).toLocaleString()} ₽`
-                    : calculatedTotal > 0
-                      ? 'Оставьте пустым для авторасчета'
-                      : ''
-                }
+            <Box sx={{ mt: 1 }}>
+              <PriceEditControl
+                label="Стоимость"
+                editable={true}
+                manualEnabled={form.manualEnabled}
+                onManualEnabledChange={enabled => setForm(f => ({ ...f, manualEnabled: enabled }))}
+                valueCents={form.totalCents}
+                onValueCentsChange={cents => setForm(f => ({ ...f, totalCents: cents }))}
+                calculatedCents={calculatedTotal}
               />
             </Box>
           </Stack>

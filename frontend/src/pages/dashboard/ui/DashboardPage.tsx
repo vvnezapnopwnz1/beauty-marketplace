@@ -31,6 +31,7 @@ import { ScheduleView } from './views/ScheduleView'
 import { DashboardProfile } from './DashboardProfile'
 import { ClientsListView } from './ClientsListView'
 import { PersonnelView } from './views/PersonnelView'
+import { InquiryRoomsView } from './views/InquiryRoomsView'
 import { fetchSalonProfile } from '@shared/api/dashboardApi'
 import { setActiveSalonId } from '@shared/lib/activeSalon'
 import { rtkApi } from '@shared/api/rtkApi'
@@ -47,6 +48,7 @@ type Section =
   | 'profile'
   | 'clients'
   | 'personnel'
+  | 'inquiries'
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'overview', label: 'Обзор', icon: '◈' },
@@ -57,6 +59,7 @@ const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'staff', label: 'Мастера', icon: '👤' },
   { id: 'schedule', label: 'Расписание', icon: '🕐' },
   { id: 'personnel', label: 'Персонал', icon: '🔑' },
+  { id: 'inquiries', label: 'Запросы', icon: '💬' },
   { id: 'profile', label: 'Профиль', icon: '🏪' },
 ]
 
@@ -69,6 +72,7 @@ const TITLES: Record<Section, string> = {
   staff: 'Мастера',
   schedule: 'Расписание',
   personnel: 'Персонал',
+  inquiries: 'Запросы',
   profile: 'Профиль салона',
 }
 
@@ -82,7 +86,8 @@ function isSection(s: string | null): s is Section {
     s === 'schedule' ||
     s === 'profile' ||
     s === 'clients' ||
-    s === 'personnel'
+    s === 'personnel' ||
+    s === 'inquiries'
   )
 }
 
@@ -114,6 +119,8 @@ function DashboardMainContent({ section }: { section: Section }) {
       return <DashboardProfile />
     case 'personnel':
       return <PersonnelView />
+    case 'inquiries':
+      return <InquiryRoomsView />
     default:
       return null
   }
