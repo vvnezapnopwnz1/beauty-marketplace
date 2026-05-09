@@ -17,13 +17,14 @@ import (
 
 // MasterDashboardController handles /api/v1/master-dashboard/* (auth + master profile required).
 type MasterDashboardController struct {
-	svc service.MasterDashboardService
-	log *zap.Logger
+	svc     service.MasterDashboardService
+	storage service.FileStorage
+	log     *zap.Logger
 }
 
 // NewMasterDashboardController constructs MasterDashboardController.
-func NewMasterDashboardController(svc service.MasterDashboardService, log *zap.Logger) *MasterDashboardController {
-	return &MasterDashboardController{svc: svc, log: log}
+func NewMasterDashboardController(svc service.MasterDashboardService, storage service.FileStorage, log *zap.Logger) *MasterDashboardController {
+	return &MasterDashboardController{svc: svc, storage: storage, log: log}
 }
 
 // JSON bodies for master personal appointments (camelCase), same shape as dashboard manual appointment APIs.
@@ -813,7 +814,87 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 			return
 		}
 		http.NotFound(w, r)
+	case "schedule":
+		if len(parts) == 1 && r.Method == http.MethodGet {
+			out, err := h.svc.GetMasterSchedule(r.Context(), userID)
+			if err != nil {
+				h.log.Error("master get schedule", zap.Error(err))
+				jsonError(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		if len(parts) == 1 && r.Method == http.MethodPut {
+			var body service.UpdateMasterScheduleInput
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonError(w, "invalid json", http.StatusBadRequest)
+				return
+			}
+			out, err := h.svc.UpdateMasterSchedule(r.Context(), userID, body)
+			if err != nil {
+				jsonError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
+		http.NotFound(w, r)
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// UploadAvatar handles avatar upload for a master profile
+func (h *MasterDashboardController) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	masterProfileID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		jsonError(w, "invalid master profile id", http.StatusBadRequest)
+		return
+	}
+
+	// Limit request size to 10MB
+	r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024)
+
+	// Parse multipart form
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		jsonError(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		jsonError(w, "no file provided", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file
+	if err := service.ValidateUploadedFile(header); err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Store file using storage service
+	filename, err := h.storage.StoreFileFromReader(r.Context(), header.Filename, file, "image/jpeg")
+	if err != nil {
+		h.log.Error("failed to store avatar", zap.Error(err))
+		jsonError(w, "could not store avatar", http.StatusInternalServerError)
+		return
+	}
+
+	// Update master profile avatar URL in database
+	avatarURL := h.storage.GetFileURL(filename)
+	err = h.svc.UpdateAvatar(r.Context(), masterProfileID, avatarURL)
+	if err != nil {
+		h.log.Error("failed to update avatar URL", zap.Error(err))
+		jsonError(w, "could not update avatar", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"avatarUrl": avatarURL})
 }

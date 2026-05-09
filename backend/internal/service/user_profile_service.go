@@ -9,8 +9,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 )
 
 var usernameRe = regexp.MustCompile(`^[A-Za-z0-9_]{3,32}$`)
@@ -30,24 +30,24 @@ func (e ValidationError) Error() string {
 }
 
 type UserProfileDTO struct {
-	ID            uuid.UUID               `json:"id"`
-	Phone         string                  `json:"phone"`
-	Username      *string                 `json:"username"`
-	DisplayName   *string                 `json:"displayName"`
-	FirstName     *string                 `json:"firstName"`
-	LastName      *string                 `json:"lastName"`
-	BirthDate     *string                 `json:"birthDate"`
-	Gender        *string                 `json:"gender"`
-	City          *string                 `json:"city"`
-	Bio           *string                 `json:"bio"`
-	Locale        string                  `json:"locale"`
-	ThemePref     string                  `json:"themePref"`
-	AvatarURL     *string                 `json:"avatarUrl"`
-	CreatedAt     time.Time               `json:"createdAt"`
-	UpdatedAt     time.Time               `json:"updatedAt"`
-	GlobalRole    string                  `json:"globalRole"`
-	EffectiveRoles repository.EffectiveRoles `json:"effectiveRoles"`
-	MasterProfileID *uuid.UUID            `json:"masterProfileId"`
+	ID              uuid.UUID                 `json:"id"`
+	Phone           string                    `json:"phone"`
+	Username        *string                   `json:"username"`
+	DisplayName     *string                   `json:"displayName"`
+	FirstName       *string                   `json:"firstName"`
+	LastName        *string                   `json:"lastName"`
+	BirthDate       *string                   `json:"birthDate"`
+	Gender          *string                   `json:"gender"`
+	City            *string                   `json:"city"`
+	Bio             *string                   `json:"bio"`
+	Locale          string                    `json:"locale"`
+	ThemePref       string                    `json:"themePref"`
+	AvatarURL       *string                   `json:"avatarUrl"`
+	CreatedAt       time.Time                 `json:"createdAt"`
+	UpdatedAt       time.Time                 `json:"updatedAt"`
+	GlobalRole      string                    `json:"globalRole"`
+	EffectiveRoles  repository.EffectiveRoles `json:"effectiveRoles"`
+	MasterProfileID *uuid.UUID                `json:"masterProfileId"`
 }
 
 type UpdateUserProfileInput struct {
@@ -67,6 +67,7 @@ type UpdateUserProfileInput struct {
 type UserProfileService interface {
 	GetMe(ctx context.Context, userID uuid.UUID) (*UserProfileDTO, error)
 	UpdateMe(ctx context.Context, userID uuid.UUID, in UpdateUserProfileInput) (*UserProfileDTO, error)
+	UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error
 	ListSessions(ctx context.Context, userID uuid.UUID, currentSessionID *uuid.UUID) ([]UserSessionDTO, error)
 	RevokeSession(ctx context.Context, userID uuid.UUID, sessionID uuid.UUID, currentSessionID *uuid.UUID) error
 	RevokeAllSessions(ctx context.Context, userID uuid.UUID, currentSessionID *uuid.UUID) (int64, error)
@@ -74,8 +75,8 @@ type UserProfileService interface {
 }
 
 type userProfileService struct {
-	repo      repository.UserProfileRepository
-	rolesSvc  UserRolesService
+	repo     repository.UserProfileRepository
+	rolesSvc UserRolesService
 }
 
 var ErrCannotRevokeCurrent = errors.New("cannot_revoke_current")
@@ -333,4 +334,9 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 	}
 
 	return out, nil
+}
+
+
+func (s *userProfileService) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
+	return s.repo.UpdateAvatar(ctx, userID, avatarURL)
 }

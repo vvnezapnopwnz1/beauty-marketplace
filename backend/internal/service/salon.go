@@ -5,9 +5,9 @@ import (
 	"math"
 	"sort"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 )
 
 // SalonFilter holds optional constraints for GetAllSalons.
@@ -23,6 +23,7 @@ type SalonService interface {
 	GetAllSalons(ctx context.Context, f SalonFilter) ([]model.SalonDTO, error)
 	GetSalonByID(ctx context.Context, id uuid.UUID) (*model.SalonDTO, error)
 	FindIDByExternal(ctx context.Context, source, externalID string) (*FindByExternalResult, error)
+	UpdatePhoto(ctx context.Context, salonID uuid.UUID, photoURL string) error
 }
 
 type FindByExternalResult struct {
@@ -214,4 +215,8 @@ func (s *salonService) FindIDByExternal(ctx context.Context, source, externalID 
 		SalonID:       salon.ID,
 		OnlineBooking: salon.OnlineBookingEnabled,
 	}, nil
+}
+
+func (s *salonService) UpdatePhoto(ctx context.Context, salonID uuid.UUID, photoURL string) error {
+	return s.repo.UpdatePhoto(ctx, salonID, photoURL)
 }

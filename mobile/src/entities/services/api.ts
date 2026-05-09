@@ -9,7 +9,8 @@ export type MasterService = {
   priceCents: number | null;
   category?: string | null;
   categorySlug?: string | null;
-  isActive?: boolean;
+  description?: string | null;
+  isActive: boolean;
 };
 
 export function useMasterServicesQuery() {
@@ -38,6 +39,19 @@ export function useCreateMasterServiceMutation() {
         MASTER.services,
         input,
       );
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["services"] });
+    },
+  });
+}
+
+export function useUpdateMasterServiceMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: { id: string } & CreateMasterServiceInput) => {
+      const { data } = await apiClient.put<MasterService>(MASTER.service(id), input);
       return data;
     },
     onSuccess: () => {

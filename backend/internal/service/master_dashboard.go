@@ -58,6 +58,11 @@ type MasterDashboardService interface {
 	GetFinanceTrend(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTrendPointDTO, error)
 	GetTopServices(ctx context.Context, userID uuid.UUID, source string, from, to *time.Time) ([]FinanceTopServiceDTO, error)
 	ExportNpdReport(ctx context.Context, userID uuid.UUID, month string) (map[string]any, error)
+	UpdateAvatar(ctx context.Context, masterProfileID uuid.UUID, avatarURL string) error
+
+	// Schedule
+	GetMasterSchedule(ctx context.Context, userID uuid.UUID) ([]MasterWorkingHourDTO, error)
+	UpdateMasterSchedule(ctx context.Context, userID uuid.UUID, in UpdateMasterScheduleInput) ([]MasterWorkingHourDTO, error)
 }
 
 type MasterTodayNextAppointmentDTO struct {
@@ -241,10 +246,22 @@ type CreateMasterExpenseInput struct {
 	ExpenseDate   string     `json:"expenseDate"`
 }
 
+type MasterWorkingHourDTO struct {
+	DayOfWeek int    `json:"dayOfWeek"`
+	OpensAt   string `json:"opensAt"`
+	ClosesAt  string `json:"closesAt"`
+	IsClosed  bool   `json:"isClosed"`
+}
+
+type UpdateMasterScheduleInput struct {
+	Hours []MasterWorkingHourDTO `json:"hours"`
+}
+
 type masterDashboardService struct {
-	repo   repository.MasterDashboardRepository
-	appts  repository.AppointmentRepository
-	salons repository.SalonRepository
+	repo         repository.MasterDashboardRepository
+	appts        repository.AppointmentRepository
+	salons       repository.SalonRepository
+	scheduleRepo repository.MasterScheduleRepository
 }
 
 // NewMasterDashboardService constructs MasterDashboardService.
@@ -252,11 +269,13 @@ func NewMasterDashboardService(
 	repo repository.MasterDashboardRepository,
 	appts repository.AppointmentRepository,
 	salons repository.SalonRepository,
+	scheduleRepo repository.MasterScheduleRepository,
 ) MasterDashboardService {
 	return &masterDashboardService{
-		repo:   repo,
-		appts:  appts,
-		salons: salons,
+		repo:         repo,
+		appts:        appts,
+		salons:       salons,
+		scheduleRepo: scheduleRepo,
 	}
 }
 
@@ -1444,6 +1463,81 @@ func (s *masterDashboardService) ExportNpdReport(ctx context.Context, userID uui
 	}, nil
 }
 
+func (s *masterDashboardService) GetMasterSchedule(ctx context.Context, userID uuid.UUID) ([]MasterWorkingHourDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil || mpID == uuid.Nil {
+		return nil, err
+	}
+	rows, err := s.scheduleRepo.ListMasterWorkingHours(ctx, mpID)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		defaults := defaultMasterSchedule(mpID)
+		if seedErr := s.scheduleRepo.ReplaceMasterWorkingHours(ctx, mpID, defaults); seedErr == nil {
+			rows = defaults
+		}
+	}
+	out := make([]MasterWorkingHourDTO, len(rows))
+	for i, r := range rows {
+		out[i] = MasterWorkingHourDTO{
+			DayOfWeek: r.DayOfWeek,
+			OpensAt:   r.OpensAt,
+			ClosesAt:  r.ClosesAt,
+			IsClosed:  r.IsClosed,
+		}
+	}
+	return out, nil
+}
+
+func (s *masterDashboardService) UpdateMasterSchedule(ctx context.Context, userID uuid.UUID, in UpdateMasterScheduleInput) ([]MasterWorkingHourDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil || mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile not found")
+	}
+	rows := make([]model.MasterWorkingHour, len(in.Hours))
+	for i, h := range in.Hours {
+		rows[i] = model.MasterWorkingHour{
+			MasterProfileID: mpID,
+			DayOfWeek:       h.DayOfWeek,
+			OpensAt:         h.OpensAt,
+			ClosesAt:        h.ClosesAt,
+			IsClosed:        h.IsClosed,
+		}
+	}
+	if err := s.scheduleRepo.ReplaceMasterWorkingHours(ctx, mpID, rows); err != nil {
+		return nil, err
+	}
+	return s.GetMasterSchedule(ctx, userID)
+}
+
+func defaultMasterSchedule(masterProfileID uuid.UUID) []model.MasterWorkingHour {
+	type dayConfig struct {
+		opens, closes string
+		closed        bool
+	}
+	configs := []dayConfig{
+		{"09:00", "20:00", false},
+		{"09:00", "20:00", false},
+		{"09:00", "20:00", false},
+		{"09:00", "20:00", false},
+		{"09:00", "20:00", false},
+		{"10:00", "18:00", false},
+		{"00:00", "00:00", true},
+	}
+	rows := make([]model.MasterWorkingHour, 7)
+	for i, c := range configs {
+		rows[i] = model.MasterWorkingHour{
+			MasterProfileID: masterProfileID,
+			DayOfWeek:       i,
+			OpensAt:         c.opens,
+			ClosesAt:        c.closes,
+			IsClosed:        c.closed,
+		}
+	}
+	return rows
+}
+
 func ptrToString(value *string) string {
 	if value == nil {
 		return ""
@@ -1465,4 +1559,9 @@ func masterClientToDTO(m *model.MasterClient) MasterClientDTO {
 func masterClientToDTOPointer(m *model.MasterClient) *MasterClientDTO {
 	dto := masterClientToDTO(m)
 	return &dto
+}
+
+
+func (s *masterDashboardService) UpdateAvatar(ctx context.Context, masterProfileID uuid.UUID, avatarURL string) error {
+	return s.repo.UpdateAvatar(ctx, masterProfileID, avatarURL)
 }

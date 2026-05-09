@@ -576,3 +576,6 @@ func TestCreateGuestBooking_NotifiesSalonMembers(t *testing.T) {
 		t.Fatalf("notification payload missing ids: %s", string(call.data))
 	}
 }
+func (f *fakeSalonRepo) UpdatePhoto(ctx context.Context, salonID uuid.UUID, photoURL string) error {
+		return nil
+	}

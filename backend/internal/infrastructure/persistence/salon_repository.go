@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/google/uuid"
 	dbmodel "github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	appmodel "github.com/beauty-marketplace/backend/internal/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -150,4 +150,11 @@ func (r *salonRepository) FindServicesBySalonIDs(ctx context.Context, ids []uuid
 		out[sid] = append(out[sid], dbServiceToDomain(row))
 	}
 	return out, nil
+}
+
+func (r *salonRepository) UpdatePhoto(ctx context.Context, salonID uuid.UUID, photoURL string) error {
+	return r.db.WithContext(ctx).
+		Model(&dbmodel.Salon{}).
+		Where("id = ?", salonID).
+		Update("photo_url", photoURL).Error
 }

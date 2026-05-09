@@ -30,8 +30,33 @@ func provideNotificationService(
 	return service.NewNotificationService(repo, expo)
 }
 
-func provideFileStorage(cfg *config.Config) service.FileStorage {
-	return service.NewLocalFileStorage(cfg.FileUploadPath, cfg.ResolvedFilePublicBaseURL())
+func provideFileStorage(cfg *config.Config) (service.FileStorage, error) {
+	// Use S3PublicURL if set, otherwise fallback to FilePublicBaseURL for backward compatibility
+	publicURL := cfg.S3PublicURL
+	if publicURL == "" {
+		publicURL = cfg.FilePublicBaseURL
+	}
+	if publicURL == "" {
+		publicURL = cfg.ResolvedFilePublicBaseURL()
+	}
+
+	switch cfg.StorageType {
+	case "s3":
+		if cfg.S3Endpoint == "" || cfg.S3AccessKey == "" || cfg.S3SecretKey == "" {
+			// Fallback to local if S3 config is incomplete
+			return service.NewLocalFileStorage(cfg.FileUploadPath, publicURL), nil
+		}
+		return service.NewS3FileStorage(
+			cfg.S3Endpoint,
+			cfg.S3AccessKey,
+			cfg.S3SecretKey,
+			cfg.S3Bucket,
+			cfg.S3Region,
+			publicURL,
+		)
+	default:
+		return service.NewLocalFileStorage(cfg.FileUploadPath, publicURL), nil
+	}
 }
 
 // New builds the fx application graph for the HTTP API.
@@ -58,6 +83,10 @@ func New() *fx.App {
 			persistence.NewMasterPublicRepository,
 			persistence.NewMasterDashboardRepository,
 			fx.Annotate(
+				persistence.NewMasterScheduleRepository,
+				fx.As(new(repository.MasterScheduleRepository)),
+			),
+			fx.Annotate(
 				persistence.NewAuthRepository,
 				fx.As(new(repository.AuthRepository)),
 			),
@@ -83,10 +112,7 @@ func New() *fx.App {
 				fx.As(new(repository.ChatRepository)),
 			),
 			repository.NewQuickReplyRepository,
-			fx.Annotate(
-				provideFileStorage,
-				fx.As(new(service.FileStorage)),
-			),
+			provideFileStorage,
 			fx.Annotate(
 				twogis.NewCatalogAdapter,
 				fx.As(new(service.PlacesProvider)),
@@ -119,7 +145,9 @@ func New() *fx.App {
 			service.NewAppointmentChatHook,
 			service.NewChatArchiver,
 			controller.NewHealthController,
-			controller.NewSalonController,
+			fx.Annotate(
+				controller.NewSalonController,
+			),
 			controller.NewPlacesController,
 			controller.NewSearchController,
 			controller.NewGeoController,
@@ -129,7 +157,9 @@ func New() *fx.App {
 			controller.NewSalonClaimController,
 			controller.NewMasterController,
 			controller.NewMasterDashboardController,
-			controller.NewUserController,
+			fx.Annotate(
+				controller.NewUserController,
+			),
 			controller.NewNotificationController,
 			controller.NewDeviceController,
 			controller.NewDevController,

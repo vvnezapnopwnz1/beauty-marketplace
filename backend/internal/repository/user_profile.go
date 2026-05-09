@@ -49,6 +49,7 @@ type UserSessionRecord struct {
 type UserProfileRepository interface {
 	GetByID(ctx context.Context, userID uuid.UUID) (*UserProfileRecord, error)
 	UpdateByID(ctx context.Context, userID uuid.UUID, in UserProfileUpdate) error
+	UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error
 	IsUsernameTakenCI(ctx context.Context, username string, exceptUserID uuid.UUID) (bool, error)
 	FindMasterProfileIDByUserID(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
 	ListActiveSessions(ctx context.Context, userID uuid.UUID) ([]UserSessionRecord, error)

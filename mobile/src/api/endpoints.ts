@@ -86,7 +86,10 @@ export const MASTER = {
   serviceCategories: `${API_V1}/master-dashboard/service-categories`,
   invites: `${API_V1}/master-dashboard/invites`,
   salons: `${API_V1}/master-dashboard/salons`,
+  schedule: `${API_V1}/master-dashboard/schedule`,
   financesSummary: `${API_V1}/master-dashboard/finances/summary`,
+  financesTrend: `${API_V1}/master-dashboard/finances/trends`,
+  financesTopServices: `${API_V1}/master-dashboard/finances/top-services`,
   financesExpenseCategories: `${API_V1}/master-dashboard/finances/expense-categories`,
   financesExpenses: `${API_V1}/master-dashboard/finances/expenses`,
 } as const;

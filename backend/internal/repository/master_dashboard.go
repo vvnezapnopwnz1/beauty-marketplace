@@ -72,6 +72,7 @@ type MasterDashboardRepository interface {
 	FindMasterProfileIDByUserID(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
 	GetMasterProfileByUserID(ctx context.Context, userID uuid.UUID) (*model.MasterProfile, error)
 	UpdateMasterProfileByUserID(ctx context.Context, userID uuid.UUID, displayName string, bio *string, specs []string, years *int, avatar *string) error
+	UpdateAvatar(ctx context.Context, masterProfileID uuid.UUID, avatarURL string) error
 	ListPendingInvites(ctx context.Context, masterProfileID uuid.UUID) ([]MasterInviteRow, error)
 	ListActiveSalonMemberships(ctx context.Context, masterProfileID uuid.UUID) ([]MasterActiveSalonRow, error)
 	AcceptPendingInvite(ctx context.Context, masterProfileID, salonMasterID uuid.UUID) (bool, error)

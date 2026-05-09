@@ -40,6 +40,17 @@ type Config struct {
 	// FilePublicFileURLBase is the public URL prefix for attachment URLs (no trailing slash), e.g. http://127.0.0.1:8080/api/v1/files.
 	// Empty means derive from HTTP_ADDR for local dev.
 	FilePublicFileURLBase string
+	// Storage type: "local" or "s3"
+	StorageType string
+	// S3 configuration
+	S3Endpoint  string
+	S3AccessKey string
+	S3SecretKey string
+	S3Bucket    string
+	S3Region    string
+	S3PublicURL string
+	// Legacy: FILE_PUBLIC_BASE_URL for backward compatibility
+	FilePublicBaseURL string
 }
 
 // Load reads configuration from environment variables with defaults for local dev.
@@ -51,17 +62,25 @@ func Load() (*Config, error) {
 			"DATABASE_DSN",
 			"postgres://beauty:beauty@127.0.0.1:5433/beauty?sslmode=disable",
 		),
-		TwoGisAPIKey:        twoGisAPIKeyFromEnv(),
-		TwoGisRegionID:      getenvIntFirst([]string{"2GIS_REGION_ID", "TWO_GIS_REGION_ID"}, 32),
-		JWTSecret:           getenv("JWT_SECRET", "dev-secret-change-me-in-production"),
-		DevDemoSeed:         getenvBool("DEV_DEMO_SEED", false),
-		DevOTPBypass:        getenvBool("DEV_OTP_BYPASS", false),
-		DevOTPBypassAny:     getenvBool("DEV_OTP_BYPASS_ANY", false),
-		DevEndpoints:        getenvBool("DEV_ENDPOINTS", false),
+		TwoGisAPIKey:          twoGisAPIKeyFromEnv(),
+		TwoGisRegionID:        getenvIntFirst([]string{"2GIS_REGION_ID", "TWO_GIS_REGION_ID"}, 32),
+		JWTSecret:             getenv("JWT_SECRET", "dev-secret-change-me-in-production"),
+		DevDemoSeed:           getenvBool("DEV_DEMO_SEED", false),
+		DevOTPBypass:          getenvBool("DEV_OTP_BYPASS", false),
+		DevOTPBypassAny:       getenvBool("DEV_OTP_BYPASS_ANY", false),
+		DevEndpoints:          getenvBool("DEV_ENDPOINTS", false),
 		TelegramBotToken:      getenv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramBotUsername:   getenv("TELEGRAM_BOT_USERNAME", ""),
 		FileUploadPath:        getenv("FILE_UPLOAD_PATH", "./data/uploads"),
 		FilePublicFileURLBase: getenv("FILE_PUBLIC_FILE_URL_BASE", ""),
+		StorageType:           getenv("STORAGE_TYPE", "local"),
+		S3Endpoint:            getenv("S3_ENDPOINT", ""),
+		S3AccessKey:           getenv("S3_ACCESS_KEY", ""),
+		S3SecretKey:           getenv("S3_SECRET_KEY", ""),
+		S3Bucket:              getenv("S3_BUCKET", "beauty-uploads"),
+		S3Region:              getenv("S3_REGION", "us-east-1"),
+		S3PublicURL:           getenv("S3_PUBLIC_URL", ""),
+		FilePublicBaseURL:     getenv("FILE_PUBLIC_BASE_URL", ""),
 	}
 	if cfg.HTTPAddr == "" {
 		return nil, fmt.Errorf("HTTP_ADDR must not be empty")

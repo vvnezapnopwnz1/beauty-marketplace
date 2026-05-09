@@ -7,29 +7,31 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/auth"
 	"github.com/beauty-marketplace/backend/internal/errs"
 	"github.com/beauty-marketplace/backend/internal/repository"
 	"github.com/beauty-marketplace/backend/internal/service"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type UserController struct {
-	profiles    service.UserProfileService
-	dash        service.DashboardService
-	userAppts   service.UserAppointmentService
-	log         *zap.Logger
+	profiles  service.UserProfileService
+	dash      service.DashboardService
+	userAppts service.UserAppointmentService
+	storage   service.FileStorage
+	log       *zap.Logger
 }
 
 func NewUserController(
 	profiles service.UserProfileService,
 	dash service.DashboardService,
 	userAppts service.UserAppointmentService,
+	storage service.FileStorage,
 	log *zap.Logger,
 ) *UserController {
-	return &UserController{profiles: profiles, dash: dash, userAppts: userAppts, log: log}
+	return &UserController{profiles: profiles, dash: dash, userAppts: userAppts, storage: storage, log: log}
 }
 
 func (h *UserController) MeRoutes(w http.ResponseWriter, r *http.Request) {
@@ -278,4 +280,56 @@ func writeMachineError(w http.ResponseWriter, code string, status int, message s
 		resp["field"] = field
 	}
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// UploadAvatar handles avatar upload for the current user
+func (h *UserController) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.UserIDFromCtx(r.Context())
+	if !ok {
+		writeMachineError(w, "unauthorized", http.StatusUnauthorized, "", "")
+		return
+	}
+
+	// Limit request size to 10MB
+	r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024)
+
+	// Parse multipart form
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeMachineError(w, "validation_failed", http.StatusBadRequest, "failed to parse form", "")
+		return
+	}
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		writeMachineError(w, "validation_failed", http.StatusBadRequest, "no file provided", "")
+		return
+	}
+	defer file.Close()
+
+	// Validate file
+	if err := service.ValidateUploadedFile(header); err != nil {
+		writeMachineError(w, "validation_failed", http.StatusBadRequest, err.Error(), "")
+		return
+	}
+
+	// Store file using storage service
+	filename, err := h.storage.StoreFileFromReader(r.Context(), header.Filename, file, "image/jpeg")
+	if err != nil {
+		h.log.Error("failed to store avatar", zap.Error(err))
+		writeMachineError(w, "internal_error", http.StatusInternalServerError, "", "")
+		return
+	}
+
+	// Update user avatar URL in database
+	avatarURL := h.storage.GetFileURL(filename)
+	err = h.profiles.UpdateAvatar(r.Context(), userID, avatarURL)
+	if err != nil {
+		h.log.Error("failed to update avatar URL", zap.Error(err))
+		writeMachineError(w, "internal_error", http.StatusInternalServerError, "", "")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"avatarUrl": avatarURL})
 }

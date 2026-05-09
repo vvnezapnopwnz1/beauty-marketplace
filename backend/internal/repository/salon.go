@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/model"
+	"github.com/google/uuid"
 )
 
 // SalonRepository loads salons and related service lines from persistence.
@@ -16,4 +16,5 @@ type SalonRepository interface {
 	FindByExternalID(ctx context.Context, source, externalID string) (*model.Salon, error)
 	FindByExternalIDs(ctx context.Context, source string, ids []string) ([]model.Salon, error)
 	FindServicesBySalonIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID][]model.ServiceLine, error)
+	UpdatePhoto(ctx context.Context, salonID uuid.UUID, photoURL string) error
 }

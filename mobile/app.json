@@ -8,13 +8,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "plugins": [
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#ffffff"
-        }
-      ],
+      // [
+      //   "expo-notifications",
+      //   {
+      //     "icon": "./assets/notification-icon.png",
+      //     "color": "#ffffff"
+      //   }
+      // ],
       "expo-font",
       "expo-router",
       "expo-secure-store"

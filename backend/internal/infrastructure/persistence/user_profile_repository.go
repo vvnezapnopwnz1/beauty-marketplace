@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -171,4 +171,11 @@ func (r *UserProfileRepository) SoftDeleteUserByID(ctx context.Context, userID u
 		Model(&model.User{}).
 		Where("id = ?", userID).
 		Update("deleted_at", gorm.Expr("NOW()")).Error
+}
+
+func (r *UserProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
+	return r.db.WithContext(ctx).
+		Model(&model.User{}).
+		Where("id = ?", userID).
+		Update("avatar_url", avatarURL).Error
 }

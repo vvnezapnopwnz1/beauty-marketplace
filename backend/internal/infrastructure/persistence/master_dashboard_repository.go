@@ -114,6 +114,19 @@ func (r *masterDashboardRepository) UpdateMasterProfileByUserID(ctx context.Cont
 	return nil
 }
 
+func (r *masterDashboardRepository) UpdateAvatar(ctx context.Context, masterProfileID uuid.UUID, avatarURL string) error {
+	res := r.db.WithContext(ctx).Model(&model.MasterProfile{}).
+		Where("id = ?", masterProfileID).
+		Update("avatar_url", avatarURL)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 type inviteScan struct {
 	SMID      uuid.UUID `gorm:"column:salon_master_id"`
 	SalonID   uuid.UUID `gorm:"column:salon_id"`

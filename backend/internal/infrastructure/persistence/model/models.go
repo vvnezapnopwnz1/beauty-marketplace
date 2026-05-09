@@ -153,6 +153,26 @@ type MasterService struct {
 	CreatedAt       time.Time `gorm:"column:created_at;not null;autoCreateTime"`
 }
 
+// MasterWorkingHour is the master's personal working hours (independent from any salon).
+// dayOfWeek: 0=Mon, 1=Tue, ..., 6=Sun (ISO week order)
+type MasterWorkingHour struct {
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	MasterProfileID uuid.UUID `gorm:"type:uuid;not null;column:master_profile_id;index"`
+	DayOfWeek       int       `gorm:"column:day_of_week;not null"`
+	OpensAt         string    `gorm:"column:opens_at;type:varchar(5)"`
+	ClosesAt        string    `gorm:"column:closes_at;type:varchar(5)"`
+	IsClosed        bool      `gorm:"column:is_closed;not null;default:false"`
+}
+
+func (MasterWorkingHour) TableName() string { return "master_working_hours" }
+
+func (h *MasterWorkingHour) BeforeCreate(tx *gorm.DB) error {
+	if h.ID == uuid.Nil {
+		h.ID = uuid.New()
+	}
+	return nil
+}
+
 // SalonMaster is a master's membership in a salon (formerly Staff).
 // Rows are never deleted when a master leaves: is_active=false + left_at=now().
 type SalonMaster struct {

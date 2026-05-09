@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/service"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -18,12 +18,13 @@ type SalonController struct {
 	svc          service.SalonService
 	booking      service.BookingService
 	masterPublic service.MasterPublicService
+	storage      service.FileStorage
 	log          *zap.Logger
 }
 
 // NewSalonController constructs SalonController.
-func NewSalonController(svc service.SalonService, booking service.BookingService, masterPublic service.MasterPublicService, log *zap.Logger) *SalonController {
-	return &SalonController{svc: svc, booking: booking, masterPublic: masterPublic, log: log}
+func NewSalonController(svc service.SalonService, booking service.BookingService, masterPublic service.MasterPublicService, storage service.FileStorage, log *zap.Logger) *SalonController {
+	return &SalonController{svc: svc, booking: booking, masterPublic: masterPublic, storage: storage, log: log}
 }
 
 // ListSalons handles GET /api/v1/salons?lat=&lon=&category=&online_only=true
@@ -331,4 +332,56 @@ func (h *SalonController) createGuestBooking(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(result)
+}
+
+// UploadPhoto handles photo upload for a salon
+func (h *SalonController) UploadPhoto(w http.ResponseWriter, r *http.Request) {
+	salonID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		jsonError(w, "invalid salon id", http.StatusBadRequest)
+		return
+	}
+
+	// Limit request size to 10MB
+	r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024)
+
+	// Parse multipart form
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		jsonError(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("photo")
+	if err != nil {
+		jsonError(w, "no file provided", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file
+	if err := service.ValidateUploadedFile(header); err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Store file using storage service
+	filename, err := h.storage.StoreFileFromReader(r.Context(), header.Filename, file, "image/jpeg")
+	if err != nil {
+		h.log.Error("failed to store photo", zap.Error(err))
+		jsonError(w, "could not store photo", http.StatusInternalServerError)
+		return
+	}
+
+	// Update salon photo URL in database
+	photoURL := h.storage.GetFileURL(filename)
+	err = h.svc.UpdatePhoto(r.Context(), salonID, photoURL)
+	if err != nil {
+		h.log.Error("failed to update photo URL", zap.Error(err))
+		jsonError(w, "could not update photo", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"photoUrl": photoURL})
 }
