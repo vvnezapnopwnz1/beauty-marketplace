@@ -12,6 +12,8 @@ export interface MasterCabinetProfile {
   yearsExperience?: number | null
   avatarUrl?: string | null
   phoneE164: string
+  publishedAt?: string | null
+  onboardingStep?: string | null
 }
 
 export interface UpdateMasterCabinetProfile {

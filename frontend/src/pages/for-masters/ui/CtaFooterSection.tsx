@@ -37,10 +37,10 @@ export function CtaFooterSection() {
           alignItems="center"
           sx={{ mb: 3 }}
         >
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             size="large"
-            href={ROUTES.LOGIN}
+            href={ROUTES.MASTER_ONBOARDING_START}
             sx={{ minWidth: 180 }}
           >
             {t('forMasters.cta.primaryCta')}

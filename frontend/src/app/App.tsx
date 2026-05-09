@@ -14,6 +14,7 @@ import { JoinPage } from '@pages/join/ui/JoinPage'
 import { NotificationsPage } from '@pages/notifications'
 import { ForMastersPage } from '@pages/for-masters/ui/ForMastersPage'
 import GuestChatPage from '@pages/guest-chat/GuestChatPage'
+import { MasterOnboardingWizard, MasterOnboardingStartBridge } from '@pages/master-onboarding'
 import { ROUTES } from '@shared/config/routes'
 import { DeviceLocationSync } from '@features/location/ui/DeviceLocationSync'
 import { GeoLocationStorageWatcher } from '@features/location/ui/GeoLocationStorageWatcher'
@@ -46,6 +47,8 @@ export function App() {
         <Route path={ROUTES.ADMIN_CLAIMS} element={<RequireAuth><AdminClaimsPage /></RequireAuth>} />
         <Route path={ROUTES.ONBOARDING} element={<RequireAuth><OnboardingWizard /></RequireAuth>} />
         <Route path={ROUTES.GUEST_CHAT} element={<GuestChatPage />} />
+        <Route path={ROUTES.MASTER_ONBOARDING_START} element={<RequireAuth><MasterOnboardingStartBridge /></RequireAuth>} />
+        <Route path={ROUTES.MASTER_ONBOARDING} element={<RequireAuth><MasterOnboardingWizard /></RequireAuth>} />
       </Routes>
     </>
   )

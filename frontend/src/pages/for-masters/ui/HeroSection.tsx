@@ -47,10 +47,10 @@ export function HeroSection() {
           justifyContent="center"
           alignItems="center"
         >
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             size="large"
-            href={ROUTES.LOGIN}
+            href={ROUTES.MASTER_ONBOARDING_START}
             sx={{ minWidth: 180 }}
           >
             {t('forMasters.hero.primaryCta')}

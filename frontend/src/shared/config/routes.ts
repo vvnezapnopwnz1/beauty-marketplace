@@ -17,6 +17,8 @@ export const ROUTES = {
   ADMIN_CLAIMS: '/admin/claims',
   ONBOARDING: '/dashboard/:salonId/onboarding',
   GUEST_CHAT: '/chat/:accessToken',
+  MASTER_ONBOARDING: '/master-onboarding',
+  MASTER_ONBOARDING_START: '/master-onboarding/start',
 } as const
 
 export const guestChatPath = (accessToken: string) => `/chat/${accessToken}`
