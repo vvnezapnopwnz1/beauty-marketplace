@@ -139,13 +139,15 @@ type CreateMasterServiceInput struct {
 }
 
 type MasterProfileCabinetDTO struct {
-	ID              uuid.UUID `json:"id"`
-	DisplayName     string    `json:"displayName"`
-	Bio             *string   `json:"bio,omitempty"`
-	Specializations []string  `json:"specializations"`
-	YearsExperience *int      `json:"yearsExperience,omitempty"`
-	AvatarURL       *string   `json:"avatarUrl,omitempty"`
-	PhoneE164       string    `json:"phoneE164"`
+	ID              uuid.UUID  `json:"id"`
+	DisplayName     string     `json:"displayName"`
+	Bio             *string    `json:"bio,omitempty"`
+	Specializations []string   `json:"specializations"`
+	YearsExperience *int       `json:"yearsExperience,omitempty"`
+	AvatarURL       *string    `json:"avatarUrl,omitempty"`
+	PhoneE164       string     `json:"phoneE164"`
+	PublishedAt     *time.Time `json:"publishedAt,omitempty"`
+	OnboardingStep  *string    `json:"onboardingStep,omitempty"`
 }
 
 // UpdateMasterProfileCabinetInput is PUT /master-dashboard/profile body.
@@ -319,6 +321,8 @@ func masterProfileToDTO(mp *model.MasterProfile) *MasterProfileCabinetDTO {
 		YearsExperience: mp.YearsExperience,
 		AvatarURL:       mp.AvatarURL,
 		PhoneE164:       phone,
+		PublishedAt:     mp.PublishedAt,
+		OnboardingStep:  mp.OnboardingStep,
 	}
 }
 
