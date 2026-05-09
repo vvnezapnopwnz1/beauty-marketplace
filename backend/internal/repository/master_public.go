@@ -20,6 +20,7 @@ type SalonMasterPublicRow struct {
 	YearsExp      *int
 	CachedRating  *float64
 	CachedReviews int
+	IsPublished   bool
 }
 
 // SalonMasterServiceLinkRow is one linked service for a salon master (public).

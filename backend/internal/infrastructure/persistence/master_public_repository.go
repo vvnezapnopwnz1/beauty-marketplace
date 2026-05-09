@@ -20,17 +20,18 @@ func NewMasterPublicRepository(db *gorm.DB) repository.MasterPublicRepository {
 }
 
 type salonMasterPublicScan struct {
-	SMID         uuid.UUID      `gorm:"column:sm_id"`
-	SMDisplay    string         `gorm:"column:sm_display_name"`
-	SMColor      *string        `gorm:"column:sm_color"`
-	SMMasterID   *uuid.UUID     `gorm:"column:sm_master_id"`
-	MPID         *uuid.UUID     `gorm:"column:mp_id"`
-	MPBio        *string        `gorm:"column:mp_bio"`
-	MPSpecs      pq.StringArray `gorm:"column:mp_specs;type:text[]"`
-	MPAvatar     *string        `gorm:"column:mp_avatar"`
-	MPYears      *int           `gorm:"column:mp_years"`
-	MPRating   *float64 `gorm:"column:mp_rating"`
-	MPRevCount *int     `gorm:"column:mp_rev_count"`
+	SMID          uuid.UUID      `gorm:"column:sm_id"`
+	SMDisplay     string         `gorm:"column:sm_display_name"`
+	SMColor       *string        `gorm:"column:sm_color"`
+	SMMasterID    *uuid.UUID     `gorm:"column:sm_master_id"`
+	MPID          *uuid.UUID     `gorm:"column:mp_id"`
+	MPBio         *string        `gorm:"column:mp_bio"`
+	MPSpecs       pq.StringArray `gorm:"column:mp_specs;type:text[]"`
+	MPAvatar      *string        `gorm:"column:mp_avatar"`
+	MPYears       *int           `gorm:"column:mp_years"`
+	MPRating      *float64       `gorm:"column:mp_rating"`
+	MPRevCount    *int           `gorm:"column:mp_rev_count"`
+	MPPublishedAt *time.Time     `gorm:"column:mp_published_at"`
 }
 
 func (r *masterPublicRepository) ListSalonMastersPublic(ctx context.Context, salonID uuid.UUID) ([]repository.SalonMasterPublicRow, []repository.SalonMasterServiceLinkRow, error) {
@@ -47,7 +48,8 @@ func (r *masterPublicRepository) ListSalonMastersPublic(ctx context.Context, sal
 			mp.avatar_url AS mp_avatar,
 			mp.years_experience AS mp_years,
 			mp.cached_rating AS mp_rating,
-			mp.cached_review_count AS mp_rev_count
+			mp.cached_review_count AS mp_rev_count,
+			mp.published_at AS mp_published_at
 		FROM salon_masters sm
 		LEFT JOIN master_profiles mp ON mp.id = sm.master_id AND mp.is_active = true
 		WHERE sm.salon_id = ?
@@ -84,6 +86,7 @@ func (r *masterPublicRepository) ListSalonMastersPublic(ctx context.Context, sal
 			row.YearsExp = s.MPYears
 			row.CachedRating = s.MPRating
 			row.CachedReviews = rc
+			row.IsPublished = s.MPPublishedAt != nil
 		}
 		masters = append(masters, row)
 	}

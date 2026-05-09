@@ -17,6 +17,7 @@ type MasterProfilePublicNested struct {
 	YearsExperience   *int      `json:"yearsExperience"`
 	CachedRating      *float64  `json:"cachedRating"`
 	CachedReviewCount int       `json:"cachedReviewCount"`
+	IsPublished       bool      `json:"isPublished"`
 }
 
 // SalonMasterServicePublicDTO is one service line on public salon masters list.
@@ -173,6 +174,7 @@ func (s *masterPublicService) ListSalonMastersPublic(ctx context.Context, salonI
 				YearsExperience:   m.YearsExp,
 				CachedRating:      m.CachedRating,
 				CachedReviewCount: m.CachedReviews,
+				IsPublished:       m.IsPublished,
 			}
 		}
 		out = append(out, dto)
