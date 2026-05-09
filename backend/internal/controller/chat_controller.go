@@ -34,6 +34,11 @@ type createInquiryRoomRequest struct {
 	SalonID string `json:"salonId"`
 }
 
+type createMasterInquiryRoomRequest struct {
+	SalonID         string `json:"salonId"`
+	MasterProfileID string `json:"masterProfileId"`
+}
+
 type postMessageWithAttachmentRequest struct {
 	Body                string `json:"body"`
 	AccessToken         string `json:"accessToken,omitempty"`
@@ -251,6 +256,40 @@ func (h *ChatController) CreateInquiryRoom(w http.ResponseWriter, r *http.Reques
 	}
 
 	room, err := h.svc.EnsureRoomForInquiry(r.Context(), salonID)
+	if err != nil {
+		writeChatError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(room)
+}
+
+// CreateMasterInquiryRoom creates a new inquiry chat room for a specific master
+func (h *ChatController) CreateMasterInquiryRoom(w http.ResponseWriter, r *http.Request) {
+	var req createMasterInquiryRoomRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.SalonID == "" || req.MasterProfileID == "" {
+		http.Error(w, "salonId and masterProfileId required", http.StatusBadRequest)
+		return
+	}
+
+	salonID, err := uuid.Parse(req.SalonID)
+	if err != nil {
+		http.Error(w, "invalid salonId", http.StatusBadRequest)
+		return
+	}
+	masterProfileID, err := uuid.Parse(req.MasterProfileID)
+	if err != nil {
+		http.Error(w, "invalid masterProfileId", http.StatusBadRequest)
+		return
+	}
+
+	room, err := h.svc.EnsureRoomForMasterInquiry(r.Context(), salonID, masterProfileID)
 	if err != nil {
 		writeChatError(w, err)
 		return

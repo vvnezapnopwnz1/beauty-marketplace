@@ -92,6 +92,7 @@ func NewHTTPServer(
 
 	// Chat (Phase 2A: inquiry, pre-booking)
 	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms", withCORS(auth.OptionalAuth(jwtMgr, ch.CreateInquiryRoom)))
+	mux.HandleFunc("POST /api/v1/chat/inquiry/master-rooms", withCORS(auth.OptionalAuth(jwtMgr, ch.CreateMasterInquiryRoom)))
 	mux.HandleFunc("GET /api/v1/chat/inquiry/rooms/{roomId}", withCORS(auth.OptionalAuth(jwtMgr, ch.GetInquiryRoom)))
 	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms/{roomId}/messages", withCORS(auth.OptionalAuth(jwtMgr, ch.PostInquiryMessage)))
 	mux.HandleFunc("POST /api/v1/chat/inquiry/rooms/{roomId}/messages-with-attachment", withCORS(auth.OptionalAuth(jwtMgr, ch.PostInquiryMessageWithAttachment)))
