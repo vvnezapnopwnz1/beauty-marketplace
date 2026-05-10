@@ -3,8 +3,8 @@ package service
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
+	"github.com/google/uuid"
 )
 
 type ManualAppointmentInput struct {
@@ -109,23 +109,23 @@ type SalonProfileInput struct {
 }
 
 type StaffInput struct {
-	DisplayName           string                              `json:"displayName"`
-	Role                  *string                             `json:"role"`
-	Level                 *string                             `json:"level"`
-	Bio                   *string                             `json:"bio"`
-	Phone                 *string                             `json:"phone"`
-	TelegramUsername      *string                             `json:"telegramUsername"`
-	Email                 *string                             `json:"email"`
-	Color                 *string                             `json:"color"`
-	JoinedAt              *string                             `json:"joinedAt"`
-	DashboardAccess       bool                                `json:"dashboardAccess"`
-	TelegramNotifications bool                                `json:"telegramNotifications"`
-	IsActive              bool                                `json:"isActive"`
-	ServiceIDs            []uuid.UUID                         `json:"serviceIds"`
-	Specializations       []string                            `json:"specializations"`
-	YearsExperience       *int                                `json:"yearsExperience"`
-	ServiceAssignments    []SalonMasterServiceAssignmentInput `json:"serviceAssignments,omitempty"`
-	PhoneVerificationProof *string                            `json:"phoneVerificationProof,omitempty"`
+	DisplayName            string                              `json:"displayName"`
+	Role                   *string                             `json:"role"`
+	Level                  *string                             `json:"level"`
+	Bio                    *string                             `json:"bio"`
+	Phone                  *string                             `json:"phone"`
+	TelegramUsername       *string                             `json:"telegramUsername"`
+	Email                  *string                             `json:"email"`
+	Color                  *string                             `json:"color"`
+	JoinedAt               *string                             `json:"joinedAt"`
+	DashboardAccess        bool                                `json:"dashboardAccess"`
+	TelegramNotifications  bool                                `json:"telegramNotifications"`
+	IsActive               bool                                `json:"isActive"`
+	ServiceIDs             []uuid.UUID                         `json:"serviceIds"`
+	Specializations        []string                            `json:"specializations"`
+	YearsExperience        *int                                `json:"yearsExperience"`
+	ServiceAssignments     []SalonMasterServiceAssignmentInput `json:"serviceAssignments,omitempty"`
+	PhoneVerificationProof *string                             `json:"phoneVerificationProof,omitempty"`
 }
 
 type SalonMasterServiceAssignmentInput struct {
@@ -251,16 +251,21 @@ type DashboardStats struct {
 }
 
 type ServiceCategoryItemDTO struct {
-	Slug       string `json:"slug"`
-	NameRu     string `json:"nameRu"`
-	ParentSlug string `json:"parentSlug"`
-	SortOrder  int    `json:"sortOrder"`
+	Slug       string  `json:"slug"`
+	NameRu     string  `json:"nameRu"`
+	NameEn     *string `json:"nameEn,omitempty"`
+	ParentSlug string  `json:"parentSlug"`
+	SortOrder  int     `json:"sortOrder"`
 }
 
 type ServiceCategoryGroupDTO struct {
-	ParentSlug string                   `json:"parentSlug"`
-	Label      string                   `json:"label"`
-	Items      []ServiceCategoryItemDTO `json:"items"`
+	ParentSlug        string                   `json:"parentSlug"`
+	Label             string                   `json:"label"`
+	LabelRu           string                   `json:"labelRu"`
+	LabelEn           *string                  `json:"labelEn,omitempty"`
+	SpecialistTitleRu string                   `json:"specialistTitleRu"`
+	SpecialistTitleEn *string                  `json:"specialistTitleEn,omitempty"`
+	Items             []ServiceCategoryItemDTO `json:"items"`
 }
 
 type ServiceCategoriesResponse struct {

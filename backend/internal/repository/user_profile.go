@@ -40,6 +40,18 @@ type UserProfileUpdate struct {
 	AvatarURL   *string
 }
 
+type MasterProfileBlock struct {
+	Specializations []string
+	YearsExperience *int
+	PublishedAt     *time.Time
+	OnboardingStep  *string
+}
+
+type MasterProfileBlockUpdate struct {
+	Specializations []string
+	YearsExperience *int
+}
+
 type UserSessionRecord struct {
 	ID        uuid.UUID
 	CreatedAt time.Time
@@ -52,6 +64,8 @@ type UserProfileRepository interface {
 	UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error
 	IsUsernameTakenCI(ctx context.Context, username string, exceptUserID uuid.UUID) (bool, error)
 	FindMasterProfileIDByUserID(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
+	GetMasterProfileBlockByUserID(ctx context.Context, userID uuid.UUID) (*MasterProfileBlock, error)
+	UpdateMasterProfileBlockByUserID(ctx context.Context, userID uuid.UUID, in MasterProfileBlockUpdate) error
 	ListActiveSessions(ctx context.Context, userID uuid.UUID) ([]UserSessionRecord, error)
 	RevokeSessionByID(ctx context.Context, userID, sessionID uuid.UUID) (bool, error)
 	RevokeAllSessionsExcept(ctx context.Context, userID uuid.UUID, exceptSessionID *uuid.UUID) (int64, error)

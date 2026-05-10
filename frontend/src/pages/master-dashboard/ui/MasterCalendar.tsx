@@ -85,6 +85,7 @@ export function MasterCalendar() {
   const [mode, setMode] = useState<'week' | 'day' | 'month'>('week')
   const [anchor, setAnchor] = useState(() => new Date())
   const [items, setItems] = useState<DashboardAppointment[]>([])
+  const [originalItems, setOriginalItems] = useState<MasterAppointmentDTO[]>([])
   const [filterSource, setFilterSource] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [detail, setDetail] = useState<MasterAppointmentDTO | null>(null)
@@ -139,6 +140,7 @@ export function MasterCalendar() {
         pageSize: mode === 'month' ? 500 : 400,
         source: filterSource || undefined,
       }).unwrap()
+      setOriginalItems(res.items ?? [])
       setItems((res.items ?? []).map(toCalendarItem))
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Ошибка')
@@ -176,8 +178,8 @@ export function MasterCalendar() {
       )
 
       try {
-        const apt = items.find(a => a.id === update.id)
-        if (!apt || !isPersonalAppointment(apt as unknown as MasterAppointmentDTO)) {
+        const apt = originalItems.find(a => a.id === update.id)
+        if (!apt || !isPersonalAppointment(apt)) {
           setItems(oldItems)
           setErr('Редактирование доступно только для личных записей')
           return
@@ -196,7 +198,7 @@ export function MasterCalendar() {
         enqueueFormSnackbar(e instanceof Error ? e.message : 'Не удалось перенести запись', 'Error')
       }
     },
-    [items, isPersonalAppointment, load, updateAppointment],
+    [items, originalItems, isPersonalAppointment, load, updateAppointment],
   )
 
   const title =
@@ -364,7 +366,10 @@ export function MasterCalendar() {
             weekDays={weekDays}
             items={items}
             timeColWidth={timeColWidth}
-            onEventClick={a => setDetail(a as unknown as MasterAppointmentDTO)}
+            onEventClick={a => {
+              const original = originalItems.find(o => o.id === a.id)
+              if (original) setDetail(original)
+            }}
             onEmptyClick={(_day, slotStart) => openCreateAtSlot(slotStart)}
             onDayHeaderClick={dd => {
               setAnchor(dd)
@@ -382,14 +387,20 @@ export function MasterCalendar() {
               setAnchor(dd)
               setMode('day')
             }}
-            onEventClick={a => setDetail(a as unknown as MasterAppointmentDTO)}
+            onEventClick={a => {
+              const original = originalItems.find(o => o.id === a.id)
+              if (original) setDetail(original)
+            }}
           />
         ) : (
           <CalendarWeekGrid
             weekDays={[dayStart]}
             items={items.filter(a => toLocalYMD(new Date(a.startsAt)) === toLocalYMD(dayStart))}
             timeColWidth={timeColWidth}
-            onEventClick={a => setDetail(a as unknown as MasterAppointmentDTO)}
+            onEventClick={a => {
+              const original = originalItems.find(o => o.id === a.id)
+              if (original) setDetail(original)
+            }}
             onEmptyClick={(_staffId, slotStart) => openCreateAtSlot(slotStart)}
             onDayHeaderClick={() => {}}
             slotDurationMinutes={15}

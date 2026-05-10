@@ -21,13 +21,19 @@ import { ROUTES, dashboardPath } from '@shared/config/routes'
 import { getStoredAccessToken } from '@shared/api/authApi'
 import { useAppDispatch, useAppSelector } from '@app/store'
 import { logout, selectUser } from '@features/auth-by-phone/model/authSlice'
+import { selectProfile } from '@features/edit-profile/model/profileSlice'
 import { useThemeMode } from '@shared/theme'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { ChipMultiSelect } from '@pages/dashboard/ui/components/formComponents'
-import { STAFF_COLOR_SWATCHES, SPECIALIZATION_PRESETS } from '@shared/api/dashboardApi'
+import {
+  STAFF_COLOR_SWATCHES,
+  specializationLabel,
+  type DashboardServiceCategoryGroup,
+} from '@shared/api/dashboardApi'
 import {
   acceptMasterInvite,
   declineMasterInvite,
+  fetchMasterServiceCategories,
   getMyMasterInvites,
   getMyMasterProfile,
   getMyMasterSalons,
@@ -114,21 +120,32 @@ function ProfileSection({
   onSaved: (p: MasterCabinetProfile) => void
 }) {
   const d = useDashboardPalette()
-  const [displayName, setDisplayName] = useState(profile.displayName)
-  const [bio, setBio] = useState(profile.bio ?? '')
+  const navigate = useNavigate()
   const [specs, setSpecs] = useState<string[]>(profile.specializations ?? [])
   const [years, setYears] = useState(
     profile.yearsExperience != null ? String(profile.yearsExperience) : '',
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [specializationGroups, setSpecializationGroups] = useState<DashboardServiceCategoryGroup[]>(
+    [],
+  )
 
   useEffect(() => {
-    setDisplayName(profile.displayName)
-    setBio(profile.bio ?? '')
     setSpecs(profile.specializations ?? [])
     setYears(profile.yearsExperience != null ? String(profile.yearsExperience) : '')
   }, [profile])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const categories = await fetchMasterServiceCategories()
+        setSpecializationGroups(categories.groups)
+      } catch {
+        setSpecializationGroups([])
+      }
+    })()
+  }, [])
 
   const accent = salons[0] ? pickColorFromSalonId(salons[0].salonId) : d.accent
 
@@ -138,8 +155,8 @@ function ProfileSection({
     try {
       const y = years.trim() === '' ? undefined : Number(years)
       const out = await updateMyMasterProfile({
-        displayName: displayName.trim(),
-        bio: bio.trim() === '' ? null : bio,
+        displayName: profile.displayName,
+        bio: profile.bio ?? null,
         specializations: specs,
         yearsExperience: Number.isFinite(y as number) ? (y as number) : undefined,
         avatarUrl: profile.avatarUrl ?? null,
@@ -170,11 +187,11 @@ function ProfileSection({
             flexShrink: 0,
           }}
         >
-          {initials(displayName || profile.displayName)}
+          {initials(profile.displayName)}
         </Box>
         <Box>
           <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 26, color: d.text }}>
-            {displayName || profile.displayName}
+            {profile.displayName}
           </Typography>
           <Typography sx={{ fontSize: 13, color: d.muted }}>Публичный профиль мастера</Typography>
         </Box>
@@ -182,28 +199,19 @@ function ProfileSection({
 
       {error && <Alert severity="error">{error}</Alert>}
 
-      <TextField
-        label="Отображаемое имя"
-        value={displayName}
-        onChange={e => setDisplayName(e.target.value)}
-        fullWidth
-        sx={{ '& .MuiOutlinedInput-root': { bgcolor: d.card } }}
-      />
-      <TextField
-        label="О себе"
-        value={bio}
-        onChange={e => setBio(e.target.value)}
-        fullWidth
-        multiline
-        minRows={3}
-        inputProps={{ maxLength: 300 }}
-        helperText={`${bio.length}/300`}
-        sx={{ '& .MuiOutlinedInput-root': { bgcolor: d.card } }}
-      />
+      {profile.bio && (
+        <Typography sx={{ fontSize: 14, color: d.muted, whiteSpace: 'pre-wrap' }}>
+          {profile.bio}
+        </Typography>
+      )}
+
       <Box>
         <Typography sx={{ fontSize: 12, color: d.muted, mb: 0.5 }}>Специализации</Typography>
         <ChipMultiSelect
-          items={SPECIALIZATION_PRESETS.map(p => ({ id: p.value, label: p.label }))}
+          items={specializationGroups.map(g => ({
+            id: g.parentSlug,
+            label: specializationLabel(g.parentSlug, specializationGroups),
+          }))}
           selected={specs}
           onChange={setSpecs}
           getLabel={item => String((item as unknown as { label: string }).label)}
@@ -227,14 +235,23 @@ function ProfileSection({
         helperText="Используется для входа"
         sx={{ '& .MuiOutlinedInput-root': { bgcolor: d.cardAlt } }}
       />
-      <Button
-        variant="contained"
-        onClick={() => void onSave()}
-        disabled={saving}
-        sx={{ alignSelf: 'flex-start', bgcolor: d.accent }}
-      >
-        {saving ? 'Сохранение…' : 'Сохранить'}
-      </Button>
+      <Stack direction="row" spacing={2}>
+        <Button
+          variant="contained"
+          onClick={() => void onSave()}
+          disabled={saving}
+          sx={{ alignSelf: 'flex-start', bgcolor: d.accent }}
+        >
+          {saving ? 'Сохранение…' : 'Сохранить'}
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => navigate(ROUTES.ME)}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Редактировать профиль
+        </Button>
+      </Stack>
     </Stack>
   )
 }
@@ -392,6 +409,7 @@ export function MasterDashboardPage() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const user = useAppSelector(selectUser)
+  const profileState = useAppSelector(selectProfile)
   const { mode, setMode } = useThemeMode()
   const [searchParams, setSearchParams] = useSearchParams()
   const narrow = useMediaQuery('(max-width:899px)')
@@ -430,11 +448,14 @@ export function MasterDashboardPage() {
   useEffect(() => {
     if (!getStoredAccessToken()) return
     if (user === null) return
-    const canMaster = !!user.effectiveRoles?.isMaster || !!user.masterProfileId
+    const canMaster =
+      !!user.effectiveRoles?.isMaster ||
+      !!user.masterProfileId ||
+      !!profileState?.effectiveRoles?.isMaster
     if (!canMaster) {
       navigate(`${ROUTES.ME}?tab=general`, { replace: true })
     }
-  }, [user, navigate])
+  }, [user, profileState, navigate])
 
   useEffect(() => {
     if (!user?.masterProfileId) return
@@ -442,13 +463,17 @@ export function MasterDashboardPage() {
       setLoadError(null)
       try {
         const [p, s] = await Promise.all([getMyMasterProfile(), getMyMasterSalons()])
+        if (p.onboardingStep !== 'completed') {
+          navigate(ROUTES.MASTER_ONBOARDING, { replace: true })
+          return
+        }
         setProfile(p)
         setSalons(s)
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : 'Ошибка загрузки')
       }
     })()
-  }, [user?.masterProfileId, tick])
+  }, [user?.masterProfileId, tick, navigate])
 
   function goSection(id: Section) {
     if (id === 'profile') {

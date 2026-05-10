@@ -49,9 +49,21 @@ export const PriceEditControl: React.FC<PriceEditControlProps> = ({
     }, 0);
   };
 
+  const handleCancel = () => {
+    onManualEnabledChange(false);
+    onValueCentsChange(null);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = rubToCents(e.target.value);
     onValueCentsChange(next);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (manualEnabled && e.key === 'Escape') {
+      e.stopPropagation();
+      handleCancel();
+    }
   };
 
   return (
@@ -62,6 +74,7 @@ export const PriceEditControl: React.FC<PriceEditControlProps> = ({
           label={label}
           value={displayValue}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           inputRef={inputRef}
           disabled={!editable || !manualEnabled}
           variant="outlined"
@@ -79,13 +92,14 @@ export const PriceEditControl: React.FC<PriceEditControlProps> = ({
               : {},
           }}
         />
-        {!manualEnabled && editable && (
+        {editable && (
           <Button
             variant="outlined"
-            onClick={handleManualActivate}
+            color={manualEnabled ? "inherit" : "primary"}
+            onClick={manualEnabled ? handleCancel : handleManualActivate}
             sx={{ height: 56, minWidth: 100 }}
           >
-            Изменить
+            {manualEnabled ? "Отмена" : "Изменить"}
           </Button>
         )}
       </Stack>

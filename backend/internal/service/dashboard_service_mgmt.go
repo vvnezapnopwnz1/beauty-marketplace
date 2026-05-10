@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/servicecategory"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -41,33 +41,43 @@ func (s *dashboardService) ListServiceCategories(ctx context.Context, salonID uu
 		}
 		rows = filtered
 	}
+	out := &ServiceCategoriesResponse{
+		SalonType:           salon.SalonType,
+		SalonCategoryScopes: normalizeParentSlugs(scopes),
+		Groups:              serviceCategoryGroupsFromRows(rows),
+	}
+	return out, nil
+}
+
+func serviceCategoryGroupsFromRows(rows []model.ServiceCategory) []ServiceCategoryGroupDTO {
 	byParent := make(map[string][]model.ServiceCategory)
 	for _, r := range rows {
 		byParent[r.ParentSlug] = append(byParent[r.ParentSlug], r)
 	}
-	out := &ServiceCategoriesResponse{
-		SalonType:           salon.SalonType,
-		SalonCategoryScopes: normalizeParentSlugs(scopes),
-		Groups:              make([]ServiceCategoryGroupDTO, 0),
-	}
+	out := make([]ServiceCategoryGroupDTO, 0)
 	for _, ps := range servicecategory.ParentSlugs {
 		items := byParent[ps]
 		if len(items) == 0 {
 			continue
 		}
+		first := items[0]
 		g := ServiceCategoryGroupDTO{
-			ParentSlug: ps,
-			Label:      servicecategory.ParentSlugLabelRu(ps),
-			Items:      make([]ServiceCategoryItemDTO, 0, len(items)),
+			ParentSlug:        ps,
+			Label:             first.ParentNameRu,
+			LabelRu:           first.ParentNameRu,
+			LabelEn:           first.ParentNameEn,
+			SpecialistTitleRu: first.SpecialistTitleRu,
+			SpecialistTitleEn: first.SpecialistTitleEn,
+			Items:             make([]ServiceCategoryItemDTO, 0, len(items)),
 		}
 		for _, it := range items {
 			g.Items = append(g.Items, ServiceCategoryItemDTO{
-				Slug: it.Slug, NameRu: it.NameRu, ParentSlug: it.ParentSlug, SortOrder: it.SortOrder,
+				Slug: it.Slug, NameRu: it.NameRu, NameEn: it.NameEn, ParentSlug: it.ParentSlug, SortOrder: it.SortOrder,
 			})
 		}
-		out.Groups = append(out.Groups, g)
+		out = append(out, g)
 	}
-	return out, nil
+	return out
 }
 
 func (s *dashboardService) applyServiceCategory(ctx context.Context, salonID uuid.UUID, in ServiceInput, row *model.SalonService, isUpdate bool) error {

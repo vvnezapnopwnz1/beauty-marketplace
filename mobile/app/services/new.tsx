@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useCreateMasterServiceMutation } from "../../src/entities/services/api";
 
@@ -30,6 +30,15 @@ function parseDurationMin(raw: string): number {
 export default function NewServiceScreen() {
   const { colors, typography } = useTheme();
   const router = useRouter();
+  const { returnPath } = useLocalSearchParams<{ returnPath?: string }>();
+
+  const goBack = () => {
+    if (returnPath) {
+      router.navigate(returnPath as any);
+    } else {
+      router.back();
+    }
+  };
 
   const [name, setName] = useState("");
   const [durationStr, setDurationStr] = useState("60");
@@ -46,7 +55,10 @@ export default function NewServiceScreen() {
     }
     const duration = parseDurationMin(durationStr);
     if (duration <= 0) {
-      Alert.alert("Некорректная длительность", "Укажите длительность в минутах.");
+      Alert.alert(
+        "Некорректная длительность",
+        "Укажите длительность в минутах.",
+      );
       return;
     }
     const priceCents = parsePriceRubToCents(priceStr);
@@ -59,7 +71,7 @@ export default function NewServiceScreen() {
         description: description.trim() || null,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: () => goBack(),
         onError: (err) => {
           const msg =
             err instanceof Error ? err.message : "Не удалось создать услугу";
@@ -82,7 +94,7 @@ export default function NewServiceScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           accessibilityLabel="Назад"
           hitSlop={12}
         >
@@ -128,7 +140,9 @@ export default function NewServiceScreen() {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.label, { color: colors.muted }]}>ЦЕНА (₽)</Text>
+            <Text style={[styles.label, { color: colors.muted }]}>
+              ЦЕНА (₽)
+            </Text>
             <TextInput
               value={priceStr}
               onChangeText={setPriceStr}

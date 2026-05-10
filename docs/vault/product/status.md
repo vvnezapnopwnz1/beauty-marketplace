@@ -1,6 +1,6 @@
 ---
 title: Статус разработки
-updated: 2026-05-10
+updated: 2026-05-11
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -11,8 +11,17 @@ code_pointers:
 
 > Дата: 2026-04-21 | Версия: pre-MVP (v0.1)
 
+### Последние изменения (2026-05-11)
+
+- **Категории услуг — i18n и связка со специализациями:** миграция `000044_service_category_i18n_titles` добавляет в `service_categories` поля `name_en`, `parent_name_ru/en`, `specialist_title_ru/en` (бэкап значений из `parent_slug` + RU-лейблы), обновлён `dev_seed_service_categories.sql`. В коде `servicecategory` — маппинг устаревших значений `specializations` (colorist→hair, nail_master→nails и т.д.) и тесты; SQL-миграция нормализует существующие массивы в `master_profiles` / `salon_masters`. API дашборда/категорий отдаёт расширенные DTO (см. `dashboard_types`, `master_dashboard`, `dashboard_service_mgmt` / staff).
+- **Профиль пользователя `/me`:** в ответ и в `PUT` профиля добавлен блок `master` (`specializations`, `yearsExperience`, `publishedAt`, `onboardingStep`) при наличии `master_profile_id`; репозиторий/сервис `user_profile` подгружают и сохраняют поля мастер-профиля.
+- **Web — мастер-онбординг и кабинет:** шаги визарда (услуги с `ServiceFormDialog`, расписание, публикация), правки `safeRelativePath`, спиннеры/мосты в `RequireAuth` / `MasterOnboardingWizard`; в кабинете мастера — маршрутизация секций и календарь; крупный рефактор `StaffFormModal` + мелкие правки `StaffDetailView`; `PriceEditControl`, секция «Общее» в `/me`, i18n ключи.
+- **Mobile — мастер как продукт:** лендинг выбора роли, стек `/(onboarding)` (профиль, специализации, услуги, расписание, публикация) и `/(global-tabs)` для основного кабинета; API `masterOnboarding.ts`, правки табов (`schedule`/`services`/`finances`/`notifications` как отдельные экраны), экран клиента `clients/[id]`, общий `formatPhone`, доработки записей и `CreateActionSheet`.
+- **Mobile — вход «Стать мастером»:** с лендинга переход на логин с `?intent=master`; после успешного OTP, если пользователь ещё не мастер, вызывается идемпотентный `POST /api/v1/me/master-onboarding/start`, повторный `GET /me` и редирект сразу в стек `/(onboarding)` (без второго шага «Активировать профиль мастера» на лендинге). Обычный вход без intent не меняется. **Уточнение:** редирект после входа и на лендинге опирается на `masterProfileId` (в т.ч. из ответа `start`, если второй `GET /me` ещё без `isMaster`) и на `hasMasterCabinet = masterProfileId || isMaster`, чтобы не сбрасывать на лендинг при расхождении флага ролей и профиля.
+
 ### Последние изменения (2026-05-10)
 
+- **Master onboarding UX (web):** `safeRelativePath` нормализует повторяющиеся слэши в пути (`//master-onboarding/...` → `/master-onboarding/...`), чтобы post-login `returnTo` и ручной URL не сбрасывались на главную; визард `/master-onboarding` показывает спиннер при загрузке профиля вместо пустого экрана; `RequireAuth` показывает спиннер до редиректа на логин; кнопка «Войти» в `NavBar` передаёт `returnTo` с текущего пути (в т.ч. с `/for-masters`).
 - **Master self-onboarding:** добавлен путь регистрации мастера с `/for-masters` через идемпотентный `POST /api/v1/me/master-onboarding/start` (handler разбирает три состояния: A2 уже-master / A1 теневой по phone-match / A0 нет профиля). Wizard `/master-onboarding` (5 шагов: Профиль → Специализации → Услуги (опц.) → Расписание (опц.) → Публикация) переиспользует существующие `PUT /master-dashboard/profile`, `master-dashboard/services`, `master-dashboard/schedule` и добавляет два новых endpoint-а: `POST /master-dashboard/onboarding/step` (монотонная state-машина) и `POST /master-dashboard/publish` (жёсткая валидация `display_name`+`specializations`, идемпотентный `COALESCE`). Введены поля `master_profiles.published_at` и `master_profiles.onboarding_step` (миграции `000042`, `000043`). Прямая выдача `/api/v1/masters/:id` теперь требует `published_at IS NOT NULL` — закрыта дыра приватности теневых профилей; страница салона (`salon_masters`) не затронута, в DTO `MasterProfilePublicNested` добавлен `isPublished` и фронт скрывает кнопку «Профиль мастера» для не-published.
 - **Open-redirect fix в `/login?returnTo=`:** добавлен `safeRelativePath` helper в `shared/lib/safeRedirect.ts`, применён в `OtpStep` и back-button `LoginPage`. Принимает только same-origin относительные пути; protocol-relative (`//evil.com`), absolute (`http://...`) и `javascript:` отклоняются — fallback на `ROUTES.HOME`.
 

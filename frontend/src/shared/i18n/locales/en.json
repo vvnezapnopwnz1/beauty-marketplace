@@ -320,11 +320,21 @@
       },
       "services": {
         "title": "Personal services",
-        "description": "You can add these later in your cabinet."
+        "description": "Add services you provide.",
+        "addService": "+ Add service",
+        "editService": "Edit service",
+        "deleteService": "Delete service",
+        "deleteConfirm": "Delete this service?",
+        "priceOnRequest": "Price on request",
+        "emptyState": "You don't have any services yet. Add at least one to continue."
       },
       "schedule": {
         "title": "Schedule",
-        "description": "You can configure it later in your cabinet."
+        "description": "Set your working hours. You can change them later in your cabinet.",
+        "dayOff": "Day off",
+        "dayOffLabel": "Day off",
+        "invalidTime": "Invalid time format",
+        "timeOrder": "Opening time must be before closing time"
       },
       "publish": {
         "title": "Publish",

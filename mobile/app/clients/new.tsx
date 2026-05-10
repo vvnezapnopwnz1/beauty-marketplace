@@ -10,13 +10,26 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useCreateMasterClientMutation } from "../../src/entities/clients/api";
+import {
+  formatPhone,
+  parseOptionalRuPhone,
+} from "../../src/shared/lib/formatPhone";
 
 export default function NewClientScreen() {
   const { colors, typography } = useTheme();
   const router = useRouter();
+  const { returnPath } = useLocalSearchParams<{ returnPath?: string }>();
+
+  const goBack = () => {
+    if (returnPath) {
+      router.navigate(returnPath as any);
+    } else {
+      router.back();
+    }
+  };
 
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
@@ -29,14 +42,19 @@ export default function NewClientScreen() {
       Alert.alert("Имя обязательно", "Введите имя клиента.");
       return;
     }
+    const phoneParsed = parseOptionalRuPhone(phone);
+    if (phoneParsed.kind === "invalid") {
+      Alert.alert("Некорректный телефон", "Введите корректный номер телефона.");
+      return;
+    }
     create.mutate(
       {
         displayName: displayName.trim(),
-        phone: phone.trim() || null,
+        phone: phoneParsed.kind === "valid" ? phoneParsed.e164 : null,
         notes: notes.trim() || null,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: () => goBack(),
         onError: (err) => {
           const msg =
             err instanceof Error ? err.message : "Не удалось создать клиента";
@@ -59,7 +77,7 @@ export default function NewClientScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           accessibilityLabel="Назад"
           hitSlop={12}
         >
@@ -95,11 +113,12 @@ export default function NewClientScreen() {
         </Text>
         <TextInput
           value={phone}
-          onChangeText={setPhone}
-          placeholder="+7 ..."
+          onChangeText={(text) => setPhone(formatPhone(text))}
+          placeholder="+7 (___) ___-__-__"
           placeholderTextColor={colors.muted}
           style={inputStyle}
           keyboardType="phone-pad"
+          maxLength={18}
         />
 
         <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>

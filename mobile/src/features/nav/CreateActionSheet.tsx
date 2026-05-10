@@ -9,19 +9,70 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { useTheme } from "../../shared/theme/useTheme";
 import { useCreateAction } from "./CreateActionContext";
+
+type FeatherName = React.ComponentProps<typeof Feather>["name"];
+
+type ActionItem = {
+  key: string;
+  label: string;
+  sublabel?: string;
+  icon: FeatherName;
+  route: string;
+};
+
+const ACTIONS: ActionItem[] = [
+  {
+    key: "appointment",
+    label: "Новая запись",
+    sublabel: "Запланировать клиента",
+    icon: "calendar",
+    route: "/appointments/new",
+  },
+  {
+    key: "client",
+    label: "Новый клиент",
+    icon: "user-plus",
+    route: "/clients/new",
+  },
+  {
+    key: "service",
+    label: "Новая услуга",
+    icon: "scissors",
+    route: "/services/new",
+  },
+];
+
+function getPrimaryKey(pathname: string): string {
+  if (pathname.includes("clients")) return "client";
+  if (pathname.includes("services")) return "service";
+  return "appointment";
+}
 
 export function CreateActionSheet() {
   const { isOpen, close } = useCreateAction();
   const { colors, typography } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const primaryKey = getPrimaryKey(pathname);
 
   const go = (target: string) => {
     close();
-    setTimeout(() => router.push(target as any), 0);
+    setTimeout(
+      () =>
+        router.push({
+          pathname: target as any,
+          params: { returnPath: pathname },
+        }),
+      0,
+    );
   };
+
+  const primaryAction = ACTIONS.find((a) => a.key === primaryKey) ?? ACTIONS[0];
+  const secondaryActions = ACTIONS.filter((a) => a.key !== primaryKey);
 
   return (
     <Modal
@@ -37,7 +88,9 @@ export function CreateActionSheet() {
           onPress={(e) => e.stopPropagation()}
         >
           <SafeAreaView edges={["bottom"]}>
-            <View style={[styles.handle, { backgroundColor: colors.borderLight }]} />
+            <View
+              style={[styles.handle, { backgroundColor: colors.borderLight }]}
+            />
             <Text
               style={[
                 styles.title,
@@ -49,8 +102,8 @@ export function CreateActionSheet() {
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Новая запись"
-              onPress={() => go("/appointments/new")}
+              accessibilityLabel={primaryAction.label}
+              onPress={() => go(primaryAction.route)}
               style={({ pressed }) => [
                 styles.primaryCard,
                 {
@@ -60,63 +113,59 @@ export function CreateActionSheet() {
               ]}
             >
               <View style={styles.primaryIcon}>
-                <Feather name="calendar" size={22} color={colors.accentText} />
+                <Feather
+                  name={primaryAction.icon}
+                  size={22}
+                  color={colors.accentText}
+                />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.primaryTitle, { color: colors.accentText }]}>
-                  Новая запись
-                </Text>
                 <Text
-                  style={[
-                    styles.primarySub,
-                    { color: colors.accentText, opacity: 0.85 },
-                  ]}
+                  style={[styles.primaryTitle, { color: colors.accentText }]}
                 >
-                  Запланировать клиента
+                  {primaryAction.label}
                 </Text>
+                {primaryAction.sublabel ? (
+                  <Text
+                    style={[
+                      styles.primarySub,
+                      { color: colors.accentText, opacity: 0.85 },
+                    ]}
+                  >
+                    {primaryAction.sublabel}
+                  </Text>
+                ) : null}
               </View>
-              <Feather name="chevron-right" size={20} color={colors.accentText} />
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={colors.accentText}
+              />
             </Pressable>
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Новый клиент"
-              onPress={() => go("/clients/new")}
-              style={({ pressed }) => [
-                styles.row,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.borderLight,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-            >
-              <Feather name="user-plus" size={18} color={colors.text} />
-              <Text style={[styles.rowLabel, { color: colors.text }]}>
-                Новый клиент
-              </Text>
-              <Feather name="chevron-right" size={16} color={colors.muted} />
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Новая услуга"
-              onPress={() => go("/services/new")}
-              style={({ pressed }) => [
-                styles.row,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.borderLight,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-            >
-              <Feather name="scissors" size={18} color={colors.text} />
-              <Text style={[styles.rowLabel, { color: colors.text }]}>
-                Новая услуга
-              </Text>
-              <Feather name="chevron-right" size={16} color={colors.muted} />
-            </Pressable>
+            {secondaryActions.map((action) => (
+              <Pressable
+                key={action.key}
+                accessibilityRole="button"
+                accessibilityLabel={action.label}
+                onPress={() => go(action.route)}
+                style={({ pressed }) => [
+                  styles.row,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.borderLight,
+                    opacity: pressed ? 0.85 : 1,
+                    marginBottom: 4,
+                  },
+                ]}
+              >
+                <Feather name={action.icon} size={18} color={colors.text} />
+                <Text style={[styles.rowLabel, { color: colors.text }]}>
+                  {action.label}
+                </Text>
+                <Feather name="chevron-right" size={16} color={colors.muted} />
+              </Pressable>
+            ))}
 
             <Pressable
               onPress={close}

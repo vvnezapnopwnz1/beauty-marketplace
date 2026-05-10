@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, Button, Stack, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
-import type { MasterCabinetProfile } from '@shared/api/masterDashboardApi'
+import {
+  fetchMasterServiceCategories,
+  type MasterCabinetProfile,
+} from '@shared/api/masterDashboardApi'
 import { publishMasterProfile } from '@shared/api/masterOnboardingApi'
+import { specializationLabel, type DashboardServiceCategoryGroup } from '@shared/api/dashboardApi'
 
 type Props = {
   profile: MasterCabinetProfile
@@ -15,9 +19,22 @@ export function StepPublish({ profile, onPublished, onBack }: Props) {
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [missingFields, setMissingFields] = useState<string[]>([])
+  const [specializationGroups, setSpecializationGroups] = useState<DashboardServiceCategoryGroup[]>(
+    [],
+  )
 
-  const canPublish =
-    profile.displayName.trim().length > 0 && profile.specializations.length > 0
+  const canPublish = profile.displayName.trim().length > 0 && profile.specializations.length > 0
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const categories = await fetchMasterServiceCategories()
+        setSpecializationGroups(categories.groups)
+      } catch {
+        setSpecializationGroups([])
+      }
+    })()
+  }, [])
 
   const handlePublish = async () => {
     setError(null)
@@ -41,7 +58,9 @@ export function StepPublish({ profile, onPublished, onBack }: Props) {
   return (
     <Stack gap={2}>
       <Typography variant="subtitle1">{t('masterOnboarding.steps.publish.title')}</Typography>
-      <Typography color="text.secondary">{t('masterOnboarding.steps.publish.description')}</Typography>
+      <Typography color="text.secondary">
+        {t('masterOnboarding.steps.publish.description')}
+      </Typography>
 
       <Typography variant="body2">
         <strong>{t('masterOnboarding.steps.publish.displayNameLabel')}:</strong>{' '}
@@ -49,7 +68,11 @@ export function StepPublish({ profile, onPublished, onBack }: Props) {
       </Typography>
       <Typography variant="body2">
         <strong>{t('masterOnboarding.steps.publish.specializationsLabel')}:</strong>{' '}
-        {profile.specializations.length > 0 ? profile.specializations.join(', ') : '—'}
+        {profile.specializations.length > 0
+          ? profile.specializations
+              .map(s => specializationLabel(s, specializationGroups))
+              .join(', ')
+          : '—'}
       </Typography>
 
       {missingFields.includes('displayName') && (

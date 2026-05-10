@@ -23,8 +23,10 @@ import { dashboardSectionPath } from '@shared/config/routes'
 import { useDeleteStaffMutation, useGetStaffByIdQuery } from '@entities/staff'
 import { useLazyGetAppointmentsQuery, type DashboardAppointment } from '@entities/appointment'
 import {
+  fetchDashboardServiceCategories,
   fetchStaffSchedule,
   specializationLabel,
+  type DashboardServiceCategoryGroup,
   type StaffWorkingHourRow,
 } from '@shared/api/dashboardApi'
 import { StaffFormModal } from '../modals/StaffFormModal'
@@ -119,6 +121,9 @@ export function StaffDetailView(props: StaffDetailViewProps) {
   const isLight = theme.palette.mode === 'light'
   const [scheduleRows, setScheduleRows] = useState<StaffWorkingHourRow[]>([])
   const [appts, setAppts] = useState<StaffAppointment[]>([])
+  const [specializationGroups, setSpecializationGroups] = useState<DashboardServiceCategoryGroup[]>(
+    [],
+  )
   const [err, setErr] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -141,7 +146,10 @@ export function StaffDetailView(props: StaffDetailViewProps) {
     try {
       setErr(null)
       const from = localDateISO()
-      const sch = await fetchStaffSchedule(staffId)
+      const [sch, categories] = await Promise.all([
+        fetchStaffSchedule(staffId),
+        fetchDashboardServiceCategories(true),
+      ])
       const list = await getAppointments({
         staffId,
         from,
@@ -151,6 +159,7 @@ export function StaffDetailView(props: StaffDetailViewProps) {
         sortBy: 'starts_at',
         sortDir: 'asc',
       }).unwrap()
+      setSpecializationGroups(categories.groups)
       setScheduleRows(mergeSevenDays(sch.rows))
       setAppts(list.items as unknown as StaffAppointment[])
     } catch (e) {
@@ -267,7 +276,7 @@ export function StaffDetailView(props: StaffDetailViewProps) {
                   <Chip
                     key={s}
                     size="small"
-                    label={specializationLabel(s)}
+                    label={specializationLabel(s, specializationGroups)}
                     sx={{ bgcolor: dashboard.card }}
                   />
                 ))}

@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/lib/pq"
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/servicecategory"
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -22,7 +23,11 @@ func (s *dashboardService) CreateStaff(ctx context.Context, salonID uuid.UUID, i
 	if n == "" {
 		return nil, fmt.Errorf("display name is required")
 	}
-	specs := pq.StringArray(in.Specializations)
+	normalizedSpecs, invalidSpecs := servicecategory.NormalizeParentSlugList(in.Specializations)
+	if len(invalidSpecs) > 0 {
+		return nil, fmt.Errorf("invalid specializations: %s", strings.Join(invalidSpecs, ", "))
+	}
+	specs := pq.StringArray(normalizedSpecs)
 	if specs == nil {
 		specs = pq.StringArray{}
 	}
@@ -188,7 +193,11 @@ func (s *dashboardService) UpdateStaff(ctx context.Context, salonID, staffID uui
 				}
 			}
 			if in.Specializations != nil {
-				mp.Specializations = pq.StringArray(in.Specializations)
+				normalizedSpecs, invalidSpecs := servicecategory.NormalizeParentSlugList(in.Specializations)
+				if len(invalidSpecs) > 0 {
+					return nil, fmt.Errorf("invalid specializations: %s", strings.Join(invalidSpecs, ", "))
+				}
+				mp.Specializations = pq.StringArray(normalizedSpecs)
 			}
 			if in.YearsExperience != nil {
 				mp.YearsExperience = in.YearsExperience

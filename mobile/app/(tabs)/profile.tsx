@@ -1,23 +1,39 @@
 import React from "react";
-import { ScrollView, View, Text, Pressable, StyleSheet } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useMeQuery } from "../../src/entities/me/api";
+import { useAuthStore } from "../../src/stores/authStore";
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
 type Section = {
   label: string;
-  items: Array<{ icon: IconName; label: string; sub?: string; href?: string }>;
+  items: Array<{
+    icon: IconName;
+    label: string;
+    sub?: string;
+    href?: string;
+    action?: "logout";
+    danger?: boolean;
+  }>;
 };
 
 export default function ProfileScreen() {
   const { colors, typography } = useTheme();
   const router = useRouter();
   const { data: me } = useMeQuery();
+  const logout = useAuthStore((state) => state.logout);
 
   const initials = (me?.displayName ?? me?.phone ?? "•")
     .split(" ")
@@ -55,9 +71,34 @@ export default function ProfileScreen() {
           sub: "Push и Telegram",
           href: "/(settings)/notifications",
         },
+        {
+          icon: "logout",
+          label: "Выйти",
+          sub: "Завершить текущую сессию",
+          action: "logout",
+          danger: true,
+        },
       ],
     },
   ];
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Выйти из аккаунта?",
+      "Нужно будет снова войти по номеру телефона.",
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: "Выйти",
+          style: "destructive",
+          onPress: () => {
+            logout();
+            router.replace("/(auth)/login");
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
@@ -192,7 +233,15 @@ export default function ProfileScreen() {
                 {section.items.map((item, i) => (
                   <Pressable
                     key={item.label}
-                    onPress={() => item.href && router.push(item.href as any)}
+                    onPress={() => {
+                      if (item.action === "logout") {
+                        handleLogout();
+                        return;
+                      }
+                      if (item.href) {
+                        router.push(item.href as any);
+                      }
+                    }}
                     style={[
                       styles.itemRow,
                       i < section.items.length - 1 && {
@@ -207,7 +256,7 @@ export default function ProfileScreen() {
                       <MaterialCommunityIcons
                         name={item.icon}
                         size={18}
-                        color={colors.muted}
+                        color={item.danger ? colors.red : colors.muted}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -215,7 +264,7 @@ export default function ProfileScreen() {
                         style={{
                           fontSize: 13,
                           fontWeight: "500",
-                          color: colors.text,
+                          color: item.danger ? colors.red : colors.text,
                         }}
                       >
                         {item.label}
@@ -229,7 +278,7 @@ export default function ProfileScreen() {
                     <MaterialCommunityIcons
                       name="chevron-right"
                       size={14}
-                      color={colors.muted}
+                      color={item.danger ? colors.red : colors.muted}
                     />
                   </Pressable>
                 ))}

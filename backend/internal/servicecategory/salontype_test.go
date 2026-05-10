@@ -47,3 +47,19 @@ func TestParentSlugs_count(t *testing.T) {
 		t.Fatalf("expected 14 parent slugs, got %d", len(ParentSlugs))
 	}
 }
+
+func TestNormalizeParentSlugList_mapsLegacySpecializations(t *testing.T) {
+	got, invalid := NormalizeParentSlugList([]string{" colorist ", "Стрижки", "nail_master", "hair", "unknown", "hair"})
+	want := []string{"hair", "nails"}
+	if len(invalid) != 1 || invalid[0] != "unknown" {
+		t.Fatalf("invalid = %v, want [unknown]", invalid)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("len=%d want %d: %v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("idx %d: got %q want %q", i, got[i], want[i])
+		}
+	}
+}

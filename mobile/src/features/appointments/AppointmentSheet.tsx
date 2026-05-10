@@ -196,11 +196,15 @@ export function AppointmentSheet({ appointment, onClose }: Props) {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.body}>
+        <ScrollView
+          contentContainerStyle={styles.body}
+          removeClippedSubviews={false}
+        >
           {appointment && tab === "details" ? (
             <AppointmentDetailsTab
               appointment={appointment}
               onEdit={() => setTab("edit")}
+              onSaved={onClose}
             />
           ) : appointment ? (
             <AppointmentEditTab

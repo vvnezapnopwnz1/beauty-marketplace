@@ -2,6 +2,8 @@
 // Not coupled to 2GIS or external catalog rubrics.
 package servicecategory
 
+import "strings"
+
 // ParentSlugs lists all parent_slug values in display order.
 var ParentSlugs = []string{
 	"hair", "barbershop", "nails", "brows", "lashes", "permanent", "makeup",
@@ -41,6 +43,21 @@ var salonTypeToParentSlugs = map[string][]string{
 	"individual":        ParentSlugs,
 }
 
+var legacySpecializationToParentSlug = map[string]string{
+	"colorist":    "hair",
+	"stylist":     "hair",
+	"haircut":     "hair",
+	"окрашивание": "hair",
+	"стрижки":     "hair",
+	"nail_master": "nails",
+	"маникюр":     "nails",
+	"педикюр":     "nails",
+	"browist":     "brows",
+	"barber":      "barbershop",
+	"massage":     "massage",
+	"массаж":      "massage",
+}
+
 // ParentSlugsForSalonType returns allowed parent_slug groups for a salon type.
 // Empty or unknown salonType: nil means "no restriction" (all groups).
 func ParentSlugsForSalonType(salonType string) []string {
@@ -68,6 +85,44 @@ func ValidSalonType(s string) bool {
 		}
 	}
 	return false
+}
+
+func ValidParentSlug(s string) bool {
+	for _, x := range ParentSlugs {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+func NormalizeParentSlugList(raw []string) ([]string, []string) {
+	if len(raw) == 0 {
+		return []string{}, nil
+	}
+	seen := make(map[string]struct{}, len(raw))
+	invalid := make([]string, 0)
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		value := strings.TrimSpace(item)
+		if value == "" {
+			continue
+		}
+		slug := value
+		if mapped, ok := legacySpecializationToParentSlug[strings.ToLower(value)]; ok {
+			slug = mapped
+		}
+		if !ValidParentSlug(slug) {
+			invalid = append(invalid, value)
+			continue
+		}
+		if _, ok := seen[slug]; ok {
+			continue
+		}
+		seen[slug] = struct{}{}
+		out = append(out, slug)
+	}
+	return out, invalid
 }
 
 // ParentAllowedForSalonType checks if parent_slug is allowed for a strict salon type.

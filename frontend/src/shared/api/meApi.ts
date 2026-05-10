@@ -16,6 +16,13 @@ export interface EffectiveRoles {
   pendingInvites: number
 }
 
+export interface MasterProfileBlock {
+  specializations: string[]
+  yearsExperience?: number
+  publishedAt?: string
+  onboardingStep?: string
+}
+
 export interface UserProfile {
   id: string
   phone: string
@@ -35,6 +42,7 @@ export interface UserProfile {
   globalRole: string
   effectiveRoles: EffectiveRoles
   masterProfileId: string | null
+  master?: MasterProfileBlock
 }
 
 export interface UpdateMePayload {
@@ -49,6 +57,10 @@ export interface UpdateMePayload {
   locale?: 'ru' | 'en'
   themePref?: 'light' | 'dark' | 'system'
   avatarUrl?: string | null
+  master?: {
+    specializations?: string[]
+    yearsExperience?: number | null
+  }
 }
 
 export interface UserSession {

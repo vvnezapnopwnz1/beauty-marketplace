@@ -29,7 +29,6 @@ export default function TabLayout() {
           tabBarStyle: {
             borderTopWidth: 1,
             borderTopColor: colors.border,
-            // gap: 3,
             paddingBottom: 8,
           },
           tabBarItemStyle: {},
@@ -65,10 +64,39 @@ export default function TabLayout() {
             tabBarIcon: tabIcon("user"),
           }}
         />
+        {/* Hidden screens for navigation within tabs */}
         <Tabs.Screen name="index" options={{ href: null }} />
         <Tabs.Screen name="appointments" options={{ href: null }} />
         <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="services" options={{ href: null }} />
+        <Tabs.Screen
+          name="services-screen"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="schedule-screen"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="finances-screen"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="notifications-screen"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
       </Tabs>
       <CenterFabButton onPress={open} />
       <CreateActionSheet />

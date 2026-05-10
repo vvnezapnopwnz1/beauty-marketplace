@@ -20,6 +20,7 @@ import {
   calculateSelectedServicesTotalCents,
   shouldSendManualTotal,
 } from "../../shared/lib/appointmentPriceForm";
+import { formatPhone, toRuE164 } from "../../shared/lib/formatPhone";
 
 function fmt(d: Date) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -66,7 +67,9 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
   const end = useMemo(() => new Date(appointment.endsAt), [appointment.endsAt]);
 
   const [client, setClient] = useState(appointment.clientLabel);
-  const [phone, setPhone] = useState(appointment.clientPhone ?? "");
+  const [phone, setPhone] = useState(
+    appointment.clientPhone ? formatPhone(appointment.clientPhone) : "",
+  );
   const [timeStart, setTimeStart] = useState(fmt(start));
   const [timeEnd, setTimeEnd] = useState(fmt(end));
   const [manualPrice, setManualPrice] = useState(
@@ -121,6 +124,9 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
       const origPhone = (appointment.clientPhone ?? "").trim();
       const origNote = (appointment.clientNote ?? "").trim();
 
+      const normalizedPhone = toRuE164(trimmedPhone);
+      const normalizedOrigPhone = toRuE164(origPhone);
+
       const salonHeaders =
         appointment.salonId != null && appointment.salonId !== ""
           ? { "X-Salon-Id": appointment.salonId }
@@ -159,8 +165,11 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         if (labelTrim !== origLabel) {
           body.guestName = labelTrim;
         }
-        if (trimmedPhone !== origPhone) {
-          body.guestPhone = trimmedPhone;
+        if (normalizedPhone !== normalizedOrigPhone) {
+          if (trimmedPhone && !normalizedPhone) {
+            throw new Error("Некорректный номер телефона");
+          }
+          body.guestPhone = normalizedPhone ?? "";
         }
         if (noteTrim !== origNote) {
           body.clientNote = noteTrim;
@@ -262,12 +271,13 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
       <Field label="Телефон">
         <TextInput
           value={phone}
-          onChangeText={setPhone}
+          onChangeText={(text) => setPhone(formatPhone(text))}
           editable={isEditable}
-          placeholder="+7 ..."
+          placeholder="+7 (___) ___-__-__"
           placeholderTextColor={colors.muted}
           style={inputStyle}
           keyboardType="phone-pad"
+          maxLength={18}
         />
       </Field>
       <Field label="Услуга">

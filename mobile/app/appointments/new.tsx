@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useCreatePersonalAppointmentMutation } from "../../src/entities/appointments/api";
 import { useMasterServicesQuery } from "../../src/entities/services/api";
@@ -19,6 +19,10 @@ import {
   calculateSelectedServicesTotalCents,
   shouldSendManualTotal,
 } from "../../src/shared/lib/appointmentPriceForm";
+import {
+  formatPhone,
+  parseOptionalRuPhone,
+} from "../../src/shared/lib/formatPhone";
 
 function combineDateTime(dateISO: string, timeHHmm: string): Date {
   const [h, m] = timeHHmm.split(":").map(Number);
@@ -30,6 +34,16 @@ function combineDateTime(dateISO: string, timeHHmm: string): Date {
 export default function NewAppointmentScreen() {
   const { colors, typography } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
+  const { returnPath } = useLocalSearchParams<{ returnPath?: string }>();
+
+  const goBack = () => {
+    if (returnPath) {
+      router.navigate(returnPath as any);
+    } else {
+      router.back();
+    }
+  };
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [date, setDate] = useState(today);
@@ -64,13 +78,19 @@ export default function NewAppointmentScreen() {
       );
       return;
     }
+    const guestPhoneParsed = parseOptionalRuPhone(guestPhone);
+    if (guestPhoneParsed.kind === "invalid") {
+      Alert.alert("Некорректный телефон", "Введите корректный номер телефона.");
+      return;
+    }
     const startsAt = combineDateTime(date, time).toISOString();
     create.mutate(
       {
         serviceIds,
         startsAt,
         guestName: guestName.trim(),
-        guestPhone: guestPhone.trim(),
+        guestPhone:
+          guestPhoneParsed.kind === "valid" ? guestPhoneParsed.e164 : "",
         clientNote: clientNote.trim() || undefined,
         totalCents: shouldSendManualTotal({
           manualEnabled: manualPrice,
@@ -81,7 +101,7 @@ export default function NewAppointmentScreen() {
           : undefined,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: () => goBack(),
         onError: (err) => {
           const msg =
             err instanceof Error ? err.message : "Не удалось создать запись";
@@ -104,7 +124,7 @@ export default function NewAppointmentScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           accessibilityLabel="Назад"
           hitSlop={12}
         >
@@ -132,7 +152,12 @@ export default function NewAppointmentScreen() {
           </Text>
         ) : !hasServices ? (
           <Pressable
-            onPress={() => router.push("/services/new" as any)}
+            onPress={() =>
+              router.push({
+                pathname: "/services/new",
+                params: { returnPath: pathname },
+              } as any)
+            }
             style={[
               styles.emptyState,
               {
@@ -277,11 +302,12 @@ export default function NewAppointmentScreen() {
         />
         <TextInput
           value={guestPhone}
-          onChangeText={setGuestPhone}
-          placeholder="+7 ..."
+          onChangeText={(text) => setGuestPhone(formatPhone(text))}
+          placeholder="+7 (___) ___-__-__"
           placeholderTextColor={colors.muted}
           style={[inputStyle, { marginTop: 8 }]}
           keyboardType="phone-pad"
+          maxLength={18}
         />
 
         <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>

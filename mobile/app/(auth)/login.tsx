@@ -1,15 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   Alert,
+  SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuthStore } from "../../src/stores/authStore";
 import { authApi } from "../../src/api/auth";
+import { startMasterOnboarding } from "../../src/api/masterOnboarding";
+import type { MasterOnboardingStartResult, MeResponse } from "../../src/api/types";
+import { useTheme } from "../../src/theme";
+import { Button } from "../../src/components/ui/Button";
+import { Input } from "../../src/components/ui/Input";
 
 function normalizePhoneToRuE164(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
@@ -25,45 +32,53 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+function resolveOnboardingStep(
+  me: MeResponse,
+  startResult: MasterOnboardingStartResult | null,
+  resolvedMasterProfileId: string | null,
+): string | undefined {
+  if (!resolvedMasterProfileId) return undefined;
+  if (me.masterProfileId) {
+    return me.master?.onboardingStep ?? "completed";
+  }
+  return startResult?.onboardingStep ?? "profile";
+}
+
+function formatPhoneDisplay(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 11) {
+    const d = digits;
+    return `+7 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9, 11)}`;
+  }
+  if (digits.length === 10) {
+    const d = digits;
+    return `+7 (${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 8)}-${d.slice(8, 10)}`;
+  }
+  return raw;
+}
+
 export default function LoginScreen() {
+  const { colors, typography } = useTheme();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [normalizedPhone, setNormalizedPhone] = useState<string | null>(null);
-  const [step, setStep] = useState<"phone" | "code" | "blocked">("phone");
+  const [step, setStep] = useState<"phone" | "code">("phone");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const params = useLocalSearchParams<{ intent?: string | string[] }>();
+  const intentParam = params.intent;
+  const intent =
+    typeof intentParam === "string"
+      ? intentParam
+      : Array.isArray(intentParam)
+        ? intentParam[0]
+        : undefined;
   const { setTokenPair, setUser } = useAuthStore();
-
-  useEffect(() => {
-    if (step === "code") {
-      console.log("code", code);
-      console.log("normalizedPhone", normalizedPhone);
-      console.log("step", step);
-      console.log("loading", loading);
-      console.log("phone", phone);
-      console.log("setPhone", setPhone);
-      console.log("setCode", setCode);
-      console.log("setNormalizedPhone", setNormalizedPhone);
-      console.log("setStep", setStep);
-      console.log("setLoading", setLoading);
-    }
-  }, [
-    code,
-    normalizedPhone,
-    step,
-    loading,
-    phone,
-    setPhone,
-    setCode,
-    setNormalizedPhone,
-    setStep,
-    setLoading,
-  ]);
 
   const handleRequestOTP = async () => {
     const normalizedE164 = normalizePhoneToRuE164(phone);
     if (!normalizedE164) {
-      Alert.alert("Error", "Please enter a valid phone number");
+      Alert.alert("Ошибка", "Введите корректный номер телефона");
       return;
     }
 
@@ -74,8 +89,8 @@ export default function LoginScreen() {
       setStep("code");
     } catch (error) {
       Alert.alert(
-        "Error",
-        getErrorMessage(error, "Failed to send OTP. Please try again."),
+        "Ошибка",
+        getErrorMessage(error, "Не удалось отправить код. Попробуйте позже."),
       );
     } finally {
       setLoading(false);
@@ -84,12 +99,12 @@ export default function LoginScreen() {
 
   const handleVerifyOTP = async () => {
     if (!normalizedPhone) {
-      Alert.alert("Error", "Please request a verification code first");
+      Alert.alert("Ошибка", "Сначала запросите код подтверждения");
       setStep("phone");
       return;
     }
     if (!code.trim()) {
-      Alert.alert("Error", "Please enter the verification code");
+      Alert.alert("Ошибка", "Введите код из SMS");
       return;
     }
 
@@ -99,36 +114,61 @@ export default function LoginScreen() {
         phone: normalizedPhone,
         code: code.trim(),
       });
-      console.log("verify", verify);
-      // Persist tokens before any authenticated API call.
       setTokenPair(verify.tokenPair);
-      const me = await authApi.fetchMe();
-      console.log("me", me);
-      console.log("me.masterProfileId", me.masterProfileId);
-      if (!me.masterProfileId) {
-        // Do not persist authenticated session for non-master accounts in this app.
-        setTokenPair(null);
-        setUser(null);
-        setStep("blocked");
-        return;
+      let me = await authApi.fetchMe();
+      let startResult: MasterOnboardingStartResult | null = null;
+
+      if (intent === "master" && !(me.effectiveRoles?.isMaster ?? false)) {
+        try {
+          startResult = await startMasterOnboarding();
+          me = await authApi.fetchMe();
+        } catch {
+          Alert.alert(
+            "Не удалось открыть кабинет мастера",
+            "Проверьте сеть и попробуйте снова с главного экрана.",
+          );
+        }
       }
-      console.log("verify.tokenPair", verify.tokenPair);
+
+      const resolvedMasterProfileId =
+        me.masterProfileId ?? startResult?.masterProfileId ?? null;
+      const onboardingStep = resolveOnboardingStep(
+        me,
+        startResult,
+        resolvedMasterProfileId,
+      );
+      const hasMasterCabinet =
+        !!(me.effectiveRoles?.isMaster ?? false) || !!resolvedMasterProfileId;
+      const roles = me.effectiveRoles;
+      const effectiveRoles =
+        resolvedMasterProfileId && !roles.isMaster
+          ? { ...roles, isMaster: true }
+          : roles;
+
       setUser({
         id: me.id,
         phone: me.phone,
         displayName: me.displayName ?? null,
         globalRole: me.globalRole,
-        effectiveRoles: me.effectiveRoles,
-        masterProfileId: me.masterProfileId ?? null,
+        effectiveRoles,
+        masterProfileId: resolvedMasterProfileId,
       });
 
-      router.replace("/(tabs)");
+      if (hasMasterCabinet) {
+        if (resolvedMasterProfileId && onboardingStep === "completed") {
+          router.replace("/(tabs)");
+        } else {
+          router.replace("/(onboarding)");
+        }
+      } else {
+        router.replace("/");
+      }
     } catch (error) {
       setTokenPair(null);
       setUser(null);
       Alert.alert(
-        "Error",
-        getErrorMessage(error, "Invalid verification code. Please try again."),
+        "Ошибка",
+        getErrorMessage(error, "Неверный код. Попробуйте ещё раз."),
       );
     } finally {
       setLoading(false);
@@ -141,141 +181,263 @@ export default function LoginScreen() {
     setStep("phone");
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome</Text>
-      <Text style={styles.subtitle}>Sign in to your account</Text>
+  const steps = [
+    { icon: "smartphone" as const, text: "Введите номер телефона" },
+    { icon: "message-square" as const, text: "Получите SMS-код" },
+    { icon: "unlock" as const, text: "Войдите без пароля" },
+  ];
 
-      {step === "phone" ? (
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Phone number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleRequestOTP}
-            disabled={loading}
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.hero}>
+          <Text
+            style={[
+              styles.brand,
+              { color: colors.text, fontFamily: typography.fonts.serif },
+            ]}
           >
-            <Text style={styles.buttonText}>
-              {loading ? "Sending..." : "Send Verification Code"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : step === "code" ? (
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Verification code"
-            value={code}
-            onChangeText={setCode}
-            keyboardType="number-pad"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleVerifyOTP}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? "Verifying..." : "Verify Code"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleUseDifferentPhone}
-          >
-            <Text style={styles.secondaryButtonText}>Change Phone Number</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.form}>
-          <Text style={styles.blockingTitle}>Master profile required</Text>
-          <Text style={styles.blockingBody}>
-            This app currently supports master accounts only. Please finish
-            master profile setup in the web app and try again.
+            Beautica
           </Text>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleUseDifferentPhone}
+          <Text
+            style={[
+              styles.tagline,
+              { color: colors.textSoft, fontFamily: typography.fonts.regular },
+            ]}
           >
-            <Text style={styles.secondaryButtonText}>Use Another Number</Text>
-          </TouchableOpacity>
+            Вход в аккаунт
+          </Text>
         </View>
-      )}
-    </View>
+
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.borderLight,
+              shadowColor: colors.text,
+            },
+          ]}
+        >
+          {step === "phone" ? (
+            <>
+              <Input
+                label="Номер телефона"
+                placeholder="+7 (999) 000-00-00"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                autoFocus
+                inputStyle={{
+                  fontSize: 16,
+                  fontFamily: typography.fonts.medium,
+                }}
+              />
+              <Button onPress={handleRequestOTP} disabled={loading}>
+                {loading ? "Отправка..." : "Получить код"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Text
+                style={[
+                  styles.codeSent,
+                  {
+                    color: colors.textSoft,
+                    fontFamily: typography.fonts.regular,
+                  },
+                ]}
+              >
+                Код отправлен на{" "}
+                {normalizedPhone ? formatPhoneDisplay(normalizedPhone) : phone}
+              </Text>
+              <Input
+                label="Код из SMS"
+                placeholder="0000"
+                value={code}
+                onChangeText={setCode}
+                keyboardType="number-pad"
+                autoFocus
+                maxLength={6}
+                textContentType="oneTimeCode"
+                inputStyle={{
+                  fontSize: 20,
+                  fontFamily: typography.fonts.medium,
+                  letterSpacing: 4,
+                  textAlign: "center",
+                }}
+              />
+              <Button onPress={handleVerifyOTP} disabled={loading}>
+                {loading ? "Проверка..." : "Войти"}
+              </Button>
+              <TouchableOpacity
+                onPress={handleUseDifferentPhone}
+                style={styles.changePhone}
+              >
+                <Text
+                  style={[
+                    styles.changePhoneText,
+                    {
+                      color: colors.accent,
+                      fontFamily: typography.fonts.medium,
+                    },
+                  ]}
+                >
+                  Изменить номер
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        <View style={styles.infoSection}>
+          <Text
+            style={[
+              styles.infoTitle,
+              { color: colors.textSoft, fontFamily: typography.fonts.bold },
+            ]}
+          >
+            Как это работает
+          </Text>
+          {steps.map((s, i) => (
+            <View key={i} style={styles.stepRow}>
+              <View
+                style={[
+                  styles.stepIcon,
+                  { backgroundColor: colors.accentLight },
+                ]}
+              >
+                <Feather name={s.icon} size={16} color={colors.accent} />
+              </View>
+              <Text
+                style={[
+                  styles.stepText,
+                  {
+                    color: colors.textSoft,
+                    fontFamily: typography.fonts.regular,
+                  },
+                ]}
+              >
+                {s.text}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <Text
+          style={[
+            styles.disclaimer,
+            { color: colors.muted, fontFamily: typography.fonts.regular },
+          ]}
+        >
+          Мы не передаём ваш номер третьим лицам. Вход по SMS — это быстро и
+          безопасно.
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => router.push("/")}
+          style={styles.backLink}
+        >
+          <Text
+            style={[
+              styles.backLinkText,
+              { color: colors.muted, fontFamily: typography.fonts.medium },
+            ]}
+          >
+            ← Вернуться на главную
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: "#fff",
+  safe: { flex: 1 },
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 40,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 8,
+  hero: {
+    alignItems: "center",
+    marginBottom: 28,
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 32,
+  brand: {
+    fontSize: 36,
+    fontWeight: "400",
+    letterSpacing: -1,
+    lineHeight: 40,
+    marginBottom: 6,
   },
-  form: {
-    width: "100%",
+  tagline: {
+    fontSize: 14,
+    lineHeight: 20,
   },
-  input: {
+  card: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    fontSize: 16,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  button: {
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: "#007AFF",
-    fontSize: 16,
-  },
-  blockingTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+  codeSent: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
     textAlign: "center",
+  },
+  changePhone: {
+    marginTop: 14,
+    alignItems: "center",
+  },
+  changePhoneText: {
+    fontSize: 14,
+  },
+  infoSection: {
+    marginBottom: 20,
+  },
+  infoTitle: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
     marginBottom: 12,
   },
-  blockingBody: {
-    fontSize: 15,
-    color: "#666",
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  stepIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  disclaimer: {
+    fontSize: 11,
+    lineHeight: 16,
     textAlign: "center",
-    lineHeight: 22,
+    marginBottom: 20,
+    paddingHorizontal: 12,
+  },
+  backLink: {
+    alignItems: "center",
+  },
+  backLinkText: {
+    fontSize: 14,
   },
 });

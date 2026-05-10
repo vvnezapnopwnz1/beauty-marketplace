@@ -36,21 +36,21 @@ export function MoreScreen() {
       label: "Услуги",
       icon: "shape-outline",
       color: colors.nails,
-      onPress: () => router.push("/(settings)/services"),
+      onPress: () => router.push("/(tabs)/services-screen"),
     },
     {
       id: "schedule",
       label: "Расписание",
       icon: "clock-outline",
       color: colors.hair,
-      onPress: () => router.push("/(settings)/schedule"),
+      onPress: () => router.push("/(tabs)/schedule-screen"),
     },
     {
       id: "finance",
       label: "Финансы",
       icon: "credit-card-outline",
       color: colors.massage,
-      onPress: () => router.push("/(settings)/finances"),
+      onPress: () => router.push("/(tabs)/finances-screen"),
     },
     {
       id: "analytics",
@@ -63,7 +63,7 @@ export function MoreScreen() {
       label: "Запросы",
       icon: "chat-question-outline",
       color: colors.hair,
-      onPress: () => router.push("/(settings)/inquiries"),
+      onPress: () => router.push("/(tabs)/notifications-screen"),
     },
     {
       id: "notif",
@@ -71,7 +71,7 @@ export function MoreScreen() {
       icon: "bell-outline",
       color: colors.accent,
       badge: me?.effectiveRoles?.pendingInvites ?? 0,
-      onPress: () => router.push("/(settings)/notifications"),
+      onPress: () => router.push("/(tabs)/notifications-screen"),
     },
     {
       id: "settings",
@@ -116,7 +116,7 @@ export function MoreScreen() {
         <BentoRow
           left={
             <BentoCard
-              onPress={() => router.push("/(settings)/services")}
+              onPress={() => router.push("/(tabs)/services-screen")}
               gradient={[`${colors.nails}30`, `${colors.nails}08`]}
             >
               <Text style={[styles.bentoEyebrow, { color: colors.nails }]}>
@@ -137,7 +137,7 @@ export function MoreScreen() {
           }
           right={
             <BentoCard
-              onPress={() => router.push("/(settings)/schedule")}
+              onPress={() => router.push("/(tabs)/schedule-screen")}
               gradient={[`${colors.massage}28`, `${colors.massage}06`]}
             >
               <Text style={[styles.bentoEyebrow, { color: colors.massage }]}>
@@ -176,7 +176,7 @@ export function MoreScreen() {
           }
           right={
             <BentoCard
-              onPress={() => router.push("/(settings)/finances")}
+              onPress={() => router.push("/(tabs)/finances-screen")}
               gradient={[`${colors.massage}28`, `${colors.massage}06`]}
             >
               <Text style={[styles.bentoEyebrow, { color: colors.massage }]}>
@@ -199,7 +199,7 @@ export function MoreScreen() {
 
         {/* Notifications */}
         <BentoCard
-          onPress={() => router.push("/(settings)/notifications")}
+          onPress={() => router.push("/(tabs)/notifications-screen")}
           gradient={[`${colors.accent}1F`, `${colors.accent}08`]}
         >
           <Text style={[styles.bentoEyebrow, { color: colors.accent }]}>

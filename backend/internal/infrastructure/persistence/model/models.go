@@ -211,13 +211,18 @@ func (s *SalonMaster) BeforeCreate(tx *gorm.DB) error {
 
 // ServiceCategory maps to service_categories (system rows: salon_id NULL).
 type ServiceCategory struct {
-	ID         uuid.UUID  `gorm:"type:uuid;primaryKey"`
-	SalonID    *uuid.UUID `gorm:"type:uuid;column:salon_id"`
-	Slug       string     `gorm:"column:slug;not null"`
-	NameRu     string     `gorm:"column:name_ru;not null"`
-	ParentSlug string     `gorm:"column:parent_slug;not null"`
-	SortOrder  int        `gorm:"column:sort_order;not null"`
-	IsSystem   bool       `gorm:"column:is_system;not null"`
+	ID                uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SalonID           *uuid.UUID `gorm:"type:uuid;column:salon_id"`
+	Slug              string     `gorm:"column:slug;not null"`
+	NameRu            string     `gorm:"column:name_ru;not null"`
+	NameEn            *string    `gorm:"column:name_en"`
+	ParentSlug        string     `gorm:"column:parent_slug;not null"`
+	ParentNameRu      string     `gorm:"column:parent_name_ru;not null"`
+	ParentNameEn      *string    `gorm:"column:parent_name_en"`
+	SpecialistTitleRu string     `gorm:"column:specialist_title_ru;not null"`
+	SpecialistTitleEn *string    `gorm:"column:specialist_title_en"`
+	SortOrder         int        `gorm:"column:sort_order;not null"`
+	IsSystem          bool       `gorm:"column:is_system;not null"`
 }
 
 func (ServiceCategory) TableName() string { return "service_categories" }

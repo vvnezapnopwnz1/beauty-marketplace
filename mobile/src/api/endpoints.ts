@@ -68,6 +68,7 @@ export const AUTH_ENDPOINTS = AUTH;
 
 export const USER = {
   me: `${API_V1}/me`,
+  meOnboardingStart: `${API_V1}/me/master-onboarding/start`,
 } as const;
 export const USER_ENDPOINTS = USER;
 
@@ -87,6 +88,8 @@ export const MASTER = {
   invites: `${API_V1}/master-dashboard/invites`,
   salons: `${API_V1}/master-dashboard/salons`,
   schedule: `${API_V1}/master-dashboard/schedule`,
+  onboardingStep: `${API_V1}/master-dashboard/onboarding/step`,
+  publish: `${API_V1}/master-dashboard/publish`,
   financesSummary: `${API_V1}/master-dashboard/finances/summary`,
   financesTrend: `${API_V1}/master-dashboard/finances/trends`,
   financesTopServices: `${API_V1}/master-dashboard/finances/top-services`,

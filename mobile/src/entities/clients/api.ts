@@ -6,6 +6,7 @@ export type MasterClient = {
   id: string;
   displayName: string;
   phone?: string | null;
+  notes?: string | null;
   visitCount?: number;
   visitsCount?: number;
   lastVisitAt?: string | null;
@@ -55,6 +56,35 @@ export function useCreateMasterClientMutation() {
   return useMutation({
     mutationFn: async (input: CreateMasterClientInput) => {
       const { data } = await apiClient.post<MasterClient>(MASTER.clients, input);
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["clients"] });
+    },
+  });
+}
+
+export function useMasterClientQuery(id: string) {
+  return useQuery({
+    queryKey: ["clients", id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<MasterClient>(MASTER.client(id));
+      return data;
+    },
+  });
+}
+
+export type UpdateMasterClientInput = {
+  displayName: string;
+  phone?: string | null;
+  notes?: string | null;
+};
+
+export function useUpdateMasterClientMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateMasterClientInput) => {
+      const { data } = await apiClient.put<MasterClient>(MASTER.client(id), input);
       return data;
     },
     onSuccess: () => {

@@ -265,6 +265,7 @@ type masterDashboardService struct {
 	appts        repository.AppointmentRepository
 	salons       repository.SalonRepository
 	scheduleRepo repository.MasterScheduleRepository
+	profiles     UserProfileService
 }
 
 // NewMasterDashboardService constructs MasterDashboardService.
@@ -273,12 +274,14 @@ func NewMasterDashboardService(
 	appts repository.AppointmentRepository,
 	salons repository.SalonRepository,
 	scheduleRepo repository.MasterScheduleRepository,
+	profiles UserProfileService,
 ) MasterDashboardService {
 	return &masterDashboardService{
 		repo:         repo,
 		appts:        appts,
 		salons:       salons,
 		scheduleRepo: scheduleRepo,
+		profiles:     profiles,
 	}
 }
 
@@ -294,6 +297,16 @@ func (s *masterDashboardService) masterProfileID(ctx context.Context, userID uui
 }
 
 func (s *masterDashboardService) MyProfile(ctx context.Context, userID uuid.UUID) (*MasterProfileCabinetDTO, error) {
+	userProf, err := s.profiles.GetMe(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if userProf == nil {
+		return nil, nil
+	}
+	if userProf.MasterProfileID == nil {
+		return nil, nil
+	}
 	mp, err := s.repo.GetMasterProfileByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -301,25 +314,29 @@ func (s *masterDashboardService) MyProfile(ctx context.Context, userID uuid.UUID
 	if mp == nil {
 		return nil, nil
 	}
-	return masterProfileToDTO(mp), nil
+	return masterProfileToDTO(mp, userProf), nil
 }
 
-func masterProfileToDTO(mp *model.MasterProfile) *MasterProfileCabinetDTO {
+func masterProfileToDTO(mp *model.MasterProfile, userProf *UserProfileDTO) *MasterProfileCabinetDTO {
 	specs := []string(mp.Specializations)
 	if specs == nil {
 		specs = []string{}
 	}
-	phone := ""
-	if mp.PhoneE164 != nil {
+	phone := userProf.Phone
+	if phone == "" && mp.PhoneE164 != nil {
 		phone = *mp.PhoneE164
+	}
+	displayName := ""
+	if userProf.DisplayName != nil {
+		displayName = *userProf.DisplayName
 	}
 	return &MasterProfileCabinetDTO{
 		ID:              mp.ID,
-		DisplayName:     mp.DisplayName,
-		Bio:             mp.Bio,
+		DisplayName:     displayName,
+		Bio:             userProf.Bio,
 		Specializations: specs,
 		YearsExperience: mp.YearsExperience,
-		AvatarURL:       mp.AvatarURL,
+		AvatarURL:       userProf.AvatarURL,
 		PhoneE164:       phone,
 		PublishedAt:     mp.PublishedAt,
 		OnboardingStep:  mp.OnboardingStep,
@@ -333,11 +350,28 @@ func (s *masterDashboardService) UpdateMyProfile(ctx context.Context, userID uui
 	if in.Bio != nil && utf8.RuneCountInString(*in.Bio) > 300 {
 		return nil, fmt.Errorf("bio exceeds 300 characters")
 	}
+
+	// Write common fields into users (source of truth)
+	dn := strings.TrimSpace(in.DisplayName)
+	_, err := s.profiles.UpdateMe(ctx, userID, UpdateUserProfileInput{
+		DisplayName: &dn,
+		Bio:         in.Bio,
+		AvatarURL:   in.AvatarURL,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	specs := in.Specializations
 	if specs == nil {
 		specs = []string{}
 	}
-	if err := s.repo.UpdateMasterProfileByUserID(ctx, userID, strings.TrimSpace(in.DisplayName), in.Bio, specs, in.YearsExperience, in.AvatarURL); err != nil {
+	specs, invalidSpecs := servicecategory.NormalizeParentSlugList(specs)
+	if len(invalidSpecs) > 0 {
+		return nil, fmt.Errorf("invalid specializations: %s", strings.Join(invalidSpecs, ", "))
+	}
+	// Also keep master_profiles in sync during transition period
+	if err := s.repo.UpdateMasterProfileByUserID(ctx, userID, dn, in.Bio, specs, in.YearsExperience, in.AvatarURL); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -899,29 +933,8 @@ func (s *masterDashboardService) ListMasterServiceCategories(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	byParent := make(map[string][]model.ServiceCategory)
-	for _, r := range rows {
-		byParent[r.ParentSlug] = append(byParent[r.ParentSlug], r)
-	}
 	out := &ServiceCategoriesResponse{
-		Groups: make([]ServiceCategoryGroupDTO, 0),
-	}
-	for _, ps := range servicecategory.ParentSlugs {
-		items := byParent[ps]
-		if len(items) == 0 {
-			continue
-		}
-		g := ServiceCategoryGroupDTO{
-			ParentSlug: ps,
-			Label:      servicecategory.ParentSlugLabelRu(ps),
-			Items:      make([]ServiceCategoryItemDTO, 0, len(items)),
-		}
-		for _, it := range items {
-			g.Items = append(g.Items, ServiceCategoryItemDTO{
-				Slug: it.Slug, NameRu: it.NameRu, ParentSlug: it.ParentSlug, SortOrder: it.SortOrder,
-			})
-		}
-		out.Groups = append(out.Groups, g)
+		Groups: serviceCategoryGroupsFromRows(rows),
 	}
 	return out, nil
 }
@@ -1566,7 +1579,6 @@ func masterClientToDTOPointer(m *model.MasterClient) *MasterClientDTO {
 	dto := masterClientToDTO(m)
 	return &dto
 }
-
 
 func (s *masterDashboardService) UpdateAvatar(ctx context.Context, masterProfileID uuid.UUID, avatarURL string) error {
 	return s.repo.UpdateAvatar(ctx, masterProfileID, avatarURL)

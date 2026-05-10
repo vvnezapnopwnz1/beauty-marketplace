@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { AppBar, Toolbar, Typography, Button, Box, Stack, Switch } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES, dashboardPath } from '@shared/config/routes'
 import { getActiveSalonId } from '@shared/lib/activeSalon'
@@ -21,6 +21,7 @@ import { UserMenu } from '@widgets/user-menu/ui/UserMenu'
 
 export function NavBar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useTranslation()
   const { mode, setMode } = useThemeMode()
   const colors = useBrandColors()
@@ -226,7 +227,10 @@ export function NavBar() {
             <>
               <Button
                 variant="text"
-                onClick={() => navigate(ROUTES.LOGIN)}
+                onClick={() => {
+                  const returnTo = encodeURIComponent(`${location.pathname}${location.search}`)
+                  navigate(`${ROUTES.LOGIN}?returnTo=${returnTo}`)
+                }}
                 sx={{
                   fontSize: 13,
                   fontWeight: 500,

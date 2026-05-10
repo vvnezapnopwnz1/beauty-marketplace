@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, MobileStepper, Stack, Typography } from '@mui/material'
+import { Box, CircularProgress, MobileStepper, Stack, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@shared/config/routes'
-import {
-  type MasterCabinetProfile,
-  getMyMasterProfile,
-} from '@shared/api/masterDashboardApi'
+import { type MasterCabinetProfile, getMyMasterProfile } from '@shared/api/masterDashboardApi'
 import { StepProfile } from './StepProfile'
 import { StepSpecializations } from './StepSpecializations'
 import { StepServices } from './StepServices'
@@ -61,16 +58,20 @@ export function MasterOnboardingWizard() {
     )
   }
   if (!profile) {
-    return null
+    return (
+      <Box display="flex" alignItems="center" justifyContent="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    )
   }
 
-  const advance = () => setStep((s) => Math.min(s + 1, STEP_ORDER.length - 1))
-  const back = () => setStep((s) => Math.max(s - 1, 0))
+  const advance = () => setStep(s => Math.min(s + 1, STEP_ORDER.length - 1))
+  const back = () => setStep(s => Math.max(s - 1, 0))
   const finish = () => navigate(ROUTES.MASTER_DASHBOARD, { replace: true })
 
   return (
     <Box minHeight="100vh" bgcolor="background.default">
-      <Box sx={{ maxWidth: 560, mx: 'auto', px: 2, py: 5 }}>
+      <Box sx={{ maxWidth: 600, mx: 'auto', px: 2, py: 5 }}>
         <Typography variant="h5" sx={{ fontFamily: "'Fraunces', serif", mb: 0.5 }}>
           {t('masterOnboarding.title')}
         </Typography>
@@ -89,7 +90,7 @@ export function MasterOnboardingWizard() {
         {step === 0 && (
           <StepProfile
             profile={profile}
-            onSaved={(next) => {
+            onSaved={next => {
               setProfile(next)
               advance()
             }}
@@ -98,7 +99,7 @@ export function MasterOnboardingWizard() {
         {step === 1 && (
           <StepSpecializations
             profile={profile}
-            onSaved={(next) => {
+            onSaved={next => {
               setProfile(next)
               advance()
             }}

@@ -261,3 +261,31 @@ export async function deleteMasterClient(id: string): Promise<void> {
   const res = await authFetch(`${root()}/clients/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
+
+// MasterSchedule
+export interface MasterWorkingHour {
+  dayOfWeek: number
+  opensAt: string
+  closesAt: string
+  isClosed: boolean
+}
+
+export interface UpdateMasterScheduleInput {
+  hours: MasterWorkingHour[]
+}
+
+export async function getMasterSchedule(): Promise<MasterWorkingHour[]> {
+  const res = await authFetch(`${root()}/schedule`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function updateMasterSchedule(data: UpdateMasterScheduleInput): Promise<MasterWorkingHour[]> {
+  const res = await authFetch(`${root()}/schedule`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}

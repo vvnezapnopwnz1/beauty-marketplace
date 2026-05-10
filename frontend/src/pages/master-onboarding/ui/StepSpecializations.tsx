@@ -35,7 +35,12 @@ export function StepSpecializations({ profile, onSaved, onBack }: Props) {
     void (async () => {
       try {
         const cats = await fetchMasterServiceCategories()
-        setOptions(cats.groups.map((g) => ({ slug: g.parentSlug, label: g.label })))
+        setOptions(
+          cats.groups.map(g => ({
+            slug: g.parentSlug,
+            label: g.specialistTitleRu ?? g.labelRu ?? g.label,
+          })),
+        )
       } catch {
         // categories are nice-to-have; user can still type-pick if API fails
       }
@@ -44,8 +49,8 @@ export function StepSpecializations({ profile, onSaved, onBack }: Props) {
 
   const renderSummary = () => {
     if (selected.length === 0) return t('masterOnboarding.steps.specializations.placeholder')
-    const bySlug = new Map(options.map((o) => [o.slug, o.label]))
-    return selected.map((s) => bySlug.get(s) ?? s).join(', ')
+    const bySlug = new Map(options.map(o => [o.slug, o.label]))
+    return selected.map(s => bySlug.get(s) ?? s).join(', ')
   }
 
   const handleNext = async () => {
@@ -74,17 +79,19 @@ export function StepSpecializations({ profile, onSaved, onBack }: Props) {
 
   return (
     <Stack gap={2}>
-      <Typography variant="subtitle1">{t('masterOnboarding.steps.specializations.title')}</Typography>
+      <Typography variant="subtitle1">
+        {t('masterOnboarding.steps.specializations.title')}
+      </Typography>
       <FormControl fullWidth size="small">
         <InputLabel>{t('masterOnboarding.steps.specializations.selectLabel')}</InputLabel>
         <Select
           multiple
           value={selected}
           label={t('masterOnboarding.steps.specializations.selectLabel')}
-          onChange={(e) => setSelected(e.target.value as string[])}
+          onChange={e => setSelected(e.target.value as string[])}
           renderValue={renderSummary}
         >
-          {options.map((o) => (
+          {options.map(o => (
             <MenuItem key={o.slug} value={o.slug}>
               <ListItemText primary={o.label} />
             </MenuItem>

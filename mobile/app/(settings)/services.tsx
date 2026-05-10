@@ -2,13 +2,14 @@ import React, { useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useMasterServicesQuery } from "../../src/entities/services/api";
 
 export default function ServicesSettingsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
   const { data = [], isLoading, isError } = useMasterServicesQuery();
   const [activeCategory, setActiveCategory] = useState<string>("all");
 
@@ -151,7 +152,12 @@ export default function ServicesSettingsScreen() {
       </ScrollView>
 
       <Pressable
-        onPress={() => router.push("/services/new")}
+        onPress={() =>
+          router.push({
+            pathname: "/services/new",
+            params: { returnPath: pathname },
+          })
+        }
         style={[styles.fab, { backgroundColor: colors.accent }]}
         accessibilityLabel="Добавить услугу"
       >

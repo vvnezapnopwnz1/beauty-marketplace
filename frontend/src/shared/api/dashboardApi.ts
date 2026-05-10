@@ -34,6 +34,7 @@ export interface DashboardServiceRow {
 export interface DashboardServiceCategoryItem {
   slug: string
   nameRu: string
+  nameEn?: string | null
   parentSlug: string
   sortOrder: number
 }
@@ -41,6 +42,10 @@ export interface DashboardServiceCategoryItem {
 export interface DashboardServiceCategoryGroup {
   parentSlug: string
   label: string
+  labelRu?: string
+  labelEn?: string | null
+  specialistTitleRu?: string
+  specialistTitleEn?: string | null
   items: DashboardServiceCategoryItem[]
 }
 
@@ -132,9 +137,32 @@ export const SPECIALIZATION_PRESETS = [
   { value: 'haircut', label: 'Стрижки' },
 ] as const
 
-export function specializationLabel(slug: string): string {
-  const p = SPECIALIZATION_PRESETS.find(x => x.value === slug)
-  return p?.label ?? slug
+const SPECIALIZATION_FALLBACK_LABELS: Record<string, string> = {
+  hair: 'Парикмахер',
+  barbershop: 'Барбер',
+  nails: 'Мастер маникюра',
+  brows: 'Бровист',
+  lashes: 'Лэшмейкер',
+  permanent: 'Мастер перманентного макияжа',
+  makeup: 'Визажист',
+  skin: 'Косметолог',
+  massage: 'Массажист',
+  spa: 'SPA-специалист',
+  depilation: 'Мастер депиляции',
+  tanning: 'Специалист по загару',
+  teeth: 'Специалист по отбеливанию зубов',
+  packages: 'Beauty-специалист',
+  colorist: 'Парикмахер',
+  nail_master: 'Мастер маникюра',
+  stylist: 'Парикмахер',
+  browist: 'Бровист',
+  barber: 'Барбер',
+  haircut: 'Парикмахер',
+}
+
+export function specializationLabel(slug: string, groups?: DashboardServiceCategoryGroup[]): string {
+  const fromGroups = groups?.find(g => g.parentSlug === slug)
+  return fromGroups?.specialistTitleRu ?? fromGroups?.labelRu ?? fromGroups?.label ?? SPECIALIZATION_FALLBACK_LABELS[slug] ?? slug
 }
 
 export const STAFF_COLOR_SWATCHES = [

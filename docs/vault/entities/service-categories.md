@@ -1,6 +1,6 @@
 ---
 title: service categories
-updated: 2026-04-25
+updated: 2026-05-11
 source_of_truth: mirror
 code_pointers: []
 ---
@@ -23,18 +23,28 @@ code_pointers: []
 
 ```sql
 CREATE TABLE service_categories (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    salon_id    uuid REFERENCES salons(id) NULL,  -- NULL = системная (общая)
-    slug        text NOT NULL,
-    name_ru     text NOT NULL,
-    parent_slug text NOT NULL,   -- группировка по типу бизнеса
-    sort_order  int  NOT NULL DEFAULT 0,
-    is_system   bool NOT NULL DEFAULT true
+    id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    salon_id            uuid REFERENCES salons(id) NULL,  -- NULL = системная (общая)
+    slug                text NOT NULL,
+    name_ru             text NOT NULL,
+    name_en             text,
+    parent_slug         text NOT NULL,   -- группировка по типу бизнеса
+    parent_name_ru      text NOT NULL,
+    parent_name_en      text,
+    specialist_title_ru text NOT NULL,
+    specialist_title_en text,
+    sort_order          int  NOT NULL DEFAULT 0,
+    is_system           bool NOT NULL DEFAULT true
 );
 ```
 
 `salon_id = NULL` → системная, видна всем  
 `salon_id = <id>` → кастомная, видна только этому салону (реализуется позже)
+
+`parent_slug` — стабильный ключ группы (`hair`, `nails`, `brows`), а не конкретная услуга.
+`parent_name_ru` используется для заголовков групп услуг, например «Волосы».
+`specialist_title_ru` используется для отображения специализации мастера, например «Парикмахер».
+`master_profiles.specializations` и `salon_masters.specializations` хранят массив `parent_slug[]`.
 
 ---
 

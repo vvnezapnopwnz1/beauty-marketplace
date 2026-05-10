@@ -93,18 +93,20 @@ export const PriceEditControl: React.FC<PriceEditControlProps> = ({
           <Text style={[styles.currency, { color: colors.muted }]}>₽</Text>
         </View>
 
-        {!manualEnabled && editable && (
+        {editable && (
           <Pressable
             onPress={handleToggleManual}
             style={[
               styles.toggleBtn,
               {
-                backgroundColor: colors.borderLight,
+                backgroundColor: manualEnabled ? colors.surface : colors.borderLight,
+                borderWidth: manualEnabled ? 1 : 0,
+                borderColor: colors.borderLight,
               },
             ]}
           >
             <MaterialCommunityIcons
-              name="pencil-outline"
+              name={manualEnabled ? "close" : "pencil-outline"}
               size={14}
               color={colors.textSoft}
             />
@@ -114,7 +116,7 @@ export const PriceEditControl: React.FC<PriceEditControlProps> = ({
                 { color: colors.textSoft },
               ]}
             >
-              Изменить
+              {manualEnabled ? "Отмена" : "Изменить"}
             </Text>
           </Pressable>
         )}

@@ -37,12 +37,12 @@ export interface Appointment {
   startTime: string;
   endTime: string;
   status:
-    | 'pending'
-    | 'confirmed'
-    | 'completed'
-    | 'cancelled_by_salon'
-    | 'cancelled_by_client'
-    | 'no_show';
+  | 'pending'
+  | 'confirmed'
+  | 'completed'
+  | 'cancelled_by_salon'
+  | 'cancelled_by_client'
+  | 'no_show';
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -81,6 +81,13 @@ export interface VerifyOtpResponse {
   isNew: boolean;
 }
 
+export interface MasterProfileBlock {
+  specializations?: string[];
+  yearsExperience?: number | null;
+  publishedAt?: string | null;
+  onboardingStep?: string | null;
+}
+
 export interface MeResponse {
   id: string;
   phone: string;
@@ -88,6 +95,7 @@ export interface MeResponse {
   globalRole: string;
   effectiveRoles: EffectiveRoles;
   masterProfileId?: string | null;
+  master?: MasterProfileBlock | null;
 }
 
 export interface RegisterDeviceRequest {
@@ -104,4 +112,63 @@ export interface RegisterDeviceResponse {
   appVersion?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MasterCabinetProfile {
+  id: string;
+  displayName: string;
+  bio?: string | null;
+  specializations: string[];
+  yearsExperience?: number | null;
+  avatarUrl?: string | null;
+  phoneE164: string;
+  publishedAt?: string | null;
+  onboardingStep?: string | null;
+}
+
+export interface UpdateMasterCabinetProfile {
+  displayName: string;
+  bio?: string | null;
+  specializations: string[];
+  yearsExperience?: number | null;
+  avatarUrl?: string | null;
+}
+
+export type MasterOnboardingStartStatus = 'existing' | 'claimed' | 'created';
+
+export interface MasterOnboardingStartResult {
+  masterProfileId: string;
+  status: MasterOnboardingStartStatus;
+  onboardingStep?: string | null;
+  redirect: string;
+}
+
+export interface PublishMasterProfileResult {
+  masterProfileId: string;
+  publishedAt: string;
+  onboardingStep: string;
+}
+
+export interface DashboardServiceCategoryItem {
+  slug: string;
+  nameRu: string;
+  nameEn?: string | null;
+  parentSlug: string;
+  sortOrder: number;
+}
+
+export interface DashboardServiceCategoryGroup {
+  parentSlug: string;
+  label: string;
+  labelRu?: string;
+  labelEn?: string | null;
+  specialistTitleRu?: string;
+  specialistTitleEn?: string | null;
+  items: DashboardServiceCategoryItem[];
+}
+
+export interface DashboardServiceCategoriesResponse {
+  salonType?: string | null;
+  salonCategoryScopes?: string[];
+  groups: DashboardServiceCategoryGroup[];
 }

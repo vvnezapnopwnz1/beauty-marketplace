@@ -11,6 +11,7 @@ import (
 
 	"github.com/beauty-marketplace/backend/internal/repository"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var usernameRe = regexp.MustCompile(`^[A-Za-z0-9_]{3,32}$`)
@@ -27,6 +28,13 @@ func (e ValidationError) Error() string {
 		return e.Message
 	}
 	return "validation_failed"
+}
+
+type MasterProfileBlockDTO struct {
+	Specializations []string `json:"specializations"`
+	YearsExperience *int     `json:"yearsExperience,omitempty"`
+	PublishedAt     *string  `json:"publishedAt,omitempty"`
+	OnboardingStep  *string  `json:"onboardingStep,omitempty"`
 }
 
 type UserProfileDTO struct {
@@ -48,20 +56,27 @@ type UserProfileDTO struct {
 	GlobalRole      string                    `json:"globalRole"`
 	EffectiveRoles  repository.EffectiveRoles `json:"effectiveRoles"`
 	MasterProfileID *uuid.UUID                `json:"masterProfileId"`
+	Master          *MasterProfileBlockDTO    `json:"master,omitempty"`
+}
+
+type UpdateMasterBlock struct {
+	Specializations []string `json:"specializations"`
+	YearsExperience *int     `json:"yearsExperience"`
 }
 
 type UpdateUserProfileInput struct {
-	Username    *string `json:"username"`
-	DisplayName *string `json:"displayName"`
-	FirstName   *string `json:"firstName"`
-	LastName    *string `json:"lastName"`
-	BirthDate   *string `json:"birthDate"`
-	Gender      *string `json:"gender"`
-	City        *string `json:"city"`
-	Bio         *string `json:"bio"`
-	Locale      *string `json:"locale"`
-	ThemePref   *string `json:"themePref"`
-	AvatarURL   *string `json:"avatarUrl"`
+	Username    *string            `json:"username"`
+	DisplayName *string            `json:"displayName"`
+	FirstName   *string            `json:"firstName"`
+	LastName    *string            `json:"lastName"`
+	BirthDate   *string            `json:"birthDate"`
+	Gender      *string            `json:"gender"`
+	City        *string            `json:"city"`
+	Bio         *string            `json:"bio"`
+	Locale      *string            `json:"locale"`
+	ThemePref   *string            `json:"themePref"`
+	AvatarURL   *string            `json:"avatarUrl"`
+	Master      *UpdateMasterBlock `json:"master,omitempty"`
 }
 
 type UserProfileService interface {
@@ -112,11 +127,18 @@ func (s *userProfileService) GetMe(ctx context.Context, userID uuid.UUID) (*User
 	if err != nil {
 		return nil, err
 	}
-	return mapProfile(rec, roles, masterProfileID), nil
+	var mpb *repository.MasterProfileBlock
+	if masterProfileID != nil {
+		mpb, err = s.repo.GetMasterProfileBlockByUserID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return mapProfile(rec, roles, masterProfileID, mpb), nil
 }
 
 func (s *userProfileService) UpdateMe(ctx context.Context, userID uuid.UUID, in UpdateUserProfileInput) (*UserProfileDTO, error) {
-	update, err := validateAndNormalizeProfileUpdate(in)
+	update, masterUpdate, err := validateAndNormalizeProfileUpdate(in)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +153,13 @@ func (s *userProfileService) UpdateMe(ctx context.Context, userID uuid.UUID, in 
 	}
 	if err := s.repo.UpdateByID(ctx, userID, update); err != nil {
 		return nil, err
+	}
+	if masterUpdate != nil {
+		if err := s.repo.UpdateMasterProfileBlockByUserID(ctx, userID, *masterUpdate); err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, err
+			}
+		}
 	}
 	return s.GetMe(ctx, userID)
 }
@@ -179,13 +208,13 @@ func (s *userProfileService) DeleteAccount(ctx context.Context, userID uuid.UUID
 	return s.repo.SoftDeleteUserByID(ctx, userID)
 }
 
-func mapProfile(rec *repository.UserProfileRecord, roles repository.EffectiveRoles, masterProfileID *uuid.UUID) *UserProfileDTO {
+func mapProfile(rec *repository.UserProfileRecord, roles repository.EffectiveRoles, masterProfileID *uuid.UUID, mpb *repository.MasterProfileBlock) *UserProfileDTO {
 	var birthDate *string
 	if rec.BirthDate != nil {
 		s := rec.BirthDate.Format("2006-01-02")
 		birthDate = &s
 	}
-	return &UserProfileDTO{
+	out := &UserProfileDTO{
 		ID:              rec.ID,
 		Phone:           rec.PhoneE164,
 		Username:        rec.Username,
@@ -205,9 +234,27 @@ func mapProfile(rec *repository.UserProfileRecord, roles repository.EffectiveRol
 		EffectiveRoles:  roles,
 		MasterProfileID: masterProfileID,
 	}
+	if mpb != nil {
+		var publishedAt, onboardingStep *string
+		if mpb.PublishedAt != nil {
+			s := mpb.PublishedAt.UTC().Format("2006-01-02T15:04:05Z")
+			publishedAt = &s
+		}
+		if mpb.OnboardingStep != nil {
+			s := *mpb.OnboardingStep
+			onboardingStep = &s
+		}
+		out.Master = &MasterProfileBlockDTO{
+			Specializations: mpb.Specializations,
+			YearsExperience: mpb.YearsExperience,
+			PublishedAt:     publishedAt,
+			OnboardingStep:  onboardingStep,
+		}
+	}
+	return out
 }
 
-func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.UserProfileUpdate, error) {
+func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.UserProfileUpdate, *repository.MasterProfileBlockUpdate, error) {
 	var out repository.UserProfileUpdate
 
 	if in.Username != nil {
@@ -216,7 +263,7 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 			out.Username = nil
 		} else {
 			if !usernameRe.MatchString(v) {
-				return out, ValidationError{Field: "username", Message: "username_invalid"}
+				return out, nil, ValidationError{Field: "username", Message: "username_invalid"}
 			}
 			out.Username = &v
 		}
@@ -224,7 +271,7 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 	if in.DisplayName != nil {
 		v := strings.TrimSpace(*in.DisplayName)
 		if utf8.RuneCountInString(v) > 64 {
-			return out, ValidationError{Field: "displayName"}
+			return out, nil, ValidationError{Field: "displayName"}
 		}
 		if v == "" {
 			out.DisplayName = nil
@@ -235,7 +282,7 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 	if in.FirstName != nil {
 		v := strings.TrimSpace(*in.FirstName)
 		if utf8.RuneCountInString(v) > 64 {
-			return out, ValidationError{Field: "firstName"}
+			return out, nil, ValidationError{Field: "firstName"}
 		}
 		if v == "" {
 			out.FirstName = nil
@@ -246,7 +293,7 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 	if in.LastName != nil {
 		v := strings.TrimSpace(*in.LastName)
 		if utf8.RuneCountInString(v) > 64 {
-			return out, ValidationError{Field: "lastName"}
+			return out, nil, ValidationError{Field: "lastName"}
 		}
 		if v == "" {
 			out.LastName = nil
@@ -261,11 +308,11 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 		} else {
 			d, err := time.Parse("2006-01-02", v)
 			if err != nil {
-				return out, ValidationError{Field: "birthDate"}
+				return out, nil, ValidationError{Field: "birthDate"}
 			}
 			min := time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
 			if d.Before(min) || d.After(time.Now().UTC()) {
-				return out, ValidationError{Field: "birthDate"}
+				return out, nil, ValidationError{Field: "birthDate"}
 			}
 			dd := d.UTC()
 			out.BirthDate = &dd
@@ -280,14 +327,14 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 			case "male", "female", "other", "prefer_not_to_say":
 				out.Gender = &v
 			default:
-				return out, ValidationError{Field: "gender"}
+				return out, nil, ValidationError{Field: "gender"}
 			}
 		}
 	}
 	if in.City != nil {
 		v := strings.TrimSpace(*in.City)
 		if utf8.RuneCountInString(v) > 64 {
-			return out, ValidationError{Field: "city"}
+			return out, nil, ValidationError{Field: "city"}
 		}
 		if v == "" {
 			out.City = nil
@@ -298,7 +345,7 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 	if in.Bio != nil {
 		v := strings.TrimSpace(*in.Bio)
 		if utf8.RuneCountInString(v) > 500 {
-			return out, ValidationError{Field: "bio"}
+			return out, nil, ValidationError{Field: "bio"}
 		}
 		if v == "" {
 			out.Bio = nil
@@ -309,14 +356,14 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 	if in.Locale != nil {
 		v := strings.TrimSpace(*in.Locale)
 		if v != "ru" && v != "en" {
-			return out, ValidationError{Field: "locale"}
+			return out, nil, ValidationError{Field: "locale"}
 		}
 		out.Locale = &v
 	}
 	if in.ThemePref != nil {
 		v := strings.TrimSpace(*in.ThemePref)
 		if v != "light" && v != "dark" && v != "system" {
-			return out, ValidationError{Field: "themePref"}
+			return out, nil, ValidationError{Field: "themePref"}
 		}
 		out.ThemePref = &v
 	}
@@ -327,15 +374,27 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 		} else {
 			u, err := url.Parse(v)
 			if err != nil || strings.ToLower(u.Scheme) != "https" || u.Host == "" {
-				return out, ValidationError{Field: "avatarUrl"}
+				return out, nil, ValidationError{Field: "avatarUrl"}
 			}
 			out.AvatarURL = &v
 		}
 	}
 
-	return out, nil
-}
+	var masterUpdate *repository.MasterProfileBlockUpdate
+	if in.Master != nil {
+		masterUpdate = &repository.MasterProfileBlockUpdate{}
+		specs := in.Master.Specializations
+		if specs == nil {
+			specs = []string{}
+		}
+		masterUpdate.Specializations = specs
+		if in.Master.YearsExperience != nil && *in.Master.YearsExperience >= 0 {
+			masterUpdate.YearsExperience = in.Master.YearsExperience
+		}
+	}
 
+	return out, masterUpdate, nil
+}
 
 func (s *userProfileService) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
 	return s.repo.UpdateAvatar(ctx, userID, avatarURL)

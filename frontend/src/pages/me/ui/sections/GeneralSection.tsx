@@ -17,6 +17,8 @@ type FormState = {
   city: string
   bio: string
   avatarUrl: string
+  specializations: string
+  yearsExperience: string
 }
 
 export function GeneralSection() {
@@ -24,6 +26,7 @@ export function GeneralSection() {
   const profile = useAppSelector(selectProfile)
   const status = useAppSelector(selectProfileStatus)
   const fieldErrors = useAppSelector(selectProfileFieldErrors)
+  const isMaster = profile?.effectiveRoles?.isMaster ?? false
   const [form, setForm] = useState<FormState>(() => ({
     displayName: profile?.displayName ?? '',
     username: profile?.username ?? '',
@@ -32,13 +35,16 @@ export function GeneralSection() {
     city: profile?.city ?? '',
     bio: profile?.bio ?? '',
     avatarUrl: profile?.avatarUrl ?? '',
+    specializations: (profile?.master?.specializations ?? []).join(', '),
+    yearsExperience:
+      profile?.master?.yearsExperience != null ? String(profile.master.yearsExperience) : '',
   }))
 
   const bioLen = useMemo(() => form.bio.length, [form.bio])
 
   const onSave = async () => {
     dispatch(clearProfileError())
-    await dispatch(saveProfile({
+    const payload: Parameters<typeof saveProfile>[0] = {
       displayName: form.displayName || null,
       username: form.username || null,
       firstName: form.firstName || null,
@@ -46,7 +52,19 @@ export function GeneralSection() {
       city: form.city || null,
       bio: form.bio || null,
       avatarUrl: form.avatarUrl || null,
-    }))
+    }
+    if (isMaster) {
+      const specs = form.specializations
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+      const years = form.yearsExperience.trim() === '' ? null : parseInt(form.yearsExperience, 10)
+      payload.master = {
+        specializations: specs,
+        yearsExperience: Number.isNaN(years as number) ? null : years,
+      }
+    }
+    await dispatch(saveProfile(payload))
   }
 
   return (
@@ -54,21 +72,21 @@ export function GeneralSection() {
       <TextField
         label="URL аватара"
         value={form.avatarUrl}
-        onChange={(e) => setForm((s) => ({ ...s, avatarUrl: e.target.value }))}
+        onChange={e => setForm(s => ({ ...s, avatarUrl: e.target.value }))}
         error={!!fieldErrors.avatarUrl}
         helperText={fieldErrors.avatarUrl}
       />
       <TextField
         label="Отображаемое имя"
         value={form.displayName}
-        onChange={(e) => setForm((s) => ({ ...s, displayName: e.target.value }))}
+        onChange={e => setForm(s => ({ ...s, displayName: e.target.value }))}
         error={!!fieldErrors.displayName}
         helperText={fieldErrors.displayName}
       />
       <TextField
         label="Username"
         value={form.username}
-        onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
+        onChange={e => setForm(s => ({ ...s, username: e.target.value }))}
         error={!!fieldErrors.username}
         helperText={fieldErrors.username}
       />
@@ -77,7 +95,7 @@ export function GeneralSection() {
           fullWidth
           label="Имя"
           value={form.firstName}
-          onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
+          onChange={e => setForm(s => ({ ...s, firstName: e.target.value }))}
           error={!!fieldErrors.firstName}
           helperText={fieldErrors.firstName}
         />
@@ -85,7 +103,7 @@ export function GeneralSection() {
           fullWidth
           label="Фамилия"
           value={form.lastName}
-          onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
+          onChange={e => setForm(s => ({ ...s, lastName: e.target.value }))}
           error={!!fieldErrors.lastName}
           helperText={fieldErrors.lastName}
         />
@@ -93,7 +111,7 @@ export function GeneralSection() {
       <TextField
         label="Город"
         value={form.city}
-        onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
+        onChange={e => setForm(s => ({ ...s, city: e.target.value }))}
         error={!!fieldErrors.city}
         helperText={fieldErrors.city}
       />
@@ -102,10 +120,25 @@ export function GeneralSection() {
         value={form.bio}
         multiline
         minRows={4}
-        onChange={(e) => setForm((s) => ({ ...s, bio: e.target.value }))}
+        onChange={e => setForm(s => ({ ...s, bio: e.target.value }))}
         error={!!fieldErrors.bio}
         helperText={fieldErrors.bio || `${bioLen} / 500`}
       />
+      {isMaster && (
+        <>
+          <TextField
+            label="Специализации (через запятую)"
+            value={form.specializations}
+            onChange={e => setForm(s => ({ ...s, specializations: e.target.value }))}
+          />
+          <TextField
+            label="Опыт работы (лет)"
+            type="number"
+            value={form.yearsExperience}
+            onChange={e => setForm(s => ({ ...s, yearsExperience: e.target.value }))}
+          />
+        </>
+      )}
       {profile?.phone && <Alert severity="info">Телефон: {profile.phone}</Alert>}
       <Box>
         <Button variant="contained" onClick={onSave} disabled={status === 'saving'}>

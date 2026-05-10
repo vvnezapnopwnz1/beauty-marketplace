@@ -2,12 +2,14 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
 	"github.com/beauty-marketplace/backend/internal/infrastructure/persistence/model"
 	"github.com/beauty-marketplace/backend/internal/repository"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -178,4 +180,56 @@ func (r *UserProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UU
 		Model(&model.User{}).
 		Where("id = ?", userID).
 		Update("avatar_url", avatarURL).Error
+}
+
+func (r *UserProfileRepository) GetMasterProfileBlockByUserID(ctx context.Context, userID uuid.UUID) (*repository.MasterProfileBlock, error) {
+	var row struct {
+		Specializations pq.StringArray `gorm:"column:specializations"`
+		YearsExperience *int           `gorm:"column:years_experience"`
+		PublishedAt     *time.Time     `gorm:"column:published_at"`
+		OnboardingStep  *string        `gorm:"column:onboarding_step"`
+	}
+	err := r.db.WithContext(ctx).
+		Table("master_profiles").
+		Select("specializations, years_experience, published_at, onboarding_step").
+		Where("user_id = ? AND is_active = true", userID).
+		Order("created_at ASC").
+		Limit(1).
+		Scan(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if row.Specializations == nil {
+		row.Specializations = pq.StringArray{}
+	}
+	return &repository.MasterProfileBlock{
+		Specializations: []string(row.Specializations),
+		YearsExperience: row.YearsExperience,
+		PublishedAt:     row.PublishedAt,
+		OnboardingStep:  row.OnboardingStep,
+	}, nil
+}
+
+func (r *UserProfileRepository) UpdateMasterProfileBlockByUserID(ctx context.Context, userID uuid.UUID, in repository.MasterProfileBlockUpdate) error {
+	arr := pq.StringArray(in.Specializations)
+	if arr == nil {
+		arr = pq.StringArray{}
+	}
+	res := r.db.WithContext(ctx).
+		Model(&model.MasterProfile{}).
+		Where("user_id = ? AND is_active = true", userID).
+		Updates(map[string]any{
+			"specializations":  arr,
+			"years_experience": in.YearsExperience,
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

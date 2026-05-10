@@ -12,9 +12,45 @@ function fmt(d: Date) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-type Props = { appointment: MasterAppointment; onEdit: () => void };
+type Props = {
+  appointment: MasterAppointment;
+  onEdit: () => void;
+  onSaved?: () => void;
+};
 
-export function AppointmentDetailsTab({ appointment, onEdit }: Props) {
+const ALL_STATUS_ACTIONS: Array<{
+  status: MasterAppointment["status"];
+  label: string;
+}> = [
+  { status: "pending", label: "Вернуть в ожидание" },
+  { status: "confirmed", label: "Подтвердить" },
+  { status: "completed", label: "Завершить" },
+  { status: "no_show", label: "Клиент не пришёл" },
+  { status: "cancelled_by_client", label: "Отменить клиентом" },
+];
+
+const PRIMARY_ACTION: Record<
+  MasterAppointment["status"],
+  { status: MasterAppointment["status"]; label: string } | undefined
+> = {
+  pending: { status: "confirmed", label: "Подтвердить запись" },
+  confirmed: { status: "completed", label: "Завершить запись" },
+  completed: undefined,
+  cancelled_by_client: undefined,
+  cancelled_by_salon: undefined,
+  no_show: undefined,
+};
+
+function getOtherActions(current: MasterAppointment["status"]) {
+  const primary = PRIMARY_ACTION[current];
+  return ALL_STATUS_ACTIONS.filter((a) => {
+    if (a.status === current) return false;
+    if (a.status === primary?.status) return false;
+    return true;
+  });
+}
+
+export function AppointmentDetailsTab({ appointment, onEdit, onSaved }: Props) {
   const { colors } = useTheme();
   const qc = useQueryClient();
   const start = new Date(appointment.startsAt);
@@ -38,22 +74,16 @@ export function AppointmentDetailsTab({ appointment, onEdit }: Props) {
         });
       }
     },
-    onSettled: () => {
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["appointments"] });
+      onSaved?.();
     },
     onError: (err) => {
-      const msg = err instanceof Error ? err.message : "Не удалось изменить статус";
+      const msg =
+        err instanceof Error ? err.message : "Не удалось изменить статус";
       Alert.alert("Ошибка", msg);
     },
   });
-
-  const statusActions: Array<{ status: MasterAppointment["status"]; label: string }> = [
-    { status: "pending", label: "В ожидание" },
-    { status: "confirmed", label: "Подтвердить" },
-    { status: "completed", label: "Завершить" },
-    { status: "no_show", label: "Не пришёл" },
-    { status: "cancelled_by_client", label: "Отменить клиентом" },
-  ];
 
   const requestStatusChange = (nextStatus: MasterAppointment["status"]) => {
     if (nextStatus === appointment.status || patchStatus.isPending) return;
@@ -67,6 +97,27 @@ export function AppointmentDetailsTab({ appointment, onEdit }: Props) {
     }
     run();
   };
+
+  const showOtherActions = () => {
+    const actions = getOtherActions(appointment.status);
+    if (actions.length === 0) return;
+    Alert.alert(
+      "Изменить статус",
+      undefined,
+      [
+        ...actions.map((item) => ({
+          text: item.label,
+          onPress: () => requestStatusChange(item.status),
+        })),
+        { text: "Отмена", style: "cancel" as const },
+      ],
+      { cancelable: true },
+    );
+  };
+
+  const primary = PRIMARY_ACTION[appointment.status];
+  const hasOtherActions = getOtherActions(appointment.status).length > 0;
+  const canEdit = !isFinalAppointmentStatus(appointment.status);
 
   const rows: Array<{
     icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -144,57 +195,52 @@ export function AppointmentDetailsTab({ appointment, onEdit }: Props) {
       ))}
 
       <View style={styles.actions}>
-        <View style={styles.actionWrap}>
-          {statusActions
-            .filter((item) => item.status !== appointment.status)
-            .map((item) => (
-              <Pressable
-                key={item.status}
-                onPress={() => requestStatusChange(item.status)}
-                disabled={patchStatus.isPending}
-                style={[
-                  styles.actionBtn,
-                  {
-                    backgroundColor: item.status.startsWith("cancelled")
-                      ? colors.redLight
-                      : item.status === "confirmed"
-                        ? colors.greenLight
-                        : colors.surface,
-                    borderColor: item.status.startsWith("cancelled")
-                      ? `${colors.red}66`
-                      : item.status === "confirmed"
-                        ? `${colors.green}66`
-                        : colors.borderLight,
-                    opacity: patchStatus.isPending ? 0.6 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.actionText,
-                    {
-                      color: item.status.startsWith("cancelled")
-                        ? colors.red
-                        : item.status === "confirmed"
-                          ? colors.green
-                          : colors.text,
-                    },
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </Pressable>
-            ))}
-        </View>
+        {primary && (
+          <Pressable
+            onPress={() => requestStatusChange(primary.status)}
+            disabled={patchStatus.isPending}
+            style={[
+              styles.primaryActionBtn,
+              {
+                backgroundColor:
+                  primary.status === "confirmed" ? colors.green : colors.accent,
+                opacity: patchStatus.isPending ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Text
+              style={[styles.primaryActionText, { color: colors.textInverse }]}
+            >
+              {primary.label}
+            </Text>
+          </Pressable>
+        )}
+        {hasOtherActions && (
+          <Pressable
+            onPress={showOtherActions}
+            disabled={patchStatus.isPending}
+            style={styles.linkBtn}
+          >
+            <Text style={[styles.linkText, { color: colors.muted }]}>
+              Другие действия
+            </Text>
+          </Pressable>
+        )}
         <Pressable
           onPress={onEdit}
-          disabled={isFinalAppointmentStatus(appointment.status)}
-          style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
+          disabled={!canEdit}
+          style={[
+            styles.editBtn,
+            { backgroundColor: canEdit ? colors.accent : colors.surface },
+          ]}
         >
-          <Text style={[styles.primaryText, { color: colors.accentText }]}>
-            {isFinalAppointmentStatus(appointment.status)
-              ? "Редактирование недоступно"
-              : "Редактировать запись"}
+          <Text
+            style={[
+              styles.editText,
+              { color: canEdit ? colors.accentText : colors.muted },
+            ]}
+          >
+            {canEdit ? "Редактировать запись" : "Редактирование недоступно"}
           </Text>
         </Pressable>
       </View>
@@ -219,16 +265,14 @@ const styles = StyleSheet.create({
   label: { flex: 1, fontSize: 12 },
   value: { fontSize: 13, fontWeight: "600" },
   actions: { marginTop: 16, gap: 8 },
-  actionRow: { flexDirection: "row", gap: 8 },
-  actionWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: 12,
+  primaryActionBtn: {
+    paddingVertical: 14,
     borderRadius: 100,
-    borderWidth: 1.5,
     alignItems: "center",
   },
-  actionText: { fontSize: 13, fontWeight: "600" },
-  primaryBtn: { paddingVertical: 13, borderRadius: 100, alignItems: "center" },
-  primaryText: { fontSize: 13, fontWeight: "600" },
+  primaryActionText: { fontSize: 14, fontWeight: "600" },
+  linkBtn: { paddingVertical: 12, alignItems: "center" },
+  linkText: { fontSize: 13, fontWeight: "500" },
+  editBtn: { paddingVertical: 13, borderRadius: 100, alignItems: "center" },
+  editText: { fontSize: 13, fontWeight: "600" },
 });

@@ -9,6 +9,7 @@ import {
   TextInput,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import {
   deriveClientSegment,
@@ -24,6 +25,7 @@ const SEGMENTS: Array<{ key: ClientSegment; label: string }> = [
 ];
 
 export default function ClientsScreen() {
+  const router = useRouter();
   const { colors, typography } = useTheme();
   const [activeSegment, setActiveSegment] = useState<ClientSegment>("all");
   const [search, setSearch] = useState("");
@@ -200,8 +202,10 @@ export default function ClientsScreen() {
                   : null;
 
             return (
-              <View
+              <TouchableOpacity
                 key={item.id}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/clients/${item.id}`)}
                 style={[
                   styles.card,
                   {
@@ -253,23 +257,12 @@ export default function ClientsScreen() {
                   size={14}
                   color={colors.muted}
                 />
-              </View>
+              </TouchableOpacity>
             );
           })}
           <View style={styles.spacer} />
         </ScrollView>
       </View>
-
-      {/* FAB Placeholder */}
-      <TouchableOpacity
-        style={[
-          styles.fab,
-          { backgroundColor: colors.accent, shadowColor: colors.accent },
-        ]}
-        activeOpacity={0.8}
-      >
-        <Text style={[styles.fabText, { color: colors.card }]}>+</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -376,23 +369,5 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: 80,
-  },
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 18,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  fabText: {
-    fontSize: 22,
-    marginTop: -2,
   },
 });
