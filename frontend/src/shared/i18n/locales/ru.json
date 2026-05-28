@@ -364,5 +364,28 @@
       "saveFailed": "Не удалось сохранить. Повторите.",
       "publishFailed": "Не удалось опубликовать. Повторите."
     }
+  },
+  "userMeProfile": {
+    "cardTitle": "Профиль",
+    "cardSubtitle": "Учётная запись и публичные данные",
+    "sectionBasic": "Основное",
+    "sectionMaster": "Профиль мастера",
+    "avatarUrl": "URL аватара",
+    "avatarFileHint": "Загрузить фото файлом можно в кабинете мастера:",
+    "avatarFileLink": "открыть профиль",
+    "displayName": "Отображаемое имя",
+    "username": "Username",
+    "firstName": "Имя",
+    "lastName": "Фамилия",
+    "city": "Город",
+    "bio": "О себе",
+    "specializations": "Специализации",
+    "specializationsHint": "Выберите направления работы",
+    "yearsExperience": "Опыт работы (лет)",
+    "phone": "Телефон",
+    "footerNote": "Изменения видны сразу после сохранения",
+    "save": "Сохранить изменения",
+    "saving": "Сохраняем…",
+    "saveSuccess": "Сохранено"
   }
 }

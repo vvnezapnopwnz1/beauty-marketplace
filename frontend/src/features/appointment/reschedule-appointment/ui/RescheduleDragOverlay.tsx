@@ -1,22 +1,27 @@
 import { DragOverlay } from '@dnd-kit/react'
 import { Box, Typography } from '@mui/material'
-import { DashboardAppointment } from '@shared/api/dashboardApi'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
 import { formatAppointmentTimeRangeRu } from '@pages/dashboard/lib/calendarGridUtils'
 import { appointmentDurationMinutes } from '@pages/dashboard/lib/dndCalendarUtils'
+import { AppointmentDetail } from '@entities/appointment/model/types'
 
 interface RescheduleDragOverlayProps {
-  activeDragApt: DashboardAppointment | null
+  activeDragApt: AppointmentDetail | null
   pxPerMinute: number
   width?: number
 }
 
-export function RescheduleDragOverlay({ activeDragApt, pxPerMinute, width = 180 }: RescheduleDragOverlayProps) {
+export function RescheduleDragOverlay({
+  activeDragApt,
+  pxPerMinute,
+  width = 180,
+}: RescheduleDragOverlayProps) {
   const d = useDashboardPalette()
-  
+
   if (!activeDragApt) return null
 
-  const ghostHeight = appointmentDurationMinutes(activeDragApt.startsAt, activeDragApt.endsAt) * pxPerMinute
+  const ghostHeight =
+    appointmentDurationMinutes(activeDragApt.startsAt, activeDragApt.endsAt) * pxPerMinute
 
   return (
     <DragOverlay dropAnimation={null}>
@@ -44,7 +49,7 @@ export function RescheduleDragOverlay({ activeDragApt, pxPerMinute, width = 180 
         }}
       >
         <Typography variant="caption" noWrap fontWeight={700} sx={{ fontSize: 9 }}>
-          {activeDragApt.serviceName}
+          {activeDragApt.serviceNames.join(', ')}
         </Typography>
         <Typography variant="caption" noWrap sx={{ fontSize: 9 }}>
           {activeDragApt.clientLabel}

@@ -13,6 +13,8 @@ import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useCreateMasterServiceMutation } from "../../src/entities/services/api";
+import { useServiceCategories } from "../../src/features/services/useServiceCategories";
+import { ServiceCategoryPicker } from "../../src/components/services/ServiceCategoryPicker";
 
 function parsePriceRubToCents(raw: string): number | null {
   const t = raw.trim().replace(/\s+/g, "").replace(",", ".");
@@ -41,16 +43,22 @@ export default function NewServiceScreen() {
   };
 
   const [name, setName] = useState("");
+  const [categorySlug, setCategorySlug] = useState("");
   const [durationStr, setDurationStr] = useState("60");
   const [priceStr, setPriceStr] = useState("");
   const [description, setDescription] = useState("");
 
+  const { filteredGroups, loading: categoriesLoading } = useServiceCategories();
   const create = useCreateMasterServiceMutation();
 
   const submit = () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       Alert.alert("Название обязательно", "Введите название услуги.");
+      return;
+    }
+    if (!categorySlug) {
+      Alert.alert("Категория обязательна", "Выберите категорию услуги.");
       return;
     }
     const duration = parseDurationMin(durationStr);
@@ -66,6 +74,7 @@ export default function NewServiceScreen() {
     create.mutate(
       {
         name: trimmedName,
+        categorySlug,
         durationMinutes: duration,
         priceCents,
         description: description.trim() || null,
@@ -124,6 +133,18 @@ export default function NewServiceScreen() {
           style={inputStyle}
           autoFocus
         />
+
+        {categoriesLoading ? (
+          <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>
+            Загрузка категорий...
+          </Text>
+        ) : (
+          <ServiceCategoryPicker
+            filteredGroups={filteredGroups}
+            selectedSlug={categorySlug}
+            onSelect={setCategorySlug}
+          />
+        )}
 
         <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
           <View style={{ flex: 1 }}>

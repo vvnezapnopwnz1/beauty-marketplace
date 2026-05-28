@@ -5,6 +5,8 @@ import { useRouter } from "expo-router";
 import { useTheme } from "../../shared/theme/useTheme";
 import { useTodayQuery } from "../../entities/today/api";
 import { useMeQuery } from "../../entities/me/api";
+import { useMasterServicesQuery } from "../../entities/services/api";
+import { useMasterScheduleQuery } from "../../entities/schedule/api";
 import { RoleModeToggle } from "./RoleModeToggle";
 import { RevenueHeroCard } from "./RevenueHeroCard";
 import { QuickActionsRow, type QuickAction } from "./QuickActionsRow";
@@ -17,6 +19,8 @@ export function MoreScreen() {
   const today = new Date().toISOString().slice(0, 10);
   const { data: todayData } = useTodayQuery(today);
   const { data: me } = useMeQuery();
+  const { data: services = [] } = useMasterServicesQuery();
+  const { data: schedule = [] } = useMasterScheduleQuery();
   const [mode, setMode] = useState<"master" | "salon">("master");
 
   const revenueRub = (todayData?.revenueCents ?? 0) / 100;
@@ -29,6 +33,15 @@ export function MoreScreen() {
     71,
     Math.max(20, revenueRub / 1000) || 48,
   ]; // placeholder until weekly API exists
+
+  const jsDay = new Date().getDay();
+  const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1;
+  const todaySchedule = schedule.find((s) => s.dayOfWeek === dayOfWeek);
+  const scheduleText = todaySchedule
+    ? todaySchedule.isClosed
+      ? "Выходной"
+      : `${todaySchedule.opensAt}–${todaySchedule.closesAt}`
+    : "9:00–20:00";
 
   const quickActions: QuickAction[] = [
     {
@@ -63,7 +76,7 @@ export function MoreScreen() {
       label: "Запросы",
       icon: "chat-question-outline",
       color: colors.hair,
-      onPress: () => router.push("/(tabs)/notifications-screen"),
+      onPress: () => router.push("/(tabs)/notifications-real"),
     },
     {
       id: "notif",
@@ -71,7 +84,7 @@ export function MoreScreen() {
       icon: "bell-outline",
       color: colors.accent,
       badge: me?.effectiveRoles?.pendingInvites ?? 0,
-      onPress: () => router.push("/(tabs)/notifications-screen"),
+      onPress: () => router.push("/(tabs)/notifications-real"),
     },
     {
       id: "settings",
@@ -128,10 +141,14 @@ export function MoreScreen() {
                   { color: colors.text, fontFamily: typography.fonts.serif },
                 ]}
               >
-                {todayData?.appointmentsCount ?? "—"}
+                {services.length}
               </Text>
               <Text style={[styles.bentoSub, { color: colors.textSoft }]}>
-                записей сегодня
+                {services.length === 1
+                  ? "услуга"
+                  : services.length >= 2 && services.length <= 4
+                    ? "услуги"
+                    : "услуг"}
               </Text>
             </BentoCard>
           }
@@ -149,7 +166,7 @@ export function MoreScreen() {
                   { color: colors.massage, marginTop: 6, fontWeight: "600" },
                 ]}
               >
-                9:00–20:00
+                {scheduleText}
               </Text>
             </BentoCard>
           }
@@ -199,7 +216,7 @@ export function MoreScreen() {
 
         {/* Notifications */}
         <BentoCard
-          onPress={() => router.push("/(tabs)/notifications-screen")}
+          onPress={() => router.push("/(tabs)/notifications-real")}
           gradient={[`${colors.accent}1F`, `${colors.accent}08`]}
         >
           <Text style={[styles.bentoEyebrow, { color: colors.accent }]}>

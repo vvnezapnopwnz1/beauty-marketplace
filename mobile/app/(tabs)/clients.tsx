@@ -9,13 +9,14 @@ import {
   TextInput,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import {
   deriveClientSegment,
   type ClientSegment,
+  type MasterClient,
   useMasterClientsQuery,
 } from "../../src/entities/clients/api";
+import { ClientSheet } from "../../src/features/clients/ClientSheet";
 
 const SEGMENTS: Array<{ key: ClientSegment; label: string }> = [
   { key: "all", label: "Все" },
@@ -25,10 +26,10 @@ const SEGMENTS: Array<{ key: ClientSegment; label: string }> = [
 ];
 
 export default function ClientsScreen() {
-  const router = useRouter();
   const { colors, typography } = useTheme();
   const [activeSegment, setActiveSegment] = useState<ClientSegment>("all");
   const [search, setSearch] = useState("");
+  const [openClient, setOpenClient] = useState<MasterClient | null>(null);
   const { data = [], isLoading, isError } = useMasterClientsQuery(search);
 
   const rows = useMemo(
@@ -182,7 +183,7 @@ export default function ClientsScreen() {
             </Text>
           ) : null}
           {rows.map((item) => {
-            const visits = item.visitCount ?? item.visitsCount ?? 0;
+            const visits = item.visitCount;
             const segment = deriveClientSegment(item);
             const initials = (item.displayName ?? "•")
               .split(" ")
@@ -205,7 +206,7 @@ export default function ClientsScreen() {
               <TouchableOpacity
                 key={item.id}
                 activeOpacity={0.7}
-                onPress={() => router.push(`/clients/${item.id}`)}
+                onPress={() => setOpenClient(item)}
                 style={[
                   styles.card,
                   {
@@ -263,6 +264,8 @@ export default function ClientsScreen() {
           <View style={styles.spacer} />
         </ScrollView>
       </View>
+
+      <ClientSheet client={openClient} onClose={() => setOpenClient(null)} />
     </SafeAreaView>
   );
 }

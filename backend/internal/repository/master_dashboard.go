@@ -96,6 +96,7 @@ type MasterDashboardRepository interface {
 	CreateMasterClient(ctx context.Context, c *model.MasterClient) error
 	UpdateMasterClient(ctx context.Context, c *model.MasterClient) error
 	DeleteMasterClient(ctx context.Context, masterProfileID, clientID uuid.UUID) error
+	GetClientVisitCounts(ctx context.Context, masterProfileID uuid.UUID, clientIDs []uuid.UUID) (map[uuid.UUID]int, error)
 
 	ListMasterExpenseCategories(ctx context.Context, masterProfileID uuid.UUID) ([]model.MasterExpenseCategory, error)
 	CreateMasterExpenseCategory(ctx context.Context, category *model.MasterExpenseCategory) error

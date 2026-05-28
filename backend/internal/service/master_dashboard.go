@@ -40,6 +40,7 @@ type MasterDashboardService interface {
 
 	// MasterClients
 	ListMasterClients(ctx context.Context, userID uuid.UUID, search, sortBy, sortDir string, page, pageSize int) ([]MasterClientDTO, int64, error)
+	GetMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) (*MasterClientDTO, error)
 	CreateMasterClient(ctx context.Context, userID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error)
 	UpdateMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error)
 	DeleteMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) error
@@ -110,6 +111,7 @@ type MasterClientDTO struct {
 	DisplayName  string     `json:"displayName"`
 	Notes        *string    `json:"notes,omitempty"`
 	ExtraContact *string    `json:"extraContact,omitempty"`
+	VisitCount   int        `json:"visitCount"`
 }
 
 type CreateMasterClientInput struct {
@@ -330,13 +332,17 @@ func masterProfileToDTO(mp *model.MasterProfile, userProf *UserProfileDTO) *Mast
 	if userProf.DisplayName != nil {
 		displayName = *userProf.DisplayName
 	}
+	avatarURL := mp.AvatarURL
+	if avatarURL == nil {
+		avatarURL = userProf.AvatarURL
+	}
 	return &MasterProfileCabinetDTO{
 		ID:              mp.ID,
 		DisplayName:     displayName,
 		Bio:             userProf.Bio,
 		Specializations: specs,
 		YearsExperience: mp.YearsExperience,
-		AvatarURL:       userProf.AvatarURL,
+		AvatarURL:       avatarURL,
 		PhoneE164:       phone,
 		PublishedAt:     mp.PublishedAt,
 		OnboardingStep:  mp.OnboardingStep,
@@ -356,7 +362,6 @@ func (s *masterDashboardService) UpdateMyProfile(ctx context.Context, userID uui
 	_, err := s.profiles.UpdateMe(ctx, userID, UpdateUserProfileInput{
 		DisplayName: &dn,
 		Bio:         in.Bio,
-		AvatarURL:   in.AvatarURL,
 	})
 	if err != nil {
 		return nil, err
@@ -1059,11 +1064,45 @@ func (s *masterDashboardService) ListMasterClients(ctx context.Context, userID u
 	if err != nil {
 		return nil, 0, err
 	}
+
+	// Calculate visit counts for each client
+	visitCounts, err := s.calculateClientVisitCounts(ctx, mpID, rows)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	out := make([]MasterClientDTO, len(rows))
 	for i, r := range rows {
-		out[i] = masterClientToDTO(&r)
+		out[i] = masterClientToDTOWithVisitCount(&r, visitCounts[r.ID])
 	}
 	return out, total, nil
+}
+
+func (s *masterDashboardService) GetMasterClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) (*MasterClientDTO, error) {
+	mpID, err := s.masterProfileID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if mpID == uuid.Nil {
+		return nil, fmt.Errorf("master profile required")
+	}
+
+	c, err := s.repo.GetMasterClient(ctx, mpID, clientID)
+	if err != nil {
+		return nil, err
+	}
+	if c == nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	// Calculate visit count for this client
+	visitCounts, err := s.repo.GetClientVisitCounts(ctx, mpID, []uuid.UUID{clientID})
+	if err != nil {
+		return nil, err
+	}
+
+	dto := masterClientToDTOWithVisitCount(c, visitCounts[clientID])
+	return &dto, nil
 }
 
 func (s *masterDashboardService) CreateMasterClient(ctx context.Context, userID uuid.UUID, in CreateMasterClientInput) (*MasterClientDTO, error) {
@@ -1572,12 +1611,38 @@ func masterClientToDTO(m *model.MasterClient) MasterClientDTO {
 		DisplayName:  m.DisplayName,
 		Notes:        m.Notes,
 		ExtraContact: m.ExtraContact,
+		VisitCount:   0,
+	}
+}
+
+func masterClientToDTOWithVisitCount(m *model.MasterClient, visitCount int) MasterClientDTO {
+	return MasterClientDTO{
+		ID:           m.ID,
+		UserID:       m.UserID,
+		PhoneE164:    m.PhoneE164,
+		DisplayName:  m.DisplayName,
+		Notes:        m.Notes,
+		ExtraContact: m.ExtraContact,
+		VisitCount:   visitCount,
 	}
 }
 
 func masterClientToDTOPointer(m *model.MasterClient) *MasterClientDTO {
 	dto := masterClientToDTO(m)
 	return &dto
+}
+
+func (s *masterDashboardService) calculateClientVisitCounts(ctx context.Context, masterProfileID uuid.UUID, clients []model.MasterClient) (map[uuid.UUID]int, error) {
+	if len(clients) == 0 {
+		return make(map[uuid.UUID]int), nil
+	}
+
+	clientIDs := make([]uuid.UUID, len(clients))
+	for i, c := range clients {
+		clientIDs[i] = c.ID
+	}
+
+	return s.repo.GetClientVisitCounts(ctx, masterProfileID, clientIDs)
 }
 
 func (s *masterDashboardService) UpdateAvatar(ctx context.Context, masterProfileID uuid.UUID, avatarURL string) error {

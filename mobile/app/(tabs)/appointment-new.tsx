@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -10,19 +10,26 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import { useTheme } from "../../src/shared/theme/useTheme";
-import { useCreatePersonalAppointmentMutation } from "../../src/entities/appointments/api";
-import { useMasterServicesQuery } from "../../src/entities/services/api";
-import { PriceEditControl } from "../../src/components/appointments/PriceEditControl";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  usePathname,
+  useRouter,
+} from "expo-router";
+import { useTheme } from "@shared/theme/useTheme";
+import { useCreatePersonalAppointmentMutation } from "@entities/appointments/api";
+import { useMasterServicesQuery } from "@entities/services/api";
+import { PriceEditControl } from "@components/appointments/PriceEditControl";
+import { ClientAutocompleteField } from "@components/appointments/ClientAutocompleteField";
 import {
   calculateSelectedServicesTotalCents,
   shouldSendManualTotal,
-} from "../../src/shared/lib/appointmentPriceForm";
+} from "@shared/lib/appointmentPriceForm";
+import { formatPhone, parseOptionalRuPhone } from "@shared/lib/formatPhone";
 import {
-  formatPhone,
-  parseOptionalRuPhone,
-} from "../../src/shared/lib/formatPhone";
+  useCreateMasterClientMutation,
+  type MasterClient,
+} from "@entities/clients/api";
 
 function combineDateTime(dateISO: string, timeHHmm: string): Date {
   const [h, m] = timeHHmm.split(":").map(Number);
@@ -54,10 +61,29 @@ export default function NewAppointmentScreen() {
   const [clientNote, setClientNote] = useState("");
   const [manualPrice, setManualPrice] = useState(false);
   const [totalCents, setTotalCents] = useState<number | null>(null);
+  const [selectedClient, setSelectedClient] = useState<MasterClient | null>(
+    null,
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      setDate(todayStr);
+      setTime("10:00");
+      setServiceIds([]);
+      setGuestName("");
+      setGuestPhone("");
+      setClientNote("");
+      setManualPrice(false);
+      setTotalCents(null);
+      setSelectedClient(null);
+    }, []),
+  );
 
   const { data: services, isLoading: servicesLoading } =
     useMasterServicesQuery();
   const create = useCreatePersonalAppointmentMutation();
+  const createClient = useCreateMasterClientMutation();
 
   const activeServices = (services ?? []).filter((s) => s.isActive !== false);
   const hasServices = activeServices.length > 0;
@@ -66,7 +92,7 @@ export default function NewAppointmentScreen() {
     [serviceIds, activeServices],
   );
 
-  const submit = () => {
+  const submit = async () => {
     if (!serviceIds.length) {
       Alert.alert("Не выбрана услуга", "Выберите хотя бы одну услугу.");
       return;
@@ -84,6 +110,25 @@ export default function NewAppointmentScreen() {
       return;
     }
     const startsAt = combineDateTime(date, time).toISOString();
+
+    let clientUserId = selectedClient?.userId ?? undefined;
+    if (!selectedClient && guestName.trim()) {
+      try {
+        const created = await createClient.mutateAsync({
+          displayName: guestName.trim(),
+          ...(guestPhoneParsed.kind === "valid"
+            ? { phone: guestPhoneParsed.e164 }
+            : {}),
+        });
+        clientUserId = created.userId ?? undefined;
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Не удалось создать клиента";
+        Alert.alert("Ошибка", msg);
+        return;
+      }
+    }
+
     create.mutate(
       {
         serviceIds,
@@ -92,6 +137,7 @@ export default function NewAppointmentScreen() {
         guestPhone:
           guestPhoneParsed.kind === "valid" ? guestPhoneParsed.e164 : "",
         clientNote: clientNote.trim() || undefined,
+        clientUserId,
         totalCents: shouldSendManualTotal({
           manualEnabled: manualPrice,
           valueCents: totalCents,
@@ -154,7 +200,7 @@ export default function NewAppointmentScreen() {
           <Pressable
             onPress={() =>
               router.push({
-                pathname: "/services/new",
+                pathname: "/services-new",
                 params: { returnPath: pathname },
               } as any)
             }
@@ -293,12 +339,12 @@ export default function NewAppointmentScreen() {
         <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>
           КЛИЕНТ *
         </Text>
-        <TextInput
+        <ClientAutocompleteField
           value={guestName}
           onChangeText={setGuestName}
-          placeholder="Имя"
-          placeholderTextColor={colors.muted}
-          style={inputStyle}
+          onSelectClient={setSelectedClient}
+          phoneValue={guestPhone}
+          onPhoneChange={setGuestPhone}
         />
         <TextInput
           value={guestPhone}
@@ -337,12 +383,12 @@ export default function NewAppointmentScreen() {
 
         <Pressable
           onPress={submit}
-          disabled={create.isPending || !hasServices}
+          disabled={create.isPending || createClient.isPending || !hasServices}
           style={[
             styles.submit,
             {
               backgroundColor:
-                create.isPending || !hasServices
+                create.isPending || createClient.isPending || !hasServices
                   ? `${colors.accent}80`
                   : colors.accent,
             },
@@ -355,7 +401,9 @@ export default function NewAppointmentScreen() {
               fontWeight: "600",
             }}
           >
-            {create.isPending ? "Создаётся..." : "Создать запись"}
+            {create.isPending || createClient.isPending
+              ? "Создаётся..."
+              : "Создать запись"}
           </Text>
         </Pressable>
       </ScrollView>

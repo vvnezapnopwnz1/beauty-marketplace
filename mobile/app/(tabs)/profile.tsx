@@ -57,7 +57,7 @@ export default function ProfileScreen() {
           icon: "account-outline",
           label: "Личная информация",
           sub: "Имя, фото, контакты",
-          href: "/(settings)/profile",
+          href: "/(tabs)/profile-info",
         },
         { icon: "star-outline", label: "Портфолио", sub: "—" },
       ],
@@ -69,7 +69,7 @@ export default function ProfileScreen() {
           icon: "bell-outline",
           label: "Уведомления",
           sub: "Push и Telegram",
-          href: "/(settings)/notifications",
+          href: "/(tabs)/notifications-real",
         },
         {
           icon: "logout",
@@ -211,7 +211,11 @@ export default function ProfileScreen() {
               <View
                 style={[styles.inviteBadge, { backgroundColor: colors.accent }]}
               >
-                <Text style={styles.inviteBadgeText}>{pendingInvites}</Text>
+                <Text
+                  style={[styles.inviteBadgeText, { color: colors.accentText }]}
+                >
+                  {pendingInvites}
+                </Text>
               </View>
             </View>
           ) : null}
@@ -339,7 +343,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   inviteBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 100 },
-  inviteBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  inviteBadgeText: { fontSize: 10, fontWeight: "700" },
   sectionLabel: {
     fontSize: 10,
     fontWeight: "600",

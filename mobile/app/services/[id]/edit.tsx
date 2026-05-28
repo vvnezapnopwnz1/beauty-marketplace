@@ -6,8 +6,8 @@ import {
   Text,
   TextInput,
   Pressable,
-  Switch,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -17,6 +17,8 @@ import {
   useMasterServicesQuery,
   useUpdateMasterServiceMutation,
 } from "../../../src/entities/services/api";
+import { useServiceCategories } from "../../../src/features/services/useServiceCategories";
+import { ServiceCategoryPicker } from "../../../src/components/services/ServiceCategoryPicker";
 
 function parsePriceRubToCents(raw: string): number | null {
   const t = raw.trim().replace(/\s+/g, "").replace(",", ".");
@@ -36,32 +38,32 @@ export default function EditServiceScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data: services = [] } = useMasterServicesQuery();
+  const { data: services = [], isLoading: servicesLoading } =
+    useMasterServicesQuery();
   const service = services.find((s) => s.id === id);
 
+  const { filteredGroups, loading: categoriesLoading } = useServiceCategories();
+  const update = useUpdateMasterServiceMutation();
+
   const [name, setName] = useState("");
+  const [categorySlug, setCategorySlug] = useState("");
   const [durationStr, setDurationStr] = useState("60");
   const [priceStr, setPriceStr] = useState("");
   const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    if (service && !initialized) {
-      setName(service.name);
-      setDurationStr(String(service.durationMinutes));
+    if (service) {
+      setName(service.name ?? "");
+      setCategorySlug(service.categorySlug ?? service.category ?? "");
+      setDurationStr(String(service.durationMinutes ?? 60));
       setPriceStr(
         service.priceCents != null
           ? String(service.priceCents / 100)
           : ""
       );
       setDescription(service.description ?? "");
-      setIsActive(service.isActive);
-      setInitialized(true);
     }
-  }, [service, initialized]);
-
-  const update = useUpdateMasterServiceMutation();
+  }, [service]);
 
   const submit = () => {
     const trimmedName = name.trim();
@@ -69,17 +71,25 @@ export default function EditServiceScreen() {
       Alert.alert("Название обязательно", "Введите название услуги.");
       return;
     }
+    if (!categorySlug) {
+      Alert.alert("Категория обязательна", "Выберите категорию услуги.");
+      return;
+    }
     const duration = parseDurationMin(durationStr);
     if (duration <= 0) {
-      Alert.alert("Некорректная длительность", "Укажите длительность в минутах.");
+      Alert.alert(
+        "Некорректная длительность",
+        "Укажите длительность в минутах.",
+      );
       return;
     }
     const priceCents = parsePriceRubToCents(priceStr);
 
     update.mutate(
       {
-        id: id!,
+        id,
         name: trimmedName,
+        categorySlug,
         durationMinutes: duration,
         priceCents,
         description: description.trim() || null,
@@ -88,10 +98,10 @@ export default function EditServiceScreen() {
         onSuccess: () => router.back(),
         onError: (err) => {
           const msg =
-            err instanceof Error ? err.message : "Не удалось сохранить услугу";
+            err instanceof Error ? err.message : "Не удалось обновить услугу";
           Alert.alert("Ошибка", msg);
         },
-      }
+      },
     );
   };
 
@@ -103,6 +113,26 @@ export default function EditServiceScreen() {
       color: colors.text,
     },
   ];
+
+  if (servicesLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: colors.bg, justifyContent: "center", alignItems: "center" }]}
+      >
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!service) {
+    return (
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: colors.bg, justifyContent: "center", alignItems: "center" }]}
+      >
+        <Text style={{ color: colors.text }}>Услуга не найдена</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
@@ -120,7 +150,7 @@ export default function EditServiceScreen() {
             { color: colors.text, fontFamily: typography.fonts.serif },
           ]}
         >
-          Редактировать услугу
+          Редактирование услуги
         </Text>
         <View style={{ width: 26 }} />
       </View>
@@ -138,6 +168,18 @@ export default function EditServiceScreen() {
           style={inputStyle}
         />
 
+        {categoriesLoading ? (
+          <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>
+            Загрузка категорий...
+          </Text>
+        ) : (
+          <ServiceCategoryPicker
+            filteredGroups={filteredGroups}
+            selectedSlug={categorySlug}
+            onSelect={setCategorySlug}
+          />
+        )}
+
         <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.label, { color: colors.muted }]}>
@@ -153,7 +195,9 @@ export default function EditServiceScreen() {
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.label, { color: colors.muted }]}>ЦЕНА (₽)</Text>
+            <Text style={[styles.label, { color: colors.muted }]}>
+              ЦЕНА (₽)
+            </Text>
             <TextInput
               value={priceStr}
               onChangeText={setPriceStr}
@@ -180,23 +224,6 @@ export default function EditServiceScreen() {
           ]}
         />
 
-        <View
-          style={[
-            styles.toggleRow,
-            { backgroundColor: colors.surface, borderColor: colors.borderLight },
-          ]}
-        >
-          <Text style={[styles.toggleLabel, { color: colors.text }]}>
-            Услуга активна
-          </Text>
-          <Switch
-            value={isActive}
-            onValueChange={setIsActive}
-            trackColor={{ false: colors.borderLight, true: colors.accent }}
-            thumbColor={colors.accentText}
-          />
-        </View>
-
         <Pressable
           onPress={submit}
           disabled={update.isPending}
@@ -216,7 +243,7 @@ export default function EditServiceScreen() {
               fontWeight: "600",
             }}
           >
-            {update.isPending ? "Сохраняется..." : "Сохранить"}
+            {update.isPending ? "Сохранение..." : "Сохранить"}
           </Text>
         </Pressable>
       </ScrollView>
@@ -248,16 +275,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 13,
   },
-  toggleRow: {
-    marginTop: 16,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  toggleLabel: { fontSize: 14, fontWeight: "600" },
   submit: {
     marginTop: 22,
     paddingVertical: 14,

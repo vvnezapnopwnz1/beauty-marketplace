@@ -809,6 +809,76 @@ func (r *masterDashboardRepository) DeleteMasterClient(ctx context.Context, mast
 	return nil
 }
 
+func (r *masterDashboardRepository) GetClientVisitCounts(ctx context.Context, masterProfileID uuid.UUID, clientIDs []uuid.UUID) (map[uuid.UUID]int, error) {
+	if len(clientIDs) == 0 {
+		return make(map[uuid.UUID]int), nil
+	}
+
+	// Get the clients to build phone/user ID mappings
+	var clients []model.MasterClient
+	err := r.db.WithContext(ctx).
+		Where("id IN ? AND master_profile_id = ?", clientIDs, masterProfileID).
+		Find(&clients).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Build maps for matching
+	clientPhones := make(map[string]uuid.UUID)
+	clientUserIDs := make(map[uuid.UUID]uuid.UUID)
+	for _, c := range clients {
+		if c.PhoneE164 != nil {
+			clientPhones[*c.PhoneE164] = c.ID
+		}
+		if c.UserID != nil {
+			clientUserIDs[*c.UserID] = c.ID
+		}
+	}
+
+	// Query appointments to count visits
+	type VisitCountRow struct {
+		GuestPhoneE164 *string
+		ClientUserID   *uuid.UUID
+		Count          int
+	}
+
+	var rows []VisitCountRow
+	err = r.db.WithContext(ctx).
+		Table("appointments").
+		Select("guest_phone_e164, client_user_id, COUNT(*) as count").
+		Where("master_profile_id = ?", masterProfileID).
+		Where("status IN (?)", []string{"completed", "no_show"}).
+		Group("guest_phone_e164, client_user_id").
+		Find(&rows).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Aggregate counts by client ID
+	visitCounts := make(map[uuid.UUID]int)
+	for _, id := range clientIDs {
+		visitCounts[id] = 0
+	}
+
+	for _, row := range rows {
+		// Match by phone
+		if row.GuestPhoneE164 != nil {
+			if clientID, ok := clientPhones[*row.GuestPhoneE164]; ok {
+				visitCounts[clientID] += row.Count
+			}
+		}
+		// Match by user ID
+		if row.ClientUserID != nil {
+			if clientID, ok := clientUserIDs[*row.ClientUserID]; ok {
+				visitCounts[clientID] += row.Count
+			}
+		}
+	}
+
+	return visitCounts, nil
+}
+
 // CreateOwnedProfile inserts a new master_profiles row owned by the given user.
 func (r *masterDashboardRepository) CreateOwnedProfile(ctx context.Context, userID uuid.UUID, displayName string, phone *string) (*model.MasterProfile, error) {
 	step := "profile"

@@ -6,6 +6,8 @@ import type {
   UpdateMasterCabinetProfile,
   DashboardServiceCategoriesResponse,
   PublishMasterProfileResult,
+  MasterServiceDTO,
+  CreateMasterServiceInput,
 } from './types';
 
 export async function startMasterOnboarding(): Promise<MasterOnboardingStartResult> {
@@ -36,4 +38,23 @@ export async function advanceMasterOnboardingStep(step: string): Promise<{ onboa
 export async function publishMasterProfile(): Promise<PublishMasterProfileResult> {
   const { data } = await apiClient.post<PublishMasterProfileResult>(MASTER.publish);
   return data;
+}
+
+export async function getMasterServices(): Promise<MasterServiceDTO[]> {
+  const { data } = await apiClient.get<MasterServiceDTO[]>(MASTER.services);
+  return data;
+}
+
+export async function createMasterService(body: CreateMasterServiceInput): Promise<MasterServiceDTO> {
+  const { data } = await apiClient.post<MasterServiceDTO>(MASTER.services, body);
+  return data;
+}
+
+export async function updateMasterService(id: string, body: CreateMasterServiceInput): Promise<MasterServiceDTO> {
+  const { data } = await apiClient.put<MasterServiceDTO>(MASTER.service(id), body);
+  return data;
+}
+
+export async function deleteMasterService(id: string): Promise<void> {
+  await apiClient.delete(MASTER.service(id));
 }

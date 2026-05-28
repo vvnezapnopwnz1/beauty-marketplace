@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/beauty-marketplace/backend/internal/repository"
+	"github.com/beauty-marketplace/backend/internal/servicecategory"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -373,8 +375,19 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 			out.AvatarURL = nil
 		} else {
 			u, err := url.Parse(v)
-			if err != nil || strings.ToLower(u.Scheme) != "https" || u.Host == "" {
+			if err != nil || u.Host == "" {
 				return out, nil, ValidationError{Field: "avatarUrl"}
+			}
+			scheme := strings.ToLower(u.Scheme)
+			if scheme != "https" && scheme != "http" {
+				return out, nil, ValidationError{Field: "avatarUrl"}
+			}
+			// Allow http only for local development
+			if scheme == "http" {
+				host := strings.ToLower(u.Hostname())
+				if host != "localhost" && host != "127.0.0.1" && host != "::1" && !strings.HasSuffix(host, ".local") {
+					return out, nil, ValidationError{Field: "avatarUrl"}
+				}
 			}
 			out.AvatarURL = &v
 		}
@@ -387,7 +400,14 @@ func validateAndNormalizeProfileUpdate(in UpdateUserProfileInput) (repository.Us
 		if specs == nil {
 			specs = []string{}
 		}
-		masterUpdate.Specializations = specs
+		normSpecs, invalidSpecs := servicecategory.NormalizeParentSlugList(specs)
+		if len(invalidSpecs) > 0 {
+			return out, nil, ValidationError{
+				Field:   "specializations",
+				Message: fmt.Sprintf("invalid specializations: %s", strings.Join(invalidSpecs, ", ")),
+			}
+		}
+		masterUpdate.Specializations = normSpecs
 		if in.Master.YearsExperience != nil && *in.Master.YearsExperience >= 0 {
 			masterUpdate.YearsExperience = in.Master.YearsExperience
 		}

@@ -25,7 +25,14 @@ import {
 export default function EditClientScreen() {
   const { colors, typography } = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, returnPath } = useLocalSearchParams<{
+    id: string;
+    returnPath?: string;
+  }>();
+
+  const goBack = () => {
+    router.back();
+  };
 
   const { data: client, isLoading, isError } = useMasterClientQuery(id);
   const update = useUpdateMasterClientMutation(id);
@@ -59,7 +66,7 @@ export default function EditClientScreen() {
         notes: notes.trim() || null,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: () => goBack(),
         onError: (err) => {
           const msg =
             err instanceof Error ? err.message : "Не удалось обновить клиента";
@@ -104,7 +111,7 @@ export default function EditClientScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           accessibilityLabel="Назад"
           hitSlop={12}
         >
@@ -132,7 +139,6 @@ export default function EditClientScreen() {
           placeholder="Например, Анна И."
           placeholderTextColor={colors.muted}
           style={inputStyle}
-          autoFocus
         />
 
         <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>

@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Avatar,
   Box,
   Button,
+  Chip,
+  CircularProgress,
   Drawer,
   IconButton,
   Menu,
   MenuItem,
   Paper,
+  Snackbar,
   Stack,
   Switch,
   TextField,
@@ -24,7 +27,6 @@ import { logout, selectUser } from '@features/auth-by-phone/model/authSlice'
 import { selectProfile } from '@features/edit-profile/model/profileSlice'
 import { useThemeMode } from '@shared/theme'
 import { useDashboardPalette } from '@pages/dashboard/theme/useDashboardPalette'
-import { ChipMultiSelect } from '@pages/dashboard/ui/components/formComponents'
 import {
   STAFF_COLOR_SWATCHES,
   specializationLabel,
@@ -37,7 +39,7 @@ import {
   getMyMasterInvites,
   getMyMasterProfile,
   getMyMasterSalons,
-  updateMyMasterProfile,
+  uploadMasterAvatar,
   type MasterCabinetProfile,
   type MasterInviteDTO,
   type MasterSalonMembershipDTO,
@@ -121,19 +123,17 @@ function ProfileSection({
 }) {
   const d = useDashboardPalette()
   const navigate = useNavigate()
-  const [specs, setSpecs] = useState<string[]>(profile.specializations ?? [])
-  const [years, setYears] = useState(
-    profile.yearsExperience != null ? String(profile.yearsExperience) : '',
-  )
-  const [saving, setSaving] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl ?? '')
+  const [uploading, setUploading] = useState(false)
+  const [snack, setSnack] = useState<string | null>(null)
   const [specializationGroups, setSpecializationGroups] = useState<DashboardServiceCategoryGroup[]>(
     [],
   )
 
   useEffect(() => {
-    setSpecs(profile.specializations ?? [])
-    setYears(profile.yearsExperience != null ? String(profile.yearsExperience) : '')
+    setAvatarUrl(profile.avatarUrl ?? '')
   }, [profile])
 
   useEffect(() => {
@@ -148,46 +148,93 @@ function ProfileSection({
   }, [])
 
   const accent = salons[0] ? pickColorFromSalonId(salons[0].salonId) : d.accent
-
-  async function onSave() {
-    setSaving(true)
-    setError(null)
-    try {
-      const y = years.trim() === '' ? undefined : Number(years)
-      const out = await updateMyMasterProfile({
-        displayName: profile.displayName,
-        bio: profile.bio ?? null,
-        specializations: specs,
-        yearsExperience: Number.isFinite(y as number) ? (y as number) : undefined,
-        avatarUrl: profile.avatarUrl ?? null,
-      })
-      onSaved(out)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Ошибка сохранения')
-    } finally {
-      setSaving(false)
-    }
-  }
+  const specs = profile.specializations ?? []
 
   return (
     <Stack spacing={3}>
       <Stack direction="row" spacing={2} alignItems="center">
-        <Box
-          sx={{
-            width: 72,
-            height: 72,
-            borderRadius: '50%',
-            bgcolor: accent,
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 22,
-            fontWeight: 700,
-            flexShrink: 0,
-          }}
-        >
-          {initials(profile.displayName)}
+        <Box sx={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={async e => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setUploading(true)
+              try {
+                const { avatarUrl: url } = await uploadMasterAvatar(profile.id, file)
+                setAvatarUrl(url)
+                onSaved({ ...profile, avatarUrl: url })
+                setSnack('Фото обновлено')
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Не удалось загрузить фото')
+              } finally {
+                setUploading(false)
+                if (fileRef.current) fileRef.current.value = ''
+              }
+            }}
+          />
+          <Box
+            onClick={() => fileRef.current?.click()}
+            sx={{
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              bgcolor: accent,
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 22,
+              fontWeight: 700,
+              cursor: 'pointer',
+              position: 'relative',
+              overflow: 'hidden',
+              backgroundImage: avatarUrl ? `url(${avatarUrl})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              '&:hover .avatarOverlay': { opacity: 1 },
+            }}
+          >
+            {!avatarUrl && initials(profile.displayName)}
+            <Box
+              className="avatarOverlay"
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                bgcolor: 'rgba(0,0,0,0.55)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 0,
+                transition: 'opacity 0.2s',
+                fontSize: 12,
+                fontWeight: 600,
+                textAlign: 'center',
+                px: 1,
+                lineHeight: 1.2,
+              }}
+            >
+              Изменить фото
+            </Box>
+          </Box>
+          {uploading && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(0,0,0,0.4)',
+              }}
+            >
+              <CircularProgress size={24} sx={{ color: '#fff' }} />
+            </Box>
+          )}
         </Box>
         <Box>
           <Typography sx={{ fontFamily: "'Fraunces', serif", fontSize: 26, color: d.text }}>
@@ -206,27 +253,33 @@ function ProfileSection({
       )}
 
       <Box>
-        <Typography sx={{ fontSize: 12, color: d.muted, mb: 0.5 }}>Специализации</Typography>
-        <ChipMultiSelect
-          items={specializationGroups.map(g => ({
-            id: g.parentSlug,
-            label: specializationLabel(g.parentSlug, specializationGroups),
-          }))}
-          selected={specs}
-          onChange={setSpecs}
-          getLabel={item => String((item as unknown as { label: string }).label)}
-          getId={item => item.id}
-        />
+        <Typography sx={{ fontSize: 12, color: d.muted, mb: 0.75 }}>Специализации</Typography>
+        {specs.length === 0 ? (
+          <Typography sx={{ fontSize: 14, color: d.muted }}>Не указаны</Typography>
+        ) : (
+          <Stack direction="row" flexWrap="wrap" gap={0.75}>
+            {specs.map(slug => (
+              <Chip
+                key={slug}
+                label={specializationLabel(slug, specializationGroups)}
+                size="small"
+                sx={{
+                  bgcolor: d.card2,
+                  color: d.text,
+                  border: `1px solid ${d.borderSubtle}`,
+                  fontWeight: 500,
+                }}
+              />
+            ))}
+          </Stack>
+        )}
       </Box>
-      <TextField
-        label="Стаж (лет)"
-        type="number"
-        value={years}
-        onChange={e => setYears(e.target.value)}
-        fullWidth
-        inputProps={{ min: 0, max: 60 }}
-        sx={{ '& .MuiOutlinedInput-root': { bgcolor: d.card } }}
-      />
+      <Box>
+        <Typography sx={{ fontSize: 12, color: d.muted, mb: 0.25 }}>Стаж</Typography>
+        <Typography sx={{ fontSize: 14, color: d.text }}>
+          {profile.yearsExperience != null ? `${profile.yearsExperience} лет` : '—'}
+        </Typography>
+      </Box>
       <TextField
         label="Телефон"
         value={formatPhone(profile.phoneE164 ?? '')}
@@ -235,23 +288,20 @@ function ProfileSection({
         helperText="Используется для входа"
         sx={{ '& .MuiOutlinedInput-root': { bgcolor: d.cardAlt } }}
       />
-      <Stack direction="row" spacing={2}>
-        <Button
-          variant="contained"
-          onClick={() => void onSave()}
-          disabled={saving}
-          sx={{ alignSelf: 'flex-start', bgcolor: d.accent }}
-        >
-          {saving ? 'Сохранение…' : 'Сохранить'}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => navigate(ROUTES.ME)}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          Редактировать профиль
-        </Button>
-      </Stack>
+      <Snackbar
+        open={!!snack}
+        autoHideDuration={3000}
+        onClose={() => setSnack(null)}
+        message={snack}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      />
+      <Button
+        variant="contained"
+        onClick={() => navigate(ROUTES.ME)}
+        sx={{ alignSelf: 'flex-start', bgcolor: d.accent }}
+      >
+        Редактировать профиль
+      </Button>
     </Stack>
   )
 }
@@ -589,6 +639,7 @@ export function MasterDashboardPage() {
               color: dashboard.onAccent,
               fontWeight: 700,
             }}
+            src={profile?.avatarUrl || undefined}
           >
             {initials(user?.displayName ?? '')}
           </Avatar>

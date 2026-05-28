@@ -24,6 +24,10 @@ export function BiometricGate({ children, timeoutMs = 5 * 60 * 1000 }: Props) {
   const isAuthenticatingRef = useRef(false);
 
   const requestUnlock = useCallback(async () => {
+    if (__DEV__) {
+      setIsUnlocked(true);
+      return;
+    }
     if (isAuthenticatingRef.current) {
       return;
     }
@@ -66,10 +70,16 @@ export function BiometricGate({ children, timeoutMs = 5 * 60 * 1000 }: Props) {
   }, []);
 
   useEffect(() => {
+    if (__DEV__) {
+      return;
+    }
     void requestUnlock();
-  }, []);
+  }, [requestUnlock]);
 
   useEffect(() => {
+    if (__DEV__) {
+      return;
+    }
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "background" || nextState === "inactive") {
         backgroundedAtRef.current = Date.now();

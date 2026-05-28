@@ -184,7 +184,7 @@ func (r *UserProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UU
 
 func (r *UserProfileRepository) GetMasterProfileBlockByUserID(ctx context.Context, userID uuid.UUID) (*repository.MasterProfileBlock, error) {
 	var row struct {
-		Specializations pq.StringArray `gorm:"column:specializations"`
+		Specializations pq.StringArray `gorm:"column:specializations;type:text[]"`
 		YearsExperience *int           `gorm:"column:years_experience"`
 		PublishedAt     *time.Time     `gorm:"column:published_at"`
 		OnboardingStep  *string        `gorm:"column:onboarding_step"`

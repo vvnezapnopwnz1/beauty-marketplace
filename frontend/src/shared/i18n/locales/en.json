@@ -355,5 +355,28 @@
       "saveFailed": "Failed to save. Please retry.",
       "publishFailed": "Failed to publish. Please retry."
     }
+  },
+  "userMeProfile": {
+    "cardTitle": "Profile",
+    "cardSubtitle": "Account and public details",
+    "sectionBasic": "Basics",
+    "sectionMaster": "Master profile",
+    "avatarUrl": "Avatar URL",
+    "avatarFileHint": "To upload a photo file, use the master cabinet:",
+    "avatarFileLink": "open profile",
+    "displayName": "Display name",
+    "username": "Username",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "city": "City",
+    "bio": "About you",
+    "specializations": "Specializations",
+    "specializationsHint": "Choose your focus areas",
+    "yearsExperience": "Years of experience",
+    "phone": "Phone",
+    "footerNote": "Changes apply after you save",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saveSuccess": "Saved"
   }
 }

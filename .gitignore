@@ -493,3 +493,5 @@ docpad.
 /Beautica_design
 
 /mobile/ios
+.windsurf/workflows/review.md
+backend/request.go

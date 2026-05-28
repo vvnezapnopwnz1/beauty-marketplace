@@ -29,19 +29,19 @@ const ACTIONS: ActionItem[] = [
     label: "Новая запись",
     sublabel: "Запланировать клиента",
     icon: "calendar",
-    route: "/appointments/new",
+    route: "/appointment-new",
   },
   {
     key: "client",
     label: "Новый клиент",
     icon: "user-plus",
-    route: "/clients/new",
+    route: "/clients-new",
   },
   {
     key: "service",
     label: "Новая услуга",
     icon: "scissors",
-    route: "/services/new",
+    route: "/services-new",
   },
 ];
 

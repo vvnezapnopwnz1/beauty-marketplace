@@ -482,6 +482,9 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
           placeholder="Заметка к записи..."
           placeholderTextColor={colors.muted}
           multiline
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
           style={[
             inputStyle,
             { minHeight: 56, paddingTop: 10, textAlignVertical: "top" },

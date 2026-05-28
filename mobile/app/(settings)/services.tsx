@@ -154,7 +154,7 @@ export default function ServicesSettingsScreen() {
       <Pressable
         onPress={() =>
           router.push({
-            pathname: "/services/new",
+            pathname: "/services-new",
             params: { returnPath: pathname },
           })
         }

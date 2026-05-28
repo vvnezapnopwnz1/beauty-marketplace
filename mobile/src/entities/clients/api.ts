@@ -4,18 +4,18 @@ import { MASTER } from "../../api/endpoints";
 
 export type MasterClient = {
   id: string;
+  userId?: string | null;
   displayName: string;
   phone?: string | null;
   notes?: string | null;
-  visitCount?: number;
-  visitsCount?: number;
+  visitCount: number;
   lastVisitAt?: string | null;
 };
 
 export type ClientSegment = "all" | "new" | "regular" | "vip";
 
 export function deriveClientSegment(client: MasterClient): ClientSegment {
-  const visits = client.visitCount ?? client.visitsCount ?? 0;
+  const visits = client.visitCount;
   if (visits >= 10) return "vip";
   if (visits >= 3) return "regular";
   return "new";

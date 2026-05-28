@@ -81,7 +81,9 @@ export function StepProfileScreen() {
           placeholderTextColor={colors.muted}
           value={displayName}
           onChangeText={setDisplayName}
-          autoCapitalize="words"
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
         />
 
         <Text style={[styles.label, { color: colors.textSoft }]}>О себе</Text>

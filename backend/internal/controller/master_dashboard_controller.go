@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -173,16 +174,28 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 		if r.Method == http.MethodPut {
 			var body service.UpdateMasterProfileCabinetInput
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				h.log.Warn("master update profile: invalid json", zap.Error(err))
 				jsonError(w, "invalid json", http.StatusBadRequest)
 				return
 			}
+			h.log.Info("master update profile: decoded body",
+				zap.String("displayName", body.DisplayName),
+				zap.Int("specializations_count", len(body.Specializations)),
+				zap.Any("specializations", body.Specializations),
+				zap.Any("yearsExperience", body.YearsExperience),
+				zap.Any("avatarUrl", body.AvatarURL), // Changed from zap.String to zap.Any
+			)
 			out, err := h.svc.UpdateMyProfile(r.Context(), userID, body)
 			if err != nil {
 				if err.Error() == "displayName is required" || strings.Contains(err.Error(), "bio exceeds") {
 					jsonError(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				h.log.Error("master update profile", zap.Error(err))
+				h.log.Error("master update profile: service error",
+					zap.Error(err),
+					zap.String("userId", userID.String()),
+					zap.Any("body", body),
+				)
 				jsonError(w, "internal error", http.StatusInternalServerError)
 				return
 			}
@@ -522,6 +535,21 @@ func (h *MasterDashboardController) MasterDashboardRoutes(w http.ResponseWriter,
 			id, err := uuid.Parse(parts[1])
 			if err != nil {
 				jsonError(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+			if r.Method == http.MethodGet {
+				out, err := h.svc.GetMasterClient(r.Context(), userID, id)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						jsonError(w, "not found", http.StatusNotFound)
+						return
+					}
+					h.log.Error("master get client", zap.Error(err))
+					jsonError(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(out)
 				return
 			}
 			if r.Method == http.MethodPut {
@@ -924,50 +952,75 @@ func (h *MasterDashboardController) StartOnboarding(w http.ResponseWriter, r *ht
 
 // UploadAvatar handles avatar upload for a master profile
 func (h *MasterDashboardController) UploadAvatar(w http.ResponseWriter, r *http.Request) {
+	h.log.Info("UploadAvatar: started",
+		zap.String("path", r.URL.Path),
+		zap.String("method", r.Method),
+	)
+
 	masterProfileID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
+		h.log.Warn("UploadAvatar: invalid master profile id", zap.Error(err))
 		jsonError(w, "invalid master profile id", http.StatusBadRequest)
 		return
 	}
+	h.log.Info("UploadAvatar: parsed masterProfileID", zap.String("id", masterProfileID.String()))
 
 	// Limit request size to 10MB
 	r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024)
 
 	// Parse multipart form
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		h.log.Warn("UploadAvatar: failed to parse multipart form", zap.Error(err))
 		jsonError(w, "failed to parse form", http.StatusBadRequest)
 		return
 	}
 
 	file, header, err := r.FormFile("avatar")
 	if err != nil {
+		h.log.Warn("UploadAvatar: no file in form", zap.Error(err))
 		jsonError(w, "no file provided", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
+	h.log.Info("UploadAvatar: received file",
+		zap.String("filename", header.Filename),
+		zap.Int64("size", header.Size),
+	)
 
 	// Validate file
 	if err := service.ValidateUploadedFile(header); err != nil {
+		h.log.Warn("UploadAvatar: file validation failed", zap.Error(err))
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Store file using storage service
+	h.log.Info("UploadAvatar: storing file via storage service...")
 	filename, err := h.storage.StoreFileFromReader(r.Context(), header.Filename, file, "image/jpeg")
 	if err != nil {
-		h.log.Error("failed to store avatar", zap.Error(err))
+		h.log.Error("UploadAvatar: failed to store avatar in storage",
+			zap.Error(err),
+			zap.String("storage_type", fmt.Sprintf("%T", h.storage)),
+		)
 		jsonError(w, "could not store avatar", http.StatusInternalServerError)
 		return
 	}
+	h.log.Info("UploadAvatar: file stored", zap.String("filename", filename))
 
-	// Update master profile avatar URL in database
+	// Update master profile avatar URL in database (master_profiles.avatar_url is an override; falls back to users.avatar_url)
 	avatarURL := h.storage.GetFileURL(filename)
+	h.log.Info("UploadAvatar: updating DB avatarUrl", zap.String("avatarUrl", avatarURL))
 	err = h.svc.UpdateAvatar(r.Context(), masterProfileID, avatarURL)
 	if err != nil {
-		h.log.Error("failed to update avatar URL", zap.Error(err))
+		h.log.Error("UploadAvatar: failed to update avatar URL in DB",
+			zap.Error(err),
+			zap.String("masterProfileId", masterProfileID.String()),
+			zap.String("avatarUrl", avatarURL),
+		)
 		jsonError(w, "could not update avatar", http.StatusInternalServerError)
 		return
 	}
+	h.log.Info("UploadAvatar: success", zap.String("avatarUrl", avatarURL))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

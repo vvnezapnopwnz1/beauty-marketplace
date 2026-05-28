@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/beauty-marketplace/backend/internal/repository"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/beauty-marketplace/backend/internal/repository"
 	"gorm.io/gorm"
 )
 
@@ -45,13 +45,14 @@ func (r *masterPublicRepository) ListSalonMastersPublic(ctx context.Context, sal
 			mp.id AS mp_id,
 			mp.bio AS mp_bio,
 			mp.specializations AS mp_specs,
-			mp.avatar_url AS mp_avatar,
+			COALESCE(mp.avatar_url, u.avatar_url) AS mp_avatar,
 			mp.years_experience AS mp_years,
 			mp.cached_rating AS mp_rating,
 			mp.cached_review_count AS mp_rev_count,
 			mp.published_at AS mp_published_at
 		FROM salon_masters sm
 		LEFT JOIN master_profiles mp ON mp.id = sm.master_id AND mp.is_active = true
+		LEFT JOIN users u ON u.id = mp.user_id
 		WHERE sm.salon_id = ?
 			AND sm.status = 'active'
 			AND sm.is_active = true
@@ -138,10 +139,12 @@ type membershipScan struct {
 func (r *masterPublicRepository) GetMasterProfilePublic(ctx context.Context, masterProfileID uuid.UUID) (*repository.MasterProfilePublicRow, []repository.MasterSalonMembershipRow, []repository.SalonMasterServiceLinkRow, error) {
 	var prof masterProfileScan
 	err := r.db.WithContext(ctx).Raw(`
-		SELECT id, display_name, bio, specializations, avatar_url, years_experience,
-			cached_rating, cached_review_count
-		FROM master_profiles
-		WHERE id = ? AND is_active = true AND published_at IS NOT NULL
+		SELECT mp.id, mp.display_name, mp.bio, mp.specializations,
+			COALESCE(mp.avatar_url, u.avatar_url) AS avatar_url,
+			mp.years_experience, mp.cached_rating, mp.cached_review_count
+		FROM master_profiles mp
+		LEFT JOIN users u ON u.id = mp.user_id
+		WHERE mp.id = ? AND mp.is_active = true AND mp.published_at IS NOT NULL
 	`, masterProfileID).Scan(&prof).Error
 	if err != nil {
 		return nil, nil, nil, err

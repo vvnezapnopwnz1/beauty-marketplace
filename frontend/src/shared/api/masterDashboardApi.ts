@@ -2,6 +2,8 @@ import { authFetch } from './authApi'
 import { publicApiUrl } from '@shared/lib/apiPublicUrl'
 import type { DashboardServiceCategoriesResponse } from './dashboardApi'
 
+const apiV1 = () => publicApiUrl('/api/v1')
+
 const root = () => publicApiUrl('/api/v1/master-dashboard')
 
 export interface MasterCabinetProfile {
@@ -70,16 +72,22 @@ export async function getMyMasterProfile(): Promise<MasterCabinetProfile> {
 }
 
 export async function updateMyMasterProfile(data: UpdateMasterCabinetProfile): Promise<MasterCabinetProfile> {
-  const res = await authFetch(`${root()}/profile`, {
+  const url = `${root()}/profile`
+  const body = JSON.stringify(data)
+  console.log('[updateMyMasterProfile] PUT', url, body)
+  const res = await authFetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body,
   })
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}))
+    console.error('[updateMyMasterProfile] failed', res.status, errData)
     throw new Error((errData as { error?: string }).error || `HTTP ${res.status}`)
   }
-  return res.json()
+  const json = await res.json()
+  console.log('[updateMyMasterProfile] success', json)
+  return json
 }
 
 export async function getMyMasterInvites(): Promise<MasterInviteDTO[]> {
@@ -164,6 +172,28 @@ export async function updatePersonalAppointment(id: string, data: Partial<Manual
     const errData = await res.json().catch(() => ({}))
     throw new Error((errData as { error?: string }).error || `HTTP ${res.status}`)
   }
+}
+
+export async function uploadMasterAvatar(
+  masterProfileId: string,
+  file: File,
+): Promise<{ avatarUrl: string }> {
+  const url = `${apiV1()}/master-profiles/${masterProfileId}/photo`
+  const form = new FormData()
+  form.append('avatar', file)
+  console.log('[uploadMasterAvatar] POST', url, 'file:', file.name, file.size, file.type)
+  const res = await authFetch(url, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    console.error('[uploadMasterAvatar] failed', res.status, data)
+    throw new Error((data as { error?: string }).error || `HTTP ${res.status}`)
+  }
+  const json = await res.json()
+  console.log('[uploadMasterAvatar] success', json)
+  return json
 }
 
 export async function fetchMasterServiceCategories(): Promise<DashboardServiceCategoriesResponse> {

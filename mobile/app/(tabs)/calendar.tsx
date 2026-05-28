@@ -151,6 +151,8 @@ export default function CalendarScreen() {
     .toLowerCase()
     .slice(0, -1)}я`.replace("ья", "я");
 
+  return <Text>asd</Text>;
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <View style={styles.header}>

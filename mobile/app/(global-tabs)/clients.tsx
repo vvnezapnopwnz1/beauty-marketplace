@@ -180,7 +180,7 @@ export default function ClientsScreen() {
             </Text>
           ) : null}
           {rows.map((item) => {
-            const visits = item.visitCount ?? item.visitsCount ?? 0;
+            const visits = item.visitCount;
             const segment = deriveClientSegment(item);
             const initials = (item.displayName ?? "•")
               .split(" ")

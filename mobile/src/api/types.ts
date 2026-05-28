@@ -172,3 +172,21 @@ export interface DashboardServiceCategoriesResponse {
   salonCategoryScopes?: string[];
   groups: DashboardServiceCategoryGroup[];
 }
+
+export interface MasterServiceDTO {
+  id: string;
+  name: string;
+  categorySlug?: string | null;
+  description?: string | null;
+  priceCents?: number | null;
+  durationMinutes: number;
+  isActive: boolean;
+}
+
+export interface CreateMasterServiceInput {
+  name: string;
+  categorySlug?: string | null;
+  description?: string | null;
+  priceCents?: number | null;
+  durationMinutes: number;
+}
