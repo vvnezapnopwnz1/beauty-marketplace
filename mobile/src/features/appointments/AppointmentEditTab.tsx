@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   View,
@@ -16,6 +16,8 @@ import type { MasterAppointment } from "../../entities/appointments/api";
 import { useMasterServicesQuery } from "../../entities/services/api";
 import { isFinalAppointmentStatus } from "../../shared/lib/appointmentStatus";
 import { PriceEditControl } from "../../components/appointments/PriceEditControl";
+import { DatePickerCarousel } from "../../components/appointments/DatePickerCarousel";
+import { TimeRangeInlinePicker } from "../../components/appointments/TimeRangeInlinePicker";
 import {
   calculateSelectedServicesTotalCents,
   shouldSendManualTotal,
@@ -72,6 +74,12 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
   );
   const [timeStart, setTimeStart] = useState(fmt(start));
   const [timeEnd, setTimeEnd] = useState(fmt(end));
+  const [date, setDate] = useState(() => {
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, "0");
+    const day = String(start.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
   const [manualPrice, setManualPrice] = useState(
     appointment.totalSource === "manual",
   );
@@ -90,6 +98,31 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
     appointment.serviceId ? [appointment.serviceId] : [],
   );
 
+  const totalDurationMinutes = useMemo(() => {
+    return selectedServiceIds.reduce((sum, id) => {
+      const service = (services ?? []).find((s) => s.id === id);
+      return sum + (service?.durationMinutes ?? 0);
+    }, 0);
+  }, [selectedServiceIds, services]);
+
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (!isEditable) return;
+    const [h, m] = timeStart.split(":").map(Number);
+    if (h === undefined || m === undefined || isNaN(h) || isNaN(m)) return;
+    const dateObj = new Date();
+    dateObj.setHours(h, m, 0, 0);
+    dateObj.setMinutes(dateObj.getMinutes() + totalDurationMinutes);
+    const endH = String(dateObj.getHours()).padStart(2, "0");
+    const endM = String(dateObj.getMinutes()).padStart(2, "0");
+    setTimeEnd(`${endH}:${endM}`);
+  }, [timeStart, totalDurationMinutes, isEditable]);
+
   const calculatedTotal = useMemo(() => {
     const servicesTotal = calculateSelectedServicesTotalCents(
       selectedServiceIds,
@@ -103,13 +136,12 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
 
   const save = useMutation({
     mutationFn: async () => {
-      // Re-derive ISO times from existing date + new HH:MM (local)
+      // Re-derive ISO times from chosen date + HH:MM (local)
       const [sh, sm] = timeStart.split(":").map(Number);
       const [eh, em] = timeEnd.split(":").map(Number);
-      const startsAt = new Date(start);
-      startsAt.setHours(sh ?? 0, sm ?? 0, 0, 0);
-      const endsAt = new Date(start);
-      endsAt.setHours(eh ?? 0, em ?? 0, 0, 0);
+      const [dy, dm, dd] = date.split("-").map(Number);
+      const startsAt = new Date(dy, dm - 1, dd, sh ?? 0, sm ?? 0, 0, 0);
+      const endsAt = new Date(dy, dm - 1, dd, eh ?? 0, em ?? 0, 0, 0);
       if (endsAt.getTime() <= startsAt.getTime()) {
         throw new Error("Время окончания должно быть позже времени начала");
       }
@@ -396,32 +428,23 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
         calculatedCents={calculatedTotal}
       />
 
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Field label="Время начала">
-            <TextInput
-              value={timeStart}
-              onChangeText={setTimeStart}
-              editable={isEditable}
-              placeholder="10:00"
-              placeholderTextColor={colors.muted}
-              style={inputStyle}
-            />
-          </Field>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Field label="Время конца">
-            <TextInput
-              value={timeEnd}
-              onChangeText={setTimeEnd}
-              editable={isEditable}
-              placeholder="11:00"
-              placeholderTextColor={colors.muted}
-              style={inputStyle}
-            />
-          </Field>
-        </View>
-      </View>
+      <Field label="Дата записи">
+        <DatePickerCarousel
+          selectedDate={date}
+          onDateChange={setDate}
+          disabled={!isEditable}
+        />
+      </Field>
+
+      <Field label="Время записи">
+        <TimeRangeInlinePicker
+          timeStart={timeStart}
+          onTimeStartChange={setTimeStart}
+          timeEnd={timeEnd}
+          onTimeEndChange={setTimeEnd}
+          disabled={!isEditable}
+        />
+      </Field>
 
       <Field label="Статус">
         <View

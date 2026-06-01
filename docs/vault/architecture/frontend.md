@@ -1,9 +1,10 @@
 ---
-title: Frontend — структура компонентов
-updated: 2026-05-05
+title: Frontend & Mobile — структура компонентов
+updated: 2026-06-01
 source_of_truth: true
 code_pointers:
   - frontend/src/app/App.tsx
+  - mobile/app/(tabs)/_layout.tsx
 ---
 
 # Frontend — структура компонентов
@@ -211,6 +212,54 @@ graph LR
 - Данные загружаются через `entities/master-finances/model/masterFinancesApi.ts` (summary, trends, top services, expenses, categories, export).
 - Локальный UI-state периода/источника хранится в `masterFinances` slice (`financesSlice.ts`, подключён в `app/store.ts`).
 - Для инвалидации графиков и списков используются RTK-теги: `FinanceSummary`, `FinanceCategories`, `FinanceExpenses`.
+
+---
+
+## Мобильное приложение (React Native / Expo)
+
+Мобильное приложение находится в каталоге `mobile/` и представляет собой кроссплатформенное приложение на базе **Expo SDK 55** (поддерживается обратная совместимость с SDK 54 через скрипт переключения).
+
+### Структура роутинга (Expo Router)
+
+Навигация построена по схеме таб-бара с центральной FAB-кнопкой быстрого действия:
+
+```mermaid
+graph TD
+    AppLayout["mobile/app/_layout.tsx\n(AppProviders + BiometricGate)"]
+    TabsLayout["mobile/app/(tabs)/_layout.tsx\n(Bottom Tab Navigation)"]
+
+    AppLayout --> TabsLayout
+
+    TabsLayout --> TToday["/index → Сегодня (index.tsx)"]
+    TabsLayout --> TCal["/calendar → Календарь (calendar.tsx)"]
+    TabsLayout --> TAdd["/appointment-new → Создать запись (appointment-new.tsx)"]
+    TabsLayout --> TClients["/clients → Клиенты (clients.tsx)"]
+    TabsLayout --> TNotif["/notifications-real → Уведомления (notifications-real.tsx)"]
+    TabsLayout --> TProfile["/profile-info → Профиль (profile-info.tsx)"]
+
+    TAdd -.->|overlay CenterFabButton| CreateActionSheet["CreateActionSheet\n(Новая запись | Новый клиент | Новая услуга)"]
+```
+
+### Стек управления состоянием (State Management)
+
+*   **Zustand (`mobile/src/shared/store/`):** используется для легковесного локального UI-состояния. В нем хранится флаг блокировки приложения (App Lock), параметры биометрической авторизации (`BiometricGate`) и настройки интерфейса.
+*   **TanStack React Query (`mobile/src/api/`):** используется в качестве кэширующего сетевого клиента для запросов к нашему Go API. Инвалидация кэша выполняется по query-ключам (например, `['appointments']`, `['me']`).
+
+### Инфраструктура переключения SDK
+
+Для параллельной поддержки разработки на SDK 54 и SDK 55 внедрен инструмент версионирования пакетов:
+*   `mobile/scripts/switch-sdk.sh` — переключает рабочую версию зависимости путем копирования соответствующих `package.json.54/55` и `package-lock.json.54/55`.
+
+### Ключевые компоненты мобильного интерфейса
+
+1.  **Кабинет расписания мастера (`ScheduleEditor.tsx`):**
+    Универсальный редактор рабочих часов мастера с поддержкой двух режимов:
+    *   *Массовый (mass):* одинаковое расписание для выбранного набора дней с применением временных пресетов (например, `09:00 - 18:00`).
+    *   *Индивидуальный (individual):* детальная настройка каждого рабочего дня и переключатели «Выходной».
+2.  **Асинхронный поиск CRM-клиентов (`ClientAutocompleteField.tsx`):**
+    Поле ввода клиента с автоматическим поиском в бэкенд-базе мастера (`master_clients`) по имени или телефону, исключающее ручной ввод.
+3.  **Выбор категорий услуг (`ServiceCategoryPicker.tsx`):**
+    Компонент для фильтрации и выбора категорий специализаций при онбординге или редактировании личного кабинета.
 
 ## Связанные заметки
 

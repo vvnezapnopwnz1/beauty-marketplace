@@ -104,8 +104,8 @@ func NewHTTPServer(
 
 	// File storage for chat attachments
 	mux.HandleFunc("POST /api/v1/files/upload", withCORS(auth.OptionalAuth(jwtMgr, fh.UploadFile)))
-	mux.HandleFunc("GET /api/v1/files/{filename}", withCORS(fh.ServeFile))
-	mux.HandleFunc("DELETE /api/v1/files/{filename}", withCORS(auth.RequireAuth(jwtMgr, fh.DeleteFile)))
+	mux.HandleFunc("GET /api/v1/files/{filename...}", withCORS(fh.ServeFile))
+	mux.HandleFunc("DELETE /api/v1/files/{filename...}", withCORS(auth.RequireAuth(jwtMgr, fh.DeleteFile)))
 
 	// Quick replies for inquiry chat
 	mux.HandleFunc("GET /api/v1/chat/salons/{salonId}/quick-replies", withCORS(auth.OptionalAuth(jwtMgr, qh.GetQuickReplies)))

@@ -21,6 +21,8 @@ import { useCreatePersonalAppointmentMutation } from "@entities/appointments/api
 import { useMasterServicesQuery } from "@entities/services/api";
 import { PriceEditControl } from "@components/appointments/PriceEditControl";
 import { ClientAutocompleteField } from "@components/appointments/ClientAutocompleteField";
+import { DatePickerCarousel } from "@components/appointments/DatePickerCarousel";
+import { TimeRangeInlinePicker } from "@components/appointments/TimeRangeInlinePicker";
 import {
   calculateSelectedServicesTotalCents,
   shouldSendManualTotal,
@@ -91,6 +93,23 @@ export default function NewAppointmentScreen() {
     () => calculateSelectedServicesTotalCents(serviceIds, activeServices),
     [serviceIds, activeServices],
   );
+
+  const totalDurationMinutes = useMemo(() => {
+    return serviceIds.reduce((sum, id) => {
+      const service = (services ?? []).find((s) => s.id === id);
+      return sum + (service?.durationMinutes ?? 0);
+    }, 0);
+  }, [serviceIds, services]);
+
+  const timeEnd = useMemo(() => {
+    const [h, m] = time.split(":").map(Number);
+    const dateObj = new Date();
+    dateObj.setHours(h ?? 10, m ?? 0, 0, 0);
+    dateObj.setMinutes(dateObj.getMinutes() + totalDurationMinutes);
+    const endH = String(dateObj.getHours()).padStart(2, "0");
+    const endM = String(dateObj.getMinutes()).padStart(2, "0");
+    return `${endH}:${endM}`;
+  }, [time, totalDurationMinutes]);
 
   const submit = async () => {
     if (!serviceIds.length) {
@@ -313,27 +332,14 @@ export default function NewAppointmentScreen() {
           </View>
         )}
 
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.label, { color: colors.muted }]}>ДАТА *</Text>
-            <TextInput
-              value={date}
-              onChangeText={setDate}
-              placeholder="ГГГГ-ММ-ДД"
-              placeholderTextColor={colors.muted}
-              style={inputStyle}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.label, { color: colors.muted }]}>ВРЕМЯ *</Text>
-            <TextInput
-              value={time}
-              onChangeText={setTime}
-              placeholder="10:00"
-              placeholderTextColor={colors.muted}
-              style={inputStyle}
-            />
-          </View>
+        <View style={{ marginTop: 14 }}>
+          <Text style={[styles.label, { color: colors.muted, marginBottom: 8 }]}>ДАТА И ВРЕМЯ *</Text>
+          <DatePickerCarousel selectedDate={date} onDateChange={setDate} />
+          <TimeRangeInlinePicker
+            timeStart={time}
+            onTimeStartChange={setTime}
+            timeEnd={timeEnd}
+          />
         </View>
 
         <Text style={[styles.label, { color: colors.muted, marginTop: 14 }]}>

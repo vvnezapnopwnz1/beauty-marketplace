@@ -106,7 +106,7 @@ export function StepSchedule({ onNext, onBack }: Props) {
     setBusy(true)
     try {
       await updateMasterSchedule({ hours })
-      await advanceMasterOnboardingStep('completed')
+      await advanceMasterOnboardingStep('publish')
       onNext()
     } catch (e) {
       setError(e instanceof Error ? e.message : t('masterOnboarding.errors.saveFailed'))

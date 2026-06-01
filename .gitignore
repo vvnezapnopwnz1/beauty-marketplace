@@ -495,3 +495,5 @@ docpad.
 /mobile/ios
 .windsurf/workflows/review.md
 backend/request.go
+.aider*
+.codex/config.example.toml

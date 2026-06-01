@@ -2,6 +2,7 @@ export interface User {
   id: string;
   phone: string;
   displayName?: string | null;
+  avatarUrl?: string | null;
   role?: string;
   globalRole?: string;
   sessionId?: string | null;
@@ -92,6 +93,8 @@ export interface MeResponse {
   id: string;
   phone: string;
   displayName?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
   globalRole: string;
   effectiveRoles: EffectiveRoles;
   masterProfileId?: string | null;

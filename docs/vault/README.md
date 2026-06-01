@@ -1,6 +1,6 @@
 ---
 title: Beauty Marketplace — Vault MOC
-updated: 2026-05-01
+updated: 2026-06-01
 source_of_truth: true
 code_pointers: []
 ---

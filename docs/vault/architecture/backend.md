@@ -1,6 +1,6 @@
 ---
 title: Backend — детальная архитектура
-updated: 2026-05-01
+updated: 2026-06-01
 source_of_truth: true
 code_pointers:
   - backend/internal/app/app.go
@@ -240,7 +240,23 @@ graph LR
         D20["GET|POST|DELETE /staff-invites\n(owner)"]
     end
 
+    subgraph MDASH["Master Dashboard sub-routes"]
+        MD1["GET /appointments"]
+        MD2["POST /appointments"]
+        MD3["PUT|PATCH /appointments/{id}"]
+        MD4["GET|POST|PUT|DELETE /services"]
+        MD5["GET|POST|PUT|DELETE /clients"]
+        MD6["GET /service-categories"]
+        MD7["GET /appointments/heatmap"]
+        MD8["POST /onboarding/start"]
+        MD9["POST /onboarding/step"]
+        MD10["POST /onboarding/publish"]
+        MD11["POST /avatar"]
+        MD12["GET /finances/summary|trends|top-services|expenses"]
+    end
+
     R17 --> DASH
+    R18 --> MDASH
 ```
 
 ---

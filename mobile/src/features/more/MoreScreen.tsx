@@ -102,9 +102,9 @@ export function MoreScreen() {
       >
         <View style={styles.headerRow}>
           <View>
-            <Text style={[styles.eyebrow, { color: colors.muted }]}>
+            {/* <Text style={[styles.eyebrow, { color: colors.muted }]}>
               OVERVIEW
-            </Text>
+            </Text> */}
             {/* <Text
               style={[
                 styles.title,
@@ -250,8 +250,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 4,
-    marginBottom: 4,
+    // paddingHorizontal: 4,
+    // marginBottom: 4,
   },
   eyebrow: {
     fontSize: 10,

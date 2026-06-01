@@ -69,6 +69,7 @@ export const AUTH_ENDPOINTS = AUTH;
 export const USER = {
   me: `${API_V1}/me`,
   meOnboardingStart: `${API_V1}/me/master-onboarding/start`,
+  avatar: `${API_V1}/me/avatar`,
 } as const;
 export const USER_ENDPOINTS = USER;
 

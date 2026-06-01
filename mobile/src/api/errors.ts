@@ -24,7 +24,7 @@ export function fromAxiosError(err: any): ApiError {
   }
   const status = err.response?.status ?? 0;
   const data = err.response?.data;
-  const message = data?.message ?? err.message ?? 'Request failed';
+  const message = data?.message ?? data?.error ?? err.message ?? 'Request failed';
   const code = data?.code;
   return new ApiError(message, status, code, data);
 }

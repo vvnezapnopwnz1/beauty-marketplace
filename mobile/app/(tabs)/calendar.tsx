@@ -151,7 +151,7 @@ export default function CalendarScreen() {
     .toLowerCase()
     .slice(0, -1)}я`.replace("ья", "я");
 
-  return <Text>asd</Text>;
+  // return <Text>asd</Text>;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
@@ -169,7 +169,7 @@ export default function CalendarScreen() {
           />
         ) : (
           <>
-            <Text style={[styles.eyebrow, { color: colors.muted }]}>
+            {/* <Text style={[styles.eyebrow, { color: colors.muted }]}>
               УПРАВЛЕНИЕ
             </Text>
             <Text
@@ -179,7 +179,7 @@ export default function CalendarScreen() {
               ]}
             >
               Записи
-            </Text>
+            </Text> */}
             <View style={{ height: 12 }} />
             <AppointmentFilters
               active={filter}

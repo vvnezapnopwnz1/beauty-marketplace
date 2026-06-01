@@ -1,6 +1,6 @@
 import React from "react";
-import { Text, View } from "react-native";
-import { Tabs, usePathname } from "expo-router";
+import { View } from "react-native";
+import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { CenterFabButton } from "../../src/features/nav/CenterFabButton";
@@ -16,20 +16,23 @@ function tabIcon(name: FeatherName) {
 }
 
 export default function TabLayout() {
-  return <Text>tabs root</Text>;
-  // const { colors } = useTheme();
-  // const { open } = useCreateAction();
-  // const pathname = usePathname();
-  // const hideFab =
-  //   pathname.includes("appointment-new") ||
-  //   pathname.includes("clients-new") ||
-  //   pathname.includes("services-new");
+  const { colors } = useTheme();
+  const { open } = useCreateAction();
 
   return (
     <View style={{ flex: 1 }}>
       <Tabs
         screenOptions={{
           headerShown: false,
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.muted,
+          tabBarStyle: {
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            // gap: 3,
+            paddingBottom: 8,
+          },
+          tabBarItemStyle: {},
         }}
       >
         <Tabs.Screen
@@ -39,10 +42,44 @@ export default function TabLayout() {
             tabBarIcon: tabIcon("calendar"),
           }}
         />
-        {/* Временно отключили остальные табы и скрытые экраны, чтобы изолировать крэш */}
+        <Tabs.Screen
+          name="clients"
+          options={{
+            title: "Клиенты",
+            tabBarIcon: tabIcon("users"),
+            tabBarItemStyle: { marginRight: 40 },
+          }}
+        />
+        <Tabs.Screen
+          name="more"
+          options={{
+            title: "Бизнес",
+            tabBarIcon: tabIcon("grid"),
+            tabBarItemStyle: { marginLeft: 40 },
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Профиль",
+            tabBarIcon: tabIcon("user"),
+          }}
+        />
+        <Tabs.Screen name="index" options={{ href: null }} />
+        <Tabs.Screen name="appointments" options={{ href: null }} />
+        <Tabs.Screen name="appointment-new" options={{ href: null }} />
+        <Tabs.Screen name="clients-new" options={{ href: null }} />
+        <Tabs.Screen name="finances-screen" options={{ href: null }} />
+        <Tabs.Screen name="notifications" options={{ href: null }} />
+        <Tabs.Screen name="notifications-real" options={{ href: null }} />
+        <Tabs.Screen name="profile-info" options={{ href: null }} />
+        <Tabs.Screen name="schedule-screen" options={{ href: null }} />
+        <Tabs.Screen name="services" options={{ href: null }} />
+        <Tabs.Screen name="services-new" options={{ href: null }} />
+        <Tabs.Screen name="services-screen" options={{ href: null }} />
       </Tabs>
-      {/* {!hideFab && <CenterFabButton onPress={open} />} */}
-      {/* {!hideFab && <CreateActionSheet />} */}
+      <CenterFabButton onPress={open} />
+      <CreateActionSheet />
     </View>
   );
 }

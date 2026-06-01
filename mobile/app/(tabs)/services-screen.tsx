@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../src/shared/theme/useTheme";
 import { useMasterServicesQuery } from "../../src/entities/services/api";
+
 
 export default function ServicesTabScreen() {
   const { colors } = useTheme();
@@ -32,7 +33,12 @@ export default function ServicesTabScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Pressable onPress={() => router.push("/(tabs)/more")}>
+            <Ionicons name="arrow-back" size={24} color="black" />
+          </Pressable>
         <Text style={[styles.title, { color: colors.text }]}>Услуги</Text>
+        </View>
 
         {categories.length > 1 && (
           <ScrollView
