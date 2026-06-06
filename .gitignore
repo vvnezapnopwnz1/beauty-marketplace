@@ -497,3 +497,9 @@ docpad.
 backend/request.go
 .aider*
 .codex/config.example.toml
+USER.md
+TOOLS.md
+SOUL.md
+IDENTITY.md
+HEARTBEAT.md
+.openclaw/workspace-state.json

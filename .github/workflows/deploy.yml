@@ -1,0 +1,34 @@
+name: Deploy to Google Cloud
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker-compose.prod.yml"
+      - "Caddyfile"
+      - ".github/workflows/deploy.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GCP VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            # Переходим в папку с проектом на сервере
+            cd ~/app
+            
+            # Стягиваем свежий код из GitHub
+            git pull origin main
+            
+            # Перезапускаем и пересобираем бэкенд, телеграм-бота и фронтенд
+            # (остальные сервисы типа бд и minio не будут перегружаться без необходимости)
+            docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build backend bot frontend
