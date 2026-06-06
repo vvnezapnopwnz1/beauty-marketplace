@@ -5,10 +5,10 @@ import { TYPOGRAPHY } from "./tokens";
 import { DEFAULT_LIGHT_ID, THEMES_MAP } from "./themes";
 
 type ThemeContextValue = {
-  colors: (typeof THEMES_MAP)[string];
+  colors: any;
   typography: typeof TYPOGRAPHY;
   themeId: string;
-  setThemeId: (themeId: string) => void;
+  setThemeId: any;
   availableThemes: string[];
 };
 

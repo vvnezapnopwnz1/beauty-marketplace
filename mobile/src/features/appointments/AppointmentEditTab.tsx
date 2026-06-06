@@ -107,6 +107,9 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
 
   const isFirstRender = useRef(true);
 
+  const isFinal = isFinalAppointmentStatus(appointment.status);
+  const isEditable = !isFinal;
+  const statusChanged = status !== appointment.status;
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -130,9 +133,6 @@ export function AppointmentEditTab({ appointment, onCancel, onSaved }: Props) {
     );
     return servicesTotal > 0 ? servicesTotal : appointment.totalPriceCents;
   }, [selectedServiceIds, activeServices, appointment.totalPriceCents]);
-  const isFinal = isFinalAppointmentStatus(appointment.status);
-  const isEditable = !isFinal;
-  const statusChanged = status !== appointment.status;
 
   const save = useMutation({
     mutationFn: async () => {
