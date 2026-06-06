@@ -15,7 +15,7 @@ describe('Auth Store', () => {
   });
 
   it('sets user', () => {
-    const user = { id: '1', phone: '+1234567890', effectiveRoles: ['master'] };
+    const user = { id: '1', phone: '+1234567890', effectiveRoles: { isClient: true, isMaster: true, isPlatformAdmin: false, salonMemberships: [], pendingInvites: 0 } };
     useAuthStore.getState().setUser(user);
     expect(useAuthStore.getState().user).toEqual(user);
   });
@@ -29,7 +29,7 @@ describe('Auth Store', () => {
   it('logs out', () => {
     // Set some values first
     const tokenPair = { accessToken: 'access', refreshToken: 'refresh' };
-    const user = { id: '1', phone: '+1234567890', effectiveRoles: ['master'] };
+    const user = { id: '1', phone: '+1234567890', effectiveRoles: { isClient: true, isMaster: true, isPlatformAdmin: false, salonMemberships: [], pendingInvites: 0 } };
     const salonId = 'salon-1';
     
     useAuthStore.getState().setTokenPair(tokenPair);

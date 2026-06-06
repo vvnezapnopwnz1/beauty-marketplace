@@ -23,7 +23,7 @@ function processQueue(error: any, token?: string) {
     if (error) reject(error);
     else if (token) {
       config.headers = { ...(config.headers ?? {}), Authorization: `Bearer ${token}` };
-      resolve(instance.request(config as AxiosRequestConfig));
+      resolve(instance.request(config as AxiosRequestConfig) as unknown as AxiosResponse);
     }
   });
   queue = [];
@@ -41,7 +41,7 @@ async function refreshToken(refreshToken: string) {
 instance.interceptors.request.use((config) => {
   const tokenPair = useAuthStore.getState().tokenPair;
   if (tokenPair?.accessToken) {
-    config.headers = { ...(config.headers ?? {}), Authorization: `Bearer ${tokenPair.accessToken}` };
+    config.headers = { ...config.headers, Authorization: `Bearer ${tokenPair.accessToken}` } as any;
   }
   return config;
 });

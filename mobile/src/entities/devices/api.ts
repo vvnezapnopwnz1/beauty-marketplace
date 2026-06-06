@@ -16,10 +16,10 @@ export async function registerExpoPushToken() {
 
   const Notifications = await import("expo-notifications");
   const permissions = await Notifications.getPermissionsAsync();
-  let status = permissions.status;
+  let status = (permissions as any).status;
   if (status !== "granted") {
     const asked = await Notifications.requestPermissionsAsync();
-    status = asked.status;
+    status = (asked as any).status;
   }
   if (status !== "granted") {
     return;
